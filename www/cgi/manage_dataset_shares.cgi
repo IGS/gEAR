@@ -24,10 +24,17 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getfirst('session_id')
     dataset_id = form.getfirst('dataset_id')
-    print(form)
-    to_share = int(form.getfirst('to_share'))   # 1 = share, 0 = unshare
+    to_share = form.getfirst('to_share')   # 1 = share, 0 = unshare
+
+    if to_share not in ('0', '1'):
+        print(json.dumps({'error': "to_share must be 0 or 1.", 'success': 0}))
+        return
+    to_share = int(to_share)
 
     user = geardb.get_user_from_session_id(session_id=session_id)
+    if user is None:
+        print(json.dumps({'error': "Not able to continue. User must be logged in.", 'success': 0}))
+        return
     user_id = user.id
 
     # Does user own the dataset...

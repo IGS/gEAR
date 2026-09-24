@@ -856,7 +856,7 @@ def generate_tsne_figure(
 
     try:
         basis = PLOT_TYPE_TO_BASIS[plot_type]
-    except ValueError:
+    except KeyError:
         return {"success": -1, "message": f"{plot_type} was not a valid plot type"}
 
     if marker_size:

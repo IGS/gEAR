@@ -49,6 +49,10 @@ def main():
     ldesc = form.getfirst('ldesc')
 
     user = geardb.get_user_from_session_id(session_id)
+    if user is None:
+        print(json.dumps({'error': 'User must be logged in', 'success': 0}))
+        return
+
     dataset = geardb.get_dataset_by_id(d_id=dataset_id)
     if dataset is None:
         result = {'error': 'Dataset not found', 'success': 0}

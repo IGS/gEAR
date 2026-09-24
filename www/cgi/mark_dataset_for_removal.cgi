@@ -39,6 +39,13 @@ def main():
 
     result = { 'success': 0 }
 
+    if user is None:
+        result['error'] = "Not able to remove dataset. User must be logged in."
+        print(json.dumps(result))
+        cursor.close()
+        cnx.close()
+        return
+
     # Does user own the dataset...
     owns_dataset = check_dataset_ownership(cursor, user.id, dataset_id)
 

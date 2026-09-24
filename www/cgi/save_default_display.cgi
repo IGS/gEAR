@@ -73,6 +73,11 @@ def main():
     is_multigene = int(form.getfirst('is_multigene', 0))
 
     user = geardb.get_user_from_session_id(session_id=session_id)
+    if user is None:
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(success=False, error="User must be logged in")))
+        return
     user_id = user.id
 
     cnx = geardb.Connection()

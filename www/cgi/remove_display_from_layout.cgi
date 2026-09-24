@@ -31,22 +31,26 @@ def main():
     result = { 'success': 0, 'error': '' }
 
     user = geardb.get_user_from_session_id(session_id)
-    layout = geardb.get_layout_by_share_id(share_id)
-    layout.load()
-
-    if user == None:
-        result = { 'error':[] }
+    if user is None:
         result['error'] = "Must be logged in to remove display from profile."
         print(json.dumps(result))
+        return
+
+    layout = geardb.get_layout_by_share_id(share_id)
+    if layout is None:
+        result['error'] = "Dataset collection not found."
+        print(json.dumps(result))
+        return
+    layout.load()
+
+    # make sure the user owns the layout
+    if user.id == layout.user_id:
+        layout.get_members()
+        layout.remove_member_by_display_id(display_id)
+        result['success'] = 1
     else:
-        # make sure the user owns the layout
-        if user.id == layout.user_id:
-            layout.get_members()
-            layout.remove_member_by_display_id(display_id)
-            result['success'] = 1
-        else:
-            error = "Not able to remove from the collection. User doesn't own it)"
-            result['error'] = error
+        error = "Not able to remove from the collection. User doesn't own it)"
+        result['error'] = error
 
     print(json.dumps(result))
 

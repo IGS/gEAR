@@ -26,6 +26,12 @@ def main():
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
+
+    # An unknown ID used to print the literal text "None", which is not valid JSON
+    if ds is None:
+        print(json.dumps({'success': 0, 'error': 'Dataset not found'}))
+        return
+
     print(ds)
 
 if __name__ == '__main__':

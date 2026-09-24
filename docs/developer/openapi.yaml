@@ -775,7 +775,8 @@ paths:
       - name: share_uid
         in: path
         required: true
-        description: Upload share UID (staging directory name).
+        description: Upload share UID (staging directory name). Must be a plain name (unchanged by secure_filename),
+          otherwise 400 "Invalid share ID".
         schema:
           type: string
       requestBody:
@@ -791,10 +792,11 @@ paths:
               properties:
                 hub_json:
                   type: string
-                  description: JSON-encoded hub stanza. Invalid JSON causes a 500.
+                  description: JSON-encoded hub stanza. Invalid JSON returns 400.
                 tracks:
                   type: string
-                  description: JSON-encoded list of track stanzas; each should have an "id".
+                  description: JSON-encoded list of track stanzas; each should have an "id". Invalid JSON returns
+                    400.
                 assembly:
                   type: string
                   description: Genome assembly.
@@ -807,20 +809,16 @@ paths:
               additionalProperties:
                 type: string
                 format: binary
-                description: Optional track files under keys containing "[<track_id>][file]"; the filename is recorded
-                  on the matching stanza as uploadedFileName.
+                description: Optional track files under keys containing "[<track_id>][file]". The file name is sanitized
+                  with secure_filename (e.g. "my track (1).bw" is stored as "my_track_1.bw"; a name that sanitizes
+                  to empty returns 400) and the sanitized name is recorded on the matching stanza as uploadedFileName.
       responses:
         '200':
-          description: 'Synchronous processing succeeded. Quirk: if the staging metadata.json is missing or has
-            no dataset_uid, the handler writes an error status.json and returns with no value, so the body is JSON
-            null with HTTP 200.'
+          description: Synchronous processing succeeded.
           content:
             application/json:
               schema:
-                type: object
-                nullable: true
-                allOf:
-                - $ref: '#/components/schemas/ApiTrackHubCopyResult'
+                $ref: '#/components/schemas/ApiTrackHubCopyResult'
         '202':
           description: Job queued to RabbitMQ.
           content:
@@ -828,20 +826,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiTrackHubCopyResult'
         '400':
-          description: Missing hub_json, tracks, or (after the session check) assembly/empty track list.
+          description: Invalid share_uid, missing hub_json or tracks, invalid JSON in hub_json or tracks, or (after
+            the session check) missing assembly, empty track list, or an unusable uploaded file name. Also returned
+            with job_id set (after writing an error status.json) when the staging metadata.json is missing or has
+            no dataset_uid ("... Impossible to save as dataset.").
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiTrackHubCopyResult'
         '401':
-          description: Session cookie does not resolve to a user ("Invalid session. Please log in.").
+          description: Session cookie does not resolve to a user or is not a plain name ("Invalid session. Please
+            log in.").
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiTrackHubCopyResult'
         '500':
           description: 'Domain URL not configured, synchronous processing failed, queue connection/publish error
-            ("Error processing track hub: ..."), or an unhandled exception such as invalid hub_json.'
+            ("Error processing track hub: ..."), or an unhandled exception.'
           content:
             application/json:
               schema:
@@ -1094,8 +1096,8 @@ paths:
               $ref: '#/components/schemas/ApiMgTsneDataRequest'
       responses:
         '200':
-          description: '{success, message, image, image_format} as for /tsne. Errors return HTTP 200 with success
-            -1.'
+          description: '{success, message, image, image_format} as for /tsne. Errors (including an unknown plot_type)
+            return HTTP 200 with success -1.'
           content:
             application/json:
               schema:
@@ -1109,7 +1111,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiReqparseError'
         '500':
-          description: Unhandled exception (including an unknown plot_type, which raises KeyError).
+          description: Unhandled exception.
           content:
             application/json:
               schema:
@@ -1398,8 +1400,8 @@ paths:
           description: '{success, message, image, image_format}. image_format is "webp", "png" when the figure exceeds
             the 16383 px WebP limit, or "pdf" when high_dpi is true. success is 2 when duplicate genes were deduplicated.
             Errors return HTTP 200 with success -1 (no gene symbol, dataset not found, analysis unavailable, cannot
-            load AnnData, projection PlotError, missing gene_symbol column, gene/axis validation failure, invalid
-            vmin/vmax/median-centering combination).'
+            load AnnData, projection PlotError, missing gene_symbol column, gene/axis validation failure, unknown
+            plot_type ("<plot_type> was not a valid plot type"), invalid vmin/vmax/median-centering combination).'
           content:
             application/json:
               schema:
@@ -1413,8 +1415,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiReqparseError'
         '500':
-          description: 'Unhandled exception. Quirk: an unknown plot_type raises KeyError, but the handler only catches
-            ValueError, so it surfaces as a 500 instead of the intended success -1 message.'
+          description: Unhandled exception.
           content:
             application/json:
               schema:
@@ -1699,9 +1700,9 @@ paths:
       tags:
       - Datasets
       summary: Create, edit, or remove a dataset note
-      description: Requires a logged-in user. The action is chosen by 'scope'. Only 'remove' checks note ownership;
-        'edit' updates any note ID without an ownership check. An unrecognized scope returns success 0 with no error.
-        Errors are returned with HTTP 200. No current frontend caller found (legacy).
+      description: Requires a logged-in user. The action is chosen by 'scope'. 'edit' and 'remove' require the user
+        to own the note (otherwise error "... Not note owner."). An unrecognized scope returns success 0 with no
+        error. Errors are returned with HTTP 200. No current frontend caller found (legacy).
       requestBody:
         required: true
         content:
@@ -1898,8 +1899,9 @@ paths:
       summary: Copy or move a stored analysis between analysis classes
       description: Supports only user_unsaved->user_saved (move, open perms), user_saved->public (move, read-only
         perms) and public->user_unsaved (copy); other combinations return an error. Rewrites the analysis config's
-        id, type and analysis_session_id. No user login check is made (session_id locates user_unsaved analyses).
-        Errors are returned with HTTP 200 and success 0.
+        id, type and analysis_session_id. Requires a session belonging to a logged-in user (it is also used in user_unsaved
+        analysis paths); otherwise error "You must be logged in to copy an analysis." Errors are returned with HTTP
+        200 and success 0.
       requestBody:
         required: true
         content:
@@ -1907,6 +1909,7 @@ paths:
             schema:
               type: object
               required:
+              - session_id
               - dataset_id
               - source_analysis_id
               - source_analysis_type
@@ -1915,7 +1918,7 @@ paths:
               properties:
                 session_id:
                   type: string
-                  description: Session ID (used for analysis paths)
+                  description: Session ID of the logged-in user (also used for analysis paths)
                 dataset_id:
                   type: string
                   description: Dataset ID
@@ -1942,10 +1945,9 @@ paths:
       tags:
       - Account/auth
       summary: Create a new user account and return a session ID
-      description: 'Verifies verification_code_short against the long code, stores a SHA3-256 password hash, and
-        creates a session. session_id is 0 on failure, -1 if the user already exists, else a UUID. Quirk: when the
-        user already exists the script prints two JSON objects back to back (first success 0, then success 1 with
-        session_id -1).'
+      description: Verifies verification_code_short against the long code, stores a SHA3-256 password hash, and
+        creates a session. session_id is 0 on failure, -1 if the user already exists (success 0, error "User already
+        exists"), else a UUID.
       requestBody:
         required: true
         content:
@@ -2932,8 +2934,8 @@ paths:
       tags:
       - Datasets
       summary: Return metadata for a single dataset
-      description: 'Prints the serialized geardb.Dataset. No login or visibility check. Quirk: an unknown dataset_id
-        prints the literal text None (not valid JSON).'
+      description: 'Prints the serialized geardb.Dataset. No login or visibility check. An unknown dataset_id returns
+        {"success": 0, "error": "Dataset not found"}.'
       requestBody:
         required: true
         content:
@@ -2950,11 +2952,13 @@ paths:
                   description: Any non-empty value adds gene_count/obs_count
       responses:
         '200':
-          description: The dataset.
+          description: The dataset, or an error object if the dataset is not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Cgi1Dataset'
+                oneOf:
+                - $ref: '#/components/schemas/Cgi1Dataset'
+                - $ref: '#/components/schemas/Cgi1SuccessError'
   /cgi/get_dataset_list.cgi:
     post:
       operationId: cgiGetDatasetList
@@ -4860,10 +4864,9 @@ paths:
       tags:
       - Datasets
       summary: Share/unshare a dataset and list its share rows
-      description: 'Requires a logged-in user who owns the dataset (unknown session raises an error). Sets dataset_shares.is_allowed,
-        but only for the row matching the owner''s own user_id, and returns those rows. Quirk: the script prints
-        the FieldStorage repr to stdout before the JSON, so the body is not valid JSON; no frontend caller found
-        (likely broken/legacy).'
+      description: Requires a logged-in user who owns the dataset. Sets dataset_shares.is_allowed, but only for
+        the row matching the owner's own user_id, and returns those rows. to_share must be 0 or 1; an invalid to_share
+        or missing/unknown session returns success 0 with an error. No frontend caller found (legacy).
       requestBody:
         required: true
         content:
@@ -4888,8 +4891,8 @@ paths:
                   description: 1 = share, 0 = unshare.
       responses:
         '200':
-          description: Share list, or success 0 with error if the user does not own the dataset (HTTP 200). Body
-            is preceded by a non-JSON FieldStorage dump.
+          description: Share list, or success 0 with error (invalid to_share, not logged in, or not the dataset
+            owner) with HTTP 200.
           content:
             application/json:
               schema:
@@ -4921,7 +4924,7 @@ paths:
       tags:
       - Datasets
       summary: Mark an owned dataset for removal by cron
-      description: Requires a logged-in user who owns the dataset (an unknown session raises an error). Sets dataset.marked_for_removal
+      description: Requires a logged-in user who owns the dataset (otherwise success 0 with an error). Sets dataset.marked_for_removal
         = 1; actual deletion is done by a cron job. No frontend caller found (remove_dataset.cgi does the same soft
         delete).
       requestBody:
@@ -4932,7 +4935,7 @@ paths:
               $ref: '#/components/schemas/Cgi2SessionDatasetForm'
       responses:
         '200':
-          description: Result; non-owners get success 0 with error (HTTP 200).
+          description: Result; not logged in or non-owner gets success 0 with error (HTTP 200).
           content:
             application/json:
               schema:
@@ -5094,8 +5097,8 @@ paths:
       tags:
       - Collections (layouts)
       summary: Remove a dataset's displays from a layout
-      description: 'Requires a logged-in user who owns the layout (collection). Quirks: an unknown layout_share_id
-        raises an error (no JSON), and when not logged in the error JSON is printed twice. No frontend caller found.'
+      description: Requires a logged-in user who owns the layout (collection). Not logged in, an unknown layout_share_id
+        ("Dataset collection not found.") or a non-owner returns success 0 with an error. No frontend caller found.
       requestBody:
         required: true
         content:
@@ -5115,7 +5118,7 @@ paths:
                   type: string
       responses:
         '200':
-          description: Result; errors return success 0 or only `error` (HTTP 200).
+          description: Result; errors return success 0 with error (HTTP 200).
           content:
             application/json:
               schema:
@@ -5126,8 +5129,8 @@ paths:
       tags:
       - Collections (layouts)
       summary: Remove a display from a layout
-      description: 'Requires a logged-in user who owns the layout (collection). Quirks: an unknown layout_share_id
-        raises an error (no JSON), and when not logged in the error JSON is printed twice.'
+      description: Requires a logged-in user who owns the layout (collection). Not logged in, an unknown layout_share_id
+        ("Dataset collection not found.") or a non-owner returns success 0 with an error.
       requestBody:
         required: true
         content:
@@ -5147,7 +5150,7 @@ paths:
                   type: string
       responses:
         '200':
-          description: Result; errors return success 0 or only `error` (HTTP 200).
+          description: Result; errors return success 0 with error (HTTP 200).
           content:
             application/json:
               schema:
@@ -5201,7 +5204,8 @@ paths:
       - Collections (layouts)
       summary: Delete an owned layout
       description: Requires a logged-in user who owns the layout; refuses layout id 0 (site default). An unknown
-        session or layout_share_id raises an error instead of returning JSON.
+        session or layout_share_id returns success 0 with an error ("... User must be logged in." / "... Layout
+        not found.").
       requestBody:
         required: true
         content:
@@ -5218,7 +5222,7 @@ paths:
                   type: string
       responses:
         '200':
-          description: Result; non-owner returns success 0 with error (HTTP 200).
+          description: Result; not logged in, unknown layout or non-owner returns success 0 with error (HTTP 200).
           content:
             application/json:
               schema:
@@ -5387,7 +5391,7 @@ paths:
       summary: Edit metadata of a dataset the user owns
       description: 'Requires a logged-in user who owns the dataset. Every field below is compared to the stored
         value and saved if different, so omitted fields are overwritten with null; send all of them. Errors use
-        HTTP 200 and `success: 0`. An invalid session raises a server error (the user lookup is not checked).'
+        HTTP 200 and `success: 0` (an invalid session returns error "User must be logged in").'
       requestBody:
         required: true
         content:
@@ -5447,9 +5451,10 @@ paths:
       tags:
       - Displays
       summary: Set the user's default single- or multi-gene display for a dataset
-      description: Requires a logged-in user (an invalid session raises a server error). Upserts `dataset_preference`.
-        If the user is the dataset owner and the display's preview PNG exists, also (re)creates the `<dataset_id>.<single|multi>.default.png`
-        symlink used as the dataset's preview image.
+      description: Requires a logged-in user (an invalid session returns success false with error "User must be
+        logged in"). Upserts `dataset_preference`. If the user is the dataset owner and the display's preview PNG
+        exists, also (re)creates the `<dataset_id>.<single|multi>.default.png` symlink used as the dataset's preview
+        image.
       requestBody:
         required: true
         content:
@@ -5487,6 +5492,9 @@ paths:
                 properties:
                   success:
                     type: boolean
+                  error:
+                    type: string
+                    description: Present on failure (not logged in).
   /cgi/save_genecart_changes.cgi:
     post:
       operationId: cgiSaveGenecartChanges
@@ -5550,9 +5558,9 @@ paths:
       tags:
       - Collections (layouts)
       summary: Save grid positions and sizes of displays in a layout
-      description: Requires a logged-in user who owns the layout (an invalid session raises a server error). Deletes
-        all `layout_displays` rows for the layout and re-inserts them from `layout_arrangement`, numbering grid
-        positions separately for single- and multi-gene displays.
+      description: Requires a logged-in user who owns the layout (an invalid session returns success 0 with error
+        "User must be logged in"). Deletes all `layout_displays` rows for the layout and re-inserts them from `layout_arrangement`,
+        numbering grid positions separately for single- and multi-gene displays.
       requestBody:
         required: true
         content:
@@ -6687,7 +6695,7 @@ paths:
       summary: Check that a dataset or layout share ID exists
       description: Legacy; no frontend code currently calls it. `permalink` checks a dataset share ID, `profile`
         a layout share ID; any other scope checks a dataset share ID and fails if it is already shared with the
-        user, which needs a valid session_id (otherwise a server error).
+        user, which needs a valid session_id (otherwise success 0 with error "Please log in to add a shared dataset.").
       requestBody:
         required: true
         content:

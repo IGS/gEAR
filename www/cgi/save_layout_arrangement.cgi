@@ -29,6 +29,9 @@ def main():
     layout_arrangement_json = form.getfirst('layout_arrangement')
 
     user = geardb.get_user_from_session_id(session_id)
+    if user is None:
+        print(json.dumps({'success': 0, 'error': 'User must be logged in'}))
+        return
 
     layout = geardb.get_layout_by_share_id(layout_share_id)
 

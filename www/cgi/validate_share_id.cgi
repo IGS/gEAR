@@ -71,7 +71,12 @@ def main():
         valid_share = validate_share_id(cursor, share_id)
 
         # share_id is valid
-        if valid_share == True:
+        if valid_share == True and user is None:
+            # Checking existing shares needs a logged-in user
+            result = {'error': "Please log in to add a shared dataset.", 'success': 0}
+            print(json.dumps(result))
+
+        elif valid_share == True:
 
             #Check if user already has the share_id
             already_has = check_dataset_shares(cursor, share_id, user.id)
