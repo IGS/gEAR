@@ -14,7 +14,7 @@ Welcome to the gEAR developer documentation. This guide is intended for develope
 - [API Reference](./api_reference.md) - Flask API endpoints and CGI catalog
 - [OpenAPI spec](./openapi.yaml) - machine-readable description of the REST API and CGI scripts
 - [Configuration](./configuration.md) - `gear.ini` sections and keys
-- [Testing](./testing.md) - Mocha/Playwright and pytest/SeleniumBase suites
+- [Testing](./testing.md) - Server-side pytest suite (run in CI) and legacy UI suites
 - [Upload Pipeline](./upload_pipeline.md) - Dataset upload flow
 - [Code Map](./code_map.md) - Where things live in the codebase
 - [Database Schema](./database_schema.md) - MySQL tables
@@ -113,16 +113,14 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 
 ### Testing
 
-- **UI Tests (Mocha + Playwright)**: `tests/test/*.test.js`, assertions via `expect` from `playwright/test`
+- **Server-side tests (pytest, run in CI):** `tests/python/` covers CGI scripts (against a fake database), Flask API resources, the upload processors, and docs checks. No live server or MySQL is needed.
 
   ```bash
-  cd tests
-  npm test
+  pip install -r tests/python/requirements.txt
+  cd tests/python && python -m pytest
   ```
 
-- **pytest + SeleniumBase**: End-to-end UI tests in `tests/test_*.py` that run against a live site (run from `tests/`: `pytest test_front_page.py`, add `--data=localhost` for Docker)
-- **API Tests**: No dedicated suite yet
-- Mocha front-end tests mock API responses for speed and CI compatibility
+- **Legacy UI suites** (Mocha + Playwright, SeleniumBase) are in `tests/legacy/` and run against a live site. They are no longer maintained.
 
 See [testing.md](./testing.md) and [tests/README.md](../../tests/README.md).
 

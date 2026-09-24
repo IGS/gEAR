@@ -1,122 +1,148 @@
 # Testing
 
-This page describes the automated test setups that exist in the repository, how to run each one, and what CI runs. There is currently no server-side (Python/API) unit test suite; all existing tests drive the web UI in a browser.
+This page covers the automated tests in the repository: the server-side pytest suite, which runs in CI, and the older UI suites kept for reference.
 
-| Setup | Location | Framework | Status |
-|-------|----------|-----------|--------|
-| Mocha UI tests (API mocked) | `tests/test/*.test.js` | Mocha + Playwright (`playwright`, `playwright/test` `expect`) | Active; run by CI |
-| Mocha end-to-end placeholder | `tests/test/e2e/e2e.test.js` | Playwright | Stub only (comment, no tests) |
-| SeleniumBase UI tests | `tests/test_*.py` | pytest + SeleniumBase | Legacy; targets v1 page markup |
-| Legacy runner | `tests/run_tests`, `tests/test_commands.json`, `tests/accounts__*.py` | Selenium WebDriver | Legacy |
-| Playwright scaffold | `www/js/playwright.config.js`, `www/js/tests-examples/` | `@playwright/test` | Untracked example output of `npm init playwright`; not wired up |
+| Suite | Location | Runs in CI | Needs a live site or MySQL? |
+|-------|----------|------------|------------------------------|
+| **Server-side pytest suite** | `tests/python/` | Yes: `python_tests.yml` | No |
+| Mocha + Playwright UI tests | `tests/legacy/test/` | Manual only (`mocha_tests.yml`) | Yes (loads pages from `devel.umgear.org` or `localhost:8080`) |
+| SeleniumBase UI tests (v1 UI) | `tests/legacy/test_*.py` | No | Yes |
+| Selenium runner (v1 UI) | `tests/legacy/run_tests` | No | Yes |
 
-See also [tests/README.md](../../tests/README.md) for testing strategy notes and the list of planned UI test cases.
+## Server-side pytest suite (`tests/python`)
 
-## Mocha + Playwright UI tests
+The suite covers:
+
+- **CGI scripts**, run against a fake database.
+- **Flask API resources**, through Flask's test client.
+- **Upload processors** (`gear.anndata_processor`, `gear.spatial_processor`, `gear.spatialhandler`), using the real example files in `www/user_templates/`.
+- **Guards:** every server-side Python file parses, `openapi.yaml` validates, and relative Markdown links resolve.
 
 ### Layout
 
-| File | Purpose |
+| Path | Purpose |
 |------|---------|
-| `tests/package.json` | Declares `mocha` (^10.2.0), `@playwright/test` (^1.40.1), `"type": "module"`, and the script `"test": "mocha"` |
-| `tests/test/helpers.js` | Shared setup: browser matrix, `gearBase` URL, `setupBrowserContext()` / `teardownBrowserContext()`, `login()` / `loginFailure()` mocks, and API mocks such as `mockGetOrganismList`, `mockGetDatasetList`, `mockGetDatasetDisplays`, `mockGetDatasetGenes`, `mockGetDatasetAnalyses`, `mockGetDatasetAvailableDisplayTypes`, `mockGetDatasetH5adInfo`, `mockGetDatasetAggregations` |
-| `tests/test/gene_list_manager.test.js` | `gene_list_manager.html`: new list validation, search, facets, list actions (most complete suite) |
-| `tests/test/dataset_curator.test.js` | `dataset_curator.html`: plotting, options, save (logged in / not logged in) |
-| `tests/test/multigene_curator.test.js` | `multigene_curator.html`: dataset list, plotting; many `it()` bodies are still empty |
-| `tests/test/compare_datasets.test.js` | Comments only (planned tests) |
-| `tests/test/test_template` | Copy-and-rename template for a new page test (no `.js` extension, so Mocha ignores it) |
+| `conftest.py` | Puts `lib/` and `www/api/` on `sys.path`. Replaces `gear.db.MySQLDB.connect` with a fake before `geardb` is imported (see note below). Fixtures: `upload_session`, `tmp_cart`, `example_mex_tar`, `example_3tab_tar_gz`. |
+| `helpers/cgi_harness.py` | `run_cgi(...)` runs a CGI in a subprocess and returns a `CGIResult` |
+| `helpers/run_cgi.py` | Runner used by `run_cgi`: installs the fake `geardb`, then runs the script as `__main__` |
+| `helpers/fake_geardb.py` | Spec-driven stand-in for `lib/geardb.py` that logs every SQL statement, commit and save |
+| `fakes/` | Small fake modules for individual tests, such as a `gear.analysis` that returns a synthetic AnnData |
+| `test_cgi_*.py` | CGI tests, grouped by area (uploads, collections, datasets, accounts, downloads, gene lists and search, comparison) |
+| `test_api_*.py` | Flask resources (`Aggregations`, `TrackHubCopy`) |
+| `test_anndata_processor.py`, `test_spatial.py` | Upload processing, including cancellation when an upload is deleted mid-job |
+| `test_geardb_helpers.py` | Helpers in the real `geardb` module |
+| `test_syntax.py`, `test_docs.py` | Guards |
+| `requirements.txt`, `requirements-spatial.txt` | Pinned to the production versions in `docker/requirements.txt` |
 
-API responses are mocked with `page.route()` against URLs such as `${gearBase}/cgi/login.v2.cgi` and `${gearBase}/cgi/search_gene_carts.cgi`, so the tests do not need a database. The most recently registered route wins, which is how logged-in and logged-out states are switched. If a server response changes shape, update the corresponding mock in `helpers.js` or the test file.
-
-Each suite loops over the browser list in `helpers.js` (`chromium`, `webkit`, `firefox`, `iPhone` = iPhone 12 on WebKit, `pixel` = Pixel 5 on Chromium).
-
-### Environment variables (read in `helpers.js`)
-
-| Variable | Effect |
-|----------|--------|
-| `BROWSER` | Run only the named browser (`chromium`, `webkit`, `firefox`, `iPhone`, `pixel`) |
-| `LOCAL=true` | Use `http://localhost:8080` as `gearBase`; otherwise `https://devel.umgear.org` |
-| `DEBUG=true` | Launch headed with `slowMo: 1000` |
+> **Note:** importing `geardb` opens a MySQL connection, because `LayoutCollection._cnx = Connection()` runs when the class is defined. `conftest.py` patches the connection so the real module can be imported without a database or `gear.ini`.
 
 ### Running locally
 
-Prerequisites: Node.js 20 (CI version) and network access to the target host (the HTML/JS is loaded from `gearBase` even though API calls are mocked).
+Use Python 3.14, the production version:
 
 ```bash
-cd tests
-npm ci                                   # install mocha + @playwright/test
-npx playwright install --with-deps       # download browser binaries
-npm test                                 # runs mocha on ./test/*.test.js
-BROWSER=chromium npm test                # single browser
-BROWSER=chromium DEBUG=true npx mocha test/gene_list_manager.test.js
-LOCAL=true npm test                      # against a local server on :8080
+python3.14 -m venv ~/venvs/gear-tests && source ~/venvs/gear-tests/bin/activate
+pip install -r tests/python/requirements.txt          # or requirements-spatial.txt for the spatial tests
+cd tests/python
+python -m pytest                    # all tests; spatial ones are skipped if spatialdata isn't installed
+python -m pytest -m "not spatial"   # the "core" CI job
+python -m pytest test_cgi_downloads.py -k owner -v
 ```
 
-Mocha uses its default spec (`./test/*.{js,cjs,mjs}`, non-recursive), so `tests/test/e2e/` is not run by `npm test`. There is no `.mocharc` file; suites set `this.timeout(...)` and `this.retries(3)` themselves.
+The CGI tests create and remove their own directories under `www/uploads/files/` and files under `www/carts/`; both folders are gitignored.
+
+### How CGI tests work
+
+`run_cgi()` runs `www/cgi/<script>` in a subprocess from `www/cgi` (many scripts find `lib/` relative to that directory):
+
+- **Parameters:** it sets `REQUEST_METHOD` and `QUERY_STRING` for `query=`, or a multipart body for `form=`/`files=`, plus `HTTP_COOKIE` for `cookies=`.
+- **Fake database:** the runner puts `helpers/fake_geardb.py` into `sys.modules` as `geardb` before the script runs. That way it's used even by scripts that put the real `lib/` first on `sys.path`.
+- **Other fakes:** other modules can be replaced with `fake_modules={"gear.analysis": path}`.
+
+The fake database is configured with a JSON-style spec:
+
+```python
+from helpers.cgi_harness import run_cgi
+
+DB = {
+    "sessions": {"owner": 1, "other": 2},                       # session_id -> user id
+    "layouts": [{"id": 10, "share_id": "L1", "user_id": 1}],
+    "datasets": [{"id": "DS1", "share_id": "S1", "owner_id": 1, "is_downloadable": 0}],
+    "sql": [{"match": "FROM note", "rows": [[1]]}],            # canned rows for matching queries
+    "fail_sql": ["UPDATE layout"],                              # make matching statements raise
+}
+
+def test_other_user_cannot_rename():
+    result = run_cgi("rename_layout.cgi", db=DB,
+                     query={"session_id": "other", "layout_share_id": "L1", "layout_name": "X"})
+    assert "own" in result.json()["error"]     # .json() also asserts exactly one JSON document
+    assert not result.logged("layout.save")    # nothing was saved
+    assert result.writes() == []               # no INSERT/UPDATE/DELETE was executed
+```
+
+`CGIResult` also has:
+
+- `.status`: the HTTP status from a `Status:` header, 200 by default
+- `.headers` (lower-cased names), `.body` and `.text`
+- `.json_documents()`: every JSON document printed
+
+If a script needs a `geardb` function the fake doesn't have, the fake raises an `AttributeError` naming `fake_geardb.py`. Add a small stub there.
+
+### How in-process tests work
+
+Tests of library code and Flask resources import the real modules directly, because `conftest.py` has already patched the database connection. They use pytest's `monkeypatch` to replace what the code under test would read from the database or disk:
+
+- `test_anndata_processor.py` points `gear.anndata_processor.UPLOADS_BASE_DIR` at `tmp_path` and processes copies of the example archives.
+- `test_api_aggregations.py` replaces `get_adata_*` with a small AnnData and calls the resource through `Flask.test_client()`.
+
+Import individual resources (`from resources.aggregations import Aggregations`), not `www/api/api.py`: that module calls `setrlimit` and imports `gear.orthology`, which queries the database at import.
+
+### Markers
+
+`spatial` marks tests that need the SpatialData stack (`requirements-spatial.txt`). They're skipped automatically when `spatialdata` isn't installed.
 
 ### CI
 
-`.github/workflows/mocha_tests.yml` ("Mocha Tests") runs on push and pull request to `devel` when any `*.js` or `*.html` file changes. It uses a matrix over `chromium, firefox, webkit, iPhone, pixel` with `max-parallel: 1`, and in `./tests` it runs:
+`.github/workflows/python_tests.yml` runs on push and pull request to `devel` and `main` when server-side code, docs, example files or the tests change. It can also be started by hand (`workflow_dispatch`). It has two jobs on Python 3.14:
 
-1. `npm ci`
-2. `npx playwright install && npx playwright install-deps`
-3. `npm run dev` in the background with `PORT=8080`
-4. `npm test` with `BROWSER=<matrix value>`
+- **core:** `pip install -r tests/python/requirements.txt`, then `pytest -m "not spatial"`.
+- **spatial:** installs `requirements-spatial.txt`, then runs `pytest -m spatial`.
 
-The CI suite was never fully built out; filling it in is planned future work. Known gaps: `tests/package.json` defines no `dev` script, so step 3 fails silently (its output is discarded) and, because `LOCAL` is not set, the tests run against `https://devel.umgear.org`. The workflow notes a TODO to pass user/password secrets.
+Other workflows are not test suites:
 
-Other workflows in `.github/workflows/` are not test suites: `codeql.yml` (CodeQL scan of Actions, JavaScript and Python; CGIs are renamed to `.py` first), `version-js.yml` and `strip-versioning.yml` (cache-busting query strings; see [cache busting guide](./misc/cache_busting_guide.md)).
+- `codeql.yml`: CodeQL scan of Actions, JavaScript and Python. CGIs are renamed to `.py` first.
+- `version-js.yml` and `strip-versioning.yml`: cache-busting query strings; see the [cache busting guide](./misc/cache_busting_guide.md).
 
-### Writing a new test
+### Adding tests
 
-1. Copy `tests/test/test_template` to `tests/test/<page>.test.js` and replace `<PAGE>`.
-2. Mock every CGI/API call the page makes with `page.route()`; add reusable mocks to `helpers.js`.
-3. Prefer user-facing locators (role, text) or `data-testid` attributes over CSS selectors.
-4. Do not use arrow functions for `describe` blocks that call `this.timeout()`.
+- **Changing a CGI or API response:** add or update a test that covers both the success path and the error you're guarding against. Assert on `.json()`, so a script that prints two JSON objects or an empty body fails.
+- **Permission checks:** always assert that a refused request made no writes (`result.writes() == []`).
+- **Processors:** build small inputs in `tmp_path` or reuse the files in `www/user_templates/`. Keep each test to a few seconds.
 
-## SeleniumBase / pytest tests (legacy)
+## Legacy UI suites (`tests/legacy`)
 
-Files: `tests/test_front_page.py`, `tests/test_compare_datasets.py`, `tests/test_multigene_curator.py`, `tests/test_sc_workbench.py`. Each defines `BaseCase` subclasses with `test_*` methods, reads credentials from `../gear.ini` section `[test]` (`user_email`, `password`; see [configuration](./configuration.md)), and uses SeleniumBase visual regression (`check_window`) for plots.
+These suites are not maintained. They're kept for reference, especially the notes on mocking with Playwright's `page.route()` and the list of planned UI tests in [tests/legacy/README.md](../../tests/legacy/README.md).
 
-```bash
-pip install seleniumbase pytest
-cd tests                              # gear.ini is read from ../gear.ini
-pytest test_front_page.py             # against https://umgear.org/
-pytest test_front_page.py --data=localhost   # against http://localhost:8080/ (e.g. Docker)
-```
+- **Mocha + Playwright** (`tests/legacy/test/*.test.js`): run with `cd tests/legacy && npm ci && npx playwright install && npm test`. API calls are mocked, but the pages are loaded from `https://devel.umgear.org`, or `http://localhost:8080` with `LOCAL=true`. `mocha_tests.yml` only runs when started by hand.
+- **SeleniumBase** (`tests/legacy/test_*.py`) and the **Selenium runner** (`tests/legacy/run_tests`): written for the v1 UI and run against a live site, reading credentials from `gear.ini` `[test]`.
 
-There is no `conftest.py`, `pytest.ini` or requirements file for these tests. They target v1 selectors (`#user_email`, `#btn_sign_in`, jsTree dataset pickers) and are likely stale against the current v2 UI. `tests/.gitignore` excludes their output directories (`latest_logs`, `downloaded_files`).
+`www/js/playwright.config.js` and `www/js/tests-examples/` (untracked) are the unmodified output of `npm init playwright` and are not wired up.
 
-## Legacy runner (`run_tests`)
+## Test data
 
-`tests/run_tests` imports each module listed in `tests/test_commands.json` and calls its `main()`, which must return a list of `{"success": 0|1, "label": "..."}` dicts; it prints per-test and total pass/fail counts.
-
-```bash
-cd tests
-./run_tests      # shebang is /opt/bin/python3; or: python3 run_tests
-```
-
-`test_commands.json` lists only `accounts__create_account` and `accounts__log_in`. Both use Selenium Chrome WebDriver and read `[test]` `host`, `user_name`, `user_email`, `user_institution`, `password` from `../gear.ini`. Other one-off scripts (`datasets__upload_bulk-rnaseq.py`, `gene_cart_manager__search_cart.py`, `index__primary_search__single_gene.py`) are not registered in the runner; the latter two hit `https://umgear.org/` directly and use v1 element IDs.
-
-## Test data and environment helpers
-
-- `tests/data/*.xlsx` - uploader spreadsheet test cases (missing sheets, count/name mismatches, non-numeric cells); described in `tests/data/test_case_descriptions.txt`.
-- `tests/data/gear-test.sql` - a small MySQL dump; ignored by git (`**/*.sql` in `.gitignore`). `bin/create_test_mysql_dump.py` builds such a dump from datasets referenced by given layout IDs.
-- `tests/setup_environment.py` (untracked, work in progress) - intended to create a minimal AnnData object and load `gear-test.sql` into MySQL for CI runners; the MySQL command still contains placeholder credentials.
-
-## Playwright scaffold in `www/js/` (untracked)
-
-`www/js/playwright.config.js`, `www/js/tests-examples/` (`demo-todo-app.spec.js`, `e2e/example.spec.js`) and `www/js/.github/workflows/playwright.yml` are the unmodified output of Playwright's project initializer. The config sets `testDir: './test/e2e'` (which does not exist under `www/js/`), five browser projects, and the HTML reporter; the nested `.github` workflow is not used by GitHub because it is not at the repository root. Treat these as reference only. If `@playwright/test`'s own runner is adopted, the config belongs in `tests/` next to `tests/test/e2e/`.
+- `tests/data/*.xlsx`: uploader spreadsheet test cases, described in `tests/data/test_case_descriptions.txt`.
+- `tests/data/gear-test.sql`: a small MySQL dump, gitignored. `bin/create_test_mysql_dump.py` builds one from given layouts.
+- `www/user_templates/example_mex.tar` and `example_3tab.tar.gz`: example uploads, also used by the pytest suite.
 
 ## Linting
 
-`ruff.toml` configures Ruff for Python (includes `*.cgi`, excludes `bin/`). Run `ruff check lib www/api www/cgi listeners`. The pre-commit config (`.pre-commit-config.yaml`) currently only runs the cache-version bump hook; the Ruff hooks are not enabled.
+`ruff.toml` configures Ruff for Python (it includes `*.cgi` and excludes `bin/`). Run `ruff check lib www/api www/cgi listeners`. Ruff isn't run in CI, and the pre-commit config only runs the cache-version bump hook.
 
 ## Related documentation
 
-- [Code map](./code_map.md) - where page JS and CGIs live
-- [API reference](./api_reference.md) - endpoints that tests mock
-- [Release test plan](./misc/release_test_plan.md) - manual pre-release checklist
+- [Code map](./code_map.md): where page JS and CGIs live
+- [API reference](./api_reference.md) and [OpenAPI spec](./openapi.yaml): the endpoints under test
+- [Release test plan](./misc/release_test_plan.md): manual pre-release checklist
 - [Setup guides](./setup/README.md)
 
 ---
