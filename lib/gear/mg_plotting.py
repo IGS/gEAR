@@ -1598,7 +1598,7 @@ def create_dataframe_gene_mask(df, gene_symbols):
         # Note to user which genes were not found in the dataset
         genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
         if genes_not_present:
-            success = 2,
+            success = 2
             message_list.append('<li>One or more genes were not found in the dataset nor could be mapped: {}</li>'.format(', '.join(genes_not_present)))
         message = "\n".join(message_list)
         return gene_filter, success, message
