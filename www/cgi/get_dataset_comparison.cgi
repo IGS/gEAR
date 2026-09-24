@@ -50,10 +50,8 @@ def main():
 
     ds = geardb.get_dataset_by_id(dataset_id)
     if not ds:
-        return {
-            "success": -1,
-            'message': "No dataset found with that ID"
-        }
+        # Previously returned a dict that was never printed, so the response body was empty
+        return_error_response("No dataset found with that ID")
     is_spatial = ds.dtype == "spatial"
 
     if not x_compare or not y_compare:
@@ -82,15 +80,24 @@ def main():
     if statistical_test:
         perform_ranking = True
 
-    filters = json.loads(filters)
+    try:
+        # An empty obs_filters value means "no filters"
+        filters = json.loads(filters) if filters else {}
+        x_compare = json.loads(x_compare)
+        y_compare = json.loads(y_compare)
+    except json.JSONDecodeError as e:
+        return_error_response(f"Invalid JSON in obs_filters, condition_x or condition_y: {e}")
+
+    if compare_key not in adata.obs.columns:
+        return_error_response(f"Comparison column '{compare_key}' was not found in this dataset.")
+
     # Filter by obs filters
     if filters:
         for col, values in filters.items():
+            if col not in adata.obs.columns:
+                return_error_response(f"Filter column '{col}' was not found in this dataset.")
             selected_filter = adata.obs[col].isin(values)
             adata = adata[selected_filter, :]
-
-    x_compare = json.loads(x_compare)
-    y_compare = json.loads(y_compare)
 
     # Error if any condition in x matches any condition in y
     intersection_conditions = intersection(x_compare, y_compare)
@@ -134,6 +141,10 @@ def main():
     adata_x_subset = adata[condition_x_repls_filter, :]
     adata_y_subset = adata[condition_y_repls_filter, :]
 
+    # The mean of an empty selection is NaN, which is not valid JSON
+    if adata_x_subset.n_obs == 0 or adata_y_subset.n_obs == 0:
+        return_error_response("No observations match the X or Y condition (after any filters). Please choose different conditions or filters.")
+
     df_x = pd.DataFrame({
         # adata.X ends up being 2 dimensional array with gene's values going down a column.
         # We tranpose so a gene's replicate values are in a list and then we take the average
@@ -172,6 +183,8 @@ def main():
         if perform_ranking:
             result['pvals_adj'].append(row['pvals_adj'])
 
+    if len(result['fold_changes']) < 2:
+        return_error_response("At least two genes are needed to compare these conditions.")
     fold_change_std_dev = statistics.stdev(result['fold_changes'])
 
     filtered_values = list()
@@ -251,18 +264,27 @@ def main():
         log_base = 10
 
     if log_base:
-        for (e1_raw, e2_raw) in result['values']:
+        # Genes whose log is undefined (negative values) are dropped, so every
+        #  per-gene list must be filtered together to stay aligned with x/y
+        num_genes = len(result['values'])
+        keep = []
+        log_values = []
+        for idx, (e1_raw, e2_raw) in enumerate(result['values']):
             transformed_e1 = get_log(e1_raw, log_base)
             transformed_e2 = get_log(e2_raw, log_base)
 
             if transformed_e1 is not None and transformed_e2 is not None:
-                filtered_x.append(transformed_e1)
-                filtered_y.append(transformed_e2)
-                filtered_values.append([transformed_e1,transformed_e2])
+                keep.append(idx)
+                log_values.append([transformed_e1, transformed_e2])
 
-        result['values'] = filtered_values
-        result['x'] = filtered_x
-        result['y'] = filtered_y
+        result['values'] = log_values
+        result['x'] = [value[0] for value in log_values]
+        result['y'] = [value[1] for value in log_values]
+        if len(keep) != num_genes:
+            # pvals_adj is empty when no statistical test was run, so only filter full-length lists
+            for key in ('gene_ids', 'symbols', 'fold_changes', 'pvals_adj'):
+                if len(result[key]) == num_genes:
+                    result[key] = [result[key][i] for i in keep]
 
     result['fold_change_std_dev'] = "{0:.2f}".format(fold_change_std_dev)
     result["compare_key"] = compare_key
@@ -312,6 +334,7 @@ def return_error_response(msg):
     result = dict()
     result['success'] = 0
     result['error'] = msg
+    result['message'] = msg     # compare_datasets.js reads "message"
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

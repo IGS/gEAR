@@ -2727,10 +2727,12 @@ paths:
       tags:
       - Analysis/workbench
       summary: Compare mean expression between two condition groups of a dataset
-      description: 'Uses the primary analysis, optionally filters obs, computes per-gene means for X and Y groups,
+      description: Uses the primary analysis, optionally filters obs, computes per-gene means for X and Y groups,
         fold changes and (if statistical_test is set) Benjamini-Hochberg adjusted p-values via scanpy rank_genes_groups,
         then applies std-dev/fold-change cutoffs and optional log transform. Errors return HTTP 200 with success
-        0. Quirks: an unknown dataset_id prints nothing; obs_filters must be valid JSON (an empty value raises).'
+        0 and the text in both `error` and `message` (for example an unknown dataset, invalid JSON, an unknown column,
+        or conditions that match no observations). Genes dropped by the log transform are removed from every per-gene
+        list, so all lists stay aligned.
       requestBody:
         required: true
         content:
@@ -2742,7 +2744,6 @@ paths:
               - compare_key
               - condition_x
               - condition_y
-              - obs_filters
               properties:
                 dataset_id:
                   type: string
@@ -2757,7 +2758,7 @@ paths:
                   description: JSON array of condition values for Y
                 obs_filters:
                   type: string
-                  description: 'JSON object {obs_column: [allowed values]}; may be {}'
+                  description: 'JSON object {obs_column: [allowed values]}; empty or {} means no filters'
                 fold_change_cutoff:
                   type: number
                 std_dev_num_cutoff:
@@ -2790,6 +2791,9 @@ paths:
                     - 1
                   error:
                     type: string
+                  message:
+                    type: string
+                    description: Same text as error (read by compare_datasets.js)
                   x:
                     type: array
                     items:
@@ -3619,56 +3623,6 @@ paths:
                   owner_name:
                     type: string
                     nullable: true
-  /cgi/get_shared_users_list.cgi:
-    post:
-      operationId: cgiGetSharedUsersList
-      tags:
-      - Datasets
-      summary: List users a dataset has been shared with (owner only)
-      description: Requires a logged-in user who owns the dataset; otherwise success 0 with an error (HTTP 200).
-        A missing session or unknown dataset raises (empty body). No current frontend caller found.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-              - session_id
-              - dataset_id
-              properties:
-                session_id:
-                  type: string
-                dataset_id:
-                  type: string
-      responses:
-        '200':
-          description: Shared-user list or error.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: integer
-                    enum:
-                    - 0
-                    - 1
-                  error:
-                    type: string
-                  user_list:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        dataset_id:
-                          type: string
-                        user_id:
-                          type: integer
-                        user_name:
-                          type: string
-                        is_allowed:
-                          type: integer
   /cgi/get_stored_analysis.cgi:
     post:
       operationId: cgiGetStoredAnalysis
@@ -4858,66 +4812,6 @@ paths:
                     - type: string
                     - type: integer
                     description: Current layout share_id, or 0 if none; only on success.
-  /cgi/manage_dataset_shares.cgi:
-    post:
-      operationId: cgiManageDatasetShares
-      tags:
-      - Datasets
-      summary: Share/unshare a dataset and list its share rows
-      description: Requires a logged-in user who owns the dataset. Sets dataset_shares.is_allowed, but only for
-        the row matching the owner's own user_id, and returns those rows. to_share must be 0 or 1; an invalid to_share
-        or missing/unknown session returns success 0 with an error. No frontend caller found (legacy).
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-              - session_id
-              - dataset_id
-              - to_share
-              properties:
-                session_id:
-                  type: string
-                  description: Session of the dataset owner.
-                dataset_id:
-                  type: string
-                to_share:
-                  type: integer
-                  enum:
-                  - 0
-                  - 1
-                  description: 1 = share, 0 = unshare.
-      responses:
-        '200':
-          description: Share list, or success 0 with error (invalid to_share, not logged in, or not the dataset
-            owner) with HTTP 200.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: integer
-                    enum:
-                    - 0
-                    - 1
-                  user_list:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        dataset_id:
-                          type: string
-                        user_id:
-                          type: integer
-                        user_name:
-                          type: string
-                        is_allowed:
-                          type: integer
-                  error:
-                    type: string
   /cgi/mark_dataset_for_removal.cgi:
     post:
       operationId: cgiMarkDatasetForRemoval
