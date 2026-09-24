@@ -1,8 +1,9 @@
 #!/opt/bin/python3
 '''
-Given a dataset's ID, this allows for the download of that dataset's tarball
-or H5AD file.
+Given a dataset and projection ID, downloads the projection output (coefficients,
+plus p-values when present) as a zip file.
 
+Errors return a plain-text message with HTTP 400 or 404.
 '''
 
 import cgi
@@ -78,5 +79,18 @@ def main():
 
 
 
+def print_error(status, message):
+    """Print a plain-text error response with the given HTTP status (before any other headers)."""
+    print(f"Status: {status}")
+    print("Content-Type: text/plain")
+    print()
+    print(message)
+
 if __name__ == '__main__':
-    main()
+    # These are raised before any headers are printed, so a proper status can still be sent
+    try:
+        main()
+    except FileNotFoundError as e:
+        print_error("404 Not Found", str(e))
+    except ValueError as e:
+        print_error("400 Bad Request", str(e))

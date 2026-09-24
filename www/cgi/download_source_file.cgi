@@ -3,11 +3,16 @@
 Given a dataset's ID, this allows for the download of that dataset's tarball
 or H5AD file.
 
+The tarball and H5AD (including analysis H5ADs) are only served when the dataset
+is marked downloadable or the requester owns it. The requester is identified from
+the session_id parameter or, for plain download links, the gear_session_id cookie.
+Errors return a plain-text message with HTTP 400, 403 or 404.
 '''
 
 import cgi
 import os
 import sys
+from http.cookies import SimpleCookie
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -45,12 +50,31 @@ def to_file(content, prefix='', suffix=''):
     temp.close()
     return temp.name
 
+def get_request_session_id(form):
+    """
+    Return the requester's session ID from the session_id parameter, falling back to the
+    gear_session_id cookie (download links opened in the browser don't pass session_id).
+    """
+    session_id = form.getfirst('session_id') or ""
+    if not session_id:
+        cookie = SimpleCookie(os.environ.get("HTTP_COOKIE", ""))
+        if "gear_session_id" in cookie:
+            session_id = cookie["gear_session_id"].value
+    return secure_filename(session_id)
+
+def print_error(status, message):
+    """Print a plain-text error response with the given HTTP status (before any other headers)."""
+    print(f"Status: {status}")
+    print("Content-Type: text/plain")
+    print()
+    print(message)
+
 def main():
     form = cgi.FieldStorage()
     dataset_id = secure_filename(form.getfirst('dataset_id') or "")
     share_id = secure_filename(form.getfirst("share_id") or "")
     analysis_id = secure_filename(form.getfirst('analysis_id') or "")
-    session_id = secure_filename(form.getfirst('session_id') or "")
+    session_id = get_request_session_id(form)
     dtype = form.getfirst('type') or ""
 
     if not dataset_id and not share_id:
@@ -83,6 +107,12 @@ def main():
                 raise FileNotFoundError(f"Dataset not found for the provided dataset ID {dataset_id}")
             share_id = dataset.share_id
 
+        # Honor the dataset's "Is downloadable" setting; the owner can always download
+        if not dataset.is_downloadable:
+            user = geardb.get_user_from_session_id(session_id) if session_id else None
+            if user is None or user.id != dataset.owner_id:
+                raise PermissionError("This dataset is not available for download.")
+
         archive_path = dataset.get_source_archive_path()
         h5ad_path = dataset.get_file_path()
 
@@ -110,4 +140,12 @@ def main():
             raise FileNotFoundError("File not found")
 
 if __name__ == '__main__':
-    main()
+    # These are raised before any headers are printed, so a proper status can still be sent
+    try:
+        main()
+    except PermissionError as e:
+        print_error("403 Forbidden", str(e))
+    except FileNotFoundError as e:
+        print_error("404 Not Found", str(e))
+    except ValueError as e:
+        print_error("400 Bad Request", str(e))
