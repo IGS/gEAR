@@ -173,6 +173,15 @@ Other "Collection management" buttons let you "Make default collection everywher
 
 <img width="700" alt="Selecting a collection and adding displays to it from the Dataset Explorer" src="Screenshots/AddingDatasetsToNewProfile.png">
 
+#### Multiple displays in a collection
+
+A collection is made of *displays*, not whole datasets. Each entry is one saved display (plot) of one dataset, so the same dataset can appear several times with different displays. For example, a UMAP colored by cell type next to a violin plot of the same cells.
+
+- **Single-gene and multi-gene displays are kept apart.** A single-gene search shows the collection's single-gene displays; a multi-gene search (the "Multi-gene Display" option) shows its multi-gene displays (heatmaps, dot plots, and so on). A dataset appears in multi-gene results only if you added one of its multi-gene displays to the collection.
+- **Which displays you can add:** in the displays window ("View, add or remove displays from current collection"), "Your Displays" lists displays you created and "Displays by Dataset Owner" lists the owner's. Use the plus button on each display you want and the minus button to remove one. If a display you need doesn't exist yet, create it in the Single-gene or Multi-gene curator first (see [Curate data/ build plots](#curate-data-build-plots)).
+- **Layout:** each display gets its own panel, and the single-gene and multi-gene layouts are arranged separately (see [Arranging a collection](#arranging-a-collection)).
+- **Changing what a panel shows:** "Choose Display" in a panel's menu switches that panel to a different display for your current view only. It doesn't change the collection. Your *default display* for a dataset ("Make this my default display" in the curator) is what gEAR shows for that dataset when it isn't shown through a collection entry, for example when you open a single dataset.
+
 #### Arranging a collection
 
 The layout of collections (e.g. how they are viewed when searching) can be altered in the Dataset Explorer.
@@ -261,6 +270,14 @@ Statistical tests need more than one observation (replicate samples or cells) in
 The workbench for single cell RNAseq (scRNAseq) is designed to allow biologists meaningful access to single cell data, even with limited informatics training. It follows the workflow of a standard Seurat/Scanpy pipeline ([Link](https://umgear.org/sc_workbench.html)).
 
 After choosing a dataset under "Select a dataset", use "Select new or saved analysis" to either start a "New" analysis or open a stored analysis. Stored analyses start with precomputed results, either uploaded by the dataset owner or saved earlier on gEAR. If you open the primary (uploaded) analysis, you can use "Create a labeled t-SNE": enter a gene symbol to see a t-SNE colored by both expression and cluster/cell type.
+
+#### Primary vs. de novo analyses
+
+- **Primary analysis:** the dataset as the owner uploaded it, with their own clusters, cell types and tSNE/UMAP coordinates. gEAR does not re-cluster or re-embed it. At upload it only recognizes results already in the file: cluster columns named `cluster`, `cell_type`, `cluster_label` or `subclass_label`, and coordinate column pairs such as `tSNE_1`/`tSNE_2` or `UMAP_1`/`UMAP_2`. Coordinates already stored as `X_tsne`/`X_umap` in the H5AD are used as well. Curators plot this analysis when you pick "Primary analysis (default)".
+- **De novo analysis:** one you run yourself in the Workbench from the dataset's expression values: filtering, QC, highly variable genes, PCA, tSNE/UMAP, clustering and marker genes. The results can differ from the owner's, for example different cluster numbers or a different embedding.
+  - It starts as an unsaved analysis visible only to you. Click "Save" to keep it, and "Make a public copy" to let others use it.
+  - Saved and public analyses can be chosen as the analysis in the single-gene and multi-gene curators, so you can build displays from them.
+  - Opening someone else's public analysis and changing it makes an unsaved copy for you; the original is not changed.
 
 A new analysis moves through these steps. In each step there are recommended settings, but you can change them to better fit your dataset or question.
 
@@ -436,6 +453,40 @@ The curators only offer plot types that the selected dataset and analysis can su
 | PCA, tSNE, UMAP | The matching coordinates are stored in the dataset, or it has at least two numeric metadata columns |
 
 Spatial and epigenome datasets do not use the curators; see [Spatial displays](#spatial-displays) and [Epigenome displays](#epigenome-displays).
+
+#### Static vs. dynamic tSNE/UMAP
+
+The single-gene curator offers two kinds of embedding plot:
+
+| | tSNE/UMAP dynamic | tSNE static, UMAP static, PCA static |
+| --- | --- | --- |
+| **Drawn by** | Plotly, in your browser | Scanpy, on the server, sent as an image |
+| **Interaction** | Hover to see each cell's values; zoom and pan | None (a fixed picture) |
+| **Speed** | Slows down with very many cells, since every point is drawn in the browser | Stays fast for large datasets |
+| **Coordinates** | Any two numeric metadata columns you choose as X and Y | The stored tSNE, UMAP or PCA coordinates (or two numeric columns) |
+| **Main options** | Color, marker size, subplots by row or column | "Colorize samples by", "Plot per category group" (one panel per group), "Number of subplot columns", expression color palette and min/max caps, "Center colorscale around median expression value", "Make non-expression values gray", "Omit gene expression plot", marker size, legend position |
+
+Use a static plot for large single-cell datasets, side-by-side panels per group, or a clean figure. Use a dynamic plot when you want to explore individual cells.
+
+#### SVG (anatomical image) displays
+
+An SVG display colors parts of a drawing, such as a cochlea diagram, by the expression of the searched gene. It's mostly used for bulk datasets whose samples correspond to anatomical regions or cell types.
+
+- **How shapes are matched to data:** each `path`, `circle`, `rect` or `ellipse` in the drawing is linked to the observation (sample) whose name matches the shape's `class` attribute exactly. Several shapes can share a class and are colored together.
+- **Averages:** if the dataset has a `cell_type` column, a shape with class `<cell type>--mean` (for example `Deiter3--mean`) is colored by that cell type's average expression.
+- **Colors:** in the curator you can set the "Low-expression color", "High-expression color" and, optionally, a "Mid-expression color", plus colorscale boundaries ("Colorscale minimum"/"Colorscale maximum"). How colors are scaled across genes, samples or tissues is set by the SVG expression scoring method in the [dataset panel menu](#dataset-panel-menu).
+- **Adding the drawing:** the SVG file isn't uploaded through the Dataset Uploader. If you want an SVG display for your dataset, prepare the drawing following the [SVG formatting guide](https://github.com/IGS/gEAR/blob/main/docs/analyst/svg_formatting.md) and [contact the gEAR team](https://umgear.org/contact.html).
+
+#### Category colors
+
+When a plot is colored by a category (for example cell type), gEAR picks the colors in this order:
+
+1. Colors you set with "Change colors" in the curator (saved with the display).
+2. Colors supplied with the dataset: a metadata column named `<column>_colors` holding a hex color (like `#1f77b4`) for each cell, with exactly one color per category. For a `cell_type` column, add a `cell_type_colors` column. These colors are used by both dynamic and static plots, and are the starting colors in the curator's color picker.
+3. For static tSNE/UMAP/PCA plots only: a Scanpy color list stored in the H5AD (`adata.uns["cell_type_colors"]`, one color per category in category order), which Scanpy writes when you plot in Python.
+4. Otherwise, a default palette.
+
+"Colorblind mode" in your user profile replaces all of these with a colorblind-safe palette. See [Preparing cell metadata](https://github.com/IGS/gEAR/blob/main/docs/wiki/UploadingOverview.md#preparing-cell-metadata) for how to add `_colors` columns before uploading.
 
 ### Refining and saving a display
 

@@ -30,7 +30,7 @@ Open the [Dataset Uploader](https://umgear.org/upload_dataset.html) from "Datase
 
 1. **Enter metadata.** Fill in the form or upload the completed [metadata template](https://umgear.org/user_templates/metadata_template.xlsx) with "Or upload a metadata file". Choose the "Dataset type" (Single-cell RNA-seq, Bulk RNA-seq, Microarray, Spatial or Epigenome). If your data are in GEO, enter the GEO ID (like GSEnnnnn or GSMnnnnnnn) and click "Lookup" to fill in the contact, organism, platform, instrument, library and PubMed fields automatically; check the results before continuing. Confirm that the data contain no personally identifiable information and click "Submit metadata".
 2. **Upload dataset.** Choose a format -- "MEX / 3-tab format", "MS Excel", "RDS / Seurat", "H5AD / Python", "Spatial (in tar format)" or "Epigenetic Data" -- then choose your file and click "Upload dataset". Each format has a "Learn more" link with examples. (Uploading from a URL instead of a file is planned but not yet available.)
-   - **MEX / 3-tab:** upload a `.tar`, `.tar.gz` or `.zip` archive (the MEX example download is a `.tar` file). For 3-tab it must contain `expression.tab`, `genes.tab` and `observations.tab`. For MEX (10x Genomics Cell Ranger output) it must contain `matrix.mtx`, `barcodes.tsv` and `genes.tsv`, or the newer gzipped `matrix.mtx.gz`, `barcodes.tsv.gz` and `features.tsv.gz`; these may sit inside a folder in the archive (for example `filtered_feature_bc_matrix/`). The genes file must have Ensembl IDs in its first column. MEX files contain no cell metadata, so the only cell groupings come from clustering. gEAR clusters datasets of type "Single-cell RNA-seq" automatically after upload, and you can re-cluster in the Single Cell Workbench.
+   - **MEX / 3-tab:** upload a `.tar`, `.tar.gz` or `.zip` archive (the MEX example download is a `.tar` file). For 3-tab it must contain `expression.tab`, `genes.tab` and `observations.tab`. For MEX (10x Genomics Cell Ranger output) it must contain `matrix.mtx`, `barcodes.tsv` and `genes.tsv`, or the newer gzipped `matrix.mtx.gz`, `barcodes.tsv.gz` and `features.tsv.gz`; these may sit inside a folder in the archive (for example `filtered_feature_bc_matrix/`). The genes file must have Ensembl IDs in its first column. MEX files contain no cell metadata, so the dataset starts without cell groupings or tSNE/UMAP coordinates. gEAR does not cluster uploads; to add clusters and embeddings, run an analysis in the Single Cell Workbench, or upload the data in a format that includes your own metadata (3-tab, H5AD or RDS). See [Preparing cell metadata](#preparing-cell-metadata).
    - **MS Excel:** the file must be `.xlsx`. Older `.xls` files are not accepted; open them in Excel and save as `.xlsx` first.
 3. **Dataset processing.** gEAR converts and checks your file on the server. The page shows the status; click "Continue" when it finishes.
 4. **Dataset post-processing.** If some metadata columns could be read either as numbers or as categories, the "Resolve ambiguous column data types" step asks you to mark each one as "continuous" or "categorical". This step is optional but helps the curators offer the right plot types.
@@ -143,6 +143,22 @@ style I color:blue
   - [Raw scRNA matrix](https://drive.google.com/drive/folders/1c6pjqj-oruNeSsYDoZtJbZv-nEmF0bcT?usp=sharing)
 
 
+### Preparing cell metadata
+
+A few metadata (observation) column names get special treatment. Add them to your observations table, the Excel "observations" sheet, `adata.obs`, or the Seurat metadata before uploading.
+
+- **Clusters and cell types.** At upload, gEAR looks for a cluster column named `cluster`, `cell_type`, `cluster_label` or `subclass_label` and records it as the dataset's clustering in the [primary analysis](https://github.com/IGS/gEAR/blob/main/docs/wiki/gEARWiki.md#primary-vs-de-novo-analyses). gEAR does not compute clusters itself.
+- **tSNE and UMAP coordinates.** Pairs of columns named `tSNE_1`/`tSNE_2` (or `tSNE1`/`tSNE2`) and `UMAP_1`/`UMAP_2` (or `UMAP1`/`UMAP2`, `uMAP_1`/`uMAP_2`) are recognized as embeddings, so tSNE/UMAP displays can be made straight away. For H5AD uploads, coordinates already stored in `adata.obsm["X_tsne"]` or `adata.obsm["X_umap"]` are used too.
+- **Category colors (`_colors` columns).** To choose the color of each category, add a column named after the category column plus `_colors`, holding a hex color such as `#1f77b4` for every cell or sample. Each category must map to exactly one color. For example:
+
+  | observations | cell_type | cell_type_colors |
+  | --- | --- | --- |
+  | cell1 | IHC | #1f77b4 |
+  | cell2 | OHC | #ff7f0e |
+  | cell3 | IHC | #1f77b4 |
+
+  gEAR uses these colors in dynamic and static plots and as the starting colors in the curators, and doesn't list the `_colors` column as a separate category. H5AD files written by Scanpy may instead carry a color list in `adata.uns["cell_type_colors"]` (one color per category, in category order); that list is used for static tSNE/UMAP/PCA plots only. Colors picked in the curator, and colorblind mode, take precedence. See [Category colors](https://github.com/IGS/gEAR/blob/main/docs/wiki/gEARWiki.md#category-colors).
+- **`replicate` column.** A column named `replicate` is hidden from the filter and plot category lists, so use it for replicate IDs you don't need to plot by.
 
 ## Microarray data
 
