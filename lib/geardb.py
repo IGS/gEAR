@@ -1688,9 +1688,17 @@ class LayoutCollection:
     # should dataset-populating methods called (adds overhead if you only need layout names)
     include_datasets: bool = True
 
-    # In this class many of the methods need db connections, and this can be costly. Let's keep one
-    #  open while it's used
-    _cnx = Connection()
+    # Many of this class's methods query the database, and a CGI may build several collections, so
+    #  they share one connection per process. It is opened on first use rather than when the module
+    #  is imported, so importing geardb doesn't connect, and reopened if the server has dropped it.
+    _shared_cnx: typing.ClassVar[Connection | None] = None
+
+    @property
+    def _cnx(self) -> Connection:
+        cls = type(self)
+        if cls._shared_cnx is None or not cls._shared_cnx.mysql_cnx.is_connected():
+            cls._shared_cnx = Connection()
+        return cls._shared_cnx
 
     def __post_init__(self):
         if len(self.folder_idx) == 0:

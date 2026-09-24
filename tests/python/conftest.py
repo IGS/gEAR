@@ -3,8 +3,7 @@ Shared pytest setup for the gEAR server-side test suite.
 
 - Puts lib/, www/api/ and this directory on sys.path.
 - Replaces gear.db.MySQLDB.connect with a fake connection before anything imports geardb:
-  importing geardb opens a connection (LayoutCollection._cnx is created at class definition),
-  and CI has neither MySQL nor a gear.ini.
+  some modules query at import (e.g. gear.orthology), and CI has neither MySQL nor a gear.ini.
 - Provides fixtures for upload staging areas, example datasets and temporary gene list files.
 """
 

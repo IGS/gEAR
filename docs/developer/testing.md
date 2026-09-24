@@ -28,13 +28,13 @@ The suite covers:
 | `helpers/fake_geardb.py` | Spec-driven stand-in for `lib/geardb.py` that logs every SQL statement, commit and save |
 | `fakes/` | Small fake modules for individual tests, such as a `gear.analysis` that returns a synthetic AnnData |
 | `test_cgi_*.py` | CGI tests, grouped by area (uploads, collections, datasets, accounts, downloads, gene lists and search, comparison) |
-| `test_api_*.py` | Flask resources (`Aggregations`, `TrackHubCopy`) |
+| `test_api_*.py` | Flask resources (`Aggregations`, `TrackHubCopy`) and static tSNE/UMAP category colors |
 | `test_anndata_processor.py`, `test_spatial.py` | Upload processing, including cancellation when an upload is deleted mid-job |
 | `test_geardb_helpers.py` | Helpers in the real `geardb` module |
 | `test_syntax.py`, `test_docs.py` | Guards |
 | `requirements.txt`, `requirements-spatial.txt` | Pinned to the production versions in `docker/requirements.txt` |
 
-> **Note:** importing `geardb` opens a MySQL connection, because `LayoutCollection._cnx = Connection()` runs when the class is defined. `conftest.py` patches the connection so the real module can be imported without a database or `gear.ini`.
+> **Note:** some modules query the database when imported (for example `gear.orthology`). `conftest.py` patches `gear.db.MySQLDB.connect` so the real modules can be imported without a database or `gear.ini`.
 
 ### Running locally
 
