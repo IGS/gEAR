@@ -67,7 +67,7 @@ def env(track_hub_module, monkeypatch, tmp_path):
     Api(app).add_resource(mod.TrackHubCopy, "/import/trackhub/<share_uid>/copy")
     client = app.test_client()
     client.set_cookie("gear_session_id", SESSION)
-    return types.SimpleNamespace(client=client, tmp=tmp_path, processed=processed,
+    return types.SimpleNamespace(client=client, tmp=tmp_path, processed=processed, module=mod,
                                  staging=tmp_path / SESSION / SHARE)
 
 
@@ -119,6 +119,7 @@ def test_unknown_session(env):
 
 
 def test_path_traversal_in_file_name_stays_in_staging_area(env):
+    write_metadata(env, {"dataset_uid": "D1"})
     post(env, files={FILE_FIELD: ("../../evil.bw", b"EVIL")})
     assert (env.staging / "evil.bw").read_bytes() == b"EVIL"
     found = [p for p in env.tmp.rglob("evil.bw")]
@@ -134,17 +135,51 @@ def test_missing_metadata_returns_json_error_with_job_id(env):
     assert body["success"] is False
     assert "Metadata file not found" in body["message"]
     assert body["job_id"]
-    status_file = json.loads((env.staging / "status.json").read_text())
-    assert status_file["status"] == "error" and status_file["job_id"] == body["job_id"]
+    # Nothing was saved, and no staging directory was created for the unknown upload
+    assert not env.staging.exists()
+    assert not list(env.tmp.rglob("t1.bw"))
     assert env.processed == []
 
 
-def test_metadata_without_dataset_uid(env):
-    write_metadata(env, {"title": "no uid"})
-    status, body = post(env)
+def saved_files(env):
+    return sorted(p.name for p in env.staging.iterdir())
+
+
+@pytest.mark.parametrize("metadata_text, message", [
+    (json.dumps({"title": "no uid"}), "Dataset ID not found"),
+    ("{not json", "Metadata file could not be read"),
+    (json.dumps(["not", "an", "object"]), "Dataset ID not found"),
+])
+def test_bad_metadata_saves_no_track_files(env, metadata_text, message):
+    env.staging.mkdir(parents=True)
+    (env.staging / "metadata.json").write_text(metadata_text)
+    status, body = post(env, files={FILE_FIELD: ("t1.bw", b"data")})
     assert status == 400
-    assert "Dataset ID not found" in body["message"]
+    assert message in body["message"]
     assert body["job_id"]
+    assert saved_files(env) == ["metadata.json", "status.json"]
+    status_file = json.loads((env.staging / "status.json").read_text())
+    assert status_file["status"] == "error" and status_file["job_id"] == body["job_id"]
+    assert (env.staging / "metadata.json").read_text() == metadata_text
+    assert env.processed == []
+
+
+def test_missing_domain_url_saves_no_track_files(env, monkeypatch):
+    write_metadata(env, {"dataset_uid": "D1"})
+    monkeypatch.setattr(env.module.geardb, "_read_domain_url", lambda: "")
+    status, body = post(env, files={FILE_FIELD: ("t1.bw", b"data")})
+    assert status == 500
+    assert "Domain URL not configured" in body["message"]
+    assert saved_files(env) == ["metadata.json", "status.json"]
+    assert "dataset_format" not in json.loads((env.staging / "metadata.json").read_text())
+
+
+def test_invalid_file_name_saves_no_track_files(env):
+    write_metadata(env, {"dataset_uid": "D1"})
+    status, body = post(env, files={"tracks[t0][file]": ("good.bw", b"data"), FILE_FIELD: ("..", b"data")})
+    assert status == 400
+    assert "Invalid file name" in body["message"]
+    assert saved_files(env) == ["metadata.json", "status.json"]
 
 
 def test_successful_synchronous_import(env):

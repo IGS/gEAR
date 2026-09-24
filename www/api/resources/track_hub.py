@@ -150,9 +150,57 @@ class TrackHubCopy(Resource):
         job_id = str(uuid4())
         staging_area = user_upload_file_base / session_id / share_uid
         status_file = staging_area / "status.json"
+        result["job_id"] = job_id
 
-        # Create initial status
-        staging_area.mkdir(parents=True, exist_ok=True)
+        def fail(message, http_status):
+            """Record the error in the status file (if the upload exists) and return it."""
+            if staging_area.is_dir():
+                write_status(
+                    status_file,
+                    job_id=job_id,
+                    status="error",
+                    message=message,
+                    progress=0,
+                    completed_tracks=0,
+                    total_tracks=len(track_stanzas),
+                    track_statuses={},
+                )
+            result["message"] = message
+            return result, http_status
+
+        # Check the upload's metadata, the uploaded file names and the configuration before
+        #  saving anything, so a request that can't be processed leaves no files behind
+        metadata_file = staging_area / 'metadata.json'
+        if not metadata_file.is_file():
+            return fail("Metadata file not found. Impossible to save as dataset.", 400)
+        try:
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+        except json.JSONDecodeError:
+            return fail("Metadata file could not be read. Impossible to save as dataset.", 400)
+
+        dataset_id = metadata.get("dataset_uid", "") if isinstance(metadata, dict) else ""
+        if not dataset_id:
+            return fail("Dataset ID not found in metadata. Impossible to save as dataset.", 400)
+
+        uploads = []  # (track_id, file, safe_filename)
+        for track_key in request.files:
+            if '[file]' in track_key:
+                file = request.files.get(track_key)
+                if file and file.filename:
+                    track_id = track_key.split('[')[1].split(']')[0]
+                    # The browser-supplied name could contain "../"; keep only a safe base name
+                    safe_filename = secure_filename(file.filename)
+                    if not safe_filename:
+                        return fail(f"Invalid file name for track '{track_id}': {file.filename!r}", 400)
+                    uploads.append((track_id, file, safe_filename))
+
+        if os.getenv("ENVIRONMENT", "production").lower() == "development":
+            domain_url = "http://localhost:8080"
+        else:
+            domain_url = geardb._read_domain_url()
+        if not domain_url:
+            return fail("Domain URL not configured. Cannot process track hub.", 500)
 
         _create_initial_status_file(status_file, job_id, len(track_stanzas))
 
@@ -167,23 +215,12 @@ class TrackHubCopy(Resource):
             total_tracks=len(track_stanzas),
             track_statuses={},
         )
-        uploaded_files_map = {}  # Map track_id → File object
-        for track_key in request.files:
-            if '[file]' in track_key:
-                file = request.files.get(track_key)
-                if file and file.filename:
-                    track_id = track_key.split('[')[1].split(']')[0]
-                    # The browser-supplied name could contain "../"; keep only a safe base name
-                    safe_filename = secure_filename(file.filename)
-                    if not safe_filename:
-                        result["message"] = f"Invalid file name for track '{track_id}': {file.filename!r}"
-                        return result, 400
-                    # Save file to staging area
-                    dest_path = staging_area / safe_filename
-                    if not dry_run:
-                        file.save(dest_path)
-                    # Store filename reference (not the File object)
-                    uploaded_files_map[track_id] = safe_filename
+        uploaded_files_map = {}  # Map track_id → saved file name
+        for track_id, file, safe_filename in uploads:
+            # Save file to staging area
+            if not dry_run:
+                file.save(staging_area / safe_filename)
+            uploaded_files_map[track_id] = safe_filename
 
         # Initialize all tracks with None, then populate from map
         for track_stanza in track_stanzas:
@@ -193,58 +230,13 @@ class TrackHubCopy(Resource):
                 continue
             track_stanza["uploadedFileName"] = uploaded_files_map.get(track_id, None)
 
-        # Also update metadata file to have the dataset format added
-        metadata_file = staging_area / 'metadata.json'
-        if not metadata_file.is_file():
-            write_status(
-                status_file,
-                job_id=job_id,
-                status="error",
-                message="Metadata file not found. Impossible to save as dataset.",
-                progress=0,
-                completed_tracks=0,
-                total_tracks=len(track_stanzas),
-                track_statuses={},
-            )
-            # Previously returned nothing, which the client received as HTTP 200 with a null body
-            result["message"] = "Metadata file not found. Impossible to save as dataset."
-            result["job_id"] = job_id
-            return result, 400
-        with open(metadata_file, 'r') as f:
-            metadata = json.load(f)
-
-        dataset_id = metadata.get("dataset_uid", "")
-        if not dataset_id:
-            write_status(
-                status_file,
-                job_id=job_id,
-                status="error",
-                message="Dataset ID not found in metadata. Impossible to save as dataset.",
-                progress=0,
-                completed_tracks=0,
-                total_tracks=len(track_stanzas),
-                track_statuses={},
-            )
-            result["message"] = "Dataset ID not found in metadata. Impossible to save as dataset."
-            result["job_id"] = job_id
-            return result, 400
-
         # Update metadata for downstream uses
         metadata["dataset_format"] = "gosling"
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
 
-        if os.getenv("ENVIRONMENT", "production").lower() == "development":
-            domain_url = "http://localhost:8080"
-        else:
-            domain_url = geardb._read_domain_url()
-        if not domain_url:
-            result["message"] = "Domain URL not configured. Cannot process track hub."
-            return result, 500
-
         hub_url = f"{domain_url}/tracks/{dataset_id}"
 
-        result["job_id"] = job_id
         # Queue the job
         try:
             queue_trackhub_job(job_id, share_uid, hub_json, assembly, track_stanzas, hub_url, dry_run)
