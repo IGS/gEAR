@@ -104,9 +104,30 @@ class TestDownloadSourceFile:
         assert "Metadata not found" in result.text
 
 
+PROJECTIONS_DIR = Path(__file__).resolve().parents[2] / "www" / "projections" / "by_dataset"
+
+
+@pytest.fixture
+def projection_output():
+    """Write a projection output for D1 (private) and D2 (open); removed afterwards."""
+    projection_id = "pytest-projection"
+    written = []
+    for dataset_id in ("D1", "D2"):
+        path = PROJECTIONS_DIR / dataset_id / f"{projection_id}.csv"
+        created_dir = not path.parent.exists()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("gene,P1\nENSG1,0.5\n")
+        written.append((path, created_dir))
+    yield projection_id
+    for path, created_dir in written:
+        path.unlink(missing_ok=True)
+        if created_dir:
+            path.parent.rmdir()
+
+
 class TestDownloadProjection:
-    def run(self, **query):
-        return run_cgi("download_projection.cgi", query=query, db=db_with(OPEN))
+    def run(self, cookies=None, **query):
+        return run_cgi("download_projection.cgi", query=query, cookies=cookies, db=db_with(PRIVATE, OPEN))
 
     def test_no_ids(self):
         result = self.run(projection_id="P1")
@@ -121,6 +142,32 @@ class TestDownloadProjection:
         result = self.run(share_id="open", projection_id="does-not-exist")
         assert result.status == 404
         assert "Projection output not found" in result.text
+
+    def test_downloadable_served_to_anonymous(self, projection_output):
+        result = self.run(share_id="open", projection_id=projection_output)
+        assert result.status == 200
+        assert result.headers["content-disposition"] == f"attachment; filename={projection_output}.zip"
+        assert result.body[:2] == b"PK"
+
+    @pytest.mark.parametrize("cookies, query", [
+        (None, {}),
+        ({"gear_session_id": "other"}, {}),
+        (None, {"session_id": "other"}),
+    ])
+    def test_non_downloadable_refused_for_non_owner(self, projection_output, cookies, query):
+        result = self.run(share_id="priv", projection_id=projection_output, cookies=cookies, **query)
+        assert result.status == 403
+        assert "not available for download" in result.text
+        assert b"PK" not in result.body
+
+    @pytest.mark.parametrize("cookies, query", [
+        ({"gear_session_id": "owner"}, {}),
+        (None, {"session_id": "owner"}),
+    ])
+    def test_non_downloadable_served_to_owner(self, projection_output, cookies, query):
+        result = self.run(share_id="priv", projection_id=projection_output, cookies=cookies, **query)
+        assert result.status == 200
+        assert result.body[:2] == b"PK"
 
 
 class TestDownloadWeightedGeneCart:
