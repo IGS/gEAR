@@ -186,6 +186,38 @@ class TestGetUploadsInProgress:
         (upload,) = run_cgi("get_uploads_in_progress.cgi", query={"session_id": session_id}).json()["uploads"]
         assert upload["status"] == "processed" and upload["load_step"] == "finalize-dataset"
 
+    @pytest.mark.parametrize("metadata_text", ["{not json", "[1, 2]", ""])
+    def test_unreadable_metadata_is_skipped(self, upload_session, metadata_text):
+        session_id, path = upload_session
+        (path / "badshare").mkdir()
+        (path / "badshare" / "metadata.json").write_text(metadata_text)
+        (path / "goodshare").mkdir()
+        (path / "goodshare" / "metadata.json").write_text(json.dumps({"dataset_uid": "DS-1"}))
+        result = run_cgi("get_uploads_in_progress.cgi", query={"session_id": session_id})
+        body = result.json()
+        assert body["success"] == 1
+        assert [u["share_id"] for u in body["uploads"]] == ["goodshare"]
+
+    @pytest.mark.parametrize("dataset_type", ["single-cell-rnaseq", "gosling"])
+    def test_unreadable_status_file_is_ignored(self, upload_session, dataset_type):
+        session_id, path = upload_session
+        share = path / "share3"
+        share.mkdir()
+        (share / "metadata.json").write_text(json.dumps({"dataset_uid": "DS-3", "dataset_type": dataset_type}))
+        (share / "status.json").write_text("{truncated")
+        (upload,) = run_cgi("get_uploads_in_progress.cgi", query={"session_id": session_id}).json()["uploads"]
+        assert upload["share_id"] == "share3"
+
+    @pytest.mark.parametrize("extension", ["tar.gz", "tar", "zip", "h5ad", "rds"])
+    def test_any_stored_data_file_counts_as_uploaded(self, upload_session, extension):
+        session_id, path = upload_session
+        share = path / "share4"
+        share.mkdir()
+        (share / "metadata.json").write_text(json.dumps({"dataset_uid": "DS-4", "dataset_type": "single-cell-rnaseq"}))
+        (share / f"share4.{extension}").write_bytes(b"x")
+        (upload,) = run_cgi("get_uploads_in_progress.cgi", query={"session_id": session_id}).json()["uploads"]
+        assert upload["status"] == "datafile uploaded" and upload["load_step"] == "process-dataset"
+
     def test_no_upload_directory(self):
         body = run_cgi("get_uploads_in_progress.cgi", query={"session_id": "pytest-no-such-session"}).json()
         assert body == {"success": 1, "uploads": [], "message": ""}

@@ -26,6 +26,22 @@ sys.path.append(lib_path)
 from werkzeug.utils import secure_filename
 
 
+def read_json(path):
+    """Return the parsed JSON object in path, or None if it can't be read as one."""
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+    except (OSError, ValueError) as e:
+        print(f"get_uploads_in_progress.cgi: skipping unreadable {path}: {e}", file=sys.stderr)
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def has_data_file(share_dir, share_id):
+    """True if the upload's data file (<share_id>.tar.gz, .tar, .zip, .h5ad, ...) has been stored."""
+    return any(name.startswith(f"{share_id}.") for name in os.listdir(share_dir))
+
+
 def main():
     print('Content-Type: application/json\n\n')
 
@@ -60,94 +76,91 @@ def main():
         if not os.path.isfile(metadata_file):
             continue
 
-        # get some attributes from the metadata file
-        with open(metadata_file, 'r') as f:
-            metadata = json.load(f)
+        # get some attributes from the metadata file (skipping one that can't be parsed)
+        metadata = read_json(metadata_file)
+        if metadata is None:
+            continue
 
-            result['uploads'].append( {
-                    'share_id': share_id,
-                    'dataset_id': metadata.get('dataset_uid', ''),
-                    'dataset_type': metadata.get('dataset_type', ''),
-                    'title': metadata.get('title', ''),
-                    'status': 'metadata uploaded',
-                    'load_step': 'upload-dataset',
-                    'perform_primary_analysis': metadata.get('perform_primary_analysis', False),
-                    'dataset_format': metadata.get('dataset_format', ""),
-                }
-            )
+        result['uploads'].append( {
+                'share_id': share_id,
+                'dataset_id': metadata.get('dataset_uid', ''),
+                'dataset_type': metadata.get('dataset_type', ''),
+                'title': metadata.get('title', ''),
+                'status': 'metadata uploaded',
+                'load_step': 'upload-dataset',
+                'perform_primary_analysis': metadata.get('perform_primary_analysis', False),
+                'dataset_format': metadata.get('dataset_format', ""),
+            }
+        )
 
         if result['uploads'][-1]['dataset_type'] == "gosling":
 
             processing_status_json_file = os.path.join(share_dir, 'status.json')
 
-            if os.path.isfile(processing_status_json_file):
-                with open(processing_status_json_file, 'r') as f:
-                    status_json = json.load(f)
-                    processing_status = status_json.get('status', '')
+            status_json = read_json(processing_status_json_file) if os.path.isfile(processing_status_json_file) else None
+            if status_json is not None:
+                processing_status = status_json.get('status', '')
 
-                    if processing_status in ['queued', 'processing']:
-                        result['uploads'][-1]['status'] = processing_status
-                        result['uploads'][-1]['load_step'] = 'process-dataset'
-                    elif processing_status == 'complete':
-                        result['uploads'][-1]['status'] = 'complete'
-                        result['uploads'][-1]['load_step'] = 'finalize-dataset'
-                        # Quick verifcation that hub.txt is there
-                        hub_file = "{0}/hub.txt".format(share_dir)
-                        if not os.path.isfile(hub_file):
-                            result['uploads'][-1]['status'] = 'error'
-                            result['uploads'][-1]['load_step'] = 'build-trackhub'
-                    elif processing_status == 'error':
+                if processing_status in ['queued', 'processing']:
+                    result['uploads'][-1]['status'] = processing_status
+                    result['uploads'][-1]['load_step'] = 'process-dataset'
+                elif processing_status == 'complete':
+                    result['uploads'][-1]['status'] = 'complete'
+                    result['uploads'][-1]['load_step'] = 'finalize-dataset'
+                    # Quick verifcation that hub.txt is there
+                    hub_file = "{0}/hub.txt".format(share_dir)
+                    if not os.path.isfile(hub_file):
                         result['uploads'][-1]['status'] = 'error'
-                        result['uploads'][-1]['load_step'] = 'process-dataset'
+                        result['uploads'][-1]['load_step'] = 'build-trackhub'
+                elif processing_status == 'error':
+                    result['uploads'][-1]['status'] = 'error'
+                    result['uploads'][-1]['load_step'] = 'process-dataset'
 
         else:
-            tarball_data_file = "{0}/{1}.tar.gz".format(share_dir, share_id)
-
-            if os.path.isfile(tarball_data_file):
+            if has_data_file(share_dir, share_id):
                 result['uploads'][-1]['status'] = 'datafile uploaded'
                 result['uploads'][-1]['load_step'] = 'process-dataset'
 
             # Determine status based on the JSON file
             processing_status_json_file = os.path.join(share_dir, 'status.json')
 
-            if os.path.isfile(processing_status_json_file):
-                with open(processing_status_json_file, 'r') as f:
-                    status_json = json.load(f)
-                    processing_status = status_json.get('status', '')
+            status_json = read_json(processing_status_json_file) if os.path.isfile(processing_status_json_file) else None
+            if status_json is not None:
+                processing_status = status_json.get('status', '')
 
-                    if processing_status == 'processing':
-                        result['uploads'][-1]['status'] = 'processing'
-                        result['uploads'][-1]['load_step'] = 'process-dataset'
+                if processing_status == 'processing':
+                    result['uploads'][-1]['status'] = 'processing'
+                    result['uploads'][-1]['load_step'] = 'process-dataset'
 
-                        # Check job IDs
-                        job_id = status_json.get('job_id', -1)
-                        if job_id == -1:
-                            # Check if the process is still running
-                            # Legacy implementation
-                            process_id = status_json.get('process_id', -1)
+                    # Check job IDs
+                    job_id = status_json.get('job_id', -1)
+                    if job_id == -1:
+                        # Check if the process is still running
+                        # Legacy implementation
+                        process_id = status_json.get('process_id', -1)
 
-                            if process_id == -1:
+                        if process_id == -1:
+                            result['uploads'][-1]['status'] = 'error'
+
+                        sp_result = subprocess.run(
+                            ['ps', '-p', str(process_id)],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL
+                        )
+                        if sp_result.returncode != 0:
                                 result['uploads'][-1]['status'] = 'error'
 
-                            sp_result = subprocess.run(
-                                ['ps', '-p', str(process_id)],
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL
-                            )
-                            if sp_result.returncode != 0:
-                                    result['uploads'][-1]['status'] = 'error'
+                elif processing_status == 'complete':
+                    result['uploads'][-1]['status'] = 'processed'
 
-                    elif processing_status == 'complete':
-                        result['uploads'][-1]['status'] = 'processed'
+                    step_to = "finalize-dataset"
 
-                        step_to = "finalize-dataset"
-
-                        # If post-processing stuff needs to be done, go here
-                        if not metadata.get("obs_dtype_reviewed", False):
-                            questionable_obs_columns = metadata.get("questionable_obs_columns", {})
-                            if questionable_obs_columns:
-                                step_to = "post-process-dataset"
-                        result['uploads'][-1]['load_step'] = step_to
+                    # If post-processing stuff needs to be done, go here
+                    if not metadata.get("obs_dtype_reviewed", False):
+                        questionable_obs_columns = metadata.get("questionable_obs_columns", {})
+                        if questionable_obs_columns:
+                            step_to = "post-process-dataset"
+                    result['uploads'][-1]['load_step'] = step_to
 
     result['success'] = 1
     print(json.dumps(result))
