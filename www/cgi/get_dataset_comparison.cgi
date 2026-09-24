@@ -154,9 +154,10 @@ def main():
     })
 
     if perform_ranking:
-        df_x['pvals_adj'] = adata.uns['rank_genes_groups']['pvals_adj']
-        # Currently this series is 1D tuples.  Change each to a string
-        df_x['pvals_adj'] = df_x['pvals_adj'].apply(lambda x: float(x[0]) if isinstance(x, tuple) else float(x))
+        # rank_genes_groups lists genes by score, not in var order, so match p-values by gene name
+        ranked = adata.uns['rank_genes_groups']
+        pvals_by_gene = pd.Series(ranked['pvals_adj']['x'], index=ranked['names']['x'], dtype=float)
+        df_x['pvals_adj'] = pvals_by_gene.reindex(df_x.index).to_numpy()
 
     result = {
                'fold_change_std_dev': None,

@@ -100,3 +100,28 @@ def test_statistical_tests(statistical_test, log_transformation):
     for key in PER_GENE_KEYS:
         assert len(body[key]) == len(body["gene_ids"]), key
     assert all(0.0 <= p <= 1.0 for p in body["pvals_adj"])
+
+
+def test_pvals_follow_their_genes():
+    """rank_genes_groups orders genes by score; each p-value must stay with its own gene."""
+    import importlib.util
+    import scanpy as sc
+
+    spec = importlib.util.spec_from_file_location("comparison_analysis", FAKES / "comparison_analysis.py")
+    fake = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fake)
+    adata = fake.build_adata()
+    sc.pp.filter_cells(adata, min_genes=10)
+    sc.pp.filter_genes(adata, min_cells=1)
+    adata.obs["compare"] = adata.obs["cond"].map({"A": "x", "B": "y"}).astype(str)
+    sc.tl.rank_genes_groups(adata, "compare", groups=["x"], reference="y", n_genes=0, rankby_abs=False,
+                            method="t-test", corr_method="benjamini-hochberg", log_transformed=False)
+    ranked = sc.get.rank_genes_groups_df(adata, group="x")
+    expected = dict(zip(ranked["names"], ranked["pvals_adj"]))
+
+    body = compare(statistical_test="t-test")
+    assert body["success"] == 1, body
+    actual = dict(zip(body["gene_ids"], body["pvals_adj"]))
+    assert actual == pytest.approx(expected)
+    # Rank order differs from gene order in this data, so a positional copy would not match
+    assert list(ranked["names"]) != body["gene_ids"]
