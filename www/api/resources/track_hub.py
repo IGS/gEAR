@@ -14,6 +14,7 @@ from uuid import uuid4
 
 from flask import request
 from flask_restful import Resource
+from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(gear_root / 'lib'))
@@ -112,15 +113,23 @@ class TrackHubCopy(Resource):
             return {"success": False, "message": "Invalid JSON body"}, 400
 
         session_id = request.cookies.get('gear_session_id', "")
+
+        # share_uid and session_id become directory names below, so reject anything that isn't a plain name
+        if not share_uid or secure_filename(share_uid) != share_uid:
+            return {"success": False, "message": "Invalid share ID"}, 400
+
         hub_json = req_form.get("hub_json")
         if not hub_json:
             return {"success": False, "message": "Missing 'hub_json' parameter"}, 400
-        hub_json = json.loads(hub_json)
         assembly = req_form.get("assembly")
         tracks = req_form.get("tracks")
         if not tracks:
             return {"success": False, "message": "Missing 'tracks' parameter"}, 400
-        track_stanzas: list = json.loads(tracks)
+        try:
+            hub_json = json.loads(hub_json)
+            track_stanzas: list = json.loads(tracks)
+        except json.JSONDecodeError as e:
+            return {"success": False, "message": f"Invalid JSON in 'hub_json' or 'tracks': {e}"}, 400
         dry_run = req_form.get("dry_run", False)
         # convert dry_run to boolean if it's a string
         if isinstance(dry_run, str):
@@ -129,7 +138,7 @@ class TrackHubCopy(Resource):
         result = {"success": False, "message": "", "job_id": None}
 
         user = geardb.get_user_from_session_id(session_id)
-        if not user:
+        if not user or secure_filename(session_id) != session_id:
             result["message"] = "Invalid session. Please log in."
             return result, 401
 
@@ -164,12 +173,17 @@ class TrackHubCopy(Resource):
                 file = request.files.get(track_key)
                 if file and file.filename:
                     track_id = track_key.split('[')[1].split(']')[0]
+                    # The browser-supplied name could contain "../"; keep only a safe base name
+                    safe_filename = secure_filename(file.filename)
+                    if not safe_filename:
+                        result["message"] = f"Invalid file name for track '{track_id}': {file.filename!r}"
+                        return result, 400
                     # Save file to staging area
-                    dest_path = staging_area / file.filename
+                    dest_path = staging_area / safe_filename
                     if not dry_run:
                         file.save(dest_path)
                     # Store filename reference (not the File object)
-                    uploaded_files_map[track_id] = file.filename
+                    uploaded_files_map[track_id] = safe_filename
 
         # Initialize all tracks with None, then populate from map
         for track_stanza in track_stanzas:
@@ -192,7 +206,10 @@ class TrackHubCopy(Resource):
                 total_tracks=len(track_stanzas),
                 track_statuses={},
             )
-            return
+            # Previously returned nothing, which the client received as HTTP 200 with a null body
+            result["message"] = "Metadata file not found. Impossible to save as dataset."
+            result["job_id"] = job_id
+            return result, 400
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
 
@@ -208,7 +225,9 @@ class TrackHubCopy(Resource):
                 total_tracks=len(track_stanzas),
                 track_statuses={},
             )
-            return
+            result["message"] = "Dataset ID not found in metadata. Impossible to save as dataset."
+            result["job_id"] = job_id
+            return result, 400
 
         # Update metadata for downstream uses
         metadata["dataset_format"] = "gosling"

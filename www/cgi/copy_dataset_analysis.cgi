@@ -46,6 +46,15 @@ def main():
 
     result = {"success": 0, "error": ""}
 
+    # The session ID becomes part of the destination path for unsaved analyses, so it
+    #  must belong to a real, logged-in user (this also rejects crafted values like "../..")
+    if geardb.get_user_from_session_id(session_id) is None:
+        result['error'] = 'You must be logged in to copy an analysis.'
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
     ds = geardb.get_dataset_by_id(dataset_id)
     if not ds:
         result['success'] = 0

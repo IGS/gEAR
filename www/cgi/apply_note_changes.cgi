@@ -53,12 +53,15 @@ def main():
 
         # Save changes to existing note
         if scope == 'edit':
-            if note_id is not None:
+            if note_id is None:
+                result['error'] = 'Not able to save changes to note. Invalid note ID.'
+            # Only the note's owner may edit it (as with 'remove' below)
+            elif check_note_ownership(cursor, note_id, current_user_id) == True:
                 save_changes(cursor, note_id, title, ldesc, is_public)
                 cnx.commit()
                 result['success'] = 1
             else:
-                result['error'] = 'Not able to save changes to note. Invalid note ID.'
+                result['error'] = 'Not able to save changes to note. Not note owner.'
 
         # Remove the note from database
         if scope == 'remove':
