@@ -767,6 +767,7 @@ paths:
       summary: Import an uploaded UCSC track hub as a Gosling-format dataset.
       description: Saves uploaded track files into www/uploads/files/{session_id}/{share_uid}/, writes status.json,
         sets dataset_format "gosling" in the staging metadata.json and builds hub_url as <domain>/tracks/<dataset_uid>.
+        The staging metadata.json, uploaded file names and domain URL are checked before any file is saved.
         Publishes to RabbitMQ queue "trackhub_copy_jobs" when [dataset_uploader] queue_enabled, otherwise runs gear.trackhub.process_trackhub_synchronously.
         Called by www/js/upload_dataset.js.
       security:
@@ -828,8 +829,9 @@ paths:
         '400':
           description: Invalid share_uid, missing hub_json or tracks, invalid JSON in hub_json or tracks, or (after
             the session check) missing assembly, empty track list, or an unusable uploaded file name. Also returned
-            with job_id set (after writing an error status.json) when the staging metadata.json is missing or has
-            no dataset_uid ("... Impossible to save as dataset.").
+            with job_id set when the staging metadata.json is missing, unreadable or has no dataset_uid ("...
+            Impossible to save as dataset."); an error status.json is written if the staging directory exists,
+            and no track files are saved.
           content:
             application/json:
               schema:
@@ -2203,8 +2205,10 @@ paths:
       - Projection
       summary: Download projection coefficient (and p-value) CSVs as a zip
       description: 'Zips <projection_id>.coeff.csv and, if present, <projection_id>.pval.csv from projections/by_dataset/<dataset_id>/.
-        share_id takes precedence over the legacy dataset_id. No login check. Errors return a plain-text message:
-        HTTP 400 for missing or invalid IDs, 404 when the dataset or projection output is not found.'
+        share_id takes precedence over the legacy dataset_id. Served only when the dataset is marked downloadable
+        or the requester owns it (session_id parameter, or the gear_session_id cookie for plain links). Errors return
+        a plain-text message: HTTP 400 for missing or invalid IDs, 403 when the dataset is not downloadable, 404 when
+        the dataset or projection output is not found.'
       requestBody:
         required: true
         content:
@@ -2221,6 +2225,12 @@ paths:
                 format: binary
         '400':
           description: Missing or invalid dataset/share ID or projection ID.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Dataset is not downloadable and the requester is not its owner.
           content:
             text/plain:
               schema:
@@ -2254,6 +2264,12 @@ paths:
         schema:
           type: string
         description: Projection ID
+      - name: session_id
+        in: query
+        schema:
+          type: string
+        description: Requester's session; only needed for a non-downloadable dataset (the owner may download).
+          Falls back to the gear_session_id cookie.
       responses:
         '200':
           description: Zip archive (Content-Disposition attachment; filename=<projection_id>.zip).
@@ -2264,6 +2280,12 @@ paths:
                 format: binary
         '400':
           description: Missing or invalid dataset/share ID or projection ID.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Dataset is not downloadable and the requester is not its owner.
           content:
             text/plain:
               schema:
@@ -3899,7 +3921,8 @@ paths:
       - Uploads
       summary: List the user's incomplete uploads
       description: Scans uploads/files/<session_id>/ and derives each upload's status and resume step from metadata.json
-        and status.json. The session is not validated against the database (used only as a directory name).
+        and status.json (an upload whose metadata.json is missing or unreadable is skipped). The session is not
+        validated against the database (used only as a directory name).
       requestBody:
         required: true
         content:
@@ -7710,6 +7733,10 @@ components:
           description: Dataset ID (legacy; used if share_id absent)
         projection_id:
           type: string
+        session_id:
+          type: string
+          description: Requester's session; only needed for a non-downloadable dataset (the owner may download).
+            Falls back to the gear_session_id cookie.
     Cgi1DownloadSourceParams:
       type: object
       required:
