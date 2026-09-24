@@ -144,7 +144,7 @@ Datasets are normally uploaded through the web uploader, which queues the conver
 
 | Option | Description |
 | --- | --- |
-| `-i`, `--input_file` | Spatial tarball (required) |
+| `-i`, `--input_file` | Spatial tarball, `.tar` or `.tar.gz` (required) |
 | `-t`, `--type` | Platform: `cosmx`, `curio`, `geomx`, `visium`, `visium_hd`/`visiumhd`, `xenium` (required) |
 | `-d`, `--dataset_id` | Dataset ID (required) |
 | `-org`, `--organism_id` | Organism ID; needed for `cosmx`, `curio`, `geomx` when gene symbols must be mapped to Ensembl IDs and metadata is not in the database |

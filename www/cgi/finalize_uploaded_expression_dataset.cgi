@@ -272,9 +272,12 @@ def main() -> dict:
             return result
 
     elif dataset_format == "spatial":
-        # migrate the spatial tarball
-        spatial_src = dataset_upload_dir / f'{share_uid}.tar.gz'
-        spatial_dest = dataset_final_dir / f'{dataset_id}.tar.gz'
+        # migrate the spatial tarball, which may have been uploaded as a .tar.gz or .tar file
+        for extension in ('tar.gz', 'tar'):
+            spatial_src = dataset_upload_dir / f'{share_uid}.{extension}'
+            spatial_dest = dataset_final_dir / f'{dataset_id}.{extension}'
+            if spatial_src.exists():
+                break
 
         try:
             shutil.move(spatial_src, spatial_dest)

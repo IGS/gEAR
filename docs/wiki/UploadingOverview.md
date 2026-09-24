@@ -150,7 +150,7 @@ style I color:blue
 
 ## Spatial data
 
-Spatial transcriptomic data from various platforms can be uploaded to gEAR. Set the "Dataset type" to "Spatial" in the metadata step. Then, in the upload step, choose "Spatial (in tar format)" and select your platform from the dropdown so gEAR knows what type of data to expect. Uploads are a tarball with a ".tar.gz" extension; after selecting a platform, click "Show requirements" to see the files the tarball must contain and how they must be named.
+Spatial transcriptomic data from various platforms can be uploaded to gEAR. Set the "Dataset type" to "Spatial" in the metadata step. Then, in the upload step, choose "Spatial (in tar format)" and select your platform from the dropdown so gEAR knows what type of data to expect. Uploads are a tarball, either plain (".tar", as made by the `tar cvf` commands shown in the requirements) or gzipped (".tar.gz"); after selecting a platform, click "Show requirements" to see the files the tarball must contain and how they must be named.
 
 Currently supported platforms:
 

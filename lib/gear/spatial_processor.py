@@ -48,7 +48,10 @@ def process_spatial_synchronously(
 
     sample_taxid = metadata.get("sample_taxid", None)
     organism_id = geardb.get_organism_id_by_taxon_id(sample_taxid)
+    # store_expression_dataset.cgi saves the upload as <share_uid>.tar.gz or <share_uid>.tar
     filepath = staging_area / f"{share_uid}.tar.gz"
+    if not filepath.exists():
+        filepath = staging_area / f"{share_uid}.tar"
     output_path = staging_area / f"{share_uid}.zarr"
 
     spatial_obj = SPATIALTYPE2CLASS[spatial_format]()

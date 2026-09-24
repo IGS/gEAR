@@ -958,12 +958,11 @@ class CosMxHandler(SpatialHandler):
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')
 
-        if filepath.endswith(".tar.gz"):
-            mode = "r:gz"  # Read as gzipped tar file
-        elif filepath.endswith(".tar"):
-            mode = "r"     # Read as plain tar file
-        else:
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
             raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
 
         _remove_dir(extract_dir)
 
@@ -1129,12 +1128,11 @@ class CurioHandler(SpatialHandler):
         h5ad_file = None
         spatial_moransi_file = None
 
-        if filepath.endswith(".tar.gz"):
-            mode = "r:gz"  # Read as gzipped tar file
-        elif filepath.endswith(".tar"):
-            mode = "r"     # Read as plain tar file
-        else:
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
             raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
 
         _remove_dir(extract_dir)
 
@@ -1270,12 +1268,11 @@ class GeoMxHandler(SpatialHandler):
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')
 
-        if filepath.endswith(".tar.gz"):
-            mode = "r:gz"  # Read as gzipped tar file
-        elif filepath.endswith(".tar"):
-            mode = "r"     # Read as plain tar file
-        else:
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
             raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
 
         _remove_dir(extract_dir)
 
@@ -1446,12 +1443,11 @@ class VisiumHandler(SpatialHandler):
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')
 
-        if filepath.endswith(".tar.gz"):
-            mode = "r:gz"  # Read as gzipped tar file
-        elif filepath.endswith(".tar"):
-            mode = "r"     # Read as plain tar file
-        else:
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
             raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
 
         _remove_dir(extract_dir)
 
@@ -1574,12 +1570,11 @@ class VisiumHDHandler(SpatialHandler):
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')
 
-        if filepath.endswith(".tar.gz"):
-            mode = "r:gz"  # Read as gzipped tar file
-        elif filepath.endswith(".tar"):
-            mode = "r"     # Read as plain tar file
-        else:
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
             raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
 
         _remove_dir(extract_dir)
 
@@ -1752,12 +1747,11 @@ class XeniumHandler(SpatialHandler):
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')
 
-        if filepath.endswith(".tar.gz"):
-            mode = "r:gz"  # Read as gzipped tar file
-        elif filepath.endswith(".tar"):
-            mode = "r"     # Read as plain tar file
-        else:
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
             raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
 
         _remove_dir(extract_dir)
 
