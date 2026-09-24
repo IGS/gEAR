@@ -55,6 +55,11 @@ def main():
         share_dir = "{0}/{1}".format(user_upload_file_base, share_id)
         metadata_file = "{0}/metadata.json".format(share_dir)
 
+        # Skip anything that isn't a complete upload directory, e.g. one partly recreated by a
+        #  worker after the upload was deleted, so one bad entry can't break the whole listing
+        if not os.path.isfile(metadata_file):
+            continue
+
         # get some attributes from the metadata file
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)

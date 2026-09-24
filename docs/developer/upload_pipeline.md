@@ -119,6 +119,16 @@ Behavior shared by the upload consumers:
 
 Older uploads may carry a `process_id` instead of a `job_id`. Both status endpoints check that PID with `ps -p`.
 
+### Deleting an upload while it is processing
+
+`delete_upload_in_progress.cgi` only removes the staging directory `S`; it sends nothing to the queue, so a running worker is not interrupted immediately. Instead, the processors treat a missing `S` as a cancellation:
+
+- `raise_if_upload_deleted()` in `lib/gear/utils/job_coordination.py` raises `UploadCancelledError` when `S` is gone. `AnndataProcessor._update_progress()` calls it at every progress update, and the archive extraction loops in `anndata_processor.py` and `spatialhandler.py` call it before each entry (extraction would otherwise recreate `S`).
+- `gear.spatial_processor` checks for `S` before each of its steps.
+- A cancelled job returns `{"success": 0, "cancelled": True, ...}` without writing `status.json`, and the consumer logs the message and acks the delivery.
+
+A single long step (for example the R conversion inside `seuratuploader`, or a large H5AD write) still runs to completion before the next check, so the worker's CPU and memory are freed at the next progress point rather than instantly. `get_uploads_in_progress.cgi` skips any directory without a `metadata.json`, so a leftover partial directory cannot break the "Submissions in progress" list.
+
 ## Processing libraries
 
 | Module | Role in the pipeline |

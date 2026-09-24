@@ -25,6 +25,7 @@ from gear.utils.gene_mapping import (
     map_gene_symbols_via_mygene,
     update_var_with_ensembl_ids,
 )
+from gear.utils.job_coordination import UploadCancelledError, raise_if_upload_deleted
 from gear.utils.obs import (
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
@@ -190,10 +191,17 @@ class AnndataProcessor:
             self._update_status("complete", message)
             return {"success": 1, "message": message}
 
+        except UploadCancelledError as e:
+            return {"success": 0, "cancelled": True, "message": str(e)}
         except ProcessingError as e:
+            # A write into a deleted staging directory can surface as a ProcessingError too
+            if not self.staging_area.is_dir():
+                return self._cancelled_result()
             self._update_status("error", str(e))
             return {"success": 0, "message": str(e)}
         except Exception as e:
+            if not self.staging_area.is_dir():
+                return self._cancelled_result()
             import traceback
             traceback.print_exc()
             message = (
@@ -299,6 +307,8 @@ class AnndataProcessor:
                 #  tarballs open regardless of the extension the user gave them
                 with tarfile.open(filename, "r:*") as tf:
                     for entry in tf:
+                        # Extraction recreates missing directories, so stop if the upload was deleted
+                        raise_if_upload_deleted(self.staging_area)
                         tf.extract(entry, path=self.staging_area)
 
                         # Nemo suffixes
@@ -327,6 +337,8 @@ class AnndataProcessor:
             try:
                 with zipfile.ZipFile(filename) as zf:
                     for entry in zf.infolist():
+                        # Extraction recreates missing directories, so stop if the upload was deleted
+                        raise_if_upload_deleted(self.staging_area)
                         zf.extract(entry, path=self.staging_area)
 
                         # Nemo suffixes
@@ -846,8 +858,17 @@ class AnndataProcessor:
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
 
+    def _cancelled_result(self) -> dict:
+        """Result returned when the upload was deleted while it was being processed."""
+        return {
+            "success": 0,
+            "cancelled": True,
+            "message": f"The upload was deleted (staging directory {self.staging_area} no longer exists); processing stopped.",
+        }
+
     def _update_progress(self, progress: int, message: str) -> None:
-        """Update progress and write status file."""
+        """Update progress and write status file; stops processing if the upload was deleted."""
+        raise_if_upload_deleted(self.staging_area)
         progress = max(0, min(100, progress))  # Clamp to 0-100
         self.status['progress'] = progress
         self.status['message'] = message
@@ -860,5 +881,7 @@ class AnndataProcessor:
         self._write_status_file()
 
     def _write_status_file(self) -> None:
-        """Write current status to status.json."""
+        """Write current status to status.json, unless the upload (staging directory) was deleted."""
+        if not self.staging_area.is_dir():
+            return
         write_status(self.status_file, self.status)

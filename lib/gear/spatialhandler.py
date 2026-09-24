@@ -19,6 +19,7 @@ import spatialdata as sd
 import spatialdata_io as sdio
 import xarray
 from gear.utils.gene_mapping import update_var_with_ensembl_ids
+from gear.utils.job_coordination import raise_if_upload_deleted
 from spatialdata.transformations import (
     Scale,
     Translation,
@@ -970,6 +971,9 @@ class CosMxHandler(SpatialHandler):
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
@@ -1138,6 +1142,9 @@ class CurioHandler(SpatialHandler):
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
@@ -1280,6 +1287,9 @@ class GeoMxHandler(SpatialHandler):
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
@@ -1453,6 +1463,9 @@ class VisiumHandler(SpatialHandler):
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
@@ -1580,6 +1593,9 @@ class VisiumHDHandler(SpatialHandler):
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
@@ -1763,6 +1779,9 @@ class XeniumHandler(SpatialHandler):
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
