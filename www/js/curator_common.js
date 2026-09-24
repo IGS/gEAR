@@ -983,6 +983,9 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
                 // Revert levels to original state
                 for (const filter of facetWidget.aggregations) {
                     const name = filter.name;
+                    // High-cardinality columns are tracked in truncatedLevels, not levels, so the sort-order
+                    //  and color pickers skip them; don't add them back here
+                    if (truncatedLevels.hasOwnProperty(name)) continue;
                     const items = filter.items;
                     const itemCats = items.map(item => item.name);
                     levels[name] = itemCats;
