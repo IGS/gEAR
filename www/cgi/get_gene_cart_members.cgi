@@ -30,44 +30,49 @@ def main():
     gene_cart_share_id = form.getfirst('share_id')
     result = { 'gene_symbols':[], 'success': 0 }
 
-    if not gene_cart_share_id:
-        raise Exception("ERROR: missing gene cart share ID")
+    try:
+        if not gene_cart_share_id:
+            raise Exception("ERROR: missing gene cart share ID")
 
-    gc = geardb.get_gene_cart_by_share_id(gene_cart_share_id)
-    if gc is None:
-        raise Exception("ERROR: failed to get gene cart share ID {0}".format(gene_cart_share_id))
+        gc = geardb.get_gene_cart_by_share_id(gene_cart_share_id)
+        if gc is None:
+            raise Exception("ERROR: failed to get gene cart share ID {0}".format(gene_cart_share_id))
 
-    if gc.gctype == "unweighted-list":
-        gene_cart_query = """
-            SELECT id, gene_symbol
-                FROM gene_cart_member
-                WHERE gene_cart_id = %s
-        """
+        if gc.gctype == "unweighted-list":
+            gene_cart_query = """
+                SELECT id, gene_symbol
+                    FROM gene_cart_member
+                    WHERE gene_cart_id = %s
+            """
 
-        cursor.execute(gene_cart_query, (gc.id,))
-        for row in cursor:
-            result['gene_symbols'].append({'id': row[0], 'label': row[1]})
-    elif gc.gctype == "weighted-list":
-        share_id = gc.share_id
-        if not share_id:
-            raise Exception("ERROR: weighted-list gene cart {0} has no share ID".format(gc.id))
+            cursor.execute(gene_cart_query, (gc.id,))
+            for row in cursor:
+                result['gene_symbols'].append({'id': row[0], 'label': row[1]})
+        elif gc.gctype == "weighted-list":
+            share_id = gc.share_id
+            if not share_id:
+                raise Exception("ERROR: weighted-list gene cart {0} has no share ID".format(gc.id))
 
-        # Get the gene symbols from the shared cart file
-        file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + share_id))
-        import csv
+            # Get the gene symbols from the shared cart file
+            file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + share_id))
+            import csv
 
-        with open(file_path, "r") as fh:
-            reader = csv.reader(fh, delimiter="\t")
-            # Skip header
-            next(reader)
-            result["gene_symbols"] = [{"id":row[0], "label":row[1]} for row in reader]
+            with open(file_path, "r") as fh:
+                reader = csv.reader(fh, delimiter="\t")
+                # Skip header
+                next(reader)
+                result["gene_symbols"] = [{"id":row[0], "label":row[1]} for row in reader]
 
-    elif gc.gctype == "labeled-list":
-        raise NotImplementedError("ERROR: labeled-list gene carts not yet implemented")
-    else:
-        raise Exception("ERROR: unknown gene cart type {0}".format(gc.gctype))
+        elif gc.gctype == "labeled-list":
+            raise NotImplementedError("ERROR: labeled-list gene carts not yet implemented")
+        else:
+            raise Exception("ERROR: unknown gene cart type {0}".format(gc.gctype))
 
-    result['success'] = 1
+        result['success'] = 1
+    except Exception as e:
+        # These used to escape after the Content-Type header, leaving an empty 200 response
+        result['success'] = 0
+        result['error'] = str(e)
     cursor.close()
     cnx.close()
 

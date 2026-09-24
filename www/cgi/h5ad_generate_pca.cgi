@@ -144,7 +144,7 @@ def main():
         except ValueError as err:
             m = re.search("\: (.+?) is not a valid", str(err))
             if m:
-                missing_gene = m.groups(1)
+                missing_gene = m.group(1)   # group(1) is the name; groups() returned a tuple
             else:
                 missing_gene = 'Unknown'
     else:

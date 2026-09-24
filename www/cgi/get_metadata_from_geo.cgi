@@ -23,46 +23,56 @@ def main():
     
     result = { 'success': 0, 'message': '', 'data': {} }
 
-    if geo_id.startswith('GSE'):
-        series_content = FromGeo.get_geo_data(geo_id=geo_id)
-        series_content = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
-        series_json = json.loads(series_content)
+    # Any failure (missing ID, unknown accession, GEO unreachable) returns {}, which the
+    #  uploader shows as "Entry not found"; these used to leave an empty 200 response
+    try:
+        if not geo_id:
+            raise ValueError('No GEO ID provided')
 
-        # Can be like: GSM1602229, GSM1602230, GSM1602231, GSM1602228
-        sample_id_str = series_json['sample_id']
-
-        if ',' in sample_id_str:
-            sample_id_list = sample_id_str.split(',')
-            first_sample_id = sample_id_list[0]
-        elif sample_id_str.startswith('GSM'):
-            first_sample_id = sample_id_str
-
-        sample_content = FromGeo.get_geo_data(geo_id=first_sample_id)
-        sample_content = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
-        sample_json = json.loads(sample_content)
-
-        # Merge the sample metadata in but keep the series accession
-        series_json.update(sample_json)
-        series_json['geo_accession'] = geo_id
-        result['data'] = series_json
-
-    elif geo_id.startswith('GSM'):
-        sample_content = FromGeo.get_geo_data(geo_id=geo_id)
-        sample_content = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
-        sample_json = json.loads(sample_content)
-
-        if 'series_id' in sample_json:
-            series_id = sample_json['series_id']
-            series_content = FromGeo.get_geo_data(geo_id=series_id)
+        if geo_id.startswith('GSE'):
+            series_content = FromGeo.get_geo_data(geo_id=geo_id)
             series_content = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
             series_json = json.loads(series_content)
 
-            # Add any keys from the series metadata that aren't in the sample metadata
-            for key, value in series_json.items():
-                if key not in sample_json:
-                    sample_json[key] = value
+            # Can be like: GSM1602229, GSM1602230, GSM1602231, GSM1602228
+            sample_id_str = series_json['sample_id']
 
-        result['data'] = sample_json
+            if ',' in sample_id_str:
+                sample_id_list = sample_id_str.split(',')
+                first_sample_id = sample_id_list[0]
+            elif sample_id_str.startswith('GSM'):
+                first_sample_id = sample_id_str
+
+            sample_content = FromGeo.get_geo_data(geo_id=first_sample_id)
+            sample_content = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
+            sample_json = json.loads(sample_content)
+
+            # Merge the sample metadata in but keep the series accession
+            series_json.update(sample_json)
+            series_json['geo_accession'] = geo_id
+            result['data'] = series_json
+
+        elif geo_id.startswith('GSM'):
+            sample_content = FromGeo.get_geo_data(geo_id=geo_id)
+            sample_content = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
+            sample_json = json.loads(sample_content)
+
+            if 'series_id' in sample_json:
+                series_id = sample_json['series_id']
+                series_content = FromGeo.get_geo_data(geo_id=series_id)
+                series_content = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
+                series_json = json.loads(series_content)
+
+                # Add any keys from the series metadata that aren't in the sample metadata
+                for key, value in series_json.items():
+                    if key not in sample_json:
+                        sample_json[key] = value
+
+            result['data'] = sample_json
+
+    except Exception as e:
+        print(f"GEO lookup failed for {geo_id!r}: {e}", file=sys.stderr)
+        result['data'] = {}
 
     print(json.dumps(result['data']))
 

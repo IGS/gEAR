@@ -48,16 +48,25 @@ def main():
     result = {'success': 0, 'problem': '', 'gene_carts': []}
 
     if page and not page.isdigit():
-        raise ValueError("Page must be a number")
+        # The Content-Type header is only printed at the end, so raising here gave an HTTP 500
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Page must be a number"}))
+        return
 
     if page and int(page) < 1:
-        raise ValueError("Page must be greater than 0")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Page must be greater than 0"}))
+        return
 
     if limit and not limit.isdigit():
-        raise ValueError("Limit must be a number")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Limit must be a number"}))
+        return
 
     if limit and int(limit) < 1:
-        raise ValueError("Limit must be greater than 0")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Limit must be greater than 0"}))
+        return
 
 
     gene_carts = list()

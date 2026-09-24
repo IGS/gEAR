@@ -1658,9 +1658,10 @@ paths:
       summary: Record an entry in the user's activity history
       description: Every submitted form field is forwarded as a keyword argument to UserHistory.add_record(), so
         category-specific extras (search_terms, gene_symbol, layout_share_id, dataset_share_id, gene_cart_share_id,
-        gene_cart, multi, patterns, algo) must be sent as extra fields. Requires a valid session; a missing or invalid
-        session raises an uncaught exception. Prints only a Content-Type header with an empty body. No current frontend
-        caller found.
+        gene_cart, multi, patterns, algo) must be sent as extra fields. Requires a valid session; otherwise returns
+        success 0 with "User must be logged in". A failure in add_record() (for example an invalid entry_category)
+        returns success 0 with the exception message. Errors are returned with HTTP 200. No current frontend caller
+        found.
       requestBody:
         required: true
         content:
@@ -1693,7 +1694,20 @@ paths:
                   description: Label shown in the user history table
       responses:
         '200':
-          description: Empty body (application/json Content-Type header only).
+          description: Success flag, or an error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: integer
+                    enum:
+                    - 0
+                    - 1
+                  error:
+                    type: string
+                    description: Present when success is 0
   /cgi/apply_note_changes.cgi:
     post:
       operationId: cgiApplyNoteChanges
@@ -1864,8 +1878,8 @@ paths:
       tags:
       - Account/auth
       summary: Check whether an email address already has an account
-      description: Whitespace is stripped from the address before lookup. A missing email raises an uncaught exception
-        after the header is printed (empty body). No login required.
+      description: Whitespace is stripped from the address before lookup. A missing email returns email_exists 0
+        with error "No email address provided". No login required.
       requestBody:
         required: true
         content:
@@ -1891,6 +1905,9 @@ paths:
                     enum:
                     - 0
                     - 1
+                  error:
+                    type: string
+                    description: Present only when no email was provided
   /cgi/copy_dataset_analysis.cgi:
     post:
       operationId: cgiCopyDatasetAnalysis
@@ -2185,9 +2202,9 @@ paths:
       tags:
       - Projection
       summary: Download projection coefficient (and p-value) CSVs as a zip
-      description: Zips <projection_id>.coeff.csv and, if present, <projection_id>.pval.csv from projections/by_dataset/<dataset_id>/.
-        share_id takes precedence over the legacy dataset_id. No login check. Any error (missing IDs, dataset or
-        file not found) raises an uncaught exception before headers are printed, so the server returns HTTP 500.
+      description: 'Zips <projection_id>.coeff.csv and, if present, <projection_id>.pval.csv from projections/by_dataset/<dataset_id>/.
+        share_id takes precedence over the legacy dataset_id. No login check. Errors return a plain-text message:
+        HTTP 400 for missing or invalid IDs, 404 when the dataset or projection output is not found.'
       requestBody:
         required: true
         content:
@@ -2202,8 +2219,18 @@ paths:
               schema:
                 type: string
                 format: binary
-        '500':
-          description: Uncaught exception (missing parameters or files).
+        '400':
+          description: Missing or invalid dataset/share ID or projection ID.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Dataset or projection output not found.
+          content:
+            text/plain:
+              schema:
+                type: string
     get:
       operationId: cgiDownloadProjectionGet
       tags:
@@ -2235,8 +2262,18 @@ paths:
               schema:
                 type: string
                 format: binary
-        '500':
-          description: Uncaught exception (missing parameters or files).
+        '400':
+          description: Missing or invalid dataset/share ID or projection ID.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Dataset or projection output not found.
+          content:
+            text/plain:
+              schema:
+                type: string
   /cgi/download_source_file.cgi:
     post:
       operationId: cgiDownloadSourceFile
@@ -2245,8 +2282,14 @@ paths:
       summary: Download a dataset's source archive, H5AD, or metadata CSV
       description: type=tarball streams the original upload archive (.tar.gz, .tar or .zip), type=h5ad the dataset
         H5AD (or an analysis's H5AD when analysis_id is given; session_id is needed for user_unsaved analyses),
-        type=metadata a CSV built from the stored metadata (looked up by share_id only). No login or is_downloadable
-        check is made. Errors raise uncaught exceptions before headers, so the server returns 500.
+        type=metadata a CSV built from the stored metadata (looked up by share_id only). tarball and h5ad (including
+        analysis H5ADs) are served only if the dataset is marked downloadable or the requester owns it; the requester
+        is identified from the session_id parameter or, if absent (plain browser download links), the gear_session_id
+        cookie. type=metadata has no downloadable or login check. Errors return a plain-text message with HTTP 400,
+        403 or 404.
+      security:
+      - {}
+      - gearSessionCookie: []
       requestBody:
         required: true
         content:
@@ -2261,8 +2304,24 @@ paths:
               schema:
                 type: string
                 format: binary
-        '500':
-          description: Uncaught exception (missing parameters, dataset or file not found).
+        '400':
+          description: Neither dataset_id nor share_id given, or type missing.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Dataset is not downloadable and the requester is not its owner (tarball/h5ad only).
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Dataset, file, or metadata not found.
+          content:
+            text/plain:
+              schema:
+                type: string
     get:
       operationId: cgiDownloadSourceFileGet
       tags:
@@ -2299,7 +2358,11 @@ paths:
         in: query
         schema:
           type: string
-        description: Needed to locate user_unsaved analyses
+        description: Identifies the requester (owner check for non-downloadable datasets) and locates user_unsaved
+          analyses; falls back to the gear_session_id cookie
+      security:
+      - {}
+      - gearSessionCookie: []
       responses:
         '200':
           description: File attachment named <share_id>.<ext>.
@@ -2308,16 +2371,32 @@ paths:
               schema:
                 type: string
                 format: binary
-        '500':
-          description: Uncaught exception (missing parameters, dataset or file not found).
+        '400':
+          description: Neither dataset_id nor share_id given, or type missing.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Dataset is not downloadable and the requester is not its owner (tarball/h5ad only).
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Dataset, file, or metadata not found.
+          content:
+            text/plain:
+              schema:
+                type: string
   /cgi/download_weighted_gene_cart.cgi:
     post:
       operationId: cgiDownloadWeightedGeneCart
       tags:
       - Gene lists (carts)
       summary: Download a weighted gene cart's tab-delimited file
-      description: 'Streams carts/cart.<share_id>.tab. No login check. Quirk: the Content-Disposition filename is
-        the full server-side path. A missing share_id raises before headers (HTTP 500).'
+      description: 'Streams carts/cart.<share_id>.tab as an attachment named cart.<share_id>.tab. No login check.
+        Errors return a plain-text message: HTTP 400 for a missing share_id, 404 when the cart file does not exist.'
       requestBody:
         required: true
         content:
@@ -2332,14 +2411,24 @@ paths:
                   description: Gene cart share ID
       responses:
         '200':
-          description: Tab-delimited gene cart file.
+          description: Tab-delimited gene cart file (Content-Disposition attachment; filename=cart.<share_id>.tab).
           content:
             application/octet-stream:
               schema:
                 type: string
                 format: binary
-        '500':
-          description: Uncaught exception (missing share_id or file).
+        '400':
+          description: share_id missing or not allowed.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: No weighted gene list file for this share ID.
+          content:
+            text/plain:
+              schema:
+                type: string
   /cgi/finalize_uploaded_expression_dataset.cgi:
     post:
       operationId: cgiFinalizeUploadedExpressionDataset
@@ -2901,8 +2990,8 @@ paths:
       - Displays
       summary: List the user's and the dataset owner's saved displays for a dataset
       description: session_id is optional; 'user' is filled only for a logged-in user and 'owner' only when the
-        user is not the dataset owner. user_id is stripped from each display. An unknown dataset_id raises (empty/500
-        response).
+        user is not the dataset owner. user_id is stripped from each display. An unknown dataset_id returns success
+        0 with error "Dataset not found" and an empty owner list.
       requestBody:
         required: true
         content:
@@ -2932,6 +3021,14 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Cgi1Display'
+                  success:
+                    type: integer
+                    enum:
+                    - 0
+                    description: Present only for an unknown dataset
+                  error:
+                    type: string
+                    description: Present only for an unknown dataset
   /cgi/get_dataset_info.cgi:
     post:
       operationId: cgiGetDatasetInfo
@@ -3159,8 +3256,8 @@ paths:
       - Gene lists (carts)
       summary: Return the gene symbols in a gene cart
       description: Unweighted carts are read from gene_cart_member; weighted carts from carts/cart.<share_id>.tab.
-        session_id is read but not used for access control. Labeled lists and unknown carts raise after the header
-        is printed (empty body).
+        session_id is read but not used for access control. A missing share_id, unknown cart, labeled list or unreadable
+        cart file returns gene_symbols [] with success 0 and an error message (HTTP 200).
       requestBody:
         required: true
         content:
@@ -3189,6 +3286,9 @@ paths:
                     enum:
                     - 0
                     - 1
+                  error:
+                    type: string
+                    description: Present when success is 0
                   gene_symbols:
                     type: array
                     items:
@@ -3239,8 +3339,8 @@ paths:
       tags:
       - Datasets
       summary: List observation columns in a dataset's H5AD file
-      description: Returns obs column names except 'replicate'. No login check. success stays 0 even on success
-        (only obs_columns is added). No current frontend caller found (legacy).
+      description: Returns obs column names except 'replicate'. No login check. If the dataset has no H5AD file
+        returns success 0 with an error. No current frontend caller found (legacy).
       requestBody:
         required: true
         content:
@@ -3264,7 +3364,7 @@ paths:
                     type: integer
                     enum:
                     - 0
-                    description: Always 0 (quirk)
+                    - 1
                   obs_columns:
                     type: array
                     items:
@@ -3345,8 +3445,8 @@ paths:
       - Uploads
       summary: Fetch metadata from GEO for a series (GSE) or sample (GSM) ID
       description: For GSE, merges the first sample's metadata into the series (keeping geo_accession); for GSM,
-        fills in missing keys from its series. Prints only the metadata object ({} for other ID prefixes). A missing
-        geo_id raises after the header (empty body).
+        fills in missing keys from its series. Prints only the metadata object. Returns {} for a missing geo_id,
+        other ID prefixes, an unknown accession or a GEO fetch failure (the uploader shows "Entry not found").
       requestBody:
         required: true
         content:
@@ -3361,7 +3461,7 @@ paths:
                   description: GEO accession starting with GSE or GSM
       responses:
         '200':
-          description: GEO metadata fields (keys as parsed by gear.fromgeo).
+          description: GEO metadata fields (keys as parsed by gear.fromgeo), or {} if not found.
           content:
             application/json:
               schema:
@@ -3455,8 +3555,9 @@ paths:
       tags:
       - Projection
       summary: Return all genes and weights for one pattern of a weighted gene cart
-      description: 'Sorted by weight descending. Quirk: if the cart file is missing it prints a plain-text message
-        (not JSON) under the application/json header; an unknown pattern_id raises (empty body).'
+      description: 'Sorted by weight descending. source_id must be a plain file name (no path components). Errors
+        return JSON {success: 0, error}: HTTP 400 for a missing/invalid source_id or missing pattern_id, 404 if
+        the cart file is missing (not found or unweighted) or pattern_id is not a column in it.'
       requestBody:
         required: true
         content:
@@ -3487,6 +3588,18 @@ paths:
                       type: string
                     weight:
                       type: number
+        '400':
+          description: source_id missing or not a plain name, or pattern_id missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cgi1PatternWeightedGenesError'
+        '404':
+          description: Cart file not found (or unweighted), or pattern_id not in the cart.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cgi1PatternWeightedGenesError'
   /cgi/get_session_info.cgi:
     post:
       operationId: cgiGetSessionInfo
@@ -5056,7 +5169,7 @@ paths:
       - Gene lists (carts)
       summary: Delete an owned gene cart
       description: Requires a logged-in user who owns the gene cart identified by share_id; calls GeneCart.remove().
-        The non-owner error message mistakenly says "dataset".
+        A non-owner gets "Not able to remove gene list. User does not own the gene list."
       requestBody:
         required: true
         content:
@@ -5777,7 +5890,8 @@ paths:
       summary: Search and filter datasets with paging
       description: Returns completed, non-removed datasets matching full-text terms and filters, or the datasets
         in one layout. Anonymous users see public datasets only; logged-in users default to public, own and shared
-        datasets. Invalid page/limit raise a server error. Logs the search to user history when terms are given.
+        datasets. An invalid page/limit (non-numeric or < 1) returns success 0 with a `problem` message (HTTP 200).
+        Logs the search to user history when terms are given.
       requestBody:
         content:
           multipart/form-data:
@@ -5853,7 +5967,7 @@ paths:
                     - 1
                   problem:
                     type: string
-                    description: Error text (unrecognized custom_list).
+                    description: Error text (unrecognized custom_list or invalid page/limit).
                   datasets:
                     type: array
                     description: Dataset objects with extra keys layouts, preview_image_url, mg_preview_image_url
@@ -5870,8 +5984,9 @@ paths:
       - Search
       summary: Search and filter gene carts with paging
       description: Anonymous users see public carts; logged-in users default to public, own and group members' carts.
-        The 'shared' ownership option is not implemented (sending only 'shared' produces an invalid query). Invalid
-        page/limit raise a server error. Logs the search to user history when terms are given.
+        The 'shared' ownership option is not implemented (sending only 'shared' produces an invalid query). An invalid
+        page/limit (non-numeric or < 1) returns success 0 with a `problem` message (HTTP 200). Logs the search to
+        user history when terms are given.
       requestBody:
         content:
           multipart/form-data:
@@ -5924,9 +6039,11 @@ paths:
                   success:
                     type: integer
                     enum:
+                    - 0
                     - 1
                   problem:
                     type: string
+                    description: Error text (invalid page/limit).
                   gene_carts:
                     type: array
                     description: Gene cart objects with extra keys user_name, organism, is_owner and genes or num_genes.
@@ -5998,7 +6115,7 @@ paths:
       description: Sends mail through Gmail SMTP using credentials in gear.ini; no login required. `forgot_password`
         emails a `<destination_page>?help_id=...` link if the address is registered; `user_verification` emails
         the short form of `verification_code_long`. Any failure (including unknown email) returns success 0 with
-        a generic delivery error; an SMTP exception also prints a debug line to stdout ahead of the JSON.
+        a generic delivery error; SMTP error details are logged to stderr only.
       requestBody:
         required: true
         content:
@@ -7571,6 +7688,15 @@ components:
         progress:
           type: integer
           description: 0-100
+    Cgi1PatternWeightedGenesError:
+      type: object
+      properties:
+        success:
+          type: integer
+          enum:
+          - 0
+        error:
+          type: string
     Cgi1DownloadProjectionParams:
       type: object
       required:
@@ -7606,7 +7732,8 @@ components:
           description: Download this analysis's H5AD instead (type=h5ad)
         session_id:
           type: string
-          description: Needed to locate user_unsaved analyses
+          description: Identifies the requester (owner check for non-downloadable datasets) and locates user_unsaved
+            analyses; falls back to the gear_session_id cookie
     Cgi1AnalysisImageParams:
       type: object
       required:
@@ -7843,13 +7970,9 @@ components:
           - 0
           - 1
         missing_gene:
-          description: Empty string on success; on an unknown gene, a one-element array (regex groups tuple) or
-            `Unknown`. Omitted if the dataset/analysis was not found.
-          oneOf:
-          - type: string
-          - type: array
-            items:
-              type: string
+          type: string
+          description: Empty string on success; on an unknown gene, the gene name (or `Unknown` if it cannot be
+            parsed). Omitted if the dataset/analysis was not found.
     Cgi2SuccessInt:
       type: object
       properties:

@@ -159,7 +159,7 @@ def main():
             # DEBUG: error string:Given 'color': foobar is not a valid observation or var. Valid observations are: Index(['n_genes', 'n_counts'], dtype='object')
             m = re.search("\: (.+?) is not a valid", str(err))
             if m:
-                missing_gene = m.groups(1)
+                missing_gene = m.group(1)   # group(1) is the name; groups() returned a tuple
             else:
                 missing_gene = 'Unknown'
     else:

@@ -49,6 +49,7 @@ def main():
         columns.remove('replicate')
 
     result['obs_columns'] = columns
+    result['success'] = 1
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

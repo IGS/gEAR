@@ -57,7 +57,7 @@ def main():
         print(json.dumps(result))
 
     else:
-        error = "Not able to remove dataset. User does not own the dataset."
+        error = "Not able to remove gene list. User does not own the gene list."
         result = { 'success': 0, 'error': error }
         print(json.dumps(result))
 

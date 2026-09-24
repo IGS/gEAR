@@ -40,7 +40,16 @@ def main():
     cursor = cnx.get_cursor()
     query = "SELECT owner_id FROM dataset WHERE id = %s"
     cursor.execute(query, (dataset_id,))
-    (dataset_owner,) = cursor.fetchone()
+    row = cursor.fetchone()
+    if row is None:
+        # Unknown dataset: this used to raise after stdout was redirected, leaving an empty response
+        cursor.close()
+        cnx.close()
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**displays, "success": 0, "error": "Dataset not found"}))
+        return
+    (dataset_owner,) = row
 
     # If the user is not the owner of the dataset, then retrieve those displays
     if not (user and user.id == dataset_owner):

@@ -27,6 +27,12 @@ def main():
     form = cgi.FieldStorage()
     email_address = form.getfirst('email')
 
+    if not email_address:
+        print(json.dumps({'email_exists': 0, 'error': 'No email address provided'}))
+        cursor.close()
+        cnx.close()
+        return
+
     # remove all whitespace from the email
     email_address = ''.join(email_address.split())
     

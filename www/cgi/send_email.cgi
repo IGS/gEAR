@@ -132,8 +132,8 @@ def main():
             s.sendmail(sender, email, msg.as_string())
             s.quit()
         except Exception as e:
-            s.set_debuglevel(1)
-            print(f"Detailed SMTP Error: {e}")
+            # Log to stderr; printing to stdout put this line ahead of the JSON response
+            print(f"Detailed SMTP Error: {e}", file=sys.stderr)
             result['error'] = "E-mail delivery failed. Please try again later or contact us."
             result['success'] = 0
     else:
