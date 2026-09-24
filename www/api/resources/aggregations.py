@@ -115,15 +115,22 @@ class Aggregations(Resource):
                 if col in categorical_columns:
                     filter_query += f"(`{col}`.isin({values})) & "
             filter_query = filter_query[:-3]
-            filter_idx = list(obs.query(filter_query).index)
-            import numpy as np
 
-            adata = adata[np.array(filter_idx), :]
+            # Skip when none of the filtered columns are categorical (an empty query would raise)
+            if filter_query:
+                filter_idx = list(obs.query(filter_query).index)
+                import numpy as np
+
+                adata = adata[np.array(filter_idx), :]
+                # Count from the filtered observations. Categories with no remaining
+                #  observations are still listed (with 0) via orig_categories below.
+                obs = adata.obs
 
         # Get number of observations for each value in each categorical column
         aggregations = []
         for col in categorical_columns:
-            cat_aggregations = {"name": col, "count": obs[col].count(), "items": []}
+            # int() so the response serializes even when pandas returns numpy integers
+            cat_aggregations = {"name": col, "count": int(obs[col].count()), "items": []}
             # Items has "name" and "count"
             value_dict = obs[col].astype("category").value_counts()
 
@@ -137,7 +144,7 @@ class Aggregations(Resource):
                 value_dict["Data not available"] = value_dict.pop("nan")
 
             for value, count in value_dict.items():
-                cat_aggregations["items"].append({"name": value, "count": count})
+                cat_aggregations["items"].append({"name": value, "count": int(count)})
             aggregations.append(cat_aggregations)
 
         return {"success": 1, "aggregations": aggregations, "total_count": obs.shape[0]}
