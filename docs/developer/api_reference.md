@@ -281,7 +281,7 @@ Returns the display record from `geardb.get_display_by_id` with HTTP 200, or `{"
 
 ## CGI endpoints
 
-Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most read form or JSON parameters, look up the user from `session_id`, and print a JSON body. Each script's module docstring lists its inputs and output in more detail. 105 entries, grouped by area.
+Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most read form or JSON parameters, look up the user from `session_id`, and print a JSON body. Each script's module docstring lists its inputs and output in more detail. 101 entries, grouped by area.
 
 ### Account/auth
 
@@ -312,8 +312,6 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `get_dataset_list.cgi` | Return the datasets for a layout, search, permalink, or default domain profile | session_id, layout_share_id, permalink_share_id, search_terms, scope, order, only_types, default_domain |
 | `get_h5ad_obs_columns.cgi` | List observation columns in a dataset's H5AD file | dataset_id |
 | `get_shared_info.cgi` | Return gene/dataset/layout/owner info for a dataset or layout share | dataset_share_id, layout_share_id |
-| `get_shared_users_list.cgi` | List users a dataset has been shared with (owner only) | session_id, dataset_id |
-| `manage_dataset_shares.cgi` | Share/unshare a dataset with a user and list shares | session_id, dataset_id, to_share |
 | `mark_dataset_for_removal.cgi` | Mark an owned dataset for later removal | session_id, dataset_id |
 | `remove_dataset.cgi` | Remove an owned dataset (soft delete, drop shares and layout displays) | session_id, dataset_id |
 | `save_datasetinfo_changes.cgi` | Edit metadata (title, visibility, PubMed/GEO, description) of an owned dataset | session_id, dataset_id, visibility, is_downloadable, title, pubmed_id, geo_id, ldesc |
