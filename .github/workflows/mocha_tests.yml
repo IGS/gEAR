@@ -8,19 +8,13 @@ name: Mocha Tests
 
 defaults:
   run:
-    working-directory: ./tests
+    working-directory: ./tests/legacy
 
+# Disabled (September 2026): these tests run against a live site (devel.umgear.org) and are no
+# longer maintained. They now live in tests/legacy/ (see tests/legacy/README.md). The server-side
+# suite in tests/python runs in python_tests.yml. This workflow can still be started by hand.
 on:
-  push:
-    branches: [ devel ]
-    paths:
-      - '**/*.js'
-      - '**/*.html'
-  pull_request:
-    branches: [ devel ]
-    paths:
-      - '**/*.js'
-      - '**/*.html'
+  workflow_dispatch:
 
 jobs:
   test:
