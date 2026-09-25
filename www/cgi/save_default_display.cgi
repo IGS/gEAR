@@ -69,7 +69,7 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getfirst('session_id')
     dataset_id = form.getfirst('dataset_id')
-    display_id = form.getfirst('display_id')
+    display_id = form.getfirst('display_id') or ""
     is_multigene = int(form.getfirst('is_multigene', 0))
 
     user = geardb.get_user_from_session_id(session_id=session_id)
@@ -79,6 +79,13 @@ def main():
         print(json.dumps(dict(success=False, error="User must be logged in")))
         return
     user_id = user.id
+
+    # A display ID is an integer; anything else (e.g. "None" or "undefined") can't be saved or symlinked
+    if not display_id.isdigit():
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(success=False, error="Invalid display ID")))
+        return
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
@@ -94,10 +101,12 @@ def main():
         print("Something went wrong: {}".format(err), file=sys.stderr)
         result = dict(success=False)
 
-    attempt_symlink(cursor, user_id, dataset_id, display_id, is_multigene)
+    if result["success"]:
+        attempt_symlink(cursor, user_id, dataset_id, display_id, is_multigene)
 
     cnx.commit()
     cursor.close()
+    cnx.close()
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

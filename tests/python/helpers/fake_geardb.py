@@ -17,6 +17,7 @@ Spec keys (all optional):
     sql             [{"match": "substring", "rows": [[...], ...] | "echo"}]
                     First matching rule wins. "echo" returns [[first param]].
     fail_sql        ["substring", ...]  -- execute() raises for matching statements
+    lastrowid       value of cursor.lastrowid (default 1)
 
 Queries against user_session are answered from "sessions" unless an sql rule matches first.
 Any geardb attribute the fake doesn't provide raises AttributeError naming this file, so a
@@ -27,6 +28,12 @@ import json
 import os
 import types
 from pathlib import Path
+
+# fail_sql raises a real mysql.connector.Error, so CGIs that catch only database errors handle it
+try:
+    from mysql.connector import Error as _DatabaseError
+except ImportError:
+    _DatabaseError = RuntimeError
 
 _SPEC = json.loads(Path(os.environ["GEAR_FAKE_DB"]).read_text()) if os.environ.get("GEAR_FAKE_DB") else {}
 _LOG = os.environ.get("GEAR_FAKE_DB_LOG")
@@ -197,7 +204,7 @@ def get_gene_cart_by_share_id(share_id, *args, **kwargs):
 class _Cursor:
     def __init__(self):
         self.rows = []
-        self.lastrowid = 1
+        self.lastrowid = _SPEC.get("lastrowid", 1)
         self.rowcount = 0
 
     def execute(self, query, params=()):
@@ -206,7 +213,7 @@ class _Cursor:
         _log("sql", query=flat, params=params)
         for pattern in _SPEC.get("fail_sql", []):
             if pattern in flat:
-                raise RuntimeError(f"fake database error for: {pattern}")
+                raise _DatabaseError(f"fake database error for: {pattern}")
         self.rows = []
         for rule in _SPEC.get("sql", []):
             if rule["match"] in flat:

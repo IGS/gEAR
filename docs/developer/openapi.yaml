@@ -5363,8 +5363,9 @@ paths:
       summary: Create or update a saved display and regenerate its static preview PNG
       description: Requires a logged-in user. With `id`, updates the display's label/plot_type/plotly_config only
         if the user owns it; without `id`, inserts a new display. Then POSTs the config to the local `/api/plot/<dataset_id>`
-        endpoints (https, falling back to http) to write `img/dataset_previews/<dataset_id>.<display_id>.png`; image
-        failures are only logged and do not change `success`.
+        endpoints (https, falling back to http) to write `img/dataset_previews/<dataset_id>.<display_id>.png`, where
+        a new display's ID is the inserted row's ID. No image is generated when the save fails (e.g. the user does not
+        own the display). Image failures are only logged and do not change `success`.
       requestBody:
         required: true
         content:
@@ -5484,7 +5485,8 @@ paths:
       - Displays
       summary: Set the user's default single- or multi-gene display for a dataset
       description: Requires a logged-in user (an invalid session returns success false with error "User must be
-        logged in"). Upserts `dataset_preference`. If the user is the dataset owner and the display's preview PNG
+        logged in"). A display_id that is not an integer returns success false with error "Invalid display ID".
+        Upserts `dataset_preference`. If that succeeds, the user is the dataset owner and the display's preview PNG
         exists, also (re)creates the `<dataset_id>.<single|multi>.default.png` symlink used as the dataset's preview
         image.
       requestBody:

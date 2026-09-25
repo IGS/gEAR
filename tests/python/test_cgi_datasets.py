@@ -106,3 +106,74 @@ class TestCreateAccount:
         assert body["success"] == 1 and body["session_id"] not in (0, -1)
         assert [w["query"].split()[2] for w in result.writes()] == ["guser", "user_session"]
         assert result.logged("commit")
+
+
+class TestSaveDatasetDisplay:
+    """Saving a display names its preview image by the new display's ID (issue #490)."""
+
+    FAKE_REQUESTS = {"requests": FAKES_DIR / "display_requests.py"}
+    CONFIG = '{"gene_symbol": "Sox2"}'
+
+    def run(self, db=None, **query):
+        query = {"session_id": "owner", "dataset_id": "DS1", "plot_type": "bar", "plotly_config": self.CONFIG, **query}
+        result = run_cgi("save_dataset_display.cgi", query=query, db={**DB, **(db or {})},
+                         fake_modules=self.FAKE_REQUESTS)
+        assert result.returncode == 0, result.stderr[-2000:]
+        return result
+
+    @pytest.mark.parametrize("label", ["", "My display"])
+    def test_new_display_uses_inserted_id(self, label):
+        result = self.run(db={"lastrowid": 42}, label=label)
+        assert result.json() == {"display_id": 42, "success": True}
+        (insert,) = result.writes()
+        assert insert["query"].startswith("INSERT INTO dataset_display")
+        # The preview is requested for this dataset and named after display 42, never "None"
+        assert [e["url"] for e in result.logged("requests.post")][0] == "https://localhost/api/plot/DS1"
+        assert "display id 42" in result.stderr
+        assert "None" not in result.stderr
+
+    def test_update_by_owner_regenerates_preview(self):
+        result = self.run(db={"sql": [{"match": "SELECT user_id FROM dataset_display", "rows": [[1]]}]},
+                          id="7", label="Renamed")
+        assert result.json() == {"display_id": "7", "success": True}
+        assert [w["query"].split()[0] for w in result.writes()] == ["UPDATE"]
+        assert result.logged("requests.post")
+
+    def test_update_by_other_user_changes_nothing(self):
+        result = self.run(db={"sql": [{"match": "SELECT user_id FROM dataset_display", "rows": [[2]]}]},
+                          id="7", label="Hijacked")
+        assert result.json() == {"display_id": "7", "success": False}
+        assert result.writes() == []
+        # The owner's preview image is not overwritten with this user's config
+        assert not result.logged("requests.post")
+
+    def test_unknown_display_id(self):
+        result = self.run(id="999", label="x")
+        assert result.json() == {"display_id": "999", "success": False}
+        assert not result.logged("requests.post")
+
+
+class TestSaveDefaultDisplay:
+    def run(self, **query):
+        query = {"session_id": "owner", "dataset_id": "DS1", "is_multigene": "0", **query}
+        return run_cgi("save_default_display.cgi", query=query, db=DB)
+
+    @pytest.mark.parametrize("display_id", [None, "", "None", "undefined", "7; DROP"])
+    def test_invalid_display_id(self, display_id):
+        result = self.run(**({} if display_id is None else {"display_id": display_id}))
+        assert result.json() == {"success": False, "error": "Invalid display ID"}
+        assert result.writes() == []
+
+    def test_valid_display_id_saves_preference(self):
+        result = self.run(display_id="7")
+        assert result.json() == {"success": True}
+        (insert,) = result.writes()
+        assert "INSERT INTO dataset_preference" in insert["query"]
+        assert insert["params"] == [1, "DS1", "7", 0]
+
+    def test_failed_insert_skips_symlink(self):
+        result = run_cgi("save_default_display.cgi", db={**DB, "fail_sql": ["INSERT INTO dataset_preference"]},
+                         query={"session_id": "owner", "dataset_id": "DS1", "display_id": "7", "is_multigene": "0"})
+        assert result.returncode == 0, result.stderr[-2000:]
+        assert result.json()["success"] is False
+        assert not result.logged("sql", "dataset_preference dp")
