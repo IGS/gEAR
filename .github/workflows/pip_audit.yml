@@ -7,28 +7,20 @@ on:
       - "lib/**"
       - "www/cgi/**"
       - "www/api/**"
-      - "www/user_templates/**"
       - "listeners/**"
       - "services/**"
-      - "docs/**"
-      - "README.md"
-      - "tests/python/**"
-      - "tests/README.md"
-      - ".github/workflows/python_tests.yml"
+      - 'docker/*'
+      - '.github/*'
   pull_request:
     branches: [devel, main]
     paths:
       - "lib/**"
       - "www/cgi/**"
       - "www/api/**"
-      - "www/user_templates/**"
       - "listeners/**"
       - "services/**"
-      - "docs/**"
-      - "README.md"
-      - "tests/python/**"
-      - "tests/README.md"
-      - ".github/workflows/python_tests.yml"
+      - 'docker/*'
+      - '.github/*'
   workflow_dispatch:
 
 jobs:
