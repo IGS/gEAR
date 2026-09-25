@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+get_user_history_entries.cgi - Return the user's most recent activity history entries.
 
+Input: session_id, num_entries (default 5).
+Output: JSON list of history entries (empty list if no valid session).
 """
 
 import cgi
@@ -18,10 +21,10 @@ def main():
     print('Content-Type: application/json\n\n')
     form = cgi.FieldStorage()
 
-    num_entries = form.getvalue('num_entries', 5)
+    num_entries = form.getfirst('num_entries', 5)
 
     ## add the user
-    user = geardb.get_user_from_session_id(form.getvalue('session_id'))
+    user = geardb.get_user_from_session_id(form.getfirst('session_id'))
     entries = list()
 
     if user is not None:

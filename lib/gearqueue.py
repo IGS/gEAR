@@ -1,3 +1,10 @@
+"""
+gearqueue.py - RabbitMQ connection helpers for publishing and consuming gEAR jobs.
+
+Wraps pika blocking and asynchronous (SelectConnection) connections used by the
+dataset loading and other job queues.
+"""
+
 import functools
 import json
 import os
@@ -52,6 +59,9 @@ class Connection:
     ### Channel publish/consume functions
 
     def open_channel(self):
+        """
+        Open a new channel on the blocking connection and store it on self.channel.
+        """
         self.channel = self.connection.channel()
 
     def publish(self, queue_name=None, message=None, **kwargs):
@@ -146,6 +156,15 @@ class Connection:
         return self
 
     def replyto_consume(self, on_message_callback):
+        """
+        Consume replies via RabbitMQ direct reply-to for RPC-style requests.
+
+        Args:
+            on_message_callback (callable): Called for each reply message received.
+
+        Returns:
+            Connection: This connection instance.
+        """
         # Sets up a direct RPC (request/reply) consumer
         # See https://www.rabbitmq.com/direct-reply-to.html
         # See https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example
@@ -298,6 +317,9 @@ class AsyncConnection(Connection):
         self.connection.channel(on_open_callback=self._on_channel_open)
 
     def close_connection(self):
+        """
+        Close the connection unless it is already closing or closed.
+        """
         if self.connection.is_closing or self.connection.is_closed:
             print("{} - Connection is closing or already closed".format(self.pid), flush=True, file=self.log_fh)
         else:

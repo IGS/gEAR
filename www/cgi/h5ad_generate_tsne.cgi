@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+h5ad_generate_tsne.cgi - Compute neighbors/tSNE/UMAP for an analysis and render the requested plots.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, n_pcs, n_neighbors, random_state, genes_to_color,
+       use_scaled, compute_neighbors, compute_tsne, compute_umap, plot_tsne, plot_umap (0/1 flags).
+Output: JSON {success, missing_gene}; writes tSNE/UMAP PNGs.
 """
 
 import cgi
@@ -35,23 +39,23 @@ def normalize_genes_to_color(gene_list, chosen_genes):
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
-    n_pcs = int(form.getvalue('n_pcs'))
-    n_neighbors = int(form.getvalue('n_neighbors'))
-    random_state = int(form.getvalue('random_state'))
-    genes_to_color = form.getvalue('genes_to_color')
-    use_scaled = form.getvalue('use_scaled')
+    n_pcs = int(form.getfirst('n_pcs'))
+    n_neighbors = int(form.getfirst('n_neighbors'))
+    random_state = int(form.getfirst('random_state'))
+    genes_to_color = form.getfirst('genes_to_color')
+    use_scaled = form.getfirst('use_scaled')
 
-    compute_neighbors = int(form.getvalue('compute_neighbors'))
-    compute_tsne = int(form.getvalue('compute_tsne'))
-    compute_umap = int(form.getvalue('compute_umap'))
+    compute_neighbors = int(form.getfirst('compute_neighbors'))
+    compute_tsne = int(form.getfirst('compute_tsne'))
+    compute_umap = int(form.getfirst('compute_umap'))
 
-    plot_tsne = int(form.getvalue('plot_tsne'))
-    plot_umap = int(form.getvalue('plot_umap'))
+    plot_tsne = int(form.getfirst('plot_tsne'))
+    plot_umap = int(form.getfirst('plot_umap'))
 
     result = {"success": 0}
 
@@ -155,7 +159,7 @@ def main():
             # DEBUG: error string:Given 'color': foobar is not a valid observation or var. Valid observations are: Index(['n_genes', 'n_counts'], dtype='object')
             m = re.search("\: (.+?) is not a valid", str(err))
             if m:
-                missing_gene = m.groups(1)
+                missing_gene = m.group(1)   # group(1) is the name; groups() returned a tuple
             else:
                 missing_gene = 'Unknown'
     else:

@@ -1,3 +1,10 @@
+"""
+dataset_processing.py - Report the processing status of a dataset upload.
+
+Serves /import/dataset/<share_uid>/status in www/api/api.py for expression,
+spatial, and track hub (Gosling) uploads.
+"""
+
 import json
 import os
 import subprocess
@@ -94,7 +101,7 @@ class DatasetProcessingStatus(Resource):
 
             current_status = status_data.get('status', '')
 
-            if current_status in 'complete':
+            if current_status == 'complete':
                 status_data['progress'] = 100
             elif current_status == 'processing' and dataset_format not in ["gosling"]:
                 # ? Remove the "gosling" check

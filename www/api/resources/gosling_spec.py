@@ -1,3 +1,11 @@
+"""
+gosling_spec.py - Build Gosling genome browser specs from UCSC track hubs.
+
+Serves /plot/<dataset_id>/gosling in www/api/api.py. Hub tracks (BigWig, BED,
+BigInteract, VCF, Hi-C, multiWig) are converted into a Gosling JSON spec
+zoomed to a requested gene.
+"""
+
 import ipaddress
 import os
 import sys
@@ -820,9 +828,18 @@ class Component(ABC):
     """Base class for anything that can be rendered in a Gosling layout."""
     @abstractmethod
     def render(self):
+        """
+        Return the Gosling object for this component.
+        """
         pass
 
 class TrackSpec(ABC):
+    """
+    Abstract base for a single Gosling track built from a remote data file.
+
+    Extra keyword arguments (e.g. hub stanza fields such as "gos_" options) are set
+    as instance attributes.
+    """
     def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full", **kwargs):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
@@ -890,10 +907,16 @@ class TrackSpec(ABC):
             raise ValueError(f"Invalid URL: must end with {extensions_str}")
 
 class BamSpec(TrackSpec):
+    """
+    BAM coverage track. Currently disabled; the constructor raises NotImplementedError.
+    """
     def __init__(self, *args, **kwargs):
         raise NotImplementedError("BAM tracks are currently not supported due to performance issues. Please use BigWig or BigBed formats instead.")
 
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a coverage bar track for the BAM file, or None if the URL is invalid.
+        """
         url = self.data_url
         color = self.color
 
@@ -932,7 +955,13 @@ class BamSpec(TrackSpec):
 
 
 class BedSpec(TrackSpec):
+    """
+    Tabix-indexed BED (.bed.gz) interval track.
+    """
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a rect track of the BED intervals, or None if the URL is invalid.
+        """
         url = self.data_url
         color = self.color
 
@@ -970,7 +999,13 @@ class BedSpec(TrackSpec):
         return track
 
 class BigWigSpec(TrackSpec):
+    """
+    BigWig signal track drawn as an area chart.
+    """
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return an area track of the BigWig signal, or None if the URL is invalid.
+        """
         url = self.data_url
         color = self.color
 
@@ -1015,9 +1050,15 @@ class BigWigSpec(TrackSpec):
         return track
 
 class BigInteractSpec(TrackSpec):
+    """
+    Splice-junction/interaction track drawn as arcs within the track.
+    """
     # This is based on STAR splice-junction output, which is a tab-delimited file with the following columns:
     # chr, start, end, strand, intron_motif, annotated, unique_reads, multi_reads, max_overhang
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a withinLink arc track; arcs are flipped if the "gos_flip" field is truthy.
+        """
         url = self.data_url
         color = self.color
 
@@ -1063,7 +1104,13 @@ class BigInteractSpec(TrackSpec):
         return track
 
 class VcfSpec(TrackSpec):
+    """
+    Tabix-indexed VCF (.vcf.gz) variant track drawn as points.
+    """
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a point track of the VCF variants, or None if the URL is invalid.
+        """
         url = self.data_url
         color = self.color
 
@@ -1100,7 +1147,13 @@ class VcfSpec(TrackSpec):
         return track
 
 class HiCSpec(TrackSpec):
+    """
+    Hi-C contact matrix track.
+    """
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a matrix track colored by contact value.
+        """
         url = self.data_url
         #color = self.color  # colorscale instead of single color
 
@@ -1151,6 +1204,12 @@ class HiCSpec(TrackSpec):
         return hic_track
 
     def add_annotation_track(self, position_str):
+        """
+        Return a translucent yellow overlay track highlighting the gene region on the matrix.
+
+        Args:
+            position_str (str): Gene position in the format accepted by parse_position_str.
+        """
         _, chrom, start, end = parse_position_str(position_str)
 
         json_data = gos.json(
@@ -1188,10 +1247,16 @@ class HiCSpec(TrackSpec):
 
 # Assembly track class
 class AssemblySpec:
+    """
+    Placeholder for an assembly track spec (not yet implemented).
+    """
     pass
 
 
 class ViewSpec(ABC):
+    """
+    Abstract base for a Gosling view that combines multiple TrackSpec members.
+    """
     def __init__(self, title="", zoom=False, ident="", visibility="full"):
         self.title = title
         self.ident = ident or title
@@ -1208,9 +1273,15 @@ class ViewSpec(ABC):
         self.members = [] # List of TrackSpec objects
 
     def add_member(self, track: TrackSpec):
+        """
+        Add a track to this view.
+        """
         self.members.append(track)
 
     def clear_members(self):
+        """
+        Remove all member tracks from this view.
+        """
         self.members = []
 
     @abstractmethod
@@ -1219,7 +1290,24 @@ class ViewSpec(ABC):
         pass
 
 class HiCViewSpec(ViewSpec):
+    """
+    Square view for a Hi-C track, optionally overlaid with a gene-region highlight.
+    """
     def render(self, hic_obj: HiCSpec,  prefix="", position_str="NA"):
+        """
+        Render the Hi-C track as a square view.
+
+        Args:
+            hic_obj (HiCSpec): The Hi-C track to render.
+            prefix (str): Prefix for the view ID.
+            position_str (str): Gene position string. If "NA", no highlight overlay is added.
+
+        Returns:
+            The Gosling track or overlay view, or None if the view is hidden.
+
+        Raises:
+            ValueError: If hic_obj is None.
+        """
         if self.visibility == "hide":
             return None
 
@@ -1244,6 +1332,9 @@ class MultiWigSpec(ViewSpec):
     """
 
     def render(self, prefix=""):
+        """
+        Render the member BigWig tracks as one overlay view, or None if the view is hidden.
+        """
         if self.visibility == "hide":
             return None
 
@@ -1273,7 +1364,19 @@ class MultiWigSpec(ViewSpec):
 
 
 class GoslingSpec(Resource):
+    """
+    Flask-RESTful resource that builds a Gosling spec from a dataset's track hub.
+    """
     def get(self, dataset_id):
+        """
+        Build a Gosling spec for a gene from the tracks in a track hub.
+
+        Query params: gene, assembly, and hub_url (all required), plus zoom ("true"/"false").
+
+        Returns:
+            tuple: (response dict, HTTP status). The dict has "success", "spec" (JSON
+            string), "position" (gene position string or "NA"), "message", and "hic_found".
+        """
         # session_id = request.cookies.get("gear_session_id", "")
         args = request.args
         gene_symbol = args.get("gene")
@@ -1379,14 +1482,23 @@ class GoslingSpec(Resource):
         return response, 200
 
     def post(self, dataset_id):
+        """
+        Not implemented.
+        """
         # Implement your logic to create or update the Gosling spec for the given dataset_id
         pass
         # return view.save("gosling.json")
 
     def delete(self, dataset_id):
+        """
+        Not implemented.
+        """
         # Implement your logic to delete the Gosling spec for the given dataset_id
         pass
 
     def put(self, dataset_id):
+        """
+        Not implemented.
+        """
         # Implement your logic to replace the Gosling spec for the given dataset_id
         pass

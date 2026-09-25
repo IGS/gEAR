@@ -1,14 +1,19 @@
 #!/opt/bin/python3
 '''
-Given a dataset's ID, this allows for the download of that dataset's tarball
-or H5AD file.
+Given a dataset and projection ID, downloads the projection output (coefficients,
+plus p-values when present) as a zip file.
 
+Like download_source_file.cgi, the output is only served when the dataset is marked
+downloadable or the requester owns it (session_id parameter or gear_session_id cookie).
+Errors return a plain-text message with HTTP 400, 403 or 404.
 '''
 
 import cgi
 import io
+import os
 import sys
 import zipfile
+from http.cookies import SimpleCookie
 from pathlib import Path
 
 lib_path = Path(__file__).resolve().parents[2].joinpath('lib')
@@ -17,6 +22,18 @@ import geardb
 from werkzeug.utils import secure_filename
 
 PROJECTION_DATASET_DIR = (Path(__file__).resolve().parent.parent / 'projections' / 'by_dataset').resolve()
+
+def get_request_session_id(form):
+    """
+    Return the requester's session ID from the session_id parameter, falling back to the
+    gear_session_id cookie (download links opened in the browser don't pass session_id).
+    """
+    session_id = form.getfirst('session_id') or ""
+    if not session_id:
+        cookie = SimpleCookie(os.environ.get("HTTP_COOKIE", ""))
+        if "gear_session_id" in cookie:
+            session_id = cookie["gear_session_id"].value
+    return secure_filename(session_id)
 
 def main():
     form = cgi.FieldStorage()
@@ -40,6 +57,13 @@ def main():
         if not dataset:
             raise FileNotFoundError(f"Dataset not found for the provided dataset ID {dataset_id}")
         share_id = dataset.share_id
+
+    # Honor the dataset's "Is downloadable" setting; the owner can always download
+    if not dataset.is_downloadable:
+        session_id = get_request_session_id(form)
+        user = geardb.get_user_from_session_id(session_id) if session_id else None
+        if user is None or user.id != dataset.owner_id:
+            raise PermissionError("This dataset is not available for download.")
 
     coeff_path = (PROJECTION_DATASET_DIR / dataset_id / f"{projection_id}.csv").resolve()
     pval_path = (PROJECTION_DATASET_DIR / dataset_id / f"{projection_id}_pval.csv").resolve()
@@ -65,7 +89,7 @@ def main():
 
     # Download the zip
     print("Content-type: application/octet-stream")
-    print(f"Content-Disposition: attachment; filename={projection_id}.zip")
+    print(f"Content-Disposition: attachment; filename={projection_id}.projection.zip")
     print()
     sys.stdout.flush()
     # Stream the buffer to stdout
@@ -78,5 +102,20 @@ def main():
 
 
 
+def print_error(status, message):
+    """Print a plain-text error response with the given HTTP status (before any other headers)."""
+    print(f"Status: {status}")
+    print("Content-Type: text/plain")
+    print()
+    print(message)
+
 if __name__ == '__main__':
-    main()
+    # These are raised before any headers are printed, so a proper status can still be sent
+    try:
+        main()
+    except PermissionError as e:
+        print_error("403 Forbidden", str(e))
+    except FileNotFoundError as e:
+        print_error("404 Not Found", str(e))
+    except ValueError as e:
+        print_error("400 Bad Request", str(e))

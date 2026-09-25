@@ -17,7 +17,7 @@ The class attribute of each element is the key to linking that portion of the im
 
     <rect class="24h_treated" height="144.72" width="46.639999" x="264.34" y="280.26999" \>
 
-Then your dataset should have an observation column called "24h_treated".  These must match exactly.  Since this colorization is based on the class names, it means multiple elements in the SVG can have the same class name, colorizing them all together.
+Then your dataset should have an observation (a sample, i.e. a row of the observations table) named "24h_treated".  These must match exactly.  Since this colorization is based on the class names, it means multiple elements in the SVG can have the same class name, colorizing them all together.
 
 #### Required SVG elements/attributes
 
@@ -36,4 +36,6 @@ Usually each element in the SVG is an experimental condition or single cell ID. 
  - Deiter3--10
  - Deiter3--mean
 
-The interface sees the label before the -- symbol (Deiter3) and then calculates the mean of all those image elements which have that base name.
+For the `--mean` element to be colored, the dataset needs a `cell_type` observation column: gEAR computes the mean expression of all observations with each cell type and makes it available under the name `<cell_type>--mean` (here `Deiter3--mean`). The individual `Deiter3--1` ... elements are colored by the observations with those exact names.
+
+The SVG file is attached to a dataset by the gEAR team (it is stored as `www/datasets_uploaded/<dataset_id>.svg`); there is no upload control for it. See also [SVG (anatomical image) displays](../wiki/gEARWiki.md#svg-anatomical-image-displays) in the user guide.

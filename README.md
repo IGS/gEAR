@@ -8,7 +8,7 @@ Other things to include:
 - **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
 - **Production / Demo instances**
   - [UMgEAR](https://umgear.org) - Portal for hearing research
-  - [NeMO Analytics](nemoanalytics.org) - Portal for brain research
+  - [NeMO Analytics](https://nemoanalytics.org) - Portal for brain research
   - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
   - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
 
@@ -26,7 +26,7 @@ For detailed setup instructions, see:
 
 ## Usage
 
-To learn how to use the software you can go to any existing portal and click the documentation link at the top, which will take you to a page like [this one](https://umgear.org/manual.html).  It has walk-through slides and YouTube videos for most topics.
+To learn how to use the software, see the user documentation in the [gEAR wiki](https://github.com/IGS/gEAR/wiki) (source in [docs/wiki](docs/wiki/gEARWiki.md)), which is also linked from the Help item in every portal's navigation panel. Video guides for the main tools are on the portal's home page (My Workspace).
 
 ## Developer Documentation
 
@@ -43,7 +43,7 @@ For developers and team members working on gEAR:
   - Component-specific guides (MySQL, Apache, Python, R, RabbitMQ)
   - Docker development environment
 
-- **[Utility Scripts](docs/developer/scripts/README.md)** - Documentation for 105+ scripts in `/bin`
+- **[Utility Scripts](docs/misc/scripts/README.md)** - Documentation for the 121 scripts in `/bin`
   - Data conversion and format scripts
   - H5AD manipulation tools
   - Database loading scripts
@@ -53,7 +53,10 @@ For developers and team members working on gEAR:
 - **[Microservices](docs/developer/services/README.md)** - Service documentation
   - ProjectR service (matrix projection)
   - Spatial panel service
-  - RabbitMQ consumers
+  - RabbitMQ consumers (dataset upload, spatial upload, Gosling track upload, ProjectR)
+  - Plugins
+
+- **[Documentation index](docs/README.md)** - Map of all documentation (developer, analyst, wiki, misc)
 
 ## Known issues
 

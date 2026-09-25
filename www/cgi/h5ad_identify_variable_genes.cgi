@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+h5ad_identify_variable_genes.cgi - Normalize, log-transform and flag highly variable genes for an analysis.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, norm_counts_per_cell, flavor, n_top_genes, min_mean,
+       max_mean, min_dispersion, regress_out, scale_unit_variance, save_dataset (0/1).
+Output: JSON {success, n_obs, n_genes, top_genes}; writes highly-variable-genes PNG.
 """
 
 import cgi
@@ -27,10 +31,10 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
     result = {"success": 0, "top_genes":""}
 
@@ -61,15 +65,15 @@ def main():
         print(json.dumps(result))
         return
 
-    norm_counts_per_cell = float(form.getvalue('norm_counts_per_cell'))
-    flavor = form.getvalue('flavor')
-    n_top_genes = form.getvalue('n_top_genes', None)
-    min_mean = float(form.getvalue('min_mean'))
-    max_mean = float(form.getvalue('max_mean'))
-    min_dispersion = float(form.getvalue('min_dispersion'))
-    regress_out = form.getvalue('regress_out')
-    scale_unit_variance = form.getvalue('scale_unit_variance')
-    save_dataset = int(form.getvalue('save_dataset'))
+    norm_counts_per_cell = float(form.getfirst('norm_counts_per_cell'))
+    flavor = form.getfirst('flavor')
+    n_top_genes = form.getfirst('n_top_genes', None)
+    min_mean = float(form.getfirst('min_mean'))
+    max_mean = float(form.getfirst('max_mean'))
+    min_dispersion = float(form.getfirst('min_dispersion'))
+    regress_out = form.getfirst('regress_out')
+    scale_unit_variance = form.getfirst('scale_unit_variance')
+    save_dataset = int(form.getfirst('save_dataset'))
 
     adata = ana.get_adata()
 

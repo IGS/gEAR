@@ -1,3 +1,10 @@
+"""
+panel_common.py - Holoviz Panel viewer classes for spatial datasets.
+
+Defines BaseSpatialViewer and its condensed and expanded subclasses, served by
+panel_app.py and panel_app_expanded.py.
+"""
+
 import json
 import traceback
 

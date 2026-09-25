@@ -1,10 +1,33 @@
 # job_coordination.py - RabbitMQ consumer job-lock/retry/logging helpers.
 
+"""
+job_coordination.py - RabbitMQ consumer job-lock, retry, and logging helpers.
+"""
+
 import fcntl
 import os
 import typing
 from datetime import datetime
 from pathlib import Path
+
+
+class UploadCancelledError(Exception):
+    """Raised when an upload's staging directory disappears mid-processing (the user deleted the upload)."""
+    pass
+
+
+def raise_if_upload_deleted(staging_dir: "str | Path") -> None:
+    """
+    Raise UploadCancelledError if an upload's staging directory no longer exists.
+
+    delete_upload_in_progress.cgi removes the staging directory without telling the worker, so
+    processing code calls this at progress points (and before extracting each archive entry,
+    since extraction would otherwise recreate the directory) to stop a deleted upload early.
+    """
+    if not Path(staging_dir).is_dir():
+        raise UploadCancelledError(
+            f"The upload was deleted (staging directory {staging_dir} no longer exists); processing stopped."
+        )
 
 
 def log_line(fh: typing.TextIO, message: str) -> None:

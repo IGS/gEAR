@@ -1,3 +1,9 @@
+"""
+svg_data.py - Provide expression values used to color SVG images.
+
+Serves /plot/<dataset_id>/svg in www/api/api.py.
+"""
+
 import os
 import sys
 
@@ -22,6 +28,11 @@ class SvgData(Resource):
         SVG data
     """
     def get(self, dataset_id):
+        """
+        Return a gene's expression values and min/max score ranges used to color the dataset's SVG.
+
+        Query params: gene (required), projection_id, expression_min_clip, vmin, vmax.
+        """
         gene_symbol = request.args.get('gene', None)
         projection_id = request.args.get('projection_id', None)    # projection id of csv output
         expression_min_clip = request.args.get('expression_min_clip', None)  # minimum expression value to clip to, if applicable

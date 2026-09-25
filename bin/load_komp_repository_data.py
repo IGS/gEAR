@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 
 """
+load_komp_repository_data.py - Load gene synonyms and external links scraped from the KOMP repository.
 
+Reads komp_repository_data.p (a pickle written by fetch_komp_repository_data.py) and, for each
+gene symbol already in the gene table, adds its KOMP synonyms to gene_symbol as non-primary
+symbols and its MGI, IGTC, IMSR, BioGPS and GEO links to gene_urls. The gene_urls table is not
+defined in create_schema.sql, and nothing on the website reads it. Reads database settings from
+../gear.ini, so run it from bin/.
 """
 
 import argparse

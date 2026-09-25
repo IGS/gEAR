@@ -21,8 +21,8 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_name = form.getvalue('layout_name')
+    session_id = form.getfirst('session_id')
+    layout_name = form.getfirst('layout_name')
 
     user = geardb.get_user_from_session_id(session_id)
 

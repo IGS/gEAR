@@ -797,7 +797,7 @@
                         <p class="format-description">
                           If a UCSC track hub 'hub.txt' file is linked, it and its associated
                           metadata and track files will be cloned to the server.  Currently,
-                          only BigBed and BigWig files are supported.
+                          BigBed, BigWig, Hi-C and VCF files are supported (Hi-C and VCF are not available for human assemblies).
                         </p>
                         <p class="format-description">
                           Track hub information is converted into a spec that can be read in by the
@@ -1256,7 +1256,7 @@ Currently Gosling only supports single-organism tracks">
     </div>
 
     <template id="cosmx-spatial-reqs">
-      A tar.gz file containing the following files with these standarized names:
+      A .tar or .tar.gz file containing the following files with these standarized names:
       <ul>
         <li>(Required) exprMat_file.csv</li>
         <li>(Required) metadata_file.csv</li>
@@ -1272,7 +1272,7 @@ Currently Gosling only supports single-organism tracks">
     </template>
 
     <template id="curio-spatial-reqs">
-      A tar.gz file containing the following files with these standarized names:
+      A .tar or .tar.gz file containing the following files with these standarized names:
       <ul>
           <li>(Required) 'anndata.h5ad': Counts and metadata file.</li>
           <li>'cluster_assignment.txt': Cluster assignment file.</li>
@@ -1285,7 +1285,7 @@ Currently Gosling only supports single-organism tracks">
     </template>
 
     <template id="geomx-spatial-reqs">
-      A tar.gz file containing the following files with these standarized names:
+      A .tar or .tar.gz file containing the following files with these standarized names:
 
       <ul>
         <li>(Required) 'xlsx' file with information.</li>
@@ -1304,7 +1304,7 @@ Currently Gosling only supports single-organism tracks">
     </template>
 
     <template id="visium-spatial-reqs">
-      A tar.gz file containing the following files with these standardized names in this directory structure:
+      A .tar or .tar.gz file containing the following files with these standardized names in this directory structure:
 
       <ul>
           <li>(Required) 'filtered_feature_bc_matrix.h5': Counts and metadata file.</li>
@@ -1326,7 +1326,7 @@ Currently Gosling only supports single-organism tracks">
     </template>
 
     <template id="visiumhd-spatial-reqs">
-      A tar.gz file containing the following files with these standardized names in this directory structure:
+      A .tar or .tar.gz file containing the following files with these standardized names in this directory structure:
 
       <ul>
           <li>(Required) 'binned_outputs/square_008um/filtered_feature_bc_matrix.h5': Counts and metadata file.</li>
@@ -1350,7 +1350,7 @@ Currently Gosling only supports single-organism tracks">
     </template>
 
     <template id="xenium-spatial-reqs">
-      A tar.gz file containing the following files with these standardized names in this directory structure:
+      A .tar or .tar.gz file containing the following files with these standardized names in this directory structure:
 
       <ul>
           <li>(Required) 'experiment.xenium': File containing specifications.</li>

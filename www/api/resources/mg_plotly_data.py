@@ -1,3 +1,10 @@
+"""
+mg_plotly_data.py - Generate multigene Plotly charts for a dataset.
+
+Serves /plot/<dataset_id>/mg_plotly in www/api/api.py. Supports dotplot,
+heatmap, mg_violin, volcano, and quadrant plots.
+"""
+
 import base64
 import json
 import sys  # for debug prints
@@ -83,6 +90,17 @@ class MGPlotlyData(Resource):
 
     @catch_memory_error()
     def post(self, dataset_id):
+        """
+        Build a multigene Plotly figure from the request options.
+
+        Main request body keys: plot_type, gene_symbols, analysis, obs_filters,
+        primary_col, secondary_col, sort_order, colorscale, plus plot-type-specific
+        options (heatmap clustering, volcano/quadrant comparison conditions and cutoffs).
+
+        Returns:
+            dict: "success" and "message", plus "plot_json" (Plotly figure) or, when
+            return_image is set, a base64 "image" and "image_format".
+        """
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         req = request.get_json()

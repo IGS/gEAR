@@ -9,6 +9,14 @@
 
 # ! This will not wipe the layout_displays table, so if you run this script multiple times, it will create duplicate records !
 
+"""
+convert_layout_member_datasets_to_displays.py - One-off migration of dataset collection members to displays.
+
+Converts the old dataset-based layout_members rows into display-based layout_displays rows,
+using each dataset's default single-gene and multi-gene displays. See the comments above
+for the required setup; running it twice creates duplicate rows.
+"""
+
 import sys
 
 # This resolves some "no localization support" error

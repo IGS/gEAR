@@ -31,11 +31,18 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_share_id = form.getvalue('layout_share_id')
+    session_id = form.getfirst('session_id')
+    layout_share_id = form.getfirst('layout_share_id')
 
     user = geardb.get_user_from_session_id(session_id)
     layout = geardb.get_layout_by_share_id(layout_share_id)
+
+    if user is None or layout is None:
+        error = "Not able to remove layout. User must be logged in." if user is None else "Not able to remove layout. Layout not found."
+        print(json.dumps({'success': 0, 'error': error}))
+        cursor.close()
+        cnx.close()
+        return
 
     # Does user own the dataset ...
     owns_layout = check_layout_ownership(cursor, user.id, layout.id)
@@ -58,6 +65,9 @@ def main():
 
 
 def check_layout_ownership(cursor, current_user_id, layout_id):
+    """
+    Return True if the user owns the given layout.
+    """
     qry = """
        SELECT l.id, l.user_id
        FROM layout l

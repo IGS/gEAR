@@ -1,3 +1,9 @@
+"""
+mg_plotting.py - Plotly figure generation for multi-gene expression displays.
+
+Builds dot plots, heatmaps (with optional dendrograms and cluster bars), quadrant,
+violin and volcano plots, along with the data preparation helpers they rely on.
+"""
 
 import sys
 from functools import partial
@@ -220,6 +226,25 @@ def create_floating_dot_legend(fig: go.Figure):
 ### Heatmap fxns
 
 def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start_pos: float, flip_axes: bool=False, pivot_cols=None, cluster_obs=False, obs_index_col=None):
+    """
+    Add one single-row categorical heatmap ("clusterbar") per field to a heatmap figure.
+
+    Each bar is aligned to the main heatmap's observation axis and gets its own discrete
+    colorscale and colorbar legend. Updates 'fig' inplace.
+
+    Args:
+        fig (go.Figure): Heatmap figure to add the clusterbars to.
+        obs_columns (pd.MultiIndex): Observation columns of the pivoted heatmap dataframe.
+        all_categories (list): Obs fields to draw clusterbars for; each must be a level of obs_columns.
+        bar_start_pos (float): Gene-axis position of the first clusterbar.
+        flip_axes (bool, optional): If True, draw bars vertically for a flipped heatmap. Defaults to False.
+        pivot_cols (optional): Unused.
+        cluster_obs (bool, optional): Whether observations were clustered, which changes axis labels. Defaults to False.
+        obs_index_col (str, optional): If set, the heatmap is per-observation and bars use integer positions.
+
+    Raises:
+        PlotError: If a clusterbar field is not a level of obs_columns.
+    """
     curr_bar_pos = bar_start_pos
     curr_legend_pos = 1.2
 
@@ -306,6 +331,18 @@ def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start
         curr_legend_pos += 0.25  # Move to the next legend position
 
 def add_left_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=None):
+    """
+    Add a right-facing dendrogram of the rows of 'data' on the left side of the heatmap.
+
+    Uses the x2/y2 axes. Updates 'fig' inplace.
+
+    Args:
+        fig (go.Figure): Heatmap figure to add the dendrogram to.
+        data (array-like): 2D values whose rows are clustered.
+        distfun (callable): Distance function passed to ff.create_dendrogram.
+        dendro_domain (dict, optional): Domains as returned under "dendro" by calculate_x_domains
+            and calculate_y_domains, keyed by "x"/"y" then "left". Defaults are used if missing.
+    """
     dendro = ff.create_dendrogram(data, orientation='right', distfun=distfun)
 
     # Calculate the internal coordinate limits
@@ -339,6 +376,18 @@ def add_left_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=Non
     )
 
 def add_top_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=None):
+    """
+    Add a downward-facing dendrogram of the rows of 'data' above the heatmap.
+
+    Uses the x3/y3 axes. Updates 'fig' inplace.
+
+    Args:
+        fig (go.Figure): Heatmap figure to add the dendrogram to.
+        data (array-like): 2D values whose rows are clustered.
+        distfun (callable): Distance function passed to ff.create_dendrogram.
+        dendro_domain (dict, optional): Domains as returned under "dendro" by calculate_x_domains
+            and calculate_y_domains, keyed by "x"/"y" then "top". Defaults are used if missing.
+    """
     dendro = ff.create_dendrogram(data, orientation='bottom', distfun=distfun)
 
     num_leaves = len(data)
@@ -370,6 +419,19 @@ def add_top_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=None
     )
 
 def build_multicategory_obs_labels(obs_columns):
+    """
+    Convert observation columns into Plotly axis labels.
+
+    A MultiIndex becomes a multicategory axis (a list of per-level lists); since Plotly
+    supports at most two levels, levels after the first are joined with ";" when there
+    are more than two. Any other index becomes a flat list.
+
+    Args:
+        obs_columns (pd.Index | pd.MultiIndex): Observation columns of the pivoted heatmap dataframe.
+
+    Returns:
+        list: Flat list of labels, or a list of two (or fewer) label lists for a multicategory axis.
+    """
     obs_groups = obs_columns
     if isinstance(obs_columns, pd.MultiIndex):
         # Attempt to make this a multicategory axis of 2 levels (which is the plotly max)
@@ -389,6 +451,17 @@ def build_multicategory_obs_labels(obs_columns):
     return obs_groups
 
 def calculate_x_domains(show_dendrogram=True, gene_domain_ratio=1.0):
+    """
+    Calculate horizontal paper-coordinate domains for the heatmap and its dendrograms.
+
+    Args:
+        show_dendrogram (bool, optional): Whether space is reserved for a left dendrogram. Defaults to True.
+        gene_domain_ratio (float, optional): Fraction of the heatmap width occupied by genes
+            (versus clusterbars), used to size the top dendrogram. Defaults to 1.0.
+
+    Returns:
+        dict: {"heatmap": [left, right], "dendro": {"left": [left, right], "top": [left, right]}}.
+    """
     # Fixed heights in normalized paper units (0 to 1)
     dendro_width = 0.18 if show_dendrogram else 0
 
@@ -411,6 +484,17 @@ def calculate_x_domains(show_dendrogram=True, gene_domain_ratio=1.0):
     }
 
 def calculate_y_domains(show_dendrogram=True, gene_domain_ratio=1.0):
+    """
+    Calculate vertical paper-coordinate domains for the heatmap and its dendrograms.
+
+    Args:
+        show_dendrogram (bool, optional): Whether space is reserved for a top dendrogram. Defaults to True.
+        gene_domain_ratio (float, optional): Fraction of the heatmap height occupied by genes
+            (versus clusterbars), used to size the left dendrogram. Defaults to 1.0.
+
+    Returns:
+        dict: {"heatmap": [bottom, top], "dendro": {"left": [bottom, top], "top": [bottom, top]}}.
+    """
     # Fixed heights in normalized paper units (0 to 1)
     dendro_height = 0.18 if show_dendrogram else 0
 
@@ -438,6 +522,39 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
                     title:str|None=None, hide_obs_labels:bool=False, hide_gene_labels:bool=False,
                     obs_index_col:str|None=None,
                     ) -> go.Figure:
+    """
+    Create a gene-by-observation expression heatmap, with optional dendrograms and clusterbars.
+
+    Expression values are log2-transformed (after adding LOG_COUNT_ADJUSTER) unless already
+    log10, then pivoted so genes form one axis and groupby/clusterbar categories the other.
+    Note that df["value"] is overwritten with the transformed values.
+
+    Args:
+        df (pd.DataFrame): Long-form dataframe with "gene_symbol", "value" and any groupby or clusterbar columns.
+        groupby_filters (list, optional): Obs fields that define the observation columns.
+        clusterbar_fields (list, optional): Obs fields to draw as clusterbars alongside the heatmap.
+        is_log10 (bool, optional): If True, values are already log10 and are not transformed. Defaults to False.
+        cluster_obs (bool, optional): Cluster observations and draw their dendrogram. Defaults to False.
+        cluster_genes (bool, optional): Cluster genes and draw their dendrogram. Defaults to False.
+        flip_axes (bool, optional): Put genes on the x-axis instead of the y-axis. Defaults to False.
+        center_around_zero (bool, optional): Center the colorscale at zero. Defaults to False.
+        distance_metric (str, optional): scipy pdist metric used for clustering. Defaults to "euclidean".
+        colorscale (str, optional): Plotly colorscale name; if empty, "RdYlBu" or "Reds" is chosen
+            based on center_around_zero. Defaults to "cividis".
+        reverse_colorscale (bool, optional): Reverse the colorscale. Defaults to False.
+        title (str, optional): Plot title; defaults to a log2/log10 expression title.
+        hide_obs_labels (bool, optional): Hide observation axis tick labels. Defaults to False.
+        hide_gene_labels (bool, optional): Hide gene axis tick labels. Defaults to False.
+        obs_index_col (str, optional): Column that uniquely identifies observations, to plot each
+            observation individually instead of averaging within groups.
+
+    Returns:
+        go.Figure: The heatmap figure.
+
+    Raises:
+        ValueError: If distance_metric is not a valid pdist metric.
+        PlotError: If a clusterbar field is not among the heatmap columns.
+    """
 
     # df is long form
     # columns include:
@@ -1481,7 +1598,7 @@ def create_dataframe_gene_mask(df, gene_symbols):
         # Note to user which genes were not found in the dataset
         genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
         if genes_not_present:
-            success = 2,
+            success = 2
             message_list.append('<li>One or more genes were not found in the dataset nor could be mapped: {}</li>'.format(', '.join(genes_not_present)))
         message = "\n".join(message_list)
         return gene_filter, success, message
@@ -1545,6 +1662,9 @@ def create_composite_index_column(df, columns):
     return df[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
 
 def get_categorical_palette(index):
+    """
+    Return a Colorcet Glasbey categorical palette, cycling through four palettes by index.
+    """
     # Cycle through Colorcet categorical palettes
     palettes = [cc.glasbey_dark, cc.glasbey_cool, cc.glasbey_warm, cc.glasbey_hv]
     return palettes[index % len(palettes)]

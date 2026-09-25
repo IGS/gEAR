@@ -41,10 +41,14 @@ def main():
 
     filename = form['dataset_file'].filename
 
-    if filename.endswith('.tar.gz'):
+    # Lowercase the extension so later steps (processing, finalize) can find the file
+    #  by a fixed name regardless of how the user's file was named (e.g. .RDS, .XLSX)
+    lower_filename = filename.lower()
+
+    if lower_filename.endswith('.tar.gz') or lower_filename.endswith('.tgz'):
         file_extension = 'tar.gz'
     else:
-        file_extension = secure_filename(filename.split('.')[-1])
+        file_extension = secure_filename(lower_filename.split('.')[-1])
 
     if not file_extension:
         result['message'] = 'Invalid dataset file name.'
@@ -67,28 +71,31 @@ def main():
 
     # formats can be h5ad, rdata, excel, or mex_3tab
     if dataset_format == 'mex_3tab':
-        if not filename.endswith('tar.gz') and not filename.endswith('zip'):
-            result['message'] = 'Invalid file extension for MEX 3-tab format. Expected .tar.gz or .zip'
+        if file_extension not in ('tar.gz', 'tar', 'zip'):
+            result['message'] = 'Invalid file extension for MEX 3-tab format. Expected .tar, .tar.gz or .zip'
             return result
 
     if dataset_format == 'excel':
-        if not filename.endswith('xlsx') and not filename.endswith('xls'):
-            result['message'] = 'Invalid file extension for Excel format. Expected .xlsx or .xls'
+        if file_extension == 'xls':
+            result['message'] = 'Legacy .xls files are not supported. Please re-save the file as .xlsx and upload again.'
+            return result
+        if file_extension != 'xlsx':
+            result['message'] = 'Invalid file extension for Excel format. Expected .xlsx'
             return result
 
     if dataset_format == "h5ad":
-        if not filename.endswith('h5ad'):
+        if file_extension != 'h5ad':
             result['message'] = 'Invalid file extension for H5AD format. Expected .h5ad'
             return result
 
     if dataset_format == "rds":
-        if not filename.lower().endswith('rds'):
+        if file_extension != 'rds':
             result['message'] = 'Invalid file extension for RDS format. Expected .rds, .Rds, or .RDS'
             return result
 
     if dataset_format == 'spatial':
-        if not filename.endswith('tar.gz'):
-            result['message'] = 'Invalid file extension for Spatial format. Expected .tar.gz'
+        if file_extension not in ('tar.gz', 'tar'):
+            result['message'] = 'Invalid file extension for Spatial format. Expected .tar or .tar.gz'
             return result
 
         from gear.spatialhandler import SPATIALTYPE2CLASS

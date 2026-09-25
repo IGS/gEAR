@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+h5ad_find_marker_genes.cgi - Rank marker genes per cluster (scanpy rank_genes_groups) for an analysis.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, n_genes, compute_marker_genes ('true' to recompute and plot).
+Output: JSON {success, table: {columns, rows}, group_labels: [{group_label, num_cells, genes}], cluster_label}.
 """
 
 import cgi
@@ -29,12 +32,12 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
-    n_genes = int(form.getvalue('n_genes'))
-    compute_marker_genes = form.getvalue('compute_marker_genes')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
+    n_genes = int(form.getfirst('n_genes'))
+    compute_marker_genes = form.getfirst('compute_marker_genes')
     result = {"success": 0}
 
     ds = geardb.get_dataset_by_id(dataset_id)

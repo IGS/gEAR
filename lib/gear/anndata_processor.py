@@ -16,6 +16,7 @@ from pathlib import Path
 import anndata
 import geardb
 import pandas as pd
+import scanpy as sc
 from gear.primary_analysis import (
     PrimaryAnalysisProcessingError,
     add_primary_analysis_to_dataset,
@@ -24,6 +25,7 @@ from gear.utils.gene_mapping import (
     map_gene_symbols_via_mygene,
     update_var_with_ensembl_ids,
 )
+from gear.utils.job_coordination import UploadCancelledError, raise_if_upload_deleted
 from gear.utils.obs import (
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
@@ -77,6 +79,7 @@ def package_content_type(filenames: list[str]) -> str | None:
         matrix.mtx
         barcodes.tsv
         genes.tsv
+        (or matrix.mtx.gz, barcodes.tsv.gz, features.tsv.gz)
 
         threetab:
         expression.tab
@@ -93,7 +96,12 @@ def package_content_type(filenames: list[str]) -> str | None:
         if 'expression.tab' in filenames and 'genes.tab' in filenames and 'observations.tab' in filenames:
             return 'threetab'
 
-        if 'matrix.mtx' in filenames and 'barcodes.tsv' in filenames and 'genes.tsv' in filenames:
+        # MEX files may sit inside a folder in the archive (e.g. filtered_feature_bc_matrix/),
+        #  and may be the legacy uncompressed set or the gzipped Cell Ranger v3+ set
+        basenames = {Path(f).name for f in filenames}
+        if {'matrix.mtx', 'barcodes.tsv', 'genes.tsv'} <= basenames:
+            return 'mex'
+        if {'matrix.mtx.gz', 'barcodes.tsv.gz', 'features.tsv.gz'} <= basenames:
             return 'mex'
 
         if 'DataMTX.tab' in filenames and 'COLmeta.tab' in filenames and 'ROWmeta.tab' in filenames:
@@ -183,10 +191,17 @@ class AnndataProcessor:
             self._update_status("complete", message)
             return {"success": 1, "message": message}
 
+        except UploadCancelledError as e:
+            return {"success": 0, "cancelled": True, "message": str(e)}
         except ProcessingError as e:
+            # A write into a deleted staging directory can surface as a ProcessingError too
+            if not self.staging_area.is_dir():
+                return self._cancelled_result()
             self._update_status("error", str(e))
             return {"success": 0, "message": str(e)}
         except Exception as e:
+            if not self.staging_area.is_dir():
+                return self._cancelled_result()
             import traceback
             traceback.print_exc()
             message = (
@@ -266,30 +281,34 @@ class AnndataProcessor:
         return filepath
 
     def _process_mex_3tab(self) -> Path:
-        # Extract the file
-        compression_format = None
-        filename = self.staging_area / f"{self.share_uid}.tar.gz"
+        """Extract an uploaded MEX or 3-tab archive (.tar, .tar.gz or .zip) and process its contents."""
+        # store_expression_dataset.cgi saves the upload as <share_uid>.<extension>
+        filename = None
+        for extension in ("tar.gz", "tar", "zip"):
+            candidate = self.staging_area / f"{self.share_uid}.{extension}"
+            if candidate.exists():
+                filename = candidate
+                break
 
-        if filename.exists():
-            compression_format = 'tarball'
-        else:
-            filename = self.staging_area / f"{self.share_uid}.zip"
+        if filename is None:
+            raise ProcessingError(
+                "The uploaded archive for this dataset could not be found on the server. "
+                "This is usually a transient upload issue — please try re-uploading the dataset. "
+                f"If it keeps happening, contact the gEAR team and reference share ID {self.share_uid}."
+            )
 
-            if filename.exists():
-                compression_format = 'zip'
-            else:
-                raise ProcessingError(
-                    "The uploaded archive for this dataset could not be found on the server. "
-                    "This is usually a transient upload issue — please try re-uploading the dataset. "
-                    f"If it keeps happening, contact the gEAR team and reference share ID {self.share_uid}."
-                )
+        compression_format = 'zip' if filename.suffix == '.zip' else 'tarball'
 
         files_extracted = []
 
         if compression_format == 'tarball':
             try:
-                with tarfile.open(filename) as tf:
+                # "r:*" detects compression from the file contents, so both plain and gzipped
+                #  tarballs open regardless of the extension the user gave them
+                with tarfile.open(filename, "r:*") as tf:
                     for entry in tf:
+                        # Extraction recreates missing directories, so stop if the upload was deleted
+                        raise_if_upload_deleted(self.staging_area)
                         tf.extract(entry, path=self.staging_area)
 
                         # Nemo suffixes
@@ -310,14 +329,16 @@ class AnndataProcessor:
                             files_extracted.append(entry.name)
             except tarfile.ReadError:
                 raise ProcessingError(
-                    "The uploaded .tar.gz file could not be read — it may be corrupted or not a "
-                    "valid tar archive. Please verify the file and try re-uploading it."
+                    "The uploaded tar archive could not be read — it may be corrupted or not a "
+                    "valid .tar or .tar.gz file. Please verify the file and try re-uploading it."
                 )
 
         if compression_format == 'zip':
             try:
                 with zipfile.ZipFile(filename) as zf:
                     for entry in zf.infolist():
+                        # Extraction recreates missing directories, so stop if the upload was deleted
+                        raise_if_upload_deleted(self.staging_area)
                         zf.extract(entry, path=self.staging_area)
 
                         # Nemo suffixes
@@ -679,12 +700,39 @@ class AnndataProcessor:
         return genes_df
 
     def _process_mex(self) -> Path:
-        """Process MEX format (matrix.mtx, barcodes.tsv, genes.tsv)."""
-        raise ProcessingError(
-            f"MEX-format datasets are not yet supported by the uploader. Please convert your data "
-            f"to a supported format (H5AD, 3-tab, or Excel) and re-upload, or contact the gEAR "
-            f"team if you need MEX support and reference share ID {self.share_uid}."
-        )
+        """Process MEX format (matrix.mtx, barcodes.tsv, genes.tsv or the gzipped v3 equivalents)."""
+        self._update_progress(5, "Reading MEX files...")
+
+        # The files may be inside a folder within the archive
+        matrix_files = sorted(self.staging_area.rglob("matrix.mtx*"))
+        if not matrix_files:
+            raise ProcessingError(
+                "No matrix.mtx file found in your archive. Please include it and re-upload."
+            )
+        mex_dir = matrix_files[0].parent
+
+        try:
+            adata = sc.read_10x_mtx(mex_dir, var_names="gene_ids", cache=False)
+        except Exception as e:
+            raise ProcessingError(
+                f"Could not read the MEX files in your archive: {e}. Please check that matrix.mtx, "
+                "barcodes.tsv and genes.tsv (or matrix.mtx.gz, barcodes.tsv.gz and features.tsv.gz) "
+                "are valid Cell Ranger output files and re-upload."
+            )
+
+        # gEAR expects Ensembl IDs as the var index and a 'gene_symbol' column
+        adata.var = adata.var.rename(columns={"gene_symbols": "gene_symbol"})
+
+        self._update_progress(40, "Standardizing and flagging observation metadata...")
+        self._sanitize_and_flag_obs_columns(adata)
+
+        self._update_progress(50, "Writing H5AD file...")
+
+        h5ad_path = self.staging_area / f"{self.share_uid}.h5ad"
+        adata.write(h5ad_path, compression='gzip')
+
+        self._update_progress(65, "MEX processing complete.")
+        return h5ad_path
 
     def _read_expression_matrix_chunks(
         self, filepath: Path, chunk_size: int, total_rows: int
@@ -810,8 +858,17 @@ class AnndataProcessor:
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
 
+    def _cancelled_result(self) -> dict:
+        """Result returned when the upload was deleted while it was being processed."""
+        return {
+            "success": 0,
+            "cancelled": True,
+            "message": f"The upload was deleted (staging directory {self.staging_area} no longer exists); processing stopped.",
+        }
+
     def _update_progress(self, progress: int, message: str) -> None:
-        """Update progress and write status file."""
+        """Update progress and write status file; stops processing if the upload was deleted."""
+        raise_if_upload_deleted(self.staging_area)
         progress = max(0, min(100, progress))  # Clamp to 0-100
         self.status['progress'] = progress
         self.status['message'] = message
@@ -824,5 +881,7 @@ class AnndataProcessor:
         self._write_status_file()
 
     def _write_status_file(self) -> None:
-        """Write current status to status.json."""
+        """Write current status to status.json, unless the upload (staging directory) was deleted."""
+        if not self.staging_area.is_dir():
+            return
         write_status(self.status_file, self.status)

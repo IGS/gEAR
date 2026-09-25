@@ -1,3 +1,10 @@
+"""
+available_display_types.py - Determine which plot types can be drawn for a dataset.
+
+Serves /h5ad/<dataset_id>/availableDisplayTypes (single-gene) and
+/h5ad/<dataset_id>/mg_availableDisplayTypes (multigene) in www/api/api.py.
+"""
+
 import os
 
 import geardb
@@ -32,6 +39,12 @@ class MGAvailableDisplayTypes(Resource):
     """
 
     def post(self, dataset_id):
+        """
+        Return a dict of multigene display type names mapped to availability booleans.
+
+        Request body keys: dataset_id, session_id, analysis_id. Availability depends on
+        the number of categorical and numeric obs columns and the embeddings in obsm.
+        """
         req = request.get_json()
         dataset_id = req.get('dataset_id')
         session_id = req.get('session_id')
@@ -138,6 +151,12 @@ class AvailableDisplayTypes(Resource):
         Available display types
     """
     def post(self, dataset_id):
+        """
+        Return a dict of single-gene display type names mapped to availability booleans.
+
+        Request body keys: dataset_id, session_id, analysis_id. Availability depends on
+        obs column types, embeddings in obsm, and whether an uploaded SVG exists.
+        """
         req = request.get_json()
         dataset_id = req.get('dataset_id')
         session_id = req.get('session_id')

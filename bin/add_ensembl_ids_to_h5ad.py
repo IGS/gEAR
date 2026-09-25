@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 
 """
+add_ensembl_ids_to_h5ad.py - Re-index an H5AD file on Ensembl IDs, using its gene symbols.
+
+Assumes the var index holds gene symbols. Looks each one up in the gEAR gene table for the
+given organism and Ensembl release, drops genes that are not found, and writes a new H5AD
+indexed by Ensembl ID with a gene_symbol column. Where a symbol maps to several Ensembl
+IDs, the first is used. Reads database settings from ../gear.ini, so run it from bin/.
+
+Usage: add_ensembl_ids_to_h5ad.py -i in.h5ad -o out.h5ad -org <organism_id> -er <ensembl_release>
 """
 
 import argparse

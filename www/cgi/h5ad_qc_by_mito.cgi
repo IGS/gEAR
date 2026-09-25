@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+h5ad_qc_by_mito.cgi - QC cells by mitochondrial gene content and optionally filter them.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, genes_prefix (e.g. 'mt-'), filter_mito_perc,
+       filter_mito_count, save_dataset (0/1).
+Output: JSON {success, n_obs?, n_genes?}; writes violin/scatter QC PNGs.
 """
 
 import cgi, json
@@ -27,10 +31,10 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
     result = {"success": 0}
 
@@ -61,10 +65,10 @@ def main():
         print(json.dumps(result))
         return
 
-    genes_prefix = form.getvalue('genes_prefix')
-    filter_mito_perc = form.getvalue('filter_mito_perc')
-    filter_mito_count = form.getvalue('filter_mito_count')
-    save_dataset = int(form.getvalue('save_dataset'))
+    genes_prefix = form.getfirst('genes_prefix')
+    filter_mito_perc = form.getfirst('filter_mito_perc')
+    filter_mito_count = form.getfirst('filter_mito_count')
+    save_dataset = int(form.getfirst('save_dataset'))
 
     adata = ana.get_adata()
 

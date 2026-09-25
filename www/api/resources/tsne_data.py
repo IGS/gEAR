@@ -1,3 +1,10 @@
+"""
+tsne_data.py - Render static embedding (tSNE/UMAP/PCA) plots of gene expression.
+
+Serves /plot/<dataset_id>/tsne (single gene) and /plot/<dataset_id>/mg_tsne
+(multigene) in www/api/api.py.
+"""
+
 import base64
 import io
 import os
@@ -266,7 +273,8 @@ def get_colorblind_scale(n_colors: int) -> list[str]:
         list[str]: A list of hex color codes as strings.
     """
     cividis = plt.get_cmap("viridis")
-    colors = [cividis(i / (n_colors - 1)) for i in range(n_colors)]
+    # max() keeps a single category from dividing by zero
+    colors = [cividis(i / max(n_colors - 1, 1)) for i in range(n_colors)]
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
 
@@ -849,7 +857,7 @@ def generate_tsne_figure(
 
     try:
         basis = PLOT_TYPE_TO_BASIS[plot_type]
-    except ValueError:
+    except KeyError:
         return {"success": -1, "message": f"{plot_type} was not a valid plot type"}
 
     if marker_size:
@@ -918,11 +926,10 @@ def generate_tsne_figure(
         color_category = is_categorical(selected.obs[colorize_by])
         if color_category:
             color_idx_name = f"{colorize_by}_colors"
-            # colors provided by user through UI
-            if colors is not None and len(colors) > 2:
-                selected.uns[color_idx_name] = [
-                    colors[idx] for idx in selected.obs[colorize_by].cat.categories
-                ]
+            categories = selected.obs[colorize_by].cat.categories
+            # colors provided by user through UI (used only when every category has one)
+            if colors and all(category in colors for category in categories):
+                selected.uns[color_idx_name] = [colors[category] for category in categories]
             # color column provided by user in adata.obs
             elif color_idx_name in selected.obs:
                 grouped = selected.obs.groupby(
@@ -1180,7 +1187,16 @@ def generate_tsne_figure(
 
 
 class MGTSNEData(Resource):
+    """
+    Flask-RESTful resource for multigene embedding plots.
+    """
     def post(self, dataset_id):
+        """
+        Return a base64-encoded embedding plot for multiple genes.
+
+        Main request params: gene_symbols, analysis, projection_id, plot_type,
+        x_axis, y_axis, colorize_legend_by, obs_filters, plus styling options.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = multi_gene_parser.parse_args()
 
@@ -1224,7 +1240,16 @@ class MGTSNEData(Resource):
 
 
 class TSNEData(Resource):
+    """
+    Flask-RESTful resource for single-gene embedding plots.
+    """
     def post(self, dataset_id):
+        """
+        Return a base64-encoded embedding plot for one gene.
+
+        Main request params: gene_symbol, analysis, projection_id, plot_type, x_axis,
+        y_axis, colorize_legend_by, plot_by_group, obs_filters, plus styling options.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = single_gene_parser.parse_args()
         gene_symbol = args.get("gene_symbol", None)

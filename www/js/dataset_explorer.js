@@ -2748,6 +2748,12 @@ const submitSearch = async (page=1) => {
         // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
         clearResultsViews();
 
+        // The CGI reports bad input or a failed query as success 0 with a "problem" message
+        if (!data.success) {
+            createToast(data.problem || "Failed to search datasets");
+            return;
+        }
+
         processSearchResults(data);
         setupPagination(data.pagination);
     } catch (error) {
@@ -2829,13 +2835,19 @@ const updateDatasetCollectionButtons = (collection=null) => {
 
     // Add event to update the collection visibility on the server
     collectionVisibilityInput.addEventListener("change", async (event) => {
-        const visibility = event.target.checked;
+        let visibility = event.target.checked;
         try {
-            await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
+            const data = await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
+            if (!data?.success) {
+                throw new Error(data?.error || "Failed to update collection visibility");
+            }
             createToast("Collection visibility updated", "is-success");
         } catch (error) {
             logErrorInConsole(error);
-            createToast("Failed to update collection visibility");
+            createToast(error.message || "Failed to update collection visibility");
+            // Revert the checkbox so it matches what is stored on the server
+            visibility = !visibility;
+            event.target.checked = visibility;
         }
         // update label
         event.target.closest(".field").querySelector("label").textContent = visibility ? "Public collection" : "Private collection";
