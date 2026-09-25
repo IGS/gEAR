@@ -117,6 +117,7 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
 
         // clear the searched gene list input element
         document.getElementById('dropdown-gene-list-search-input').value = '';
+        showSearchNotFound(null);
         document.getElementById('dropdown-gene-list-selector-label').textContent = 'Quick search using Gene Lists';
 
         // and finally the related gene lists and genes
@@ -139,6 +140,7 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
     // Monitor key strokes after user types more than 2 characters in the dropdown-gene-list-search-input box
     document.getElementById('dropdown-gene-list-search-input').addEventListener('keyup', (event) => {
         const searchTerm = event.target.value;
+        showSearchNotFound(null);
 
         if (searchTerm.length === 0) {
             // clear the gene list
@@ -188,7 +190,22 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
                 }
             }
         }
+
+        if (listShareIdsFound.size === 0) {
+            showSearchNotFound(searchTerm);
+        }
     });
+}
+
+/**
+ * Shows (or hides, when searchTerm is null) the "no matches" message under the search box.
+ *
+ * @param {string|null} searchTerm - The search that found nothing, or null to hide the message.
+ */
+const showSearchNotFound = (searchTerm) => {
+    const message = document.getElementById('dropdown-gene-list-search-not-found');
+    message.textContent = searchTerm === null ? '' : `No gene lists match "${searchTerm}".`;
+    message.classList.toggle('is-hidden', searchTerm === null);
 }
 
 /**
@@ -308,6 +325,7 @@ const setActiveGeneCartCategory = (category) => {
     // clear the gene list
     document.getElementById('dropdown-content-genes').replaceChildren();
     document.getElementById('dropdown-gene-list-search-input').value = '';
+    showSearchNotFound(null);
 
     const geneListItemTemplate = document.querySelector('#tmpl-gene-list-item');
     let data = null;

@@ -84,6 +84,7 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
 
         // clear the patterns-manually-entered input element
         document.getElementById('dropdown-pattern-list-search-input').value = '';
+        showSearchNotFound(null);
         document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
 
         // and finally the related pattern lists and patterns
@@ -98,6 +99,7 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
     // Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
     document.getElementById('dropdown-pattern-list-search-input').addEventListener('keyup', (event) => {
         const searchTerm = event.target.value;
+        showSearchNotFound(null);
 
         if (searchTerm.length === 0) {
             // clear the gene list
@@ -129,6 +131,10 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
                     listShareIdsFound.add(cart.share_id);   // Keep track of duplicates
                 }
             }
+        }
+
+        if (listShareIdsFound.size === 0) {
+            showSearchNotFound(searchTerm);
         }
     });
 
@@ -309,12 +315,24 @@ export const fetchPatternsData = async (shareId=null) => {
 }
 
 /**
+ * Shows (or hides, when searchTerm is null) the "no matches" message under the search box.
+ *
+ * @param {string|null} searchTerm - The search that found nothing, or null to hide the message.
+ */
+const showSearchNotFound = (searchTerm) => {
+    const message = document.getElementById('dropdown-pattern-list-search-not-found');
+    message.textContent = searchTerm === null ? '' : `No patterns match "${searchTerm}".`;
+    message.classList.toggle('is-hidden', searchTerm === null);
+}
+
+/**
  * Sets the active pattern cart category and updates the pattern list accordingly.
  * @param {string} category - The category of the pattern cart.
  */
 const setActivePatternCartCategory = (category) => {
     // clear the pattern list
     document.getElementById('dropdown-pattern-list-search-input').value = '';
+    showSearchNotFound(null);
 
     const patternListItemTemplate = document.getElementById('tmpl-pattern-list-item');
     let data = null;

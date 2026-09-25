@@ -13,6 +13,17 @@ let currentUser = null;
 // This many characters will be included and then three dots will be appended
 const DatasetCollectionSelectorLabelMaxLength = 35;
 
+/**
+ * Shows (or hides, when searchTerm is null) the "no matches" message under the search box.
+ *
+ * @param {string|null} searchTerm - The search that found nothing, or null to hide the message.
+ */
+const showSearchNotFound = (searchTerm) => {
+    const message = document.getElementById('dropdown-dc-search-not-found');
+    message.textContent = searchTerm === null ? '' : `No dataset collections match "${searchTerm}".`;
+    message.classList.toggle('is-hidden', searchTerm === null);
+}
+
 // SAdkins - If I leave these global, then they are registered twice (once here and once in the entrypoint JS) leading to double event handling
 export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
 
@@ -64,6 +75,7 @@ export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
     // Add a click listener to the dancel button
     document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
         document.querySelector('#dropdown-dc-search-input').value = '';
+        showSearchNotFound(null);
         document.querySelector('#dropdown-content-dc').innerHTML = '';
         document.querySelector('#dropdown-dc').classList.remove('is-active');
     });
@@ -71,6 +83,7 @@ export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
     // Monitor key strokes after user types more than 2 characters in the search box
     document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
+        showSearchNotFound(null);
 
         if (search_term.length === 0) {
             document.querySelector('#dropdown-content-dc').innerHTML = '';
@@ -106,6 +119,10 @@ export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
                     createDatasetCollectionListItem(row, entry);
                 }
             }
+        }
+
+        if (listedShareIds.size === 0) {
+            showSearchNotFound(search_term);
         }
     });
 }
@@ -174,6 +191,7 @@ export const setActiveDCCategory = (category) => {
     // clear the dataset collection search input and content
     document.querySelector('#dropdown-content-dc').innerHTML = '';
     document.querySelector('#dropdown-dc-search-input').value = '';
+    showSearchNotFound(null);
 
     const dc_item_template = document.querySelector('#tmpl-dc');
     let data = null;
