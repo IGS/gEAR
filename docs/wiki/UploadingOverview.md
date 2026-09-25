@@ -43,6 +43,22 @@ Epigenome uploads have an extra "Build track hub" step; see [Epigenetic data (Go
 
 Uploads are saved as you go. When you return to the uploader, any unfinished uploads are listed under "Submissions in progress" with their share ID, status, dataset type and title. Click "View / resume" to continue where you left off, or "Delete" to discard the upload. To begin a different upload, click "Start" under "Or start a new submission".
 
+### If processing fails
+
+If the "Dataset processing" step stops with an error, the message says what went wrong. The most common problem is an archive (`.tar`, `.tar.gz` or `.zip`) that can't be extracted:
+
+- **"The uploaded archive appears to be incomplete"**: the file ends before all of its contents. This usually happens when the archive was still being written, or a copy or download was interrupted, before you uploaded it. The file on your computer may look the right size and still be cut short.
+- **"The uploaded archive could not be read"**: the file is damaged or isn't really an archive (for example, a file renamed to `.tar.gz`).
+
+Before uploading again, check that the archive opens completely on your own computer. On macOS or Linux, run one of these in a terminal:
+
+```bash
+tar -tf my_dataset.tar.gz     # for .tar or .tar.gz; lists every file, with no errors at the end
+unzip -t my_dataset.zip       # for .zip; should finish with "No errors detected"
+```
+
+If the check reports an error (for example "Unexpected EOF in archive" on Linux, or "Truncated input file" or "truncated gzip input" on macOS), re-create the archive from the original files, for example with `tar -czf my_dataset.tar.gz expression.tab genes.tab observations.tab`, and check it again. Then delete the failed submission under "Submissions in progress" and upload the new archive. If the archive checks out but processing still fails, [contact us](https://umgear.org/contact.html) with the share ID shown in the uploader.
+
 ### Direct H5AD Uploads
 
 gEAR supports uploads of H5AD datasets (those created using the Anndata structure).  If you plan to upload one of these, it is strongly recommended that the `Anndata.var` has unique identifiers as the DataFrame index, and gene symbol names in a "gene_symbol" column.  If gene symbols are in the index, we can infer Ensembl IDs based on what annotations are stored in our database. However, there is a chance Ensembl IDs may not be found for some gene symbols and they will be flagged with a generic identifier.
