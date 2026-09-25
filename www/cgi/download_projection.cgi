@@ -89,7 +89,7 @@ def main():
 
     # Download the zip
     print("Content-type: application/octet-stream")
-    print(f"Content-Disposition: attachment; filename={projection_id}.zip")
+    print(f"Content-Disposition: attachment; filename={projection_id}.projection.zip")
     print()
     sys.stdout.flush()
     # Stream the buffer to stdout

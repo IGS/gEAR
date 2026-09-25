@@ -2217,7 +2217,7 @@ paths:
               $ref: '#/components/schemas/Cgi1DownloadProjectionParams'
       responses:
         '200':
-          description: Zip archive (Content-Disposition attachment; filename=<projection_id>.zip).
+          description: Zip archive (Content-Disposition attachment; filename=<projection_id>.projection.zip).
           content:
             application/octet-stream:
               schema:

@@ -146,7 +146,7 @@ class TestDownloadProjection:
     def test_downloadable_served_to_anonymous(self, projection_output):
         result = self.run(share_id="open", projection_id=projection_output)
         assert result.status == 200
-        assert result.headers["content-disposition"] == f"attachment; filename={projection_output}.zip"
+        assert result.headers["content-disposition"] == f"attachment; filename={projection_output}.projection.zip"
         assert result.body[:2] == b"PK"
 
     @pytest.mark.parametrize("cookies, query", [
