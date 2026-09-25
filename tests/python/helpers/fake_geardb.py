@@ -157,6 +157,16 @@ def get_dataset_by_share_id(share_id, *args, **kwargs):
     return None
 
 
+class DatasetCollection:
+    """Returns no datasets; tests of search CGIs assert on the logged SQL instead."""
+
+    def __init__(self, *args, **kwargs):
+        self.datasets = []
+
+    def get_by_dataset_ids(self, ids=None, **kwargs):
+        return self.datasets
+
+
 def get_metadata_by_share_id(share_id):
     return _SPEC.get("metadata", {}).get(share_id)
 

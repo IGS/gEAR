@@ -91,3 +91,69 @@ def test_get_metadata_from_geo_unrecognised_id():
     # Neither GSE nor GSM: no lookup is attempted
     result = run_cgi("get_metadata_from_geo.cgi", query={"geo_id": "XYZ123"})
     assert result.json() == {}
+
+
+SEARCH_SCRIPTS = pytest.mark.parametrize("script", ["search_gene_carts.cgi", "search_datasets.cgi"])
+
+
+def match_queries(result):
+    return [e for e in result.logged("sql") if "MATCH(" in e["query"]]
+
+
+@SEARCH_SCRIPTS
+def test_search_text_is_converted_for_boolean_mode(script):
+    result = run_cgi(script, query={"search_terms": "Garcia-Añoveros)", "sort_by": "relevance"},
+                     fake_modules=USERHISTORY)
+    body = result.json()
+    assert body["success"] == 1, body
+    # search_gene_carts.cgi only runs its count query when the main query found something
+    main_query, *count_queries = match_queries(result)
+    for entry in (main_query, *count_queries):
+        assert "AGAINST(%s IN BOOLEAN MODE)" in entry["query"]
+        assert '"%s"' not in entry["query"]
+        assert "Garcia-Añoveros)" not in str(entry["params"])
+    # SELECT (relevance score) and WHERE both get the converted text
+    assert main_query["params"].count('"Garcia Añoveros"') == 2
+    for entry in count_queries:
+        assert entry["params"].count('"Garcia Añoveros"') == 1
+
+
+@SEARCH_SCRIPTS
+def test_punctuation_only_search_lists_without_matching(script):
+    result = run_cgi(script, query={"search_terms": "()", "sort_by": "relevance"}, fake_modules=USERHISTORY)
+    assert result.json()["success"] == 1
+    assert match_queries(result) == []
+    assert result.logged("sql")
+
+
+@SEARCH_SCRIPTS
+def test_failed_query_returns_one_json_problem(script):
+    result = run_cgi(script, query={"search_terms": "hair cell"}, fake_modules=USERHISTORY,
+                     db={"fail_sql": ["MATCH("]})
+    assert result.returncode == 0, result.stderr[-2000:]
+    body = result.json()     # exactly one JSON document
+    assert body["success"] == 0
+    assert body["problem"].startswith("The search could not be run")
+
+
+class TestGetDatasetListScopeSearch:
+    """get_dataset_list.cgi's legacy "scope" search uses the same boolean-mode conversion."""
+
+    def run(self, search_terms):
+        return run_cgi("get_dataset_list.cgi", db={"sessions": SESSIONS},
+                       query={"session_id": "owner", "scope": "others", "search_terms": search_terms})
+
+    def test_punctuated_terms_match_as_a_phrase(self):
+        result = self.run("Garcia-Añoveros)")
+        assert result.returncode == 0, result.stderr[-2000:]
+        assert result.json() == {"datasets": []}
+        (search,) = match_queries(result)
+        assert search["params"] == [1, '"Garcia Añoveros"', '"Garcia Añoveros"']
+        # Tags are still looked up by the terms as typed
+        assert result.logged("sql", "dataset_tag")[0]["params"] == ["Garcia-Añoveros)"]
+
+    def test_punctuation_only_lists_without_matching(self):
+        result = self.run("()")
+        assert result.returncode == 0, result.stderr[-2000:]
+        assert match_queries(result) == []
+        assert not result.logged("sql", "dataset_tag")

@@ -2748,6 +2748,12 @@ const submitSearch = async (page=1) => {
         // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
         clearResultsViews();
 
+        // The CGI reports bad input or a failed query as success 0 with a "problem" message
+        if (!data.success) {
+            createToast(data.problem || "Failed to search datasets");
+            return;
+        }
+
         processSearchResults(data);
         setupPagination(data.pagination);
     } catch (error) {

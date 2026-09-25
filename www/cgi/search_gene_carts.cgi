@@ -15,6 +15,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.userhistory import UserHistory
+from gear.utils.fulltext import to_boolean_mode_query
 
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 20
@@ -123,14 +124,18 @@ def main():
                                 )")
             qry_params.extend([user.id, user.id])
 
-    if search_terms:
-        selects.append('MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
-        wheres.append('MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE)')
+    # Punctuation is an operator in boolean mode (e.g. "-" excludes a word), so the user's text
+    #  is converted first; if nothing searchable is left, search as if no terms were given
+    fulltext_query = to_boolean_mode_query(' '.join(search_terms))
+
+    if fulltext_query:
+        selects.append('MATCH(gc.label, gc.ldesc) AGAINST(%s IN BOOLEAN MODE) as rscore')
+        wheres.append('MATCH(gc.label, gc.ldesc) AGAINST(%s IN BOOLEAN MODE)')
 
         # this is the only instance where a placeholder can be in the SELECT statement, so it will
         #  be the first qry param
-        qry_params.insert(0, ' '.join(search_terms))
-        qry_params.append(' '.join(search_terms))
+        qry_params.insert(0, fulltext_query)
+        qry_params.append(fulltext_query)
 
     if organism_ids:
         ## only numeric characters and the comma are allowed here
@@ -143,7 +148,7 @@ def main():
 
     if sort_by == 'relevance':
         # relevance can only be ordered if a search term was used
-        if search_terms:
+        if fulltext_query:
             orders_by.append("rscore DESC")
         else:
             orders_by.append("gc.date_added DESC")
@@ -181,7 +186,13 @@ def main():
     print(qry, file=sys.stderr)
     print(qry_params, file=sys.stderr)
 
-    cursor.execute(qry, qry_params)
+    try:
+        cursor.execute(qry, qry_params)
+    except Exception as e:
+        print(f"search_gene_carts.cgi: query failed: {e}", file=sys.stderr)
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "The search could not be run. Please try different search terms."}))
+        return
     rows = cursor.fetchall()
 
     result["pagination"] = {
@@ -224,10 +235,16 @@ def main():
             )
 
         # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
-        if search_terms:
+        if fulltext_query:
             qry_params.pop(0)
 
-        cursor.execute(qry_count, qry_params)
+        try:
+            cursor.execute(qry_count, qry_params)
+        except Exception as e:
+            print(f"search_gene_carts.cgi: count query failed: {e}", file=sys.stderr)
+            print('Content-Type: application/json\n\n')
+            print(json.dumps({**result, 'success': 0, 'problem': "The search could not be run. Please try different search terms."}))
+            return
 
         row = cursor.fetchone()
         total_results = 0

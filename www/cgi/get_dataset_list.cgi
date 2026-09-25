@@ -37,6 +37,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 
 import geardb
+from gear.utils.fulltext import to_boolean_mode_query
 
 def main():
     cnx = geardb.Connection()
@@ -49,9 +50,11 @@ def main():
     scope = form.getfirst('scope')
     search_terms = form.getfirst('search_terms')
 
-    # temporarily dealing with https://github.com/jorvis/gEAR/issues/350
-    if search_terms is not None:
-        search_terms = search_terms.translate(str.maketrans('','','+-/@'))
+    # Punctuation is an operator in boolean mode (see https://github.com/jorvis/gEAR/issues/350), so
+    #  convert the text first; if nothing searchable is left, list datasets as if no terms were given
+    fulltext_query = to_boolean_mode_query(search_terms)
+    if not fulltext_query:
+        search_terms = None
 
     permalink_id = form.getfirst('permalink_share_id')  # dataset permalink
     only_types_str = form.getfirst('only_types')
@@ -106,8 +109,8 @@ def main():
             search_term_qry = '''   AND MATCH(d.title, d.ldesc, d.geo_id) AGAINST( %s )
                 ORDER BY MATCH(d.title, d.ldesc) AGAINST(%s IN BOOLEAN MODE) DESC
             '''
-            qry_params.append(search_terms)
-            qry_params.append(search_terms)
+            qry_params.append(fulltext_query)
+            qry_params.append(fulltext_query)
 
         matching_dataset_ids = list()
         if scope == 'others':

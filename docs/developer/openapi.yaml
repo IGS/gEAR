@@ -3116,7 +3116,9 @@ paths:
                   description: Search scope
                 search_terms:
                   type: string
-                  description: Full-text terms (characters + - / @ are stripped)
+                  description: Full-text terms, converted by gear.utils.fulltext.to_boolean_mode_query (a term joined by
+                    punctuation matches as a phrase; text with no words lists as if no terms were given). Tags are
+                    matched by the whitespace-separated terms as typed.
                 only_types:
                   type: string
                   description: Comma-separated dtypes to keep
@@ -5913,7 +5915,8 @@ paths:
       summary: Search and filter datasets with paging
       description: Returns completed, non-removed datasets matching full-text terms and filters, or the datasets
         in one layout. Anonymous users see public datasets only; logged-in users default to public, own and shared
-        datasets. An invalid page/limit (non-numeric or < 1) returns success 0 with a `problem` message (HTTP 200).
+        datasets. An invalid page/limit (non-numeric or < 1), or a database error while searching, returns success 0
+        with a `problem` message (HTTP 200).
         Logs the search to user history when terms are given.
       requestBody:
         content:
@@ -5931,7 +5934,10 @@ paths:
                   description: Named list; other values return success 0.
                 search_terms:
                   type: string
-                  description: Space-separated terms (MySQL boolean full-text on title, ldesc, geo_id, pubmed_id).
+                  description: Space-separated terms (MySQL boolean full-text on title, ldesc, geo_id, pubmed_id), matching
+                    any term. Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
+                    by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), a trailing * is a prefix
+                    wildcard, and terms with no words are ignored.
                 organism_ids:
                   type: string
                   description: Comma-separated organism IDs.
@@ -6008,8 +6014,8 @@ paths:
       summary: Search and filter gene carts with paging
       description: Anonymous users see public carts; logged-in users default to public, own and group members' carts.
         The 'shared' ownership option is not implemented (sending only 'shared' produces an invalid query). An invalid
-        page/limit (non-numeric or < 1) returns success 0 with a `problem` message (HTTP 200). Logs the search to
-        user history when terms are given.
+        page/limit (non-numeric or < 1), or a database error while searching, returns success 0 with a `problem`
+        message (HTTP 200). Logs the search to user history when terms are given.
       requestBody:
         content:
           multipart/form-data:
@@ -6021,7 +6027,10 @@ paths:
                   description: Optional; enables ownership filters and is_owner flags.
                 search_terms:
                   type: string
-                  description: Space-separated terms (MySQL boolean full-text on label, ldesc).
+                  description: Space-separated terms (MySQL boolean full-text on label, ldesc), matching any term.
+                    Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
+                    by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), a trailing * is a prefix
+                    wildcard, and terms with no words are ignored.
                 organism_ids:
                   type: string
                   description: Comma-separated organism IDs.
