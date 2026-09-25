@@ -893,7 +893,7 @@ class ResultItem {
                             <input id='dataset-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.dataset}' value='${escapeHtml(this.shareId)}'>
                         </div>
                     </div>
-                    <p id='dataset-link-name-help' class='help is-danger'></p>
+                    <p id='dataset-link-name-help' class='help has-text-danger-dark'></p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
                             <button id='confirm-dataset-link-rename' class='button is-primary' disabled>Update</button>

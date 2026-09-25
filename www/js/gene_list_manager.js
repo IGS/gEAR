@@ -737,7 +737,7 @@ class ResultItem {
                             <input id='gc-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.genecart}' value='${escapeHtml(this.shareId)}'>
                         </div>
                     </div>
-                    <p id='gc-link-name-help' class='help is-danger'></p>
+                    <p id='gc-link-name-help' class='help has-text-danger-dark'></p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
                             <button id='confirm-gc-link-rename' class='button is-primary' disabled>Update</button>
