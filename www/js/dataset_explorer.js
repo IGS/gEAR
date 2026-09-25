@@ -1917,7 +1917,7 @@ const createRenameCollectionPermalinkPopover = () => {
                         <input id='collection-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.layout}'>
                     </div>
                 </div>
-                <p id='collection-link-name-help' class='help is-danger'></p>
+                <p id='collection-link-name-help' class='help has-text-danger-dark'></p>
                 <div class='field is-grouped' style='width:250px'>
                     <p class="control">
                         <button id='confirm-collection-link-rename' class='button is-primary' disabled>Update</button>
