@@ -721,7 +721,7 @@ Replaces anatomy IDs with standardized class names.
 
 #### `generate_static_display_images.py`
 
-Generates static preview images for displays.
+Generates static preview images for displays that don't have one yet (`www/img/dataset_previews/<dataset_id>.<display_id>.png`), and points each dataset owner's default displays at them through `<dataset_id>.single.default.png` and `<dataset_id>.multi.default.png`. A default link that points at a different image is replaced.
 
 **Use case**: Creating dataset thumbnails
 
