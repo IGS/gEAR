@@ -109,3 +109,32 @@ def test_save_layout_arrangement_requires_login():
     result = run_cgi("save_layout_arrangement.cgi", db=DB, query={"layout_share_id": "L1", "layout_arrangement": "{}"})
     assert result.json() == {"success": 0, "error": "User must be logged in"}
     assert result.writes() == []
+
+
+class TestUpdateShareId:
+    """update_share_id.cgi: permalink characters and the per-scope length limit (layout.share_id is VARCHAR(24))."""
+
+    DB = {**DB, "datasets": [{"id": "D1", "share_id": "S1", "owner_id": 1}]}
+
+    def run(self, scope, share_id, new_share_id):
+        return run_cgi("update_share_id.cgi", db=self.DB, query={
+            "session_id": "owner", "scope": scope, "share_id": share_id, "new_share_id": new_share_id})
+
+    def test_collection_permalink_at_the_limit_is_saved(self):
+        result = self.run("layout", "L1", "x" * 24)
+        assert result.json() == {"error": "", "success": 1}
+        assert result.logged("layout.save_change", "x" * 24)
+
+    @pytest.mark.parametrize("scope, share_id, limit", [("layout", "L1", 24), ("dataset", "S1", 50)])
+    def test_too_long_permalink_is_explained(self, scope, share_id, limit):
+        result = self.run(scope, share_id, "x" * (limit + 1))
+        body = result.json()
+        assert body["success"] == 0
+        assert body["error"] == f"This is not a valid permalink. It can be at most {limit} characters long."
+        assert not result.logged("layout.save_change") and not result.logged("dataset.save_change")
+
+    @pytest.mark.parametrize("new_share_id", ["my collection", "Garcia)", "_hidden", "../x"])
+    def test_invalid_characters_are_explained(self, new_share_id):
+        body = self.run("layout", "L1", new_share_id).json()
+        assert body["success"] == 0
+        assert body["error"].startswith("This is not a valid permalink. Use only letters")

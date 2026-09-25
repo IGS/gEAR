@@ -16,6 +16,34 @@ const escapeHtml = (value) => {
         .replace(/'/g, "&#39;");
 	}
 
+// Longest permalink (share_id) each scope's database column can hold
+const SHARE_ID_MAX_LENGTH = {dataset: 50, genecart: 50, layout: 24};
+
+// Characters update_share_id.cgi accepts (anything werkzeug's secure_filename() leaves unchanged):
+//  letters, digits, "-", "_" and ".", not starting or ending with "_" or "."
+const SHARE_ID_PATTERN = /^[A-Za-z0-9-](?:[A-Za-z0-9_.-]*[A-Za-z0-9-])?$/;
+
+/**
+ * Checks a proposed permalink (share_id) before it is sent to update_share_id.cgi.
+ *
+ * @param {string} value - The proposed permalink.
+ * @param {string} scope - "dataset", "genecart" or "layout".
+ * @returns {string} A message explaining why the permalink is invalid, or "" if it is valid.
+ */
+const validateShareId = (value, scope) => {
+    const maxLength = SHARE_ID_MAX_LENGTH[scope];
+    if (!value) {
+        return "Please enter a permalink.";
+    }
+    if (value.length > maxLength) {
+        return `A permalink can be at most ${maxLength} characters long.`;
+    }
+    if (!SHARE_ID_PATTERN.test(value)) {
+        return "Use only letters, numbers, hyphens, underscores and periods, and don't start or end with an underscore or period.";
+    }
+    return "";
+}
+
 const normalizeDomainCitations = (citationConfig) => {
     const citationEntries = Array.isArray(citationConfig) ? citationConfig : [];
 
@@ -1874,4 +1902,6 @@ export {
     insertVersionedCSS,
     insertVersionedJS,
     loadDomainFunding,
+    SHARE_ID_MAX_LENGTH,
+    validateShareId,
 };

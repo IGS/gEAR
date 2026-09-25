@@ -112,6 +112,9 @@ class _Layout:
     def save(self):
         _log("layout.save", layout=self.share_id, label=self.label)
 
+    def save_change(self, attribute, value):
+        _log("layout.save_change", layout=self.share_id, attribute=attribute, value=value)
+
 
 def get_layout_by_share_id(layout_share_id):
     for spec in _SPEC.get("layouts", []):

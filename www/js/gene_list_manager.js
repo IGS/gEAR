@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
 import { GeneCart } from "./classes/genecart.v2.js";
 
 let firstSearch = true;
@@ -734,9 +734,10 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' value=${escapeHtml(this.shareId)}>
+                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.genecart}' value='${escapeHtml(this.shareId)}'>
                         </div>
                     </div>
+                    <p id='gc-link-name-help' class='help is-danger'></p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
                             <button id='confirm-gc-link-rename' class='button is-primary' disabled>Update</button>
@@ -790,15 +791,14 @@ class ResultItem {
                 });
             });
 
-            document.getElementById("gc-link-name").addEventListener("keyup", () => {
-                const newLinkName = document.getElementById("gc-link-name");
-                const confirmRenameLink = document.getElementById("confirm-gc-link-rename");
+            // "input" also catches pasted text; explain an invalid permalink instead of sending it
+            document.getElementById("gc-link-name").addEventListener("input", () => {
+                const newLinkName = document.getElementById("gc-link-name").value;
+                const unchanged = newLinkName === this.shareId;
+                const problem = unchanged ? "" : validateShareId(newLinkName, "genecart");
 
-                if (newLinkName.value.length === 0 || newLinkName.value === this.shareId) {
-                    confirmRenameLink.disabled = true;
-                    return;
-                }
-                confirmRenameLink.disabled = false;
+                document.getElementById("gc-link-name-help").textContent = problem;
+                document.getElementById("confirm-gc-link-rename").disabled = unchanged || Boolean(problem);
             });
 
             // Add event listener to cancel button

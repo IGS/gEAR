@@ -6610,8 +6610,8 @@ paths:
       tags:
       - Misc
       summary: Change the share ID (permalink) of a dataset, layout or gene cart the user owns
-      description: 'Requires a logged-in owner. Both IDs must be unchanged by secure_filename and the new ID must
-        be unused. For gene carts it also renames weighted cart files in `www/carts` and rewrites references under
+      description: 'Requires a logged-in owner. Both IDs must be unchanged by secure_filename, the new ID must fit
+        its column (24 characters for a layout, 50 for a dataset or gene cart) and must be unused. For gene carts it also renames weighted cart files in `www/carts` and rewrites references under
         `www/projections`. Errors use HTTP 200 and `success: 0`.'
       requestBody:
         required: true
@@ -6633,7 +6633,8 @@ paths:
                   description: Current share ID.
                 new_share_id:
                   type: string
-                  description: New share ID.
+                  description: New share ID. Letters, digits, "-", "_" and ".", not starting or ending with "_" or ".";
+                    at most 24 characters for a layout, 50 for a dataset or gene cart.
                 scope:
                   type: string
                   enum:
