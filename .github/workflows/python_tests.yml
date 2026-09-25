@@ -57,7 +57,10 @@ jobs:
 
       - name: Run tests
         working-directory: tests/python
-        run: python -m pytest -m "not spatial"
+        # No -m filter: tests for optional stacks (marked e.g. "spatial" in pytest.ini) skip
+        #  themselves because only requirements.txt is installed here, so new stacks need no
+        #  change to this job. The skips are listed in the test summary.
+        run: python -m pytest
 
   spatial:
     name: Spatial handlers
@@ -77,4 +80,5 @@ jobs:
 
       - name: Run tests
         working-directory: tests/python
+        # -m spatial selects only the tests marked @pytest.mark.spatial (see pytest.ini)
         run: python -m pytest -m spatial

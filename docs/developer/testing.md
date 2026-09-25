@@ -44,8 +44,9 @@ Use Python 3.14, the production version:
 python3.14 -m venv ~/venvs/gear-tests && source ~/venvs/gear-tests/bin/activate
 pip install -r tests/python/requirements.txt          # or requirements-spatial.txt for the spatial tests
 cd tests/python
-python -m pytest                    # all tests; spatial ones are skipped if spatialdata isn't installed
-python -m pytest -m "not spatial"   # the "core" CI job
+python -m pytest                    # all tests (the "core" CI job); spatial ones skip if spatialdata isn't installed
+python -m pytest -m spatial         # only the tests marked "spatial"
+python -m pytest -m "not spatial"   # everything except the tests marked "spatial"
 python -m pytest test_cgi_downloads.py -k owner -v
 ```
 
@@ -99,14 +100,31 @@ Import individual resources (`from resources.aggregations import Aggregations`),
 
 ### Markers
 
-`spatial` marks tests that need the SpatialData stack (`requirements-spatial.txt`). They're skipped automatically when `spatialdata` isn't installed.
+A [marker](https://docs.pytest.org/en/stable/how-to/mark.html) tags tests so they can be selected with `-m`: `pytest -m spatial` runs only the tests marked `spatial`, and `pytest -m "not spatial"` runs everything else. Markers are registered in `tests/python/pytest.ini`, which also turns on `--strict-markers`, so an unregistered (for example misspelled) marker is an error.
+
+Markers here mean "needs an optional dependency stack":
+
+| Marker | Needs | Installed by |
+|---|---|---|
+| `spatial` | SpatialData, spatialdata-io | `requirements-spatial.txt` |
+
+A marked module sets `pytestmark = pytest.mark.<name>` and calls `pytest.importorskip()` for each package it needs. Without the stack installed, the whole module is skipped, so a plain `pytest` always runs the core tests. That is what the core CI job runs.
+
+To add a stack (for example `epigenome`):
+
+1. Register the marker in `pytest.ini`.
+2. In its test modules, set `pytestmark = pytest.mark.epigenome` and call `pytest.importorskip()` for its packages.
+3. Add `requirements-epigenome.txt`, starting with `-r requirements.txt`.
+4. Add a CI job that installs it and runs `pytest -m epigenome`.
+
+The core job doesn't change.
 
 ### CI
 
 `.github/workflows/python_tests.yml` runs on push and pull request to `devel` and `main` when server-side code, docs, example files or the tests change. It can also be started by hand (`workflow_dispatch`). It has two jobs on Python 3.14:
 
-- **core:** `pip install -r tests/python/requirements.txt`, then `pytest -m "not spatial"`.
-- **spatial:** installs `requirements-spatial.txt`, then runs `pytest -m spatial`.
+- **core:** `pip install -r tests/python/requirements.txt`, then `pytest` with no marker filter. Tests for optional stacks skip themselves, and the skips are listed in the summary.
+- **spatial:** installs `requirements-spatial.txt`, then runs `pytest -m spatial` (only the tests marked `spatial`).
 
 Other workflows are not test suites:
 

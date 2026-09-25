@@ -16,8 +16,8 @@ source ~/venvs/gear-tests/bin/activate
 pip install -r tests/python/requirements.txt           # add requirements-spatial.txt for spatial tests
 
 cd tests/python
-python -m pytest                     # everything (spatial tests are skipped without spatialdata)
-python -m pytest -m "not spatial"    # what the "core" CI job runs
+python -m pytest                     # everything; what the "core" CI job runs (spatial tests skip without spatialdata)
+python -m pytest -m spatial          # only tests marked "spatial" (markers are explained in pytest.ini)
 python -m pytest test_cgi_uploads.py -k tar
 ```
 
