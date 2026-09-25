@@ -26,6 +26,7 @@ from gear.utils.gene_mapping import (
     update_var_with_ensembl_ids,
 )
 from gear.utils.job_coordination import UploadCancelledError, raise_if_upload_deleted
+from gear.utils.archives import ARCHIVE_READ_ERRORS, archive_error_message
 from gear.utils.obs import (
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
@@ -327,11 +328,9 @@ class AnndataProcessor:
                             files_extracted.append(suffix_found)
                         else:
                             files_extracted.append(entry.name)
-            except tarfile.ReadError:
-                raise ProcessingError(
-                    "The uploaded tar archive could not be read — it may be corrupted or not a "
-                    "valid .tar or .tar.gz file. Please verify the file and try re-uploading it."
-                )
+            except ARCHIVE_READ_ERRORS as e:
+                # Includes a truncated .tar.gz, which fails with EOFError rather than ReadError
+                raise ProcessingError(archive_error_message(e, str(filename)))
 
         if compression_format == 'zip':
             try:
@@ -357,11 +356,8 @@ class AnndataProcessor:
                             files_extracted.append(suffix_found)
                         else:
                             files_extracted.append(entry.filename)
-            except zipfile.BadZipFile:
-                raise ProcessingError(
-                    "The uploaded .zip file could not be read — it may be corrupted or not a "
-                    "valid zip archive. Please verify the file and try re-uploading it."
-                )
+            except ARCHIVE_READ_ERRORS as e:
+                raise ProcessingError(archive_error_message(e, str(filename)))
 
         # Determine the dataset type
         dataset_type = package_content_type(files_extracted)

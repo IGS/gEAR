@@ -173,3 +173,30 @@ def test_cosmx_decompresses_gzipped_members(tmp_path, extract_dir):
     assert (files / "CellLabels" / "CellLabels_F001.tif").read_bytes() == labels
     assert (files / "notes.txt").is_file()
     assert not list(files.rglob("*.gz"))
+
+
+
+@pytest.mark.parametrize("extension, gzipped", [("tar.gz", True), ("tar", False)])
+def test_truncated_archive_is_reported_as_incomplete(spatial_staging, extension, gzipped):
+    """A spatial archive cut short (#1033) explains the likely cause instead of a raw Python error."""
+    members = {
+        "clusters.csv": b"Barcode,Cluster\n" + b"AAAC-1,1\n" * 20000,
+        "filtered_feature_bc_matrix.h5": b"not really hdf5" * 5000,
+    }
+    (spatial_staging / "SHARE.tar").unlink()
+    full = tar_bytes(members, gzipped=gzipped)
+    (spatial_staging / f"SHARE.{extension}").write_bytes(full[: int(len(full) * 0.5)])
+
+    result = sp.process_spatial_synchronously(
+        job_id="job-1",
+        share_uid="SHARE",
+        staging_area=spatial_staging,
+        status_file=spatial_staging / "status.json",
+        spatial_format="visium",
+        perform_primary_analysis=False,
+    )
+    assert result["success"] == 0, result
+    assert not result.get("cancelled")
+    assert result["message"].startswith("The uploaded archive appears to be incomplete"), result["message"]
+    status = json.loads((spatial_staging / "status.json").read_text())
+    assert status["status"] == "error" and status["message"] == result["message"]

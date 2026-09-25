@@ -194,10 +194,43 @@ def test_not_an_archive(staging):
     result = run(staging)
     assert result["success"] == 0
     assert not result.get("cancelled")
-    assert "tar archive could not be read" in result["message"]
+    assert result["message"].startswith("The uploaded archive could not be read")
+    assert "tar -tf" in result["message"]
     status = json.loads((staging / "status.json").read_text())
     assert status["status"] == "error"
 
+
+
+def truncated(data: bytes, fraction: float) -> bytes:
+    return data[: int(len(data) * fraction)]
+
+
+@pytest.mark.parametrize("fraction", [0.3, 0.9, 0.99])
+@pytest.mark.parametrize("extension, archive", [
+    ("tar.gz", lambda members, path: write_tar(path, members, gzipped=True)),
+    ("tar", lambda members, path: write_tar(path, members)),
+    ("zip", lambda members, path: write_zip(path, members)),
+])
+def test_truncated_archive_is_reported_as_incomplete(staging, tmp_path, mex_members, extension, archive, fraction):
+    """An archive cut short (#1032, #1033) explains the likely cause instead of an internal error."""
+    full = archive(mex_members, tmp_path / f"full.{extension}").read_bytes()
+    (staging / f"SHARE.{extension}").write_bytes(truncated(full, fraction))
+
+    result = run(staging)
+    assert result["success"] == 0
+    assert not result.get("cancelled")
+    message = result["message"]
+    assert "internal error" not in message
+    assert message.startswith("The uploaded archive")
+    assert ("unzip -t" if extension == "zip" else "tar -tf") in message
+    status = json.loads((staging / "status.json").read_text())
+    assert status["status"] == "error" and status["message"] == message
+
+
+def test_truncated_tar_gz_says_incomplete(staging, tmp_path, mex_members):
+    full = write_tar(tmp_path / "full.tar.gz", mex_members, gzipped=True).read_bytes()
+    (staging / "SHARE.tar.gz").write_bytes(truncated(full, 0.9))
+    assert run(staging)["message"].startswith("The uploaded archive appears to be incomplete")
 
 def test_missing_archive(staging):
     result = run(staging)

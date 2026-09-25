@@ -14,6 +14,7 @@ import geardb
 from gear.anndata_processor import write_status
 from gear.spatialhandler import SPATIALTYPE2CLASS
 from gear.utils.job_coordination import UploadCancelledError
+from gear.utils.archives import ARCHIVE_READ_ERRORS, ArchiveReadError, archive_error_message
 from gear.utils.obs import (
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
@@ -86,6 +87,13 @@ def process_spatial_synchronously(
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
 
+    def _read_archive():
+        try:
+            spatial_obj.process_file(filepath.as_posix(), extract_dir=staging_area, organism_id=organism_id)
+        except ARCHIVE_READ_ERRORS as e:
+            # Includes a truncated .tar.gz, which fails with EOFError rather than tarfile.ReadError
+            raise ArchiveReadError(archive_error_message(e, filepath.name)) from e
+
     def _write_zarr():
         # Remove existing Zarr store if present; a safeguard in case a prior
         # attempt failed after the store was partially written.
@@ -100,7 +108,7 @@ def process_spatial_synchronously(
         (
             "Reading and parsing spatial data archive...",
             "reading spatial data archive",
-            lambda: spatial_obj.process_file(filepath.as_posix(), extract_dir=staging_area, organism_id=organism_id),
+            _read_archive,
         ),
         (
             "Subsetting spatial data...",
@@ -157,6 +165,13 @@ def process_spatial_synchronously(
             action()
         except UploadCancelledError:
             return _cancelled_result()
+        except ArchiveReadError as e:
+            if not staging_area.is_dir():
+                return _cancelled_result()
+            status["status"] = "error"
+            status["message"] = str(e)
+            write_status(status_file, status)
+            return {"success": 0, "message": status["message"]}
         except MemoryError:
             if not staging_area.is_dir():
                 return _cancelled_result()
