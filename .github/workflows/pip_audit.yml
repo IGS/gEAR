@@ -1,0 +1,43 @@
+name: Pip audit check
+
+on:
+  push:
+    branches: [devel, main]
+    paths:
+      - "lib/**"
+      - "www/cgi/**"
+      - "www/api/**"
+      - "www/user_templates/**"
+      - "listeners/**"
+      - "services/**"
+      - "docs/**"
+      - "README.md"
+      - "tests/python/**"
+      - "tests/README.md"
+      - ".github/workflows/python_tests.yml"
+  pull_request:
+    branches: [devel, main]
+    paths:
+      - "lib/**"
+      - "www/cgi/**"
+      - "www/api/**"
+      - "www/user_templates/**"
+      - "listeners/**"
+      - "services/**"
+      - "docs/**"
+      - "README.md"
+      - "tests/python/**"
+      - "tests/README.md"
+      - ".github/workflows/python_tests.yml"
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install
+        run: python -m pip install .
+      - uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: docker/requirements.txt listeners/requirements.txt services/projectr/requirements.txt services/spatial/requirements.txt
