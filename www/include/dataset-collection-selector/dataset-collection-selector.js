@@ -88,13 +88,20 @@ export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
 
         const dc_item_template = document.querySelector('#tmpl-dc');
 
-        // build a label index for the dataset collections
+        // A collection can be in several categories at once (e.g. site-curated and public, or
+        //  your own public one), so list each share ID once. Different collections can still
+        //  share a label, and those are all listed.
+        const listedShareIds = new Set();
+
         for (const category in datasetCollectionState.data) {
-            // This data structure has mixed types - we only care about the arrayed categories
-            if (!Array.isArray(datasetCollectionState.data[category])) {continue}
+            // This data structure has mixed types - we only care about the arrayed layout categories
+            if (!category.endsWith('_layouts') || !Array.isArray(datasetCollectionState.data[category])) {continue}
 
             for (const entry of datasetCollectionState.data[category]) {
+                if (listedShareIds.has(entry.share_id)) {continue}
+
                 if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
+                    listedShareIds.add(entry.share_id);
                     const row = dc_item_template.content.cloneNode(true);
                     createDatasetCollectionListItem(row, entry);
                 }
@@ -248,10 +255,13 @@ const createDatasetCollectionListItem = (row, entry) => {
         tag_element.remove();
     }
 
+    // Keep a reference to this row's element (a lookup by share ID after appending would find the
+    //  first row with that ID, not necessarily this one)
+    const thisItem = row.querySelector('.ul-li');
+
     document.querySelector('#dropdown-content-dc').appendChild(row);
 
     // Create event listener to select the dataset collection
-    const thisItem = document.querySelector(`.dropdown-dc-item[data-share-id="${entry.share_id}"]`);
     thisItem.addEventListener('click', (event) => {
 
         // uncheck all the existing rows
