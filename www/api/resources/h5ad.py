@@ -56,7 +56,7 @@ class H5ad(Resource):
             traceback.print_exc()
             return {
                 "success": -1,
-                'message': str(e)
+                'message': "Encountered an issue with loading the AnnData object"
             }
 
         columns = adata.obs.columns.tolist()
