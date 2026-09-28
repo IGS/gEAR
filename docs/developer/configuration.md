@@ -81,6 +81,12 @@ MySQL/MariaDB connection. See [MySQL setup](./setup/mysql.md).
 | `address` | Sender address for outgoing mail (SMTP via `smtp.gmail.com:587`) | `[gear_email]` | `www/cgi/send_email.cgi` |
 | `password` | SMTP password (app password) for that address | `<redacted>` | `www/cgi/send_email.cgi` |
 
+### `[github]`
+
+| Key | Meaning | Example | Read by |
+|---|---|---|---|
+| `access_token` | API access token for the user to create github issues under | `abc123` | `www/cgi/create_github_issue.cgi` |
+
 ### `[content]`
 
 | Key | Meaning | Example | Read by |

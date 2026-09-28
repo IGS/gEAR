@@ -148,7 +148,6 @@ I cannot add comments to the bash code without breaking the command.  So consult
     pims==0.7.0 \
     plotly==6.6.0 \
     pybigwig==0.3.25 \
-    python-dotenv==0.20.0 \
     requests==2.31.0 \
     rpy2==3.6.7 \
     scanpy==1.12.1 \

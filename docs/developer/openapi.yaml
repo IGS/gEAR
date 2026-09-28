@@ -3863,7 +3863,7 @@ paths:
       tags:
       - Misc
       summary: Return all tags (comment-form autocomplete)
-      description: Same as POST; comment.js calls it with $.get.
+      description: Same as POST; contact.js calls it with $.get.
       responses:
         '200':
           description: Tag list.

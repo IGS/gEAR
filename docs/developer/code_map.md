@@ -227,7 +227,7 @@ The v2 UI uses Bulma CSS and ES modules. Each page is assembled with Apache serv
 | `forgot_password.html` | `js/forgot_password.js` | `common.v2.js` | Password recovery |
 | `dominoSignal.html` | inline module only | `common.v2.js`, `classes/tree.js`, pattern-collection selector | Early prototype of a cell-cell communication page (linked from `primary_nav.html`). Not committed to git; the cell-cell communication feature is being developed separately |
 | `new_page_template.html` | `js/index.js` (placeholder) | `common.v2.js` | Boilerplate for starting a new v2 page |
-| `contact.html` | `js/common.js`, `js/classes/user.js`, `js/comment.js` | none (jQuery / Bootstrap 4) | **Legacy v1** contact form. Submits through `cgi/create_github_issue.cgi` (and uses `get_tag_list.cgi`). `cgi/process_contact.py` is not referenced |
+| `contact.html` | `js/contact.js` (not yet loaded) | `common.v2.js` | Contact form, mid-migration to v2: markup is Bulma, but `js/contact.js` is still v1 jQuery code and is not wired up yet. Submits through `cgi/create_github_issue.cgi` (and uses `get_tag_list.cgi`). `cgi/process_contact.py` is not referenced |
 
 Other HTML lives under `www/landing/<name>/index.html` (per-project landing pages with their own `index.js`), `www/workshop/index.html` and `www/plugins/`.
 
@@ -318,7 +318,7 @@ See [webpage dependencies](./misc/webpage_dependencies.md) for more.
 |------|--------|
 | `www/js/common.js` | v1 shared script (jQuery). Loaded by `contact.html` only. Its User Guide link opens the GitHub wiki |
 | `www/js/classes/user.js`, `www/js/classes/genecart.js` | v1 classes. `user.js` is used only by `contact.html`. `genecart.js` is unused |
-| `www/js/comment.js` | v1 comment/contact form logic, used by `contact.html` |
+| `www/js/contact.js` | v1 comment/contact form logic (renamed from `comment.js`) for `contact.html`; not yet migrated to v2 |
 | `www/contact.html` | v1 page, but **still linked from v2** (`include/header_bar.html`, `create_account.html` and the `include/by_domain/*/footer.html` files) |
 | `www/js/demo_timecourse.js`, `www/js/workshop.js` | Not referenced by any page (unused) |
 | `www/include/navigation_bar.html`, `www/include/create_account.html` | v1 partials (see the partials table) |

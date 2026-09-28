@@ -33,7 +33,6 @@ To fix:
 `ln -s  /mnt/disks/datastore/datasets /var/www/datasets`
 `ln -s  /mnt/disks/datastore/uploads /var/www/uploads`
 
-
 ### MYSQL
 
 `sudo apt install mysql-server`
