@@ -29,7 +29,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: install
-        run: python -m pip install .
+        run: python -m pip install -r docker/requirements.txt -r listeners/requirements.txt -r services/projectr/requirements.txt -r services/spatial/requirements.txt
       - uses: pypa/gh-action-pip-audit@v1.1.0
-        with:
-          inputs: docker/requirements.txt listeners/requirements.txt services/projectr/requirements.txt services/spatial/requirements.txt
