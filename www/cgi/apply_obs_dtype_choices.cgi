@@ -96,7 +96,7 @@ def main():
         if dataset_format == 'spatial':
             zarr_path = dataset_dir / f"{share_uid}.zarr"
             if not zarr_path.is_dir():
-                raise FileNotFoundError(f"Spatial dataset file not found: {zarr_path}")
+                raise FileNotFoundError(f"Spatial dataset file not found for share ID {share_uid}")
 
             adapter = ZarrAdapter(zarr_path)
             adata = adapter.get_adata()  # sdata.tables["table"]
@@ -109,7 +109,7 @@ def main():
         else:
             h5ad_path = dataset_dir / f"{share_uid}.h5ad"
             if not h5ad_path.is_file():
-                raise FileNotFoundError(f"Dataset file not found: {h5ad_path}")
+                raise FileNotFoundError(f"Dataset file not found for share ID {share_uid}")
 
             adapter = H5adAdapter(h5ad_path)
             adata = adapter.get_adata(backed=True)

@@ -22,6 +22,22 @@ if typing.TYPE_CHECKING:
 this_dir = Path(__file__).resolve().parent  # lib/gear
 root_dir = this_dir.parents[1]
 
+# Directories a .zarr store may be read from: primary spatial datasets and upload staging areas.
+#  Each is resolved on its own, because on some hosts www/datasets (or www/uploads) is a symlink
+#  to a mounted disk outside www, so resolving www alone would reject every dataset there.
+ZARR_ALLOWED_DIRS = (
+    root_dir / "www" / "datasets",
+    root_dir / "www" / "datasets" / "spatial",
+    root_dir / "www" / "uploads" / "files",
+)
+
+# NOTE: exception messages raised here can end up in JSON responses, so they name the dataset or
+#  analysis but never a filesystem path. Paths are logged to stderr instead.
+
+def _log_path(message: str, path) -> None:
+    """Log a filesystem path for debugging, without putting it in a user-facing message."""
+    print(f"gear.analysis: {message}: {path}", file=sys.stderr)
+
 # You can use the analysis functions to create an Analysis|SpatialAnalysis object in a high-level way
 # without needing to know the details of the class or its path conventions
 
@@ -79,7 +95,8 @@ def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | 
         # Check that the h5ad file exists
         if not ana.dataset_path.exists():
             filetype = "zarr" if is_spatial else "h5ad"
-            raise FileNotFoundError(f"No {filetype} file found for the passed in analysis: {ana.dataset_path}")
+            _log_path(f"missing {filetype} for analysis {ana.id}", ana.dataset_path)
+            raise FileNotFoundError(f"No {filetype} file found for analysis {ana.id} of dataset {dataset_id}")
     else:
         # Otherwise, return the primary analysis for the dataset
         ana = get_primary_analysis(dataset_id, is_spatial)
@@ -100,7 +117,8 @@ def get_primary_analysis(dataset_id, is_spatial=False) -> "SpatialAnalysis | Ana
 
     # Let's not fail if the file isn't there
     if not Path(dataset_file_path).exists():
-        raise FileNotFoundError(f"No {filetype} file found for this dataset {dataset_file_path}")
+        _log_path(f"missing {filetype} for dataset {dataset_id}", dataset_file_path)
+        raise FileNotFoundError(f"No {filetype} file found for dataset {dataset_id}")
     if is_spatial:
         ana = SpatialAnalysis(type="primary", dataset_id=dataset_id)
     else:
@@ -727,11 +745,13 @@ class ZarrAdapter:
     """
 
     def __init__(self, zarr_path: Path):
+        # Guard against path traversal. Compare real locations, so a symlink inside the store can't
+        #  point elsewhere, while each allowed directory may itself be a symlink (see ZARR_ALLOWED_DIRS).
         resolved = Path(zarr_path).resolve()
-        allowed_base = (root_dir / "www").resolve()
-        if not resolved.is_relative_to(allowed_base):
-            raise ValueError(f"Zarr path '{zarr_path}' is outside the allowed datasets directory.")
-        self.zarr_path = zarr_path
+        if not any(resolved.is_relative_to(allowed.resolve()) for allowed in ZARR_ALLOWED_DIRS):
+            _log_path("refusing zarr path outside the allowed directories", f"{zarr_path} -> {resolved}")
+            raise ValueError("The requested dataset is not in an allowed location.")
+        self.zarr_path = Path(zarr_path)
 
     def get_sdata(self) -> "SpatialData":
         """
@@ -746,7 +766,8 @@ class ZarrAdapter:
         import spatialdata as sd
 
         if not self.zarr_path.exists():
-            raise FileNotFoundError(f"Dataset not found at {self.zarr_path}")
+            _log_path("missing zarr store", self.zarr_path)
+            raise FileNotFoundError(f"Dataset {self.zarr_path.stem} was not found")
         return sd.read_zarr(self.zarr_path)
 
     def get_adata(self) -> "AnnData" :
@@ -767,5 +788,6 @@ class ZarrAdapter:
         import anndata
 
         if not table_path.exists():
-            raise FileNotFoundError(f"No 'table' found in SpatialData tables at {table_path}")
+            _log_path("missing SpatialData table", table_path)
+            raise FileNotFoundError(f"Dataset {self.zarr_path.stem} has no 'table' in its SpatialData tables")
         return anndata.read_zarr(table_path)
