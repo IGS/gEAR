@@ -270,6 +270,14 @@ export class TileGrid {
         }
     }
 
+    /**
+     * Checks whether any tile in the grid is currently showing an SVG display.
+     * @returns {boolean} True if at least one tile's current display is an SVG.
+     */
+    hasSvgDisplay() {
+        return this.tiles.some((tile) => tile.currentPlotType === "svg");
+    }
+
     warnGeneAnnotationNotFound() {
         const warningMessage = "Searched gene(s) not found in our annotation database. Please search for another gene.";
         for (const tile of this.tiles) {
@@ -317,6 +325,7 @@ class DatasetTile {
         }
 
         this.svg = null; // The SVG element for the plot
+        this.currentPlotType = null;    // plot_type of the display currently rendered in this tile (e.g. "svg")
 
         // Projection information
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
@@ -1349,6 +1358,11 @@ class DatasetTile {
         // Since this method manipulates the geneSymbolInput, we need to store the original input
         this.geneInput = geneSymbolInput;
 
+        // Clear info about the previous display. renderSVG() sets this.svg again if the new display is an SVG,
+        // so pages do not try to rescore an SVG that is no longer shown.
+        this.currentPlotType = null;
+        this.svg = null;
+
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
         if (displayId === null) {
@@ -1472,6 +1486,7 @@ class DatasetTile {
         if (display.plot_type === "tsne") {
             display.plot_type = "tsne_static";
         }
+        this.currentPlotType = display.plot_type;
 
         // Add gene or genes to plot config
         if (this.type === "multi") {
@@ -1636,6 +1651,10 @@ class DatasetTile {
             createCardMessage(this.tile.tileId, "danger", error.message);
         }
 
+        // Let the page know this tile's display changed (e.g. to show/hide SVG-only controls)
+        document.dispatchEvent(new CustomEvent("tile-display-rendered", {
+            detail: { tileId: this.tile.tileId, plotType: this.currentPlotType }
+        }));
     }
 
     /**

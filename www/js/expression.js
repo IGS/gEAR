@@ -47,23 +47,27 @@ document.getElementById('genes-manually-entered').addEventListener('keydown', (e
     }
 });
 
-document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
-    const annotationPanel = document.getElementById('extended-annotation-panel');
-    const toggleIcon = document.querySelector('#functional-annotation-toggle i');
-    const organismSelector = document.getElementById('annotation-panel-organism-selector-c');
+/**
+ * Expands or collapses the elements controlled by a toggle button.
+ * The button's aria-controls attribute lists the IDs of the elements to show/hide.
+ * @param {HTMLButtonElement} button - The toggle button (must have aria-expanded and aria-controls).
+ */
+const toggleCollapsible = (button) => {
+    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+    const toggleIcon = button.querySelector('i');
 
-    if (annotationPanel.classList.contains('is-hidden')) {
-        annotationPanel.classList.remove('is-hidden');
-        organismSelector.classList.remove('is-hidden');
-        toggleIcon.classList.remove('mdi-chevron-down');
-        toggleIcon.classList.add('mdi-chevron-up');
-        return;
+    for (const targetId of button.getAttribute('aria-controls').split(' ')) {
+        document.getElementById(targetId).classList.toggle('is-hidden', isExpanded);
     }
-    annotationPanel.classList.add('is-hidden');
-    organismSelector.classList.add('is-hidden');
-    toggleIcon.classList.remove('mdi-chevron-up');
-    toggleIcon.classList.add('mdi-chevron-down');
-});
+    button.setAttribute('aria-expanded', String(!isExpanded));
+    toggleIcon.classList.toggle('mdi-chevron-up', !isExpanded);
+    toggleIcon.classList.toggle('mdi-chevron-down', isExpanded);
+}
+
+// Collapse/expand the whole annotation panel, or just its functional annotation section
+for (const toggleId of ['annotation-panel-toggle', 'functional-annotation-toggle']) {
+    document.getElementById(toggleId).addEventListener('click', (event) => toggleCollapsible(event.currentTarget));
+}
 
 // add event listener for when the submit-expression-search button is clicked
 document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
@@ -93,13 +97,14 @@ document.getElementById('submit-expression-search').addEventListener('click', as
     document.getElementById("gene-result-list-c").classList.remove('is-hidden');
     document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
     document.getElementById("annotation-panel").classList.remove('is-hidden');
-    document.getElementById("scoring-method-div").classList.remove('is-hidden');
+    // Hidden until the new displays render; tiles showing an SVG will bring it back
+    document.getElementById("scoring-method-div").classList.add('is-hidden');
+    document.getElementById("result-panel-options-divider").classList.add('is-hidden');
     if (isMultigene) {
         currentlySelectedGeneSymbol = null;
         document.getElementById("gene-result-list-c").classList.add('is-hidden');
         document.getElementById("currently-selected-gene-header").classList.add('is-hidden');
         document.getElementById("annotation-panel").classList.add('is-hidden');
-        document.getElementById("scoring-method-div").classList.add('is-hidden');
     }
     try {
 
@@ -113,6 +118,7 @@ document.getElementById('submit-expression-search').addEventListener('click', as
         }
 
         tilegrid = tilegridRes.value;
+        updateScoringMethodVisibility();
 
         if (!annotRes.value) {
             tilegrid.warnGeneAnnotationNotFound();
@@ -141,6 +147,7 @@ document.getElementById('submit-expression-search').addEventListener('click', as
                 genes = Array.from(allGenesElts).map(elt => elt.textContent);
             }
             await tilegrid.renderDisplays(genes, isMultigene);
+            updateScoringMethodVisibility();
 
         }
 
@@ -227,6 +234,20 @@ setDefaultOrganism.addEventListener('click', (event) => {
     setDefaultOrganism.classList.add('is-hidden');
 });
 
+/**
+ * Shows the SVG scoring method dropdown only when it applies: single-gene mode with at least
+ * one tile currently showing an SVG display. Re-checked whenever a tile renders a display.
+ */
+const updateScoringMethodVisibility = () => {
+    const isVisible = !isMultigene && Boolean(tilegrid?.hasSvgDisplay());
+    for (const id of ["scoring-method-div", "result-panel-options-divider"]) {
+        document.getElementById(id).classList.toggle("is-hidden", !isVisible);
+    }
+}
+
+// Tiles announce each rendered display (including display switches from a tile's display chooser)
+document.addEventListener("tile-display-rendered", updateScoringMethodVisibility);
+
 // Change the svg scoring method when select element is changed
 document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
     if (isMultigene) return;   // multigene does not use this
@@ -235,6 +256,8 @@ document.getElementById('svg-scoring-method').addEventListener('change', (event)
 
     // Loop through all tiles with svgData and update the display based on the selected method
     for (const tile of tilegrid.tiles) {
+        // Remembered by the tile so a later display switch uses the current method
+        tile.svgScoringMethod = svgScoringMethod;
         if (tile.svg) {
             tile.updateSVGDisplay(svgScoringMethod);
         }
@@ -535,6 +558,7 @@ const selectGeneResult = async (geneSymbol) => {
         document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
 
         await tilegrid.renderDisplays(currentlySelectedGeneSymbol, isMultigene, svgScoringMethod);
+        updateScoringMethodVisibility();
     }
 
     // call any callbacks that have been added (usually by plugins)
