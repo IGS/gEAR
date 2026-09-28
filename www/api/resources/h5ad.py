@@ -4,6 +4,8 @@ h5ad.py - Describe the observation metadata of a dataset.
 Serves /h5ad/<dataset_id> in www/api/api.py.
 """
 
+import traceback
+
 import geardb
 from flask import request
 from flask_restful import Resource
@@ -51,6 +53,7 @@ class H5ad(Resource):
                 'message': "No dataset file found."
             }
         except Exception as e:
+            traceback.print_exc()
             return {
                 "success": -1,
                 'message': str(e)
