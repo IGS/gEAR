@@ -39,16 +39,20 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
-    visibility = form.getvalue('visibility')
-    is_downloadable = form.getvalue('is_downloadable')
-    title = form.getvalue('title')
-    pubmed_id = form.getvalue('pubmed_id')
-    geo_id = form.getvalue('geo_id')
-    ldesc = form.getvalue('ldesc')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
+    visibility = form.getfirst('visibility')
+    is_downloadable = form.getfirst('is_downloadable')
+    title = form.getfirst('title')
+    pubmed_id = form.getfirst('pubmed_id')
+    geo_id = form.getfirst('geo_id')
+    ldesc = form.getfirst('ldesc')
 
     user = geardb.get_user_from_session_id(session_id)
+    if user is None:
+        print(json.dumps({'error': 'User must be logged in', 'success': 0}))
+        return
+
     dataset = geardb.get_dataset_by_id(d_id=dataset_id)
     if dataset is None:
         result = {'error': 'Dataset not found', 'success': 0}
@@ -95,6 +99,9 @@ def main():
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d

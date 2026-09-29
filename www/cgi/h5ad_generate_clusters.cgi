@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+h5ad_generate_clusters.cgi - Run Leiden (fallback Louvain) clustering and optionally rename/merge/drop clusters.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, resolution, compute_clusters ('true'),
+       cluster_info (JSON list of {old_label, new_label, keep}), plot_tsne, plot_umap (0/1).
+Output: JSON {success, group_labels: [{group_label, num_cells, genes}]}; writes clustering PNGs.
 """
 
 import cgi
@@ -27,13 +31,13 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
-    plot_tsne = int(form.getvalue('plot_tsne'))
-    plot_umap = int(form.getvalue('plot_umap'))
+    plot_tsne = int(form.getfirst('plot_tsne'))
+    plot_umap = int(form.getfirst('plot_umap'))
 
     result = {"success": 0, "group_labels":""}
 
@@ -63,9 +67,9 @@ def main():
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))
         return
-    resolution = float(form.getvalue('resolution'))
-    compute_clusters = form.getvalue('compute_clusters')
-    cluster_info = json.loads(form.getvalue("cluster_info"))    # "old_label", "new_label", "keep"
+    resolution = float(form.getfirst('resolution'))
+    compute_clusters = form.getfirst('compute_clusters')
+    cluster_info = json.loads(form.getfirst("cluster_info"))    # "old_label", "new_label", "keep"
 
     adata = ana.get_adata()
 

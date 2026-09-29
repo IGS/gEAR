@@ -41,7 +41,7 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
+    dataset_id = form.getfirst('dataset_id')
     if not dataset_id:
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
@@ -67,9 +67,7 @@ def main():
 
     try:
             args = {}
-            if is_spatial:
-                args['include_images'] = False
-            else:
+            if not is_spatial:
                 args['backed'] = True
             adata = ana.get_adata(**args)
     except Exception:

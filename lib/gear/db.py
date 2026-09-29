@@ -1,3 +1,10 @@
+"""
+db.py - MySQL database connection helper.
+
+Provides MySQLDB, which opens connections to the gEAR MySQL instance using
+settings from gear.ini.
+"""
+
 import mysql.connector
 
 # This resolves some "no localization support for language 'eng'" error
@@ -50,3 +57,14 @@ class MySQLDB:
             else:
                 print(err, file=sys.stderr)
             raise
+
+    # Not needed, but required if we ever want to use context manager (with...) syntax
+    def __enter__(self):
+        """Context manager entry."""
+        return self.connect()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        if self.connection and self.connection.is_connected():
+            self.connection.close()
+        return False

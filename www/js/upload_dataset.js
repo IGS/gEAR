@@ -1,6 +1,7 @@
 'use strict';
 
 import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, guid, initCommonUI, openModal } from "./common.v2.js";
+import { HubContainer, TrackContainer, TRACK_STATUS_COLORS } from "./classes/trackhub.js";
 
 /* --- constants and variables --- */
 
@@ -9,6 +10,10 @@ let shareUid = null;
 let datasetFormat = null;   // set when user chooses a dataset type
 let spatialFormat = null;   // set when user chooses a spatial platform (if applicable)
 let performPrimaryAnalysis = true
+
+// TrackHub stuff
+let hubContainer;
+let trackContainer;
 
 let processingStatus = null;
 const processingStatusCheckInterval = 10; // seconds
@@ -25,36 +30,6 @@ const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform
 ];
 
 /* --- Functions and Classes --- */
-/**
- * Sends a POST request to add a primary analysis to the current dataset upload.
- * Displays a success toast if the operation is successful, or a warning toast if not.
- *
- * @async
- * @function addPrimaryAnalysisToDataset
- * @returns {Promise<void>} Resolves when the operation is complete and the toast is shown.
- */
-const addPrimaryAnalysisToDataset = async () => {
-    const {data} = await axios.post('./cgi/add_primary_analysis_to_dataset_upload.cgi', convertToFormData({
-        share_uid: shareUid,
-        dataset_format: datasetFormat,
-        session_id: getCurrentUser()?.session_id,
-    }));
-
-    document.getElementById('finalize-migrating-primary-analysis-li').classList.remove("is-hidden");
-    if (data.success) {
-        createToast('Primary analysis added successfully','is-success');
-
-        // If dataset was not single-cell or spatial, then we cannot have a primary analysis
-        if (!data.perform_primary_analysis) {
-            performPrimaryAnalysis = false;
-            document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
-        }
-    } else {
-        // This is non-fatal, so just show a warning toast
-        createToast('Error adding primary analysis to uploaded dataset');
-        processingStatus = "error";
-    }
-}
 
 /**
  * Checks the current processing status of the dataset by making an asynchronous request
@@ -66,29 +41,79 @@ const addPrimaryAnalysisToDataset = async () => {
  * @returns {Promise<void>} Resolves when the status check and UI updates are complete.
  */
 const checkDatasetProcessingStatus = async () => {
-    const {data} = await axios.post('./cgi/check_dataset_processing_status.cgi', convertToFormData({
-        share_uid: shareUid,
-        session_id: getCurrentUser()?.session_id
-    }));
+
+    const payload = {
+        "dataset_format": datasetFormat
+    }
+
+    const {data} = await axios.post(
+        `./api/import/dataset/${shareUid}/status`,
+        payload  // Empty JSON so that it doesn't think it's FormData
+    );
 
     processingStatus = data.status;
+    const message = data.message;
     document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
-    document.getElementById('step-process-dataset-status-message').textContent = data.message;
+    document.getElementById('step-process-dataset-status-message').textContent = message;
     document.getElementById('dataset-processing-progress').value = data.progress;
 
-    // TODO: Handle the different statuses here
+    // Only enable next button when both dataset processing AND primary analysis are complete
     if (processingStatus === 'complete') {
-        await addPrimaryAnalysisToDataset();
-
-        // If still complete after the primary analysis step, enable the next step button
-        if (processingStatus === "complete") {
-            document.getElementById('dataset-processing-submit').disabled = false;
-        } else {
-            document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
-            document.getElementById('step-process-dataset-status-message').textContent = "Error adding primary analysis to dataset";
-        }
+        document.getElementById('dataset-processing-submit').disabled = false;
+    } else if (processingStatus === 'error') {
+        document.getElementById('step-process-dataset-status-message').textContent = `Error during processing: ${message}`;
     }
 }
+
+/**
+ * Checks the status of the track hub processing.
+ *
+ * @async
+ * @function checkTrackhubStatus
+ * @returns {Promise<string>} Resolves to the current status of the track hub processing.
+ */
+const checkTrackhubStatus = async() => {
+    const payload = {
+        "dataset_format": datasetFormat
+    }
+
+    const {data} = await axios.post(
+        `./api/import/dataset/${shareUid}/status`,
+        payload  // Empty JSON so that it doesn't think it's FormData
+    );
+
+    const {status, progress, completed_tracks, total_tracks, message, track_statuses} = data;
+
+
+    processingStatus = status
+    document.getElementById('step-process-dataset-status').textContent = status.charAt(0).toUpperCase() + status.slice(1);
+
+    // Update status of entire hub
+    let statusMessage = `Status: ${status || 'Unknown'}. `;
+    if (completed_tracks !== undefined && total_tracks !== undefined) {
+        statusMessage += ` (${completed_tracks}/${total_tracks} tracks completed)`;
+    }
+
+    document.getElementById('step-process-dataset-status-message').textContent = statusMessage;
+    document.getElementById('dataset-processing-progress').value = progress;
+
+    // Update track status badges
+    if (trackContainer) {
+        updateAllTrackStatusesInProcessStep(trackContainer, track_statuses || {});
+    }
+
+    if (status === 'complete') {
+        createToast('Track hub processed successfully!', 'is-success');
+        document.getElementById('dataset-processing-submit').disabled = false
+    } else if (status === 'error') {
+        createToast("Track hub processing failed", 'is-danger');
+        document.getElementById('step-process-dataset-status-message').textContent = statusMessage;
+
+    }
+
+    return status;
+}
+
 
 /**
  * Deletes an upload in progress for a given share and dataset.
@@ -112,7 +137,7 @@ const deleteUploadInProgress = async (shareUid, datasetId) => {
     if (data.success) {
         loadUploadsInProgress();
     } else {
-        createToast('Error deleting upload in progress', data.message, 'is-warning');
+        createToast(`Error deleting upload in progress: ${data.message}`, 'is-warning');
     }
 }
 
@@ -178,7 +203,7 @@ const finalizeUpload = async () => {
         document.getElementById('dataset-finalize-next-step').disabled = false;
         return;
     }
-    msg = data.message || 'Error finalizing dataset upload';
+    const msg = data.message || 'Error finalizing dataset upload';
 
     console.error(`ERROR: ${msg}`);
     document.getElementById('dataset-finalize-status-message').innerText = msg;
@@ -228,6 +253,8 @@ const populateMetadataFormFromFile = async () => {
                 break;
             }
         }
+        // Fire the change listener so spatial gets auto-checked/enabled same as a manual selection
+        datasetTypeSelect.dispatchEvent(new Event('change'));
 
         document.getElementById('metadata-upload-status-message').textContent = "Form populated with uploaded metadata";
         button.disabled = false;
@@ -242,6 +269,140 @@ const populateMetadataFormFromFile = async () => {
     document.getElementById('metadata-upload-status').classList.remove('is-hidden');
     button.classList.remove('is-loading');
 }
+
+/**
+ * Asynchronously populates hub and track containers from a track hub URL or file.
+ *
+ * Retrieves hub configuration and track definitions from a provided UCSC-format track hub URL or file,
+ * validates that the selected assembly exists in the hub, and populates Track objects for each
+ * discovered track. Handles both single-file hub mode (tracks defined in hub.txt) and multi-file
+ * mode (tracks defined in separate trackDb.txt file referenced from genomes.txt).
+ *
+ * For file-based hubs, tracks are only prepopulated if useOneFile="on" and track bigDataUrl values are URLs.
+ * Local file references in file-based hubs require manual user configuration.
+ *
+ * @async
+ * @function populateHubAndTracks
+ * @param {HubContainer} hubContainer - Container object for managing hub metadata and configuration.
+ * @param {TrackContainer} trackContainer - Container object for managing track definitions.
+ * @returns {Promise<void>} Resolves when hub and track data have been populated or early-returned
+ *                          on validation/initialization failure. Errors are logged as warnings and
+ *                          displayed as warning toasts (non-fatal).
+ *
+ * @description
+ * Execution flow:
+ * 1. Validates that an assembly was previously selected via DOM element 'trackhub-assembly-select'.
+ * 2. Retrieves hub URL/file and assembly value from DOM inputs.
+ * 3. Returns early if neither hub URL nor file is provided.
+ * 4. Parses hub source (file or URL) to populate hub metadata.
+ * 5. For URL-based hubs: Checks hub mode and parses tracks accordingly (oneFile or trackDb.txt).
+ * 6. For file-based hubs: Only parses tracks if oneFile mode AND tracks have URL-based bigDataUrl values.
+ * 7. Displays warning toasts for any parsing errors encountered.
+ *
+ * @see {@link HubContainer#parseHubFile}
+ * @see {@link HubContainer#parseHubUrl}
+ * @see {@link HubContainer#retrieveTrackDbPath}
+ * @see {@link TrackContainer#parseHubTracks}
+ * @see {@link TrackContainer#parseTrackDbUrl}
+ */
+const populateHubAndTracks = async (hubContainer, trackContainer) => {
+    // If an assembly genome was selected in the previous step, set it as the default for the hub
+    const assemblySelect = document.getElementById('trackhub-assembly-select');
+    if (!assemblySelect) {
+        // If assembly wasn't provided, then hub URL wasn't provided either.
+        return;
+    }
+
+    // If a hub.txt file was previously provided
+    // 1) populate the Hub object with its contents
+    // 2) Ensure the selected assembly exists in the hub, otherwise add a warning and leave tracks empty
+    // 3) If trackDb files exist, parse them for the parameters we need and create Track objects for each track found.
+
+    const hubUrl = document.getElementById("trackhub-url-input").value
+    const fileInput = document.getElementById("trackhub-file-input");
+    const assembly = assemblySelect.value;
+
+    // Don't bother if no URL or file provided.
+    if (!hubUrl && !fileInput.files.length) {
+        return;
+    }
+
+    try {
+
+        const isFileSource = fileInput.files.length > 0;
+        const file = isFileSource ? fileInput.files[0] : null;
+
+        // Parse hub from file or URL
+        if (isFileSource) {
+            await hubContainer.parseHubFile(file, assembly);
+        } else {
+            await hubContainer.parseHubUrl(hubUrl, assembly);
+        }
+
+        // Attempt to populate tracks based on hub mode and source
+        await populateTracks(hubContainer, trackContainer, isFileSource, hubUrl);
+
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error parsing track hub URL... initializing empty form.`, 'is-warning');
+        return;
+    }
+}
+
+/**
+ * Helper function to populate tracks based on hub configuration and source type.
+ * For URL sources: fetches tracks from hub.txt (oneFile) or trackDb.txt.
+ * For file sources: only populates tracks if oneFile mode is enabled and bigDataUrl values are URLs; otherwise, shows warnings about local file references and manual configuration.
+ *
+ * @async
+ * @private
+ * @param {HubContainer} hubContainer - The hub container with parsed hub metadata.
+ * @param {TrackContainer} trackContainer - The track container to populate.
+ * @param {boolean} isFileSource - Whether the hub came from a file upload.
+ * @returns {Promise<void>}
+ */
+const populateTracks = async (hubContainer, trackContainer, isFileSource, hubUrl=null) => {
+    const hubContent = hubContainer.hubContent
+
+    // If oneFile mode, tracks should be defined in the hub.txt file, so attempt to parse them directly from the hub content (regardless of source)
+    if (hubContainer.oneFileMode) {
+        try {
+            await trackContainer.parseHubTracksFromContent(hubContent);
+        } catch (error) {
+            console.warn(error);
+            createToast(`Error parsing hub "oneFile" tracks... cannot populate tracks.`, 'is-warning');
+        }
+        return;
+    }
+
+    // If not oneFile mode, then we need to retrieve and parse the trackDb.txt file to get track information.
+    // For file-based hubs, this is not possible because we cannot resolve local file references, so we return early with a warning.
+    if (isFileSource) {
+        createToast(`Hub is in file-based multi-file mode, which cannot be prepopulated. Please configure tracks manually, or try again using useOneFile mode in the hub.txt file.`, 'is-warning');
+        return;
+    }
+
+    if (!hubUrl) {
+        createToast(`Hub URL is required to retrieve trackDb.txt information for non-oneFile hubs.`, 'is-warning');
+        return;
+    }
+
+    // Find the trackDb file in genomes.txt and parse it
+    try {
+        await hubContainer.retrieveTrackDbPath(hubUrl);
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error retrieving trackDb.txt path from genomes.txt in hub URL... cannot populate tracks.`, 'is-warning');
+        return;
+    }
+
+    try {
+        await trackContainer.parseTrackDbUrl(hubContainer.getTrackDbUrl());
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error parsing trackDb.txt... cannot populate tracks.`, 'is-warning');
+    }
+};
 
 /**
  * Asynchronously fetches GEO metadata based on the user-provided GEO ID and populates
@@ -278,19 +439,79 @@ const getGeoData = async () => {
     button.classList.remove('is-loading');
 }
 
+const updateConfigureTrackHubButtonState = (urlInput, fileInput, assemblySelect) => {
+    const submitButton = document.getElementById('configure-trackhub-submit');
+    const statusMessage = document.getElementById('trackhub-upload-status-message');
+    const statusContainer = document.getElementById('trackhub-upload-status');
+
+    // If neither URL nor file is provided, enable the submit button and hide the status message
+    if (!urlInput.value && !fileInput.value) {
+        submitButton.disabled = false;
+        statusContainer.classList.add('is-hidden');
+        return
+    }
+
+    // If both URL and file are provided, show an error message
+    if (urlInput.value && fileInput.value) {
+        statusMessage.textContent = 'Please provide either a URL or a file, not both.';
+        statusContainer.classList.remove('is-hidden');
+        submitButton.disabled = true;
+        return;
+    }
+
+    // Disable the submit button by default
+    submitButton.disabled = true;
+
+    if (!assemblySelect.value) {
+        // If no assembly is selected, show an error message
+        statusMessage.textContent = 'Please select an assembly.';
+        statusContainer.classList.remove('is-hidden');
+        return;
+    }
+
+    // url should be in HTTP or HTTPS format and have no spaces (basic validation)
+    if (urlInput.value) {
+        const isUrl = urlInput.value.startsWith("http://") || urlInput.value.startsWith("https://");
+        if (isUrl && !urlInput.value.includes(' ')) {
+            // Valid URL, enable the submit button and hide the status message
+            submitButton.disabled = false;
+            statusContainer.classList.add('is-hidden');
+        } else {
+            // Invalid URL, show an error message
+            statusMessage.textContent = 'Please enter a valid HTTP or HTTPS URL.';
+            statusContainer.classList.remove('is-hidden');
+        }
+    } else {
+        // If a file is provided, enable the submit button and hide the status message
+        submitButton.disabled = false;
+        statusContainer.classList.add('is-hidden');
+    }
+}
+
+/**
+ * Fetches the content of an HTML file from the specified URL.
+ *
+ * @param {string} url - The URL of the HTML file to fetch.
+ * @returns {Promise<string>} - A promise that resolves with the content of the HTML file as a string.
+ */
+const includeHtml = async (url) => {
+    const preResponse = await fetch(url, {cache: "reload"});
+    return await preResponse.text();
+}
+
 /**
  * Navigates to a specific step in the dataset upload process, updating the UI to reflect the current step.
  * Handles step marker icons and classes for visual feedback, manages step content visibility,
  * and triggers dataset processing status checks when appropriate.
  *
  * @param {string} step - The label of the step to navigate to. Must be one of:
- *   'enter-metadata', 'upload-dataset', 'process-dataset', 'finalize-dataset', 'curate-dataset'.
+ *   'enter-metadata', 'upload-dataset', 'process-dataset', 'post-process-dataset', 'finalize-dataset', 'curate-dataset'.
  */
 const stepTo = (step) => {
     // TODO: switch to using the stepper-fxns.js functions (and unify the two stepper implementations)
 
-    const stepLabels = ['enter-metadata', 'upload-dataset', 'process-dataset',
-        'finalize-dataset', 'curate-dataset'
+    const stepLabels = ['enter-metadata', 'upload-dataset', 'build-trackhub', 'process-dataset',
+        'post-process-dataset', 'finalize-dataset', 'curate-dataset'
     ];
     let stepReached = false;
 
@@ -324,14 +545,31 @@ const stepTo = (step) => {
         }
     }
 
-    // if the step is process-dataset, we need to check on the status
+    // Render the post-processing options if we're on that step, as if the person had clicked "submit".
+    if (step === "post-process-dataset") {
+        renderPostProcessingOptions();
+    }
+
+    // Some steps require polling for status, so set that up if we're on one of those steps
+    let pollingFn = null;
     if (step === 'process-dataset') {
-        // Check the status immediately, then set an interval to keep doing it.
-        checkDatasetProcessingStatus();
+        pollingFn = datasetFormat === 'gosling' ? checkTrackhubStatus : checkDatasetProcessingStatus;
+
+        // For Gosling, render track status list once on entry (works for both new and resumed uploads)
+        // TODO: this will never execute when resuming.  Need to revise.
+        if (datasetFormat === 'gosling' && trackContainer) {
+            renderTrackStatusList(trackContainer);
+        }
+
+    }
+
+    if (pollingFn) {
+        // Check the status immediately (to establish the initial UI state), then set an interval to keep doing it.
+        pollingFn();
 
         setInterval(() => {
             if (processingStatus !== 'complete' && processingStatus !== 'error') {
-                checkDatasetProcessingStatus();
+                pollingFn();
             }
         }, processingStatusCheckInterval * 1000);
     }
@@ -341,7 +579,7 @@ const stepTo = (step) => {
         item.classList.add('is-hidden');
     });
 
-    document.getElementById('step-' + step + '-c').classList.remove('is-hidden');
+    document.getElementById(`step-${step}-c`).classList.remove('is-hidden');
 
     // Scroll to the top of the page
     window.scrollTo(0, 0);
@@ -377,13 +615,13 @@ const loadUploadsInProgress = async () => {
                 clone.querySelector('tr').dataset.shareId = upload.share_id;
                 clone.querySelector('tr').dataset.datasetId = upload.dataset_id;
                 clone.querySelector('tr').dataset.loadStep = upload.load_step;
-                clone.querySelector('tr').dataset.performPrimaryAnalysis = upload.perform_primary_analysis; // true/false
-                clone.querySelector('tr').dataset.datasetIsSpatial = upload.dataset_is_spatial; // true/false
+                clone.querySelector('tr').dataset.performPrimaryAnalysis = upload.perform_primary_analysis; // true/false assigned as string
+                clone.querySelector('tr').dataset.datasetFormat = upload.dataset_format;
 
                 clone.querySelector('.submission-share-id').textContent = upload.share_id;
                 clone.querySelector('.submission-status').textContent = upload.status;
                 clone.querySelector('.submission-title').textContent = upload.title;
-                clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type;
+                clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type == "gosling" ? "epigenome" : upload.dataset_type;
                 tableBody.appendChild(clone);
             };
 
@@ -405,9 +643,10 @@ const loadUploadsInProgress = async () => {
                         document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
                     }
 
-                    if (row.dataset.datasetIsSpatial) {
-                        datasetFormat = 'spatial';
-                    }
+                    datasetFormat = row.dataset.datasetFormat;
+                    // processingStatus will be updated in initial polling again
+
+                    adjustUIForGosling()
 
                     // Do we want to dynamically load the next step or page refresh for it?
                     //  If dynamic we have to reset all the forms.
@@ -451,7 +690,7 @@ const loadUploadsInProgress = async () => {
  * @param {string} field - The field name to prettify.
  * @returns {string} The prettified field name.
  */
-const prettifyFieldName = (field) => {
+const prettifyMetadataFieldName = (field) => {
     field = field.replace('metadata-', '');
     field = field.replaceAll('-', ' ');
     return field.charAt(0).toUpperCase() + field.slice(1);
@@ -490,25 +729,11 @@ const storeMetadata = async () => {
         library_selection: document.getElementsByName('metadata-library-selection')[0].value,
         library_source: document.getElementsByName('metadata-library-source')[0].value,
         library_strategy: document.getElementsByName('metadata-library-strategy')[0].value,
-        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value
+        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value,
+        user_pii_affirmed: document.getElementsByName('metadata-no-pii')[0].checked ? 1 : 0
     }));
 
     if (data.success) {
-        // UI for next step:
-        /*
-        // For the current step:
-        <span class="steps-marker">
-            <span class="icon">
-            <i class="mdi mdi-check-bold"></i>
-            </span>
-        </span>
-        // For the next step:
-        <span class="steps-marker is-light">
-            <span class="icon">
-            <i class="mdi mdi-wrench"></i>
-            </span>
-        </span>
-        */
 
         stepTo('upload-dataset');
 
@@ -521,53 +746,52 @@ const storeMetadata = async () => {
     }
 }
 
-const uploadTrackhub = async () => {
-    let percentComplete = 0
+/**
+ * Asynchronously builds and populates the trackhub interface for Gosling dataset uploads.
+ *
+ * Fetches HTML templates for hub and track sections, initializes Hub and Track container objects,
+ * populates them with data from a provided trackhub URL, and navigates the UI to the build-trackhub step.
+ *
+ * The function performs the following operations:
+ * 1. Loads HTML template for the hub section and injects it into the DOM
+ * 2. Loads HTML template for the track section and injects it into the DOM
+ * 3. Creates new HubContainer and TrackContainer instances to manage hub and track data
+ * 4. Parses hub configuration and track definitions from the provided trackhub URL
+ * 5. Advances the UI stepper to the build-trackhub step
+ *
+ * @async
+ * @function buildTrackhub
+ * @returns {Promise<void>} Resolves when the trackhub interface has been fully populated and the UI step has been updated.
+ *
+ * @description
+ * This function is called when a user selects the Gosling format and provides a trackhub URL.
+ * It assumes the presence of DOM elements with IDs 'hub-section' and 'track-section'.
+ * Error handling is performed by `populateHubAndTracks()`, which displays warning toasts if parsing fails.
+ *
+ * @see {@link populateHubAndTracks} for details on hub/track population and error handling
+ * @see {@link stepTo} for navigation logic
+ */
+const buildTrackhub = async () => {
+    const hubSection = document.getElementById("hub-section")
+    hubSection.innerHTML = await includeHtml("../include/trackhub/hub.html");
+    const trackSection = document.getElementById("track-section")
+    trackSection.innerHTML = await includeHtml("../include/trackhub/track.html");
 
-    const payload = {
-        share_uid: shareUid,
-        trackhub_url: document.getElementById('trackhub-url-input').value,
-        assembly: document.getElementById('trackhub-assembly-select').value
-    }
-    try {
-        const validateResponse = await fetch('./api/import/trackhub/validate', {
-            method: 'POST',
-            body: payload,
-        });
-        const validateData = await validateResponse.json();
-        // success is python True/False
-        if (!validateData.success) {
-            throw new Error(validateData.message || 'Error validating trackhub');
-        }
-        const numTracks = validateData.num_tracks || 1;
+    // Manipulates the contents in the section inner HTML and also creates new Hub and Track objects.
+    hubContainer = new HubContainer();
+    trackContainer = new TrackContainer();
+    hubContainer.setTrackContainer(trackContainer);
+    trackContainer.setHubContainer(hubContainer);
 
-        // Validation + Copy
-        // Copy will be broken down into the number of tracks to copy
-        const stages = 2;
-        const secondStagePercentIncrement = 50 / numTracks;
+    await populateHubAndTracks(hubContainer, trackContainer);
 
-        percentComplete = 50
-        document.getElementById('dataset-upload-progress').value = percentComplete;
+    // Register a listener to enable "Build track hub" button if there is at least 1 track with a data file provided
+    trackContainer.registerTrackDataFileListener(() => {
+        const submitButton = document.getElementById('build-trackhub-submit');
+        submitButton.disabled = trackContainer.hasAtLeastOneTrackWithDataFile() ? false : true;
+    });
 
-        const copyResponse = await fetch('./api/import/trackhub/copy', {
-            method: 'POST',
-            body: payload,
-        })
-        if (!copyResponse.success) {
-            throw new Error(copyResponse.message || 'Error copying trackhub data');
-        }
-
-        percentComplete += 50
-        document.getElementById('dataset-upload-progress').value = percentComplete;
-
-        document.getElementById('dataset-upload-submit').classList.remove('is-loading');
-        document.getElementById('dataset-upload-status-message').textContent = 'Trackhub uploaded successfully. Processing beginning momentarily ...';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
-
-    } catch (error) {
-        console.error('Error uploading trackhub:', error);
-        createToast('Error processing trackhub');
-    }
+    stepTo("build-trackhub");
 }
 
 /**
@@ -591,6 +815,8 @@ const uploadTrackhub = async () => {
  * @returns {Promise<void>} Resolves when the upload process is complete.
  */
 const uploadDataset = () => {
+    const datasetFile = document.getElementById('dataset-file-input').files[0];
+
     const formData = new FormData();
     formData.append('share_uid', shareUid);
     formData.append('session_id', getCurrentUser()?.session_id);
@@ -598,7 +824,10 @@ const uploadDataset = () => {
     if (spatialFormat) {
         formData.append('spatial_format', spatialFormat);
     }
-    formData.append('dataset_file', document.getElementById('dataset-file-input').files[0]);
+    // Lets the server confirm the whole file arrived (a dropped connection can otherwise
+    // leave a silently-truncated file on the server with no error surfaced).
+    formData.append('expected_size', datasetFile.size);
+    formData.append('dataset_file', datasetFile);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', './cgi/store_expression_dataset.cgi', true);
@@ -668,10 +897,308 @@ const processDataset = async () => {
             // Nothing really to do here since status checking happens elsewhere
         }
     } catch (error) {
-        console.error('Error processing dataset:', error);
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
         createToast('Error processing dataset');
     }
 }
+
+// Catch-all for any post-processing steps that need to be done before finalizing the dataset.
+const renderPostProcessingOptions = async() => {
+
+    const doSomethingObs = await renderAmbiguousObsColumns();
+
+    // doSomething should be true if any "doSomething" substeps are true
+    const doSomething = [doSomethingObs].some(Boolean);
+
+    if (!doSomething) {
+        stepTo("finalize-dataset");
+        return;
+    }
+}
+
+const renderAmbiguousObsColumns = async () => {
+    let doSomething;
+    const formData = new FormData();
+    formData.append('share_uid', shareUid);
+    formData.append('session_id', getCurrentUser()?.session_id);
+
+    try {
+        const response = await fetch('./cgi/get_ambiguous_obs_columns.cgi', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error');
+        }
+
+        // If the dataset has already been reviewed or has nothing questionable, we can skip this step
+        doSomething = !data?.reviewed;
+
+        if (!doSomething) {
+            document.getElementById("ambiguous-cols-dtypes-c").classList.add("is-hidden");
+            return doSomething;
+        }
+
+        // Render the ambiguous columns for user review
+        const ambiguousColumns = data?.questionable_columns;
+        if (!ambiguousColumns) {
+            throw new Error('No ambiguous columns found');
+        }
+
+        /* Example key
+                Keyed by column name, e.g.:
+            {
+              "replicate": {
+                  "current_dtype": "int64",
+                  "n_unique": 3,
+                  "sample_values": [1, 2, 3],
+                  "suggested_type": "categorical",
+              }
+            }
+        */
+
+        document.getElementById("ambiguous-cols-dtypes-c").classList.remove("is-hidden");
+
+        const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+        reviewContainer.innerHTML = '';
+
+        for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
+            const colDiv = document.createElement('div');
+            colDiv.className = 'box mb-4 column is-4';
+            colDiv.innerHTML = `
+                <h5 class="subtitle is-5">Column: ${colName}</h5>
+                <p>Current data type: ${colInfo.current_dtype}</p>
+                <p>Number of unique values: ${colInfo.n_unique}</p>
+                <p>Sample values: ${colInfo.sample_values.join(', ')}</p>
+                <br>
+                <p class=mb-2><strong>Suggested data type:</strong> ${colInfo.suggested_type}</p>
+                <div class="field">
+                    <div class="control">
+                        <div class="select">
+                            <select name="ambiguous-col-${colName}">
+                                <option value="categorical" ${colInfo.suggested_type === 'categorical' ? 'selected' : ''}>Categorical</option>
+                                <option value="continuous" ${colInfo.suggested_type === 'continuous' ? 'selected' : ''}>Continuous</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+            reviewContainer.appendChild(colDiv);
+        }
+
+        return doSomething;
+
+    } catch (error) {
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
+        createToast('Error processing dataset');
+    }
+}
+
+const applyPostProcessingOptions = async () => {
+
+    // For all post-processing steps, run in parallel, then step to "finalize-dataset"
+    const stepsToApply = []
+    if (!document.getElementById('ambiguous-cols-review-c').classList.contains('is-hidden')) {
+        stepsToApply.push(applyAmbiguousObsColumns());
+    }
+    await Promise.all(stepsToApply);
+    stepTo('finalize-dataset');
+}
+
+const applyAmbiguousObsColumns = async () => {
+
+    // Get the user-selected choices for each ambiguous column
+    const choices = {};
+    const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+    for (const select of reviewContainer.querySelectorAll('select')) {
+        const colName = select.name.replace('ambiguous-col-', '');
+        choices[colName] = select.value;
+    }
+
+    const formData = new FormData();
+    formData.append('share_uid', shareUid);
+    const choicesJson = JSON.stringify(choices);
+    formData.append('choices', choicesJson);
+    formData.append('session_id', getCurrentUser()?.session_id);
+
+    try {
+        const response = await fetch('./cgi/apply_obs_dtype_choices.cgi', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error');
+        }
+
+    } catch (error) {
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
+        createToast('Error processing dataset');
+    }
+}
+
+const stageTrackHub = async (hubContainer, trackContainer) => {
+    const hubValidation = hubContainer.validateHub();
+    const trackValidation = trackContainer.validateTracks();
+
+    if (hubValidation.errors.length > 0) {
+        createToast("Validation issues with hub metadata. Please correct the fields marked with * and submit again");
+        // log errors
+        console.warn("Hub validation errors:", hubValidation.errors);
+        return;
+    }
+
+    if (trackValidation.errors.length > 0) {
+        createToast("Validation issues with one or more tracks. Please correct the fields marked with * and submit again.");
+        // log errors
+        console.warn("Track validation errors:", trackValidation.errors);
+        return;
+    }
+
+    const hubJson = hubContainer.generateHubJson();
+    const trackStanzas = trackContainer.generateTrackDbEntries();
+
+    if (!hubJson || trackStanzas.length === 0) {
+        return;
+    }
+
+    // Build main FormData
+    const formData = new FormData();
+    formData.append('hub_json', JSON.stringify(hubJson));
+    formData.append('tracks', JSON.stringify(trackStanzas));
+    formData.append('assembly', hubContainer.getAssembly());
+    formData.append('dry_run', false);
+
+    // Append files separately
+    const trackFilesFormData = trackContainer.buildTrackFilesFormData();
+    for (const [key, value] of trackFilesFormData.entries()) {
+        formData.append(key, value);
+    }
+
+    try {
+        const {data} = await axios.post(
+            `./api/import/trackhub/${shareUid}/copy`,
+            formData
+        );
+
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error');
+        }
+
+        stepTo('process-dataset');
+
+    } catch (error) {
+        createToast(`Error staging trackhub data: ${error.message}`);
+    }
+};
+
+/**
+ * Renders a list of track statuses in the Process Dataset step.
+ * Called when transitioning from Build Track Hub to Process Dataset for Gosling uploads.
+ *
+ * @param {TrackContainer} trackContainer - The container with track information.
+ * @returns {void}
+ */
+const renderTrackStatusList = (trackContainer) => {
+    const trackStatusContainer = document.getElementById('track-status-container');
+    const trackStatusList = document.getElementById('track-status-list');
+
+    if (!trackContainer || Object.keys(trackContainer.tracks).length === 0) {
+        trackStatusContainer.classList.add('is-hidden');
+        return;
+    }
+
+    // Clear the list
+    trackStatusList.innerHTML = '';
+
+    // Create list item for each track
+    for (const trackId in trackContainer.tracks) {
+        const track = trackContainer.tracks[trackId];
+        const trackName = track.identifier || `Track ${trackId}`;
+
+        const listItem = document.createElement('li');
+        listItem.className = 'mb-2';
+        listItem.id = `track-status-item-${trackId}`;
+        listItem.innerHTML = `
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="mdi mdi-checkbox-blank-outline js-track-status-icon"></i>
+                </span>
+                <span class="js-track-status-name">${trackName}</span>
+                <span class="tag is-light js-track-status-badge" style="display: none; margin-left: 0.5rem;"></span>
+            </span>
+        `;
+
+        trackStatusList.appendChild(listItem);
+    }
+
+    trackStatusContainer.classList.remove('is-hidden');
+};
+
+/**
+ * Updates the track status in the Process Dataset step.
+ * Called during polling to update individual track statuses.
+ *
+ * @param {number} trackId - The ID of the track to update.
+ * @param {string} status - The current status of the track (e.g., 'downloading', 'completed').
+ * @returns {void}
+ */
+const updateTrackStatusInProcessStep = (trackId, status) => {
+    const trackStatusItem = document.getElementById(`track-status-item-${trackId}`);
+    if (!trackStatusItem) return;
+
+    const statusInfo = TRACK_STATUS_COLORS[status];
+    if (!statusInfo) return;
+
+    const statusBadge = trackStatusItem.querySelector('.js-track-status-badge');
+    const statusIcon = trackStatusItem.querySelector('.js-track-status-icon');
+
+    // Update badge
+    statusBadge.className = `tag is-light js-track-status-badge ${statusInfo.color}`;
+    statusBadge.textContent = statusInfo.label;
+    statusBadge.style.display = 'inline-block';
+
+    // Update icon based on status
+    statusIcon.className = 'mdi mdi-checkbox-blank-outline js-track-status-icon';
+    if (status === 'completed') {
+        statusIcon.classList.remove('mdi-checkbox-blank-outline');
+        statusIcon.classList.add('mdi-check-circle');
+    } else if (status === 'failed') {
+        statusIcon.classList.remove('mdi-checkbox-blank-outline');
+        statusIcon.classList.add('mdi-alert-circle');
+    }
+};
+
+/**
+ * Updates all track statuses in the Process Dataset step based on the provided status object.
+ * Called during polling to reflect the current state of all tracks.
+ *
+ * @param {TrackContainer} trackContainer - The container with track information.
+ * @param {Object} trackStatuses - Object mapping track names to their current status.
+ * @returns {void}
+ */
+const updateAllTrackStatusesInProcessStep = (trackContainer, trackStatuses) => {
+    if (!trackContainer) return;
+
+    for (const trackId in trackContainer.tracks) {
+        const track = trackContainer.tracks[trackId];
+        const trackName = track.shortLabel;
+        const status = trackStatuses[trackName];
+
+        if (status) {
+            updateTrackStatusInProcessStep(trackId, status);
+        }
+    }
+};
 
 /**
  * Validates the metadata form by checking required fields for values and enforcing SQL character length limits.
@@ -692,6 +1219,15 @@ const validateMetadataForm = () => {
             element.classList.add('is-danger');
             erroredFields[field] = 'Requires a value';
         }
+    }
+
+    // Check that the personal data affirmation checkbox is checked
+    const piiAffirmed = document.getElementsByName('metadata-no-pii')[0].checked;
+    if (!piiAffirmed) {
+        document.getElementsByName('metadata-no-pii')[0].classList.add('is-danger');
+        erroredFields['metadata-no-pii'] = 'You must affirm that the dataset contains no personally identifiable information';
+    } else {
+        document.getElementsByName('metadata-no-pii')[0].classList.remove('is-danger');
     }
 
     // Check SQL length limitations
@@ -723,6 +1259,79 @@ const validateMetadataForm = () => {
     }
 
     return erroredFields;
+}
+
+/**
+ * Adjusts the UI elements on the upload dataset page based on the selected dataset format, specifically for Gosling uploads.
+ * Hides or shows relevant sections and inputs to guide the user through the appropriate upload process for Gosling track hubs.
+ */
+
+const adjustUIForGosling = () => {
+    // Gosling has special uploader
+    if (datasetFormat === "gosling") {
+        document.getElementById("dataset-upload-c").classList.add("is-hidden");
+        document.getElementById("dataset-upload-status").classList.add("is-hidden");
+        document.getElementById("dataset-curate-div").classList.add("is-hidden");
+
+        document.getElementById("step-build-trackhub").classList.remove("is-hidden");
+        document.getElementById("trackhub-upload-c").classList.remove("is-hidden");
+        document.getElementById("dataset-no-curate-div").classList.remove("is-hidden");
+
+        document.getElementById("dataset-file-input").value = "";
+        document.getElementById("dataset-url-input").value = "";
+        return;
+    }
+    document.getElementById("dataset-upload-c").classList.remove("is-hidden");
+    document.getElementById("dataset-upload-status").classList.remove("is-hidden");
+    document.getElementById("dataset-curate-div").classList.remove("is-hidden");
+
+    document.getElementById("step-build-trackhub").classList.add("is-hidden");
+    document.getElementById("trackhub-upload-c").classList.add("is-hidden");
+    document.getElementById("dataset-no-curate-div").classList.add("is-hidden");
+
+    document.getElementById("trackhub-file-input").value = "";
+    document.getElementById("trackhub-file-name").textContent = "";
+    document.getElementById("trackhub-url-input").value = "";
+}
+
+/**
+ * Selects a dataset format, mirroring the UI/state changes of clicking its format-selector button.
+ * Used so other controls (metadata dataset type, spatial platform select) can drive the same
+ * selection without requiring a direct click on a (possibly disabled) button.
+ */
+const selectDatasetFormat = (format) => {
+    // Reset each as selectable
+    for (const element of document.getElementsByClassName('format-selector')) {
+        if (element.disabled) {
+            continue;
+        }
+        // set the classList on this button to only be 'mdi' and 'mdi-cancel'
+        const icon = element.querySelector('span.icon i');
+        icon.classList.remove(...icon.classList);
+        icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
+        element.querySelector('span.format-status').textContent = 'Choose';
+    }
+
+    // Now set things for the one actually clicked
+    const btn = document.querySelector(`.format-selector[data-format="${format}"]`);
+    if (!btn) {
+        return;
+    }
+    btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
+    btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
+    btn.querySelector('span.format-status').textContent = 'Selected';
+    datasetFormat = format;
+
+    // If the format is "special", update the text in the finalize step.
+    const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
+    migrateH5adSpan.textContent = 'Migrating H5AD file';
+    if (datasetFormat === 'spatial') {
+        migrateH5adSpan.textContent = 'Migrating Zarr store';
+    } else if (datasetFormat == 'gosling') {
+        migrateH5adSpan.textContent = 'Migrating track hub and files';
+    }
+
+    adjustUIForGosling();
 }
 
 /**
@@ -762,44 +1371,7 @@ await initPage();
 const formatSelectorElts = document.getElementsByClassName('format-selector');
 for (const btn of formatSelectorElts) {
     btn.addEventListener('click', (event) => {
-        // Reset each as selectable
-        for (const element of formatSelectorElts) {
-            if (element.disabled) {
-                continue;
-            }
-            // set the classList on this button to only be 'mdi' and 'mdi-cancel'
-            const icon = element.querySelector('span.icon i');
-            icon.classList.remove(...icon.classList);
-            icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
-
-            element.querySelector('span.format-status').textContent = 'Choose';
-        };
-
-        // Now set things for the one actually clicked
-        btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
-        btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
-        btn.querySelector('span.format-status').textContent = 'Selected';
-        datasetFormat = btn.dataset.format;
-
-        // If the format is spatial, change text to say "Zarr store"
-        const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
-        migrateH5adSpan.textContent = 'Migrating H5AD file';
-        if (datasetFormat === 'spatial') {
-            migrateH5adSpan.textContent = 'Migrating Zarr store';
-        }
-
-        // Gosling has special uploader
-        if (datasetFormat === "gosling") {
-            document.getElementById("dataset-upload-columns").classList.add("is-hidden")
-            document.getElementById("dataset-file-input").value = "";
-            document.getElementById("dataset-url-input").value = "";
-            document.getElementById("trackhub-upload-columns").classList.remove("is-hidden")
-        } else {
-            document.getElementById("dataset-upload-columns").classList.remove("is-hidden")
-            document.getElementById("trackhub-upload-columns").classList.add("is-hidden")
-            document.getElementById("trackhub-url-input").value = "";
-        }
-
+        selectDatasetFormat(btn.dataset.format);
     });
 };
 
@@ -812,16 +1384,26 @@ document.getElementById('new-submission-toggle').addEventListener('click', (even
 
 document.getElementById('dataset-processing-submit').addEventListener('click', (event) => {
     event.preventDefault();
+    stepTo('post-process-dataset');
+});
 
-    stepTo('finalize-dataset');
+document.getElementById('dataset-post-processing-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    applyPostProcessingOptions();
 });
 
 document.getElementById('dataset-curate-submit').addEventListener('click', (event) => {
     event.preventDefault();
 
     const url = `/dataset_curator.html?dataset_id=${datasetUid}`;
-    window.location.href = url;
+    window.open(url, '_blank');
 });
+
+document.getElementById('dataset-explorer-redirect').addEventListener('click', (event) => {
+    event.preventDefault();
+    window.open(`./p?s=${shareUid}&gsem=1`, '_blank');
+});
+
 
 document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
     event.preventDefault();
@@ -839,7 +1421,7 @@ document.getElementById('metadata-form-submit').addEventListener('click', (event
 
     // iterate over the errored fields and display them
     for (const field in erroredFields) {
-        const fieldLabel = prettifyFieldName(field);
+        const fieldLabel = prettifyMetadataFieldName(field);
         const fieldMsg = erroredFields[field];
 
         const li = document.createElement('li');
@@ -862,9 +1444,49 @@ document.getElementById('dataset-file-input').addEventListener('change', (event)
     document.getElementById('dataset-file-name').textContent = 'No file selected';
 });
 
+// Enable 'Upload dataset' button if a URL is entered and an assembly is selected.
+const hubUrlInput = document.getElementById('trackhub-url-input');
+const hubFileInput = document.getElementById('trackhub-file-input');
+const hubAssemblySelect = document.getElementById('trackhub-assembly-select');
+hubUrlInput.addEventListener('input', (event) => {
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    document.getElementById("use-one-file-warning").classList.add('is-hidden');
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
+})
+hubFileInput.addEventListener('change', async (event) => {
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    document.getElementById("use-one-file-warning").classList.add('is-hidden');
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
+
+    // Validate hub file for local references
+    if (event.target.files.length > 0) {
+        try {
+            const file = event.target.files[0];
+            const fileContent = await file.text();
+
+            document.getElementById("trackhub-file-name").textContent = file.name;
+
+            // Check for local file references and show warnings if found
+            if (HubContainer.hasLocalFileReferences(fileContent)) {
+                document.getElementById('trackhub-validation-warnings').classList.remove('is-hidden');
+                if (!HubContainer.hasUseOneFileMode(fileContent)) {
+                    document.getElementById("use-one-file-warning").classList.remove('is-hidden');
+                }
+            }
+        } catch (error) {
+            console.warn('Error reading hub file:', error);
+            createToast('Error reading hub file for validation. Please ensure the file is a valid text file.', 'is-warning');
+        }
+    }
+
+})
+hubAssemblySelect.addEventListener('change', (event) => {
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
+})
+
 document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
     event.preventDefault();
-    event.currentTargetdisabled = true;
+    event.currentTarget.disabled = true;
     document.getElementById('finalize-dataset-status-c').classList.remove('is-hidden');
 
     finalizeUpload();
@@ -893,7 +1515,7 @@ document.getElementById('metadata-file-input').addEventListener('change', (event
 
 document.getElementById('dataset-upload-submit').addEventListener('click', (event) => {
     event.preventDefault();
-    // make sure they chose a format
+    // make sure they chose a format (sanity check)
     if (!datasetFormat) {
         document.getElementById('dataset-upload-status-message').textContent = 'Please choose a format above first.';
         document.getElementById('dataset-upload-status').classList.remove('is-hidden');
@@ -919,11 +1541,53 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     document.getElementById('dataset-upload-status').classList.add('is-hidden');
 
     if (datasetFormat === "gosling") {
-        //uploadTrackhub();
-        return
+        throw new Error("Gosling should be handled separately and should not reach this point. Please contact a gEAR developer.");
     }
     uploadDataset();
 });
+
+document.getElementById('configure-trackhub-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    // make sure they chose a format (sanity check)
+    if (datasetFormat !== "gosling") {
+        document.getElementById('dataset-upload-status-message').textContent = 'Please choose the Gosling format above first.';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        return;
+    }
+
+    spatialFormat = null;   // safeguard since gosling doesn't use spatial formats
+
+    // change submit button to spinner
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.classList.add('is-loading');
+    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+
+    buildTrackhub();
+});
+
+document.getElementById("build-trackhub-submit").addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    if (!hubContainer || !trackContainer) {
+        document.getElementById('dataset-upload-status-message').textContent = 'Error: Hub and track information not found. Please try again.';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        return;
+    }
+
+    const button = event.currentTarget;  // ← Store reference BEFORE async call
+    button.classList.add('is-loading');
+
+    try {
+        await stageTrackHub(hubContainer, trackContainer);
+    } finally {
+        // Now safely remove the loading class
+        if (button?.parentElement) {  // ← Verify button still exists in DOM
+            button.classList.remove('is-loading');
+        }
+    }
+
+})
 
 document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
     // change submit button to spinner
@@ -943,6 +1607,14 @@ document.getElementById('metadata-geo-lookup').addEventListener('click', (event)
     const getData = getGeoData();
 });
 
+document.getElementsByName('metadata-dataset-type')[0].addEventListener('change', (e) => {
+    document.getElementById("btn-spatial-format-selector").disabled = true;
+    if (e.target.value === 'spatial') {
+        document.getElementById("btn-spatial-format-selector").disabled = false;
+        selectDatasetFormat('spatial');
+    }
+});
+
 document.getElementById('select-spatial-platform').addEventListener('change', (e) => {
     const platform = e.target.value;
     const reqsSpan = document.getElementById('spatial-requirements');
@@ -950,9 +1622,12 @@ document.getElementById('select-spatial-platform').addEventListener('change', (e
     if (platform === '') {
         reqsSpan.classList.add('is-hidden');
         document.getElementById("btn-spatial-format-selector").disabled = true;
-    } else {
-        reqsSpan.classList.remove('is-hidden');
-        document.getElementById("btn-spatial-format-selector").disabled = false;
+        return;
+    }
+    reqsSpan.classList.remove('is-hidden');
+    document.getElementById("btn-spatial-format-selector").disabled = false;
+    if (datasetFormat !== 'spatial') {
+        selectDatasetFormat('spatial');
     }
 });
 
@@ -986,3 +1661,8 @@ window.addEventListener("scroll", (event) => {
     }
 });
 */
+
+const testing = document.getElementById("testing");
+if (testing && testing.value === "true") {
+    stepTo('upload-dataset');
+}

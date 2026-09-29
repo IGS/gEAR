@@ -1,0 +1,51 @@
+name: Pip audit check
+
+# Runs pip-audit on the requirements files to check for known vulnerabilities in dependencies.
+# The requirements files are audited as-is (no-deps + disable-pip), so nothing is installed and no
+# system packages are needed. This only checks the listed packages, not their transitive dependencies,
+# and requires every requirement to be pinned with "==" (URL requirements like diffxpy are skipped).
+# To run the same check locally:
+#   uvx pip-audit --no-deps --disable-pip -r docker/requirements.txt -r listeners/requirements.txt -r services/projectr/requirements.txt -r services/spatial/requirements.txt
+
+on:
+  push:
+    branches: [devel, main]
+    paths:
+      - "docker/requirements.txt"
+      - "listeners/requirements.txt"
+      - "services/*/requirements.txt"
+      - ".github/workflows/pip_audit.yml"
+  pull_request:
+    branches: [devel, main]
+    paths:
+      - "docker/requirements.txt"
+      - "listeners/requirements.txt"
+      - "services/*/requirements.txt"
+      - ".github/workflows/pip_audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: docker/requirements.txt listeners/requirements.txt services/projectr/requirements.txt services/spatial/requirements.txt
+          no-deps: true
+          # The action has no input for --disable-pip. Without it, pip-audit pip-installs
+          # every requirement into a temp venv, which needs system build packages.
+          internal-be-careful-extra-flags: --disable-pip
+          # Known vulnerabilities we are deferring (see #1241). Remove each group once the package is bumped.
+          # Comments cannot go inside the block below, since every word in it is passed as a vuln ID.
+          # Line 1 - jupyterlab 4.0.5 (fixed in 4.6.2): bump expected from the Jupyter notebook integration branch.
+          # Line 2 - mysql-connector-python 8.0.28 (fixed in 9.1.0): major version bump, needs testing against our MySQL server.
+          # Line 3 - setuptools 81.0.0 (fixed in 83.0.0): capped below 82 because pkg_resources is still needed.
+          #   The issue only affects building sdists on macOS, not runtime.
+          ignore-vulns: |
+            PYSEC-2026-1707 PYSEC-2026-1706 PYSEC-2026-1482 PYSEC-2026-164 PYSEC-2026-2537 PYSEC-2024-322 PYSEC-2026-2538 PYSEC-2026-2534 PYSEC-2026-2536 PYSEC-2026-2535 PYSEC-2026-3671 PYSEC-2026-3672 PYSEC-2026-1481 CVE-2026-67338 CVE-2026-73626
+            PYSEC-2026-1685
+            PYSEC-2026-3447

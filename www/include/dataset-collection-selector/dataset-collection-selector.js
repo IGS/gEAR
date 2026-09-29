@@ -13,6 +13,17 @@ let currentUser = null;
 // This many characters will be included and then three dots will be appended
 const DatasetCollectionSelectorLabelMaxLength = 35;
 
+/**
+ * Shows (or hides, when searchTerm is null) the "no matches" message under the search box.
+ *
+ * @param {string|null} searchTerm - The search that found nothing, or null to hide the message.
+ */
+const showSearchNotFound = (searchTerm) => {
+    const message = document.getElementById('dropdown-dc-search-not-found');
+    message.textContent = searchTerm === null ? '' : `No dataset collections match "${searchTerm}".`;
+    message.classList.toggle('is-hidden', searchTerm === null);
+}
+
 // SAdkins - If I leave these global, then they are registered twice (once here and once in the entrypoint JS) leading to double event handling
 export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
 
@@ -64,6 +75,7 @@ export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
     // Add a click listener to the dancel button
     document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
         document.querySelector('#dropdown-dc-search-input').value = '';
+        showSearchNotFound(null);
         document.querySelector('#dropdown-content-dc').innerHTML = '';
         document.querySelector('#dropdown-dc').classList.remove('is-active');
     });
@@ -71,6 +83,7 @@ export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
     // Monitor key strokes after user types more than 2 characters in the search box
     document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
+        showSearchNotFound(null);
 
         if (search_term.length === 0) {
             document.querySelector('#dropdown-content-dc').innerHTML = '';
@@ -88,17 +101,28 @@ export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
 
         const dc_item_template = document.querySelector('#tmpl-dc');
 
-        // build a label index for the dataset collections
+        // A collection can be in several categories at once (e.g. site-curated and public, or
+        //  your own public one), so list each share ID once. Different collections can still
+        //  share a label, and those are all listed.
+        const listedShareIds = new Set();
+
         for (const category in datasetCollectionState.data) {
-            // This data structure has mixed types - we only care about the arrayed categories
-            if (!Array.isArray(datasetCollectionState.data[category])) {continue}
+            // This data structure has mixed types - we only care about the arrayed layout categories
+            if (!category.endsWith('_layouts') || !Array.isArray(datasetCollectionState.data[category])) {continue}
 
             for (const entry of datasetCollectionState.data[category]) {
+                if (listedShareIds.has(entry.share_id)) {continue}
+
                 if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
+                    listedShareIds.add(entry.share_id);
                     const row = dc_item_template.content.cloneNode(true);
                     createDatasetCollectionListItem(row, entry);
                 }
             }
+        }
+
+        if (listedShareIds.size === 0) {
+            showSearchNotFound(search_term);
         }
     });
 }
@@ -167,6 +191,7 @@ export const setActiveDCCategory = (category) => {
     // clear the dataset collection search input and content
     document.querySelector('#dropdown-content-dc').innerHTML = '';
     document.querySelector('#dropdown-dc-search-input').value = '';
+    showSearchNotFound(null);
 
     const dc_item_template = document.querySelector('#tmpl-dc');
     let data = null;
@@ -248,10 +273,13 @@ const createDatasetCollectionListItem = (row, entry) => {
         tag_element.remove();
     }
 
+    // Keep a reference to this row's element (a lookup by share ID after appending would find the
+    //  first row with that ID, not necessarily this one)
+    const thisItem = row.querySelector('.ul-li');
+
     document.querySelector('#dropdown-content-dc').appendChild(row);
 
     // Create event listener to select the dataset collection
-    const thisItem = document.querySelector(`.dropdown-dc-item[data-share-id="${entry.share_id}"]`);
     thisItem.addEventListener('click', (event) => {
 
         // uncheck all the existing rows

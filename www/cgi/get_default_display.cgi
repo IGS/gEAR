@@ -1,5 +1,13 @@
 #!/opt/bin/python3
 
+"""
+get_default_display.cgi - Get the default display ID for a dataset.
+
+Input: dataset_id, session_id (optional), is_multigene (0/1).
+Output: JSON {default_display_id}; falls back to the dataset owner's default when the
+        user has none set.
+"""
+
 import cgi, json
 import os, sys
 
@@ -12,9 +20,9 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
-    is_multigene = int(form.getvalue('is_multigene', 0))
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
+    is_multigene = int(form.getfirst('is_multigene', 0))
 
     user = geardb.get_user_from_session_id(session_id=session_id)
 

@@ -1,39 +1,39 @@
 <p class="is-flex is-justify-content-space-between pr-3">
   <span class="has-text-weight-medium">Series to compare</span>
   <span class="select is-small">
-      <select class="js-plot-req js-dash-compare" id="compare-series-post"></select>
+      <select class="js-plot-req js-dash-compare" id="compare-series-post" aria-label="Series to compare"></select>
   </span>
 </p>
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">1st comparison</span>
     <span class="select is-small">
-        <select class="js-plot-req js-compare-groups js-dash-compare1" id="compare1-group-post"></select>
+        <select class="js-plot-req js-compare-groups js-dash-compare1" id="compare1-group-post" aria-label="1st comparison group"></select>
     </span>
 </p>
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">2nd comparison</span>
     <span class="select is-small">
-        <select class="js-plot-req js-compare-groups js-dash-compare2" id="compare2-group-post"></select>
+        <select class="js-plot-req js-compare-groups js-dash-compare2" id="compare2-group-post" aria-label="2nd comparison group"></select>
     </span>
 </p>
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Reference</span>
     <span class="select is-small">
-        <select class="js-plot-req js-compare-groups js-dash-reference" id="reference-group-post"></select>
+        <select class="js-plot-req js-compare-groups js-dash-reference" id="reference-group-post" aria-label="Reference group"></select>
     </span>
 </p>
 <p class="help">All conditions must come from the same category.</p>
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
   <span class="has-text-weight-medium">Fold-change cutoff</span>
-  <input class="js-dash-fc-cutoff" id="fc-cutoff-post" type="number" value="2" min="0" />
+  <input class="js-dash-fc-cutoff" id="fc-cutoff-post" type="number" value="2" min="0" aria-label="Fold-change cutoff" />
 </p>
 <p class="help">Choose the fold-change threshold that a query/reference comparison must exceed to be included. This value will be log2-transformed in plot.</p>
 <p class="is-flex is-justify-content-space-between pr-3 mb-1c heckbox">
   <span class="has-text-weight-medium">FDR cutoff</span>
-  <input class="js-dash-fdr-cutoff" id="fdr-cutoff-post" type="number" value="0.05" min="0" max="1" />
+  <input class="js-dash-fdr-cutoff" id="fdr-cutoff-post" type="number" value="0.05" min="0" max="1" aria-label="FDR cutoff" />
 </p>
 <p class="help">Choose the FDR (or qval) threshold a query/reference comparison must be under to be considered. Used in tandem with FDR cutoff.</p>
 <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">

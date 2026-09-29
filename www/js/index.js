@@ -77,54 +77,12 @@ document.getElementById('submit-dataset-search').addEventListener('click', (even
 document.getElementById('genes-manually-entered').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
         event.preventDefault();
-        
+
         // Trigger the change event on this element first so that the manually entered genes are updated in the state before the search is triggered
         event.target.dispatchEvent(new Event('change'));
 
         document.getElementById('submit-expression-search').click();
     }
-});
-
-document.getElementById('submit-expression-search').addEventListener('click', (event) => {
-    const status = validateExpressionSearchForm();
-
-    if (!status) {
-        return;
-    }
-
-    // build the URL for a GET request
-    const url = new URL('/expression.html', window.location.origin);
-
-    // add the manually-entered genes
-    // TODO: need to combine selected_genes here to accommodate the case where a gene cart
-    //  chosen but the individual genes removed.
-    const manuallyEnteredGenes =  Array.from(new Set([...selected_genes, ...manually_entered_genes]));
-    if (manuallyEnteredGenes.length > 0) {
-        url.searchParams.append('gene_symbol', manuallyEnteredGenes.join(','));
-    }
-
-    // are we doing exact matches?
-    if (document.getElementById('gene-search-exact-match').checked) {
-        url.searchParams.append('gene_symbol_exact_match', '1');
-    }
-
-    // get the value of the single-multi radio box
-    const singleMulti = document.querySelector('input[name="single-multi"]:checked').value;
-    url.searchParams.append('is_multigene', singleMulti === 'single' ? '0' : '1');
-
-    // add the gene lists
-    //  TODO: This will only be for labeling purposes, since individual genes could have been
-    //    deselected within
-    if (selected_gene_lists.size > 0) {
-        const geneCartShareIds = Array.from(selected_gene_lists);
-        url.searchParams.append('gene_lists', geneCartShareIds.join(','));
-    }
-
-    // add the dataset collections
-    url.searchParams.append('layout_id', selected_dc_share_id);
-
-    // now go there
-    window.location.href = url.toString();
 });
 
 // For this page we want the gene collection dropdown to be right-aligned
@@ -339,6 +297,10 @@ const populateUserHistoryTable = async () => {
                 row.querySelector('.action-label').textContent = entry.label;
                 row.querySelector('.date').textContent = entry.entry_date;
                 row.querySelector('.url').setAttribute('href', entry.url);
+                // For the URL create a descriptive alt text based on the other information
+                row.querySelector('.url').setAttribute('aria-label', `View details for ${formatted_category} action: ${entry.label} performed on ${entry.entry_date}`);
+
+
 
                 document.getElementById('user-history-table-tbody').appendChild(row);
             }

@@ -1,3 +1,10 @@
+"""
+tsne_data.py - Render static embedding (tSNE/UMAP/PCA) plots of gene expression.
+
+Serves /plot/<dataset_id>/tsne (single gene) and /plot/<dataset_id>/mg_tsne
+(multigene) in www/api/api.py.
+"""
+
 import base64
 import io
 import os
@@ -17,8 +24,9 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
+import seaborn as sns
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, inputs, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
 from gear.plotting import PlotError
 
@@ -37,6 +45,10 @@ from .common import clip_expression_values, create_projection_adata
 
 sc.settings.verbosity = 0
 
+# Apply seaborn theme to matplotlib plots, and change background to white
+sns.set_theme()
+sns.set_style("white")
+
 PLOT_TYPE_TO_BASIS = {
     "tsne_static": "tsne",
     "tsne": "tsne",  # legacy
@@ -48,46 +60,43 @@ PLOT_TYPE_TO_BASIS = {
 }
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
-NUM_LEGENDS_PER_COL = (
-    16  # Max number of legend items per column allowed in vertical legend
-)
+# Max number of legend items per column allowed in vertical legend
+NUM_LEGENDS_PER_COL = 20
 
 parser = reqparse.RequestParser(bundle_errors=True)
 
 # Common for both MGTSNEData and TSNEData
 # NOTE: By default the parser assumes the location is coming from "values", which breaks lists, so we set the location to "json" explicitly for that.
 parser.add_argument("plot_type", type=str, default="tsne_static")
-parser.add_argument("analysis", type=dict, default=None)
+parser.add_argument("analysis", type=dict, default=None, location="json")
 parser.add_argument("colorize_legend_by", type=str, default=None)
 parser.add_argument(
     "max_columns", type=int, default=None
 )  # Max number of columns before plotting to a new row
 parser.add_argument("expression_palette", type=str, default="YlOrRd")
-parser.add_argument("reverse_palette", type=bool, default=False)
-parser.add_argument("colors", type=dict, default={})
-parser.add_argument("order", type=dict, default={})
+parser.add_argument("reverse_palette", type=inputs.boolean, default=False, location="json")
+parser.add_argument("colors", type=dict, default={}, location="json")
+parser.add_argument("order", type=dict, default={}, location="json")
 parser.add_argument(
     "x_axis", type=str, default="tSNE_1"
 )  # Add here in case old tSNE plotly configs are missing axes data
 parser.add_argument("y_axis", type=str, default="tSNE_2")
-parser.add_argument("flip_x", type=bool, default=False)
-parser.add_argument("flip_y", type=bool, default=False)
-parser.add_argument("horizontal_legend", type=bool, default=False)
-parser.add_argument("marker_size", type=int, default=None)
-parser.add_argument("center_around_median", type=bool, default=False)
+parser.add_argument("flip_x", type=inputs.boolean, default=False, location="json")
+parser.add_argument("flip_y", type=inputs.boolean, default=False, location="json")
+parser.add_argument("horizontal_legend", type=inputs.boolean, default=False, location="json")
+parser.add_argument("marker_size", type=inputs.positive, default=None)
+parser.add_argument("center_around_median", type=inputs.boolean, default=False, location="json")
 parser.add_argument('vmax', type=float, default=None)
 parser.add_argument('vmin', type=float, default=None)
-parser.add_argument("make_zero_gray", type=bool, default=True)  # Keep with old plot styles
-parser.add_argument("obs_filters", type=dict, default={})  # dict of lists
+parser.add_argument("make_zero_gray", type=inputs.boolean, default=True, location="json")  # Keep with old plot styles
+parser.add_argument("enforce_equal_aspect", type=inputs.boolean, default=False, location="json")
+parser.add_argument("obs_filters", type=dict, default={}, location="json")  # dict of lists
 parser.add_argument(
     "projection_id", type=str, default=None
 )  # projection id of csv output
 parser.add_argument("expression_min_clip", type=float, default=None)
-parser.add_argument("colorblind_mode", type=bool, default=False)
-parser.add_argument("high_dpi", type=bool, default=False)
-parser.add_argument(
-    "grid_spec", type=str, default="1/1/2/2"
-)  # start_row/start_col/end_row/end_col (end not inclusive)
+parser.add_argument("colorblind_mode", type=inputs.boolean, default=False, location="json")
+parser.add_argument("high_dpi", type=inputs.boolean, default=False, location="json")
 
 single_gene_parser = parser.copy()
 single_gene_parser.add_argument("gene_symbol", type=str, default=None)
@@ -95,48 +104,17 @@ single_gene_parser.add_argument(
     "plot_by_group", type=str, default=None
 )  # If true, plot by group
 single_gene_parser.add_argument(
-    "skip_gene_plot", type=bool, default=False
+    "hide_group_nonmembers", type=inputs.boolean, default=False, location="json"
+)  # If true, hide data points not belonging to the group
+single_gene_parser.add_argument(
+    "skip_gene_plot", type=inputs.boolean, default=False, location="json"
 )  # If true, skip the gene expression plot
 single_gene_parser.add_argument(
-    "two_way_palette", type=bool, default=False
+    "two_way_palette", type=inputs.boolean, default=False, location="json"
 )  # If true, data extremes are in the forefront
 
 multi_gene_parser = parser.copy()
-multi_gene_parser.add_argument("gene_symbols", type=list, default=[], location="json")
-
-
-def calculate_figure_height(num_plots: int, span: int = 1) -> int:
-    """
-    Calculates the height of a figure based on the number of plots and a span multiplier.
-
-    Args:
-        num_plots (int): The number of plots to be displayed in the figure.
-        span (int, optional): A multiplier that scales the height of each plot. Defaults to 1.
-
-    Returns:
-        int: The calculated height of the figure.
-    """
-    return ((num_plots * 4) * span) + (num_plots - 1)
-
-
-def calculate_figure_width(num_plots: int, span: int = 1) -> int:
-    """
-    Calculates the total width required to display a given number of plots, accounting for spacing between them.
-
-    Args:
-        num_plots (int): The number of plots to display.
-        span (int, optional): The width multiplier for each plot. Defaults to 1.
-
-    Returns:
-        int: The total calculated width needed to display all plots with spacing.
-    """
-
-    # If only one plot, return fixed width
-    if num_plots == 1:
-        return 4
-
-    # The + (num_plots - 1) is to account for the space between plots
-    return ((num_plots * 2) * span) + (num_plots - 1)
+multi_gene_parser.add_argument("gene_symbols", type=str, action="append", default=[], location="json")
 
 
 def calculate_num_legend_cols(group_len: int) -> int:
@@ -295,7 +273,8 @@ def get_colorblind_scale(n_colors: int) -> list[str]:
         list[str]: A list of hex color codes as strings.
     """
     cividis = plt.get_cmap("viridis")
-    colors = [cividis(i / (n_colors - 1)) for i in range(n_colors)]
+    # max() keeps a single category from dividing by zero
+    colors = [cividis(i / max(n_colors - 1, 1)) for i in range(n_colors)]
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
 
@@ -335,8 +314,14 @@ def sort_legend(
         - Handles cases where the number of legend entries is not evenly divisible by num_cols.
     """
     handles, labels = ax.get_legend_handles_labels()
-    new_handles = [handles[idx] for idx, name in enumerate(sort_order)]
-    new_labels = [labels[idx] for idx, name in enumerate(sort_order)]
+    try:
+        new_handles = [handles[idx] for idx, name in enumerate(sort_order)]
+        new_labels = [labels[idx] for idx, name in enumerate(sort_order)]
+    except Exception as e:
+        # Occasionally this fails, so just return the original handles/labels
+        print("Error sorting legend: {}".format(e))
+        print("Handles: {}, Labels: {}, Sort order: {}".format(handles, labels, sort_order))
+        return (handles, labels)
 
     # If horizontal legend, we need to sort in a way to have labels read from left to right
     if horizontal_legend:
@@ -466,9 +451,7 @@ def validate_args(
 
     try:
             args = {}
-            if is_spatial:
-                args['include_images'] = False
-            else:
+            if not is_spatial:
                 args['backed'] = True
             adata = ana.get_adata(**args)
     except Exception:
@@ -756,13 +739,14 @@ def generate_tsne_figure(
     expression_palette: str = "viridis",
     reverse_palette: bool = False,
     high_dpi: bool = False,
-    grid_spec: str = "1/1/2/2",
     max_columns: int | None = None,
     horizontal_legend: bool = False,
     expression_min_clip: float | None = None,
     make_zero_gray: bool = True,
+    enforce_equal_aspect: bool = False,
     skip_gene_plot=None,
     plot_by_group=None,
+    hide_group_nonmembers=False,
     two_way_palette=None,
 ) -> dict:
     """
@@ -815,8 +799,6 @@ def generate_tsne_figure(
         Whether to reverse the color palette.
     high_dpi : bool
         Whether to generate a high-DPI image.
-    grid_spec : str
-        Grid specification for the plot layout, as a string (e.g., "0/0/10/10").
     max_columns : int or None
         Maximum number of columns in the plot grid.
     horizontal_legend : bool
@@ -825,10 +807,14 @@ def generate_tsne_figure(
         Minimum expression value to clip.
     make_zero_gray : bool
         Whether to make the zero-value expression color gray or the minimum colorscale color.
+    enforce_equal_aspect : bool
+        Whether to enforce equal aspect ratio on the plot axes.
     skip_gene_plot : bool or None, optional
         If True, skips plotting the gene expression plot (single-gene mode).
     plot_by_group : str or None, optional
         Name of the group to split plots by.
+    hide_group_nonmembers: bool, optional
+        Whether to hide data points that are not members of a particular group when using plot_by_group.
     two_way_palette : str or None, optional
         Name of a two-way color palette for special sorting.
 
@@ -871,7 +857,7 @@ def generate_tsne_figure(
 
     try:
         basis = PLOT_TYPE_TO_BASIS[plot_type]
-    except ValueError:
+    except KeyError:
         return {"success": -1, "message": f"{plot_type} was not a valid plot type"}
 
     if marker_size:
@@ -940,11 +926,10 @@ def generate_tsne_figure(
         color_category = is_categorical(selected.obs[colorize_by])
         if color_category:
             color_idx_name = f"{colorize_by}_colors"
-            # colors provided by user through UI
-            if colors is not None and len(colors) > 2:
-                selected.uns[color_idx_name] = [
-                    colors[idx] for idx in selected.obs[colorize_by].cat.categories
-                ]
+            categories = selected.obs[colorize_by].cat.categories
+            # colors provided by user through UI (used only when every category has one)
+            if colors and all(category in colors for category in categories):
+                selected.uns[color_idx_name] = [colors[category] for category in categories]
             # color column provided by user in adata.obs
             elif color_idx_name in selected.obs:
                 grouped = selected.obs.groupby(
@@ -998,14 +983,14 @@ def generate_tsne_figure(
             # This will create a new column for each group in the plot_by_group
             for _, name in enumerate(column_order):
                 group_name = name + "_split_by_group"
+
                 selected.obs[group_name] = selected.obs.apply(
-                    lambda row: row["gene_expression"]
-                    if row[plot_by_group] == name
-                    else 0,
-                    axis=1,
+                    lambda row: row["gene_expression"] if row[plot_by_group] == name else np.nan, axis=1
                 )
+
                 columns.append(group_name)
                 titles.append(name)
+
             kwargs_ncols = max_cols
 
             # Set vmax if not provided
@@ -1030,6 +1015,7 @@ def generate_tsne_figure(
         "basis": basis,
         "color": columns,
         "color_map": expression_color,
+        "na_color": "none" if hide_group_nonmembers else "lightgray",  # "none" is shorthand for completely transparent
         "show": False,
         "use_raw": False,
         "title": titles,
@@ -1040,27 +1026,81 @@ def generate_tsne_figure(
         "vmin": vmin,
         "return_fig": True,
         "ncols": kwargs_ncols,
+        "edges": False
     }
 
-    io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
-    ax = io_fig.get_axes()
-
-    # Grid/figsize logic (shared)
-    grid_spec_list = [int(x) for x in grid_spec.split("/")]
-    row_span = grid_spec_list[2] - grid_spec_list[0]
-    col_span = ceil((grid_spec_list[3] - grid_spec_list[1]) / 3)
     num_plots_wide = kwargs_ncols
     num_plots_high = ceil(len(columns) / num_plots_wide)
-    io_fig.set_figwidth(calculate_figure_width(num_plots_wide, col_span))
-    io_fig.set_figheight(calculate_figure_height(num_plots_high, row_span))
+    aspect_ratio = num_plots_wide / num_plots_high
+    # Give subplots with more columns a bit more breathing room
+    width = 10 if num_plots_wide < 5 else 15
+    height = width / aspect_ratio
+    dpi=150
+
+    if high_dpi:
+        dpi = min(450, max(150, int(selected.shape[0] / 100)))
+
+    fig_params = {
+        "figsize":(width, height),
+        # always save image and pass encoding to client
+        "dpi_save":dpi,
+        # Do not use Scanpy's defaults for matplotlib
+        "scanpy":False
+    }
+
+    # If there are more columns of plots, increase the font size for readability
+    label_scale = "medium" if num_plots_wide < 5 else "large"
+    title_scale = "large" if num_plots_wide < 5 else "x-large"
+    legend_scale = "medium" if horizontal_legend else "small"
+
+    mpl.rcParams.update(
+        {
+            'axes.edgecolor': '#cccccc', # Light gray spines
+            "axes.labelsize": label_scale,
+            'axes.labelcolor': '#333333',
+            "axes.titlesize": title_scale,
+            'axes.unicode_minus': False,    # Use regular minus sign for better readability
+            'figure.constrained_layout.use': True,
+            'figure.constrained_layout.h_pad': 0.2,
+            'figure.constrained_layout.w_pad': 0.2,
+            "font.sans-serif":['Roboto'],
+            'font.family': 'sans-serif',
+            'legend.frameon': False,     # No box around legends
+            'legend.fontsize': legend_scale,
+            'xtick.color': '#cccccc',
+            'ytick.color': '#cccccc',   # Unfortunately changes colorbar ticks
+        }
+    )
+
+    sc.set_figure_params(**fig_params)
+
+    io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
+
+    #io_fig.set_layout_engine("compressed")
+    ax = io_fig.get_axes()
 
     # Axes/legend logic (shared)
     if isinstance(ax, list):
-        # Rename axes labels for each subplot
         for f in ax:
+            # Fix the gray colorbar text (if it exists for expression plots)
+            # This finds the colorbar axis and resets label color to dark
+            f.spines[['top', 'right']].set_visible(False)
+
+            # Check if the axes actually contains scatter data.
+            # This prevents you from accidentally squishing colorbars or legend axes.
+            # TODO: Test this in place of the if f.get_label == "<colorbar>"
+            #if not f.collections:
+            #    continue
+
             if f.get_label() == "<colorbar>":
+                f.tick_params(labelcolor='#333333')
                 continue
             rename_axes_labels(f, x_axis, y_axis)
+
+            # Ensure axes are square
+            if enforce_equal_aspect:
+                f.set_aspect("equal", adjustable="box")
+            f.margins(0.02) # Reduce from the default margins
 
         last_ax = ax[-1]  # color axes
         if colorize_by and color_category:
@@ -1075,7 +1115,7 @@ def generate_tsne_figure(
             So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
             """
 
-            num_horizontal_cols = 2 * num_cols  # Number of columns in horizontal legend
+            num_horizontal_cols = min(len(selected.obs[colorize_by].unique()), 12)  # Number of columns in horizontal legend
 
             (handles, labels) = sort_legend(
                 last_ax, colorize_by_order, num_horizontal_cols, horizontal_legend
@@ -1086,21 +1126,31 @@ def generate_tsne_figure(
                 frameon=False,
                 handles=handles,
                 labels=labels,
-                fontsize="small",
             )
             if horizontal_legend:
-                last_ax.get_legend().remove()  # Remove legend added by scanpy
-                last_ax.legend(
-                    loc="upper right",
-                    bbox_to_anchor=[1, -0.05, 0, 0],
+                last_ax.get_legend()
+                if last_ax.get_legend() is not None:
+                    last_ax.get_legend().remove()  # Remove legend added by scanpy
+                io_fig.legend(
+                    loc="lower center",
+                    bbox_to_anchor=(0.5, -0.03), # Place legend below the figure
                     frameon=False,
                     ncol=num_horizontal_cols,
                     handles=handles,
                     labels=labels,
-                    fontsize="small",
                 )
     else:
-        rename_axes_labels(ax, x_axis, y_axis)
+        ax.spines[['top', 'right']].set_visible(False)
+        if ax.get_label() == '<colorbar>':
+            # should never happen
+            ax.tick_params(labelcolor='#333333')
+        else:
+            rename_axes_labels(ax, x_axis, y_axis)
+
+            # Ensure axes are square
+            if enforce_equal_aspect:
+                ax.set_aspect("equal", adjustable="box")
+            ax.margins(0.02)
 
     # Clean up
     if selected.isbacked:
@@ -1108,28 +1158,45 @@ def generate_tsne_figure(
     if os.path.exists(dedup_copy):
         os.remove(dedup_copy)
 
+    image_format = "webp"
     with io.BytesIO() as io_pic:
         if high_dpi:
-            dpi = max(150, int(selected.shape[0] / 100))
-            sc.settings.set_figure_params(dpi_save=dpi)
-            io_fig.set_figwidth(num_plots_wide * 10)
-            io_fig.set_figheight(num_plots_high * 10)
-            io_fig.savefig(io_pic, format="png", bbox_inches="tight")
+            image_format = "pdf"
+            # Force into a TrueType font for editability in PDF editor software
+            plt.rcParams["pdf.fonttype"] = "truetype"
+            io_fig.savefig(io_pic, format="pdf")
         else:
-            sc.settings.set_figure_params(dpi_save=150)
-            io_fig.savefig(io_pic, format="webp", bbox_inches="tight")
+            # WebP has a hard limit of 16383 pixels in either dimension
+            # Fall back to PNG if the figure size exceeds this limit
+            fig_width_px = io_fig.get_figwidth() * dpi
+            fig_height_px = io_fig.get_figheight() * dpi
+            webp_limit = 16383
+            if fig_width_px > webp_limit or fig_height_px > webp_limit:
+                image_format = "png"
+                io_fig.savefig(io_pic, format="png", bbox_inches="tight")
+            else:
+                io_fig.savefig(io_pic, format="webp", bbox_inches="tight")
         io_pic.seek(0)
         plt.close()
         image = base64.b64encode(io_pic.read()).decode("utf-8")
 
-    return {"success": success, "message": message, "image": image}
+    return {"success": success, "message": message, "image": image, "image_format": image_format}
 
 
 # --- Resource classes ---
 
 
 class MGTSNEData(Resource):
+    """
+    Flask-RESTful resource for multigene embedding plots.
+    """
     def post(self, dataset_id):
+        """
+        Return a base64-encoded embedding plot for multiple genes.
+
+        Main request params: gene_symbols, analysis, projection_id, plot_type,
+        x_axis, y_axis, colorize_legend_by, obs_filters, plus styling options.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = multi_gene_parser.parse_args()
 
@@ -1164,16 +1231,25 @@ class MGTSNEData(Resource):
             args.get("expression_palette", "YlOrRd"),
             args.get("reverse_palette", False),
             args.get("high_dpi", False),
-            args.get("grid_spec", "1/1/2/2"),
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
-            args.get("make_zero_gray", True)
+            args.get("make_zero_gray", True),
+            args.get("enforce_equal_aspect", False)
         )
 
 
 class TSNEData(Resource):
+    """
+    Flask-RESTful resource for single-gene embedding plots.
+    """
     def post(self, dataset_id):
+        """
+        Return a base64-encoded embedding plot for one gene.
+
+        Main request params: gene_symbol, analysis, projection_id, plot_type, x_axis,
+        y_axis, colorize_legend_by, plot_by_group, obs_filters, plus styling options.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = single_gene_parser.parse_args()
         gene_symbol = args.get("gene_symbol", None)
@@ -1207,12 +1283,14 @@ class TSNEData(Resource):
             args.get("expression_palette", "YlOrRd"),
             args.get("reverse_palette", False),
             args.get("high_dpi", False),
-            args.get("grid_spec", "1/1/2/2"),
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
             args.get("make_zero_gray", True),
+            args.get("enforce_equal_aspect", False),
+            # These options are not in the multigene plot args.
             args.get("skip_gene_plot", False),
             args.get("plot_by_group", None),
+            args.get("hide_group_nonmembers", False),
             args.get("two_way_palette", False),
         )

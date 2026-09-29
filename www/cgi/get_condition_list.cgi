@@ -40,7 +40,7 @@ MAX_ALLOWED_CONDITIONAL_COLUMNS = 5
 
 def main():
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
+    dataset_id = form.getfirst('dataset_id')
     dataset = Dataset(id=dataset_id, has_h5ad=1)
 
     h5_path = dataset.get_file_path()

@@ -35,11 +35,12 @@
         <div class="dropdown-item">
           <div class="field">
             <p class="control has-icons-left">
-              <input class="input" type="input" id="dropdown-gene-list-search-input" placeholder="Search and select a Gene List">
+              <input class="input" type="search" id="dropdown-gene-list-search-input" placeholder="Search and select a Gene List" aria-label="Search and select a Gene List">
               <span class="icon is-small is-left">
                 <i class="mdi mdi-magnify"></i>
               </span>
             </p>
+            <p id="dropdown-gene-list-search-not-found" class="help has-text-danger-dark is-hidden" role="status"></p>
           </div>
         </div>
         <hr class="dropdown-divider">
@@ -105,7 +106,7 @@
             </div>
             <div class="column is-2">
               <button id="dropdown-gene-list-proceed" class="button is-primary is-rounded is-small mb-1">Proceed</button><br />
-              <button id="dropdown-gene-list-cancel" class="button is-secondary is-rounded is-small">Reset</button>
+              <button id="dropdown-gene-list-cancel" class="button is-primary is-outlined is-rounded is-small">Reset</button>
             </div>
           </div>
         </div>

@@ -219,6 +219,7 @@ const appendGeneTagButton = (geneTagElt) => {
     // Add delete button
     const deleteBtnElt = document.createElement("button");
     deleteBtnElt.classList.add("delete", "is-small");
+    deleteBtnElt.setAttribute("aria-label", "Remove gene");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
         // Remove gene from geneCollectionState.selectedGenes
@@ -760,6 +761,9 @@ const plotDataToGraph = (data) => {
 	const plotlyPreview = document.createElement("div");
 	plotlyPreview.id = "plotly-preview";
 	plotlyPreview.classList.add("container", "is-max-desktop");
+	plotlyPreview.setAttribute("role", "img");
+	plotlyPreview.setAttribute("alt", `Scatter plot comparing ${data.condition_x.join(", ")} (x-axis) and ${data.condition_y.join(", ")} (y-axis). Each point represents a gene, with coordinates corresponding to the fold change between the two conditions. The plot is interactive, allowing users to select points to view more details about the genes.`);
+
 	plotContainer.append(plotlyPreview);
 
 	Plotly.purge("plotly-preview"); // clear old Plotly plots

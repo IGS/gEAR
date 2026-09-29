@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
 import { GeneCart } from "./classes/genecart.v2.js";
 
 let firstSearch = true;
@@ -225,7 +225,9 @@ class ResultItem {
     addDescriptionInfo(parentElt) {
         // Add ldesc if it exists
         const ldescText = parentElt.querySelector(".js-display-ldesc-text");
-        ldescText.textContent = this.longDesc || "No description entered";
+        const span = document.createElement("span");
+        span.innerHTML = this.longDesc || "No description entered";
+        ldescText.replaceChildren(span);
     }
 
     addListItemEventListeners(parentElt) {
@@ -381,7 +383,9 @@ class ResultItem {
                 }
 
                 selector.querySelector(`.js-display-title p`).textContent = newTitle;
-                selector.querySelector(`.js-display-ldesc-text`).textContent = newLdesc || "No description entered";
+                const ldescSpan = document.createElement("span");
+                ldescSpan.innerHTML = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).replaceChildren(ldescSpan);
 
                 selector.querySelector(`.js-display-organism span:last-of-type`).textContent = newOrgText;
             }
@@ -730,9 +734,10 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.genecart}' value='${escapeHtml(this.shareId)}'>
                         </div>
                     </div>
+                    <p id='gc-link-name-help' class='help has-text-danger-dark'></p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
                             <button id='confirm-gc-link-rename' class='button is-primary' disabled>Update</button>
@@ -786,15 +791,14 @@ class ResultItem {
                 });
             });
 
-            document.getElementById("gc-link-name").addEventListener("keyup", () => {
-                const newLinkName = document.getElementById("gc-link-name");
-                const confirmRenameLink = document.getElementById("confirm-gc-link-rename");
+            // "input" also catches pasted text; explain an invalid permalink instead of sending it
+            document.getElementById("gc-link-name").addEventListener("input", () => {
+                const newLinkName = document.getElementById("gc-link-name").value;
+                const unchanged = newLinkName === this.shareId;
+                const problem = unchanged ? "" : validateShareId(newLinkName, "genecart");
 
-                if (newLinkName.value.length === 0 || newLinkName.value === this.shareId) {
-                    confirmRenameLink.disabled = true;
-                    return;
-                }
-                confirmRenameLink.disabled = false;
+                document.getElementById("gc-link-name-help").textContent = problem;
+                document.getElementById("confirm-gc-link-rename").disabled = unchanged || Boolean(problem);
             });
 
             // Add event listener to cancel button
@@ -967,9 +971,11 @@ const createPaginationButton = (page, icon = null, clickHandler) => {
     const button = document.createElement("button");
     button.className = "button is-small is-outlined is-dark pagination-link";
     if (icon) {
-        button.innerHTML = `<i class="mdi mdi-chevron-${icon}"></i>`;
+        button.innerHTML = `<i class="mdi mdi-chevron-${icon}" aria-hidden="true"></i>`;
+        button.setAttribute("aria-label", icon === "left" ? "Previous page" : "Next page");
     } else {
         button.textContent = page;
+        button.setAttribute("aria-label", `Page ${page}`);
     }
     button.addEventListener("click", clickHandler);
     li.appendChild(button);
@@ -1453,6 +1459,12 @@ const submitSearch = async (page) => {
 
         // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
         clearResultsViews();
+
+        // The CGI reports bad input or a failed query as success 0 with a "problem" message
+        if (!data.success) {
+            createToast(data.problem || "Failed to search gene lists");
+            return;
+        }
 
         processSearchResults(data);
         setupPagination(data.pagination);

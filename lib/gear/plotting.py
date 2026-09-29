@@ -1,3 +1,10 @@
+"""
+plotting.py - Plotly figure generation for single-gene expression displays.
+
+Builds bar, box, violin, scatter, line and related Plotly Express plots from expression
+dataframes and applies common layout, trace and color settings.
+"""
+
 import sys
 from itertools import cycle, product
 
@@ -133,15 +140,15 @@ def _adjust_colorscale(
 
                 # Hex codes are based on Matplotlib values -> https://i.stack.imgur.com/nCk6u.jpg
                 plotting_args["color_continuous_scale"] = [
-                    [0.0, "#9a0eea"],
-                    [0.12, "#0343df"],
-                    [0.25, "#380282"],
-                    [0.38, "#00035b"],
-                    [0.5, "#000000"],
-                    [0.62, "#840000"],
-                    [0.75, "#e50000)"],
-                    [0.88, "#f97306"],
-                    [1.0, "#ffff14"],
+                    [0.0, "rgb(154, 14, 234)"],
+                    [0.12, "rgb(3, 67, 223)"],
+                    [0.25, "rgb(56, 2, 130)"],
+                    [0.38, "rgb(0, 3, 91)"],
+                    [0.5, "rgb(0, 0, 0)"],
+                    [0.62, "rgb(132, 0, 0)"],
+                    [0.75, "rgb(229, 0, 0)"],
+                    [0.88, "rgb(249, 115, 6)"],
+                    [1.0, "rgb(255, 255, 20)"],
                 ]
 
             elif palette == "bublrd":
@@ -256,22 +263,37 @@ def _translate_and_scale(series: pd.Series, x: str) -> float:
     ) + NEW_MIN
 
 
-def _truncate_ticktext(group_list: list[str]) -> list[str] | None:
+def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[str, str]]:
     """Truncate a group of axis ticks to a specified length."""
     TRUNCATION_LEN = 7  # How much of the original text to use (followed by ellipses)
     MAX_LEN_ALLOWED = 10  # Any text over this limit will be truncated
 
     # If only 0 or 1 datapoints in group, categoryarray was not present
     if not group_list:
-        return None
+        return None, {}
 
     new_ticktext = []
+    full_name_mapping = {}
+    truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
+
     for val in group_list:
         if len(val) > MAX_LEN_ALLOWED:
-            new_ticktext.append("{}...".format(val[0:TRUNCATION_LEN]))
+            base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
+
+            if base_truncated in truncated_counts:
+                # Collision: append a counter to disambiguate
+                truncated_counts[base_truncated] += 1
+                truncated = "{}~{}".format(base_truncated, truncated_counts[base_truncated])
+            else:
+                truncated_counts[base_truncated] = 0
+                truncated = base_truncated
+
+            new_ticktext.append(truncated)
+            full_name_mapping[truncated] = val
         else:
             new_ticktext.append(val)
-    return new_ticktext
+
+    return new_ticktext, full_name_mapping
 
 
 def _update_axis_titles(
@@ -354,7 +376,7 @@ def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
     elif plot_type == "bar":
         fig.update_layout(barmode="group")
         if force_overlay:
-            fig.update_layout(barmode="overlay")
+            fig.update_layout(barmode="overlay", bargap=0.4)
     elif plot_type in ["box", "strip"]:
         fig.update_layout(boxmode="group")
         if force_overlay:
@@ -385,12 +407,17 @@ def generate_plot(
     x_title: str | None = None,
     y_title: str | None = None,
     is_projection: bool = False,
+    non_interactive: bool = False,  # If True, will skip certain formatting that causes issues for static images (e.g. truncated axis labels)
     **kwargs: dict,
 ) -> go.Figure:
     """Generates and returns figure for facet grid."""
 
     # If replicates are present, use mean and stdev of expression data as datapoints
     if "replicate" in df.columns and plot_type not in ["violin", "contour"]:
+        df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)  # noqa: PD901
+    elif plot_type == "bar":
+        # Later datasets do not have a replicate column. Bars need to be run through groupby,
+        # otherwise in the "group" barmode the bars will be stacked instead of side-by-side giving wrong visualizations.
         df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)  # noqa: PD901
 
     # Little bit of safeguarding with kwargs
@@ -400,15 +427,21 @@ def generate_plot(
     kwargs["traces"].setdefault("marker", {})  # If markers does not exist within
     kwargs["traces"]["marker"].setdefault("size", 3)  # If size does not exist within
 
-    # Round y values to 2 decimal places for hover data
-    try:
-        df["y_rounded"] = df[y].astype(float).round(2)
-    except Exception:
-        # If y is not a number, try x.  If that is not a number, use y as is
-        try:
-            df["y_rounded"] = df[x].astype(float).round(2)
-        except Exception:
-            df["y_rounded"] = df[y]
+    hover_name = text_name
+    if non_interactive:
+        hover_name = None
+    else:
+        if not text_name:
+            # Round y values to 2 decimal places for hover data
+            try:
+                df["y_rounded"] = df[y].astype(float).round(2)
+            except Exception:
+                # If y is not a number, try x.  If that is not a number, use y as is
+                try:
+                    df["y_rounded"] = df[x].astype(float).round(2)
+                except Exception:
+                    df["y_rounded"] = df[y]
+            hover_name = "y_rounded"
 
     # These labels allows use to override these labels used for axis titles, etc.
     labels_dict = {x: x_title, y: y_title, "color_name": ""}
@@ -422,10 +455,10 @@ def generate_plot(
         "color": color_name,
         "category_orders": category_orders,
         "labels": labels_dict,
-        "hover_name": text_name if text_name else "y_rounded",
+        "hover_name": hover_name
     }
 
-    # Ensure label is one of the labels that is not lost from "gropuby"
+    # Ensure label is one of the labels that is not lost from "groupby"
     # TODO: Fix to only work when the df has been 'groupby' transformed
     # if plotting_args["hover_name"] not in [x, y, facet_row, facet_col, color_name]:
     #    raise PlotError("Selected label {} is not the same as one of the 'x', 'y', 'facet', or 'color' conditions".format(plotting_args["hover_name"]))
@@ -445,6 +478,11 @@ def generate_plot(
     if plot_type == "line":
         plotting_args["render_mode"] = "svg"
         plotting_args["line_shape"] = "spline"
+
+        # If x axis is continuous, sort dataframe by this column.
+        # Issue found in https://github.com/IGS/gEAR/issues/1285 where 0.0 was last entry causing line to loop back.
+        if x in df.columns and df[x].dtype in ["float64", "int64"]:
+            df = df.sort_values(x)
 
     # Scatter plots are the only types that let you set marker size by group
     # TODO: SAdkins - this is ugly... come up with better way to handle 'integer size' vs 'size by group'
@@ -485,7 +523,8 @@ def generate_plot(
                 plotting_args["error_y_minus"] = "std_minus"
 
             # Add standard deviation to hover data
-            plotting_args["hover_data"] = {x: False, y: False, "std": ":.2f"}
+            if not non_interactive:
+                plotting_args["hover_data"] = {x: False, y: False, "std": ":.2f"}
 
     if plot_type == "contour":
         plotting_args["z"] = z
@@ -756,13 +795,17 @@ def generate_plot(
     )
 
     # Truncate faceted column axis labels so annotation can fit
-    if facet_col and _is_categorical(df[x]):
-        fig.for_each_xaxis(
-            lambda a: a.update(
-                ticktext=_truncate_ticktext(a.categoryarray),
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive and _is_categorical(df[x]):
+        def truncate_and_collect(a):
+            ticktext, mapping = _truncate_ticktext(a.categoryarray)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
                 tickvals=a.categoryarray,
             )
-        )
+        fig.for_each_xaxis(truncate_and_collect)
+
 
     fig.update_yaxes(
         dict(
@@ -809,7 +852,7 @@ def generate_plot(
     # More general layout updates
     fig.update_layout(
         autosize=True,
-        hovermode="closest",
+        hovermode="closest" if not non_interactive else False,
         legend=dict(itemsizing="constant"),
         showlegend=False
         if hide_legend
@@ -826,6 +869,27 @@ def generate_plot(
 
     if reverse_palette:
         kwargs["coloraxes"]["reversescale"] = reverse_palette
+
+    # Store the axis label mapping in the figure metadata for use on the JS side
+    if axis_label_mapping:
+        existing_meta = fig.layout.meta or {}
+        if isinstance(existing_meta, dict):
+            existing_meta["axis_label_mapping"] = axis_label_mapping
+        else:
+            existing_meta = {"axis_label_mapping": axis_label_mapping}
+        fig.update_layout(meta=existing_meta)
+
+        if not non_interactive:
+            # axis_label_mapping is truncated -> full; we need full -> truncated to find what changed
+            # But trace.x contains the original full values, so we just pass them directly as customdata
+            def patch_hover(trace):
+                if trace.x is None:
+                    return
+                trace.update(
+                    customdata=[[str(xval)] for xval in trace.x],
+                    hovertemplate="<b>%{customdata[0]}</b><br>Value: %{y:.2f}<extra></extra>",
+                )
+            fig.for_each_trace(patch_hover)
 
     # Update this particular entity with kwargs information.  This is generally custom things the user wants
     # that is not avaiable in the general plotly configuration we want nor in dataset_curator options
@@ -887,5 +951,8 @@ def plotly_color_map(names: list[str]) -> dict:
 
 
 def rgb_to_hex(r: str, g: str, b: str) -> str:
+    """
+    Convert red, green and blue components (0-255) to a "#rrggbb" hex color string.
+    """
     hex = "#{:02x}{:02x}{:02x}".format(int(r), int(g), int(b))
     return hex

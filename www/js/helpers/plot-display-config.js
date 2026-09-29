@@ -126,7 +126,13 @@ export const postPlotlyConfig = {
                 autosize: true,
                 modebar: {
                     orientation: "h"
-                }
+                },
+                // modern tweaks
+                font: {
+                        family: 'Inter, Roboto, Arial, sans-serif',
+                        size: 12,
+                        color: '#333333'
+                },
             }
         }, {
             plot_type: "volcano"
@@ -191,39 +197,6 @@ export const postPlotlyConfig = {
 // Functions that cannot be encapsulated by a general config change
 // ! These will modify an object reference in place if the param argument is an object property
 
-export const adjustExpressionColorbar = (plotData) => {
-    // The colorbar is outside of the graph div.  Need to adjust to bring back in.
-    for (const element of plotData) {
-        if ("colorbar" in element && element.name === "expression") {
-            element.colorbar.len = 1.5;
-            //element.colorbar.xpad = 10;
-            element.colorbar.x = 1.3;
-            //element.colorbar.title = {text: "Expression"};
-        }
-    }
-}
-
-export const adjustClusterColorbars = (plotData) => {
-    const plotMinDomain = 0;
-    const plotMaxDomain = 1;
-    const newMinDomain = -0.5;
-    const newMaxDomain = 1.5;
-
-    const numClusterbars = plotData.filter(element => "colorbar" in element && element.name === "clusterbar").length;
-
-    // The colorbar is outside of the graph div.  Need to adjust to bring back in.
-    for (const element of plotData) {
-        if ("colorbar" in element && element.name === "clusterbar") {
-            element.colorbar.xpad = 10;
-            element.colorbar.x = -0.3;
-            element.colorbar.xanchor = "left";
-            element.colorbar.len = 2 / numClusterbars;
-            // Scale the colorbar y positions to match the plot container instead of the plot
-            element.colorbar.y = scaleBetween(element.colorbar.y, newMinDomain, newMaxDomain, plotMinDomain, plotMaxDomain);
-        }
-    }
-}
-
 export const setHeatmapHeightBasedOnGenes = (plotLayout, genesFilter) => {
     if (genesFilter.length > 20) {
         plotLayout.height = genesFilter.length * 20;
@@ -234,83 +207,93 @@ export const adjustStackedViolinHeight = (plotLayout) => {
     plotLayout.height = 800;
 }
 
-const adjustStackedViolinSharedAxes = (plotLayout) => {
-    return;
-}
+/**
+ * Attaches hover tooltips to truncated Plotly axis tick labels using the
+ * axis_label_mapping stored in the plot's layout metadata.
+ *
+ * @param {string} plotDivId - The ID of the Plotly plot div.
+ */
+export const attachAxisLabelTooltips = (plotDivId) => {
+    const plotDiv = document.getElementById(plotDivId);
+    if (!plotDiv) return;
 
-// Scaling a number from one range to another range (Source: https://stackoverflow.com/a/31687097)
-const scaleBetween = (unscaledNum, minAllowed, maxAllowed, min, max) => {
-    return (maxAllowed - minAllowed) * (unscaledNum - min) / (max - min) + minAllowed;
-}
+    const layout = plotDiv.layout;
+    const axisLabelMapping = layout?.meta?.axis_label_mapping;
+    if (!axisLabelMapping || !Object.keys(axisLabelMapping).length) return;
 
-// Truncate axis labels to a fixed length. Add a hover property to the label to show the full label. Edits inplace.
-const truncateAxisLabels = (plotLayout) =>  {
-    const selector = document.querySelectorAll('.xaxislayer-above text');
-    for (const el of selector) {
-        const elText = el.textContent;
-        const sublabel = elText.length > TICK_LABEL_MAX_LEN_ALLOWED
-            ? `${elText.substring(0, TICK_LABEL_TRUNCATION_LEN)}...`
-            : elText;
-
-
-        const subLabelElt = document.createElement('a');
-        subLabelElt.setAttribute('style', 'fill:inherit;');
-        subLabelElt.textContent = sublabel;
-        el.textContent = "";
-        el.appendChild(subLabelElt);
-    }
-
-    const axis_ticktexts = {}
-
-    for (const element in plotLayout) {
-        if (element.includes("axis")) {
-            const axis = plotLayout[element];
-            if ("ticktext" in axis) {
-                // If tick label exceeds max alloned length, truncate it and add hover property to show full label
-                for (let i = 0; i < axis.ticktext.length; i++) {
-                    const fulllabel = axis.ticktext[i];
-                    if (axis.ticktext[i].length > TICK_LABEL_MAX_LEN_ALLOWED) {
-                        const sublabel = `${fulllabel.substring(0, TICK_LABEL_TRUNCATION_LEN)}...`;
-                        axis.ticktext[i] = sublabel;
-                    }
-                    axis_ticktexts[fulllabel] = axis.ticktext[i];
-                }
-            }
+    // Build a map of tick label text -> full name for quick lookup
+    const tickLabelMap = new Map();
+    const tickLabels = plotDiv.querySelectorAll('.xaxislayer-above .xtick text, .xaxislayer .xtick text');
+    for (const tickLabel of tickLabels) {
+        const labelText = tickLabel.textContent?.trim();
+        if (labelText && axisLabelMapping[labelText]) {
+            // map element's text property to full name for tooltip lookup later
+            tickLabelMap.set(tickLabel, axisLabelMapping[labelText]);
         }
     }
 
-    /*
-    Issues with modifying before plot generation - Cannot store both full and shortened name.  Plotly is very restrictive about what goes in the tick text
-    Issues with modifying after plot generation - Plot margin and layout settings are based on the original labels, and shortening the labels does not auto-adjust these.
-    */
-}
+    if (!tickLabelMap.size) return;
 
-// If tick label is hovered over, give full label in designated hoverspace
-/*  !!! Currently event.target.closest does not work
-document.addEventListener("mouseover", (event) => {
-    // mouse enter
-    if (!event.target.closest('.xaxislayer-above a')) {
-        return;
-    }
-    const h5adContainer = event.target.closest('.h5ad-container');
-    const hoverarea = h5adContainer.children(".hoverarea");
+    // Create a shared tooltip element
+    const tooltip = document.createElement('div');
+    tooltip.classList.add('tooltip');   // Bulma's style
+    tooltip.style.position = 'absolute';
+    tooltip.style.pointerEvents = 'none'; // Ensure the tooltip doesn't "intercept" mouse events
+    tooltip.style.fontSize = "12px";
+    tooltip.style.bottom = "0px";
+    tooltip.style.left = "0px";
+    tooltip.style.backgroundColor = 'white';
+    tooltip.style.opacity = 0.8;
+    tooltip.style.color = 'black';
+    tooltip.style.padding = '5px';
+    tooltip.style.border = '1px solid gray';
+    tooltip.style.zIndex = 3;
+    tooltip.style.display = 'none'; // Initial state
+    plotDiv.appendChild(tooltip);
 
-    // Show the full label when hovering over the truncated label (assuming we are on a page where the element exists)
-    if (hoverarea.length) {
-        hoverarea.textContent = event.target.dataset.unformatted;
-    }
-});
+    /**
+     * Check if a mouse event's coordinates fall within a tick label's bounding rect.
+     * Using getBoundingClientRect() works for both HTML and SVG elements and returns
+     * viewport-relative coordinates, matching clientX/clientY directly.
+     */
+    const findHoveredTick = (clientX, clientY) => {
+        for (const [tickEl, fullName] of tickLabelMap) {
+            const rect = tickEl.getBoundingClientRect();
+            if (
+                clientX >= rect.left &&
+                clientX <= rect.right &&
+                clientY >= rect.top &&
+                clientY <= rect.bottom
+            ) {
+                return fullName;
+            }
+        }
+        return null;
+    };
 
-document.addEventListener('mouseleave', (event) => {
-    // mouse out
-    if (!event.target.closest('.xaxislayer-above a')) {
-        return;
-    }
-    const h5adContainer = event.target.closest('.h5ad-container');
-    const hoverarea = h5adContainer.children(".hoverarea");
+    // Plotly renders a transparent drag layer on top that blocks mouse events to SVG elements.
+    // Attach to the plotDiv itself and use bounding rect comparison to detect tick proximity.
+    plotDiv.addEventListener('mousemove', (event) => {
+        const fullName = findHoveredTick(event.clientX, event.clientY);
+        if (fullName) {
+            tooltip.innerHTML = `<strong>${fullName}</strong>`;
+            tooltip.style.display = 'block';
+        } else {
+            tooltip.style.display = 'none';
+        }
+    });
 
-    if (hoverarea.length) {
-        hoverarea.textContent = "";
-    }
-});
-*/
+    plotDiv.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+    });
+
+ // Clean up tooltip from body when plot div is removed from DOM
+    const observer = new MutationObserver(() => {
+        if (!document.body.contains(plotDiv)) {
+            tooltip.remove();
+            observer.disconnect();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+};
+

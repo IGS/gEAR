@@ -23,6 +23,9 @@ abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 def exit_with_error(msg):
+    """
+    Print a 500 JSON error response with the message and exit.
+    """
     print("Status: 500 Internal Server Error")
     print("Content-Type: application/json\n")
     print(json.dumps({"message": msg}))
@@ -63,21 +66,21 @@ def main():
     gc = geardb.GeneCart()
     form = cgi.FieldStorage()
 
-    gc.label = form.getvalue('new_cart_label')
-    gc.organism_id = form.getvalue('new_cart_organism_id')
-    gc.ldesc = form.getvalue('new_cart_ldesc')
-    gc.is_public = form.getvalue('is_public')
+    gc.label = form.getfirst('new_cart_label')
+    gc.organism_id = form.getfirst('new_cart_organism_id')
+    gc.ldesc = form.getfirst('new_cart_ldesc')
+    gc.is_public = form.getfirst('is_public')
 
-    user_logged_in = geardb.get_user_from_session_id(form.getvalue('session_id'))
+    user_logged_in = geardb.get_user_from_session_id(form.getfirst('session_id'))
     if not user_logged_in:
         exit_with_error("No logged-in user detected")
     gc.user_id = user_logged_in.id
 
-    upload_type = form.getvalue('new_cart_upload_type')
+    upload_type = form.getfirst('new_cart_upload_type')
 
     if upload_type == 'pasted_genes':
         gc.gctype = 'unweighted-list'
-        pasted_genes = form.getvalue('new_cart_pasted_genes').replace(',', ' ').replace('  ', ' ')
+        pasted_genes = form.getfirst('new_cart_pasted_genes').replace(',', ' ').replace('  ', ' ')
         pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
 
         for gene_sym in pasted_genes.split(' '):

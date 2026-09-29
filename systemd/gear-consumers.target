@@ -1,0 +1,6 @@
+[Unit]
+Description=All Upload/Job RabbitMQ Consumer Workers
+Wants=anndata-upload-consumer.target gosling-upload-consumer.target spatial-upload-consumer.target projectr-consumer.target
+
+[Install]
+WantedBy=multi-user.target

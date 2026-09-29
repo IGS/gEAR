@@ -230,3 +230,31 @@ div.jstree {
     padding: 10px;
     /*background-color: var(--main-section-launcher-bg-color-inactive);*/
   }
+
+/* -------------------------------- */
+/* -= Accessibility (WCAG 2.1) =- */
+
+/* Skip to main content link - visually hidden until focused */
+.skip-to-main-content {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 9999;
+}
+.skip-to-main-content:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #fff;
+    color: #000;
+    font-weight: bold;
+    text-decoration: underline;
+    border: 2px solid #000;
+    outline: none;
+}

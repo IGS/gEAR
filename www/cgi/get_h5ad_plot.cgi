@@ -1,6 +1,12 @@
 #!/opt/bin/python3
 
 """
+get_h5ad_plot.cgi - Render Plotly JSON for one gene across the plot types available for an H5AD dataset.
+
+Legacy endpoint; no current frontend page calls it.
+Input: dataset_id, gene_symbol, session_id, group_by, colors.
+Output: JSON with success, plot_types, plot_json (keyed by plot type), plot_colors, plot_config, plot_groups;
+    or success <= 0 with an error message.
 
 # testing profile:
 select id, dtype, organism_id from dataset where id in ('64485ca3-cf99-2993-99a3-54df3a09195c', '6fdd350c-4f82-07e2-3a39-408f105db16d', 'liasdf97-e9a2-po1u-kj11-1k282bjg8j81');
@@ -38,13 +44,13 @@ def main():
     result = { 'success': 0 }
 
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
-    gene_symbol = form.getvalue('gene_symbol')
-    session_id = form.getvalue('session_id')
-    group_by = form.getvalue('group_by')
+    dataset_id = form.getfirst('dataset_id')
+    gene_symbol = form.getfirst('gene_symbol')
+    session_id = form.getfirst('session_id')
+    group_by = form.getfirst('group_by')
     if group_by:
         group_by = json.loads(group_by)
-    colors = form.getvalue('colors')
+    colors = form.getfirst('colors')
 
     if colors:
         colors = json.loads(colors)

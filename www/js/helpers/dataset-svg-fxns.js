@@ -128,16 +128,23 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
     const card = document.querySelector(`${containerInfo.outerContainer}`);
     const node = document.querySelector(`#${containerId} .legend`);
 
-    const width = node.getBoundingClientRect().width;
+    const VIEW_WIDTH = 400
+
+    const { min, max } = score;
+    const range33 = ((max - min) / 3) + min;
+    const range66 = (2 * (max - min) / 3) + min;
 
     // Create our legend svg
-    const legend = d3.select(node)  // returns document.documentElement
+    const legend = d3.select(node)
         .append('svg')
+        .attr('viewBox', `0 0 ${VIEW_WIDTH} 40`) // Fixed logical space
+        .style('width', '100%')                   // Scaled by browser
+        .style('height', '40px')
+        .style('font-family', 'Roboto, sans-serif')
         .style('position', 'relative')
-        .style('width', '100%')
-        .style("height", "40px")    // Without a fixed height, the box is too tall and prevents mouseover of the svg image
-        .attr('viewBox', `0 0 ${width} 40`)
-        .attr('class', 'svg-gradient-container');
+        .attr('class', 'svg-gradient-container')
+        .attr('role', 'img')
+        .attr('aria-label', `${title} legend with values from ${min} to ${max}`);
     const defs = legend.append('defs');
     // Define our gradient shape
     const linearGradient = defs
@@ -147,10 +154,6 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
         .attr('y1', '0%')
         .attr('x2', '100%')
         .attr('y2', '0%');
-
-    const { min, max } = score;
-    const range33 = ((max - min) / 3) + min;
-    const range66 = (2 * (max - min) / 3) + min;
 
     // Create the gradient points for either three- or two-color gradients
     if (midColor) {
@@ -170,27 +173,23 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
             .append('stop')
             .attr('offset', `${midOffset}%`)
             .attr('stop-color', midColor);
-        linearGradient
-            .append('stop')
-            .attr('offset', '100%')
-            .attr('stop-color', highColor);
     } else {
         linearGradient
             .append('stop')
             .attr('offset', '0%')
             .attr('stop-color', lowColor);
-        linearGradient
-            .append('stop')
-            .attr('offset', '100%')
-            .attr('stop-color', highColor);
     }
+    linearGradient
+    .append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', highColor);
 
     // Draw the rectangle using the linear gradient
     legend
         .append('rect')
-        .attr('width', "50%")
+        .attr('width', VIEW_WIDTH / 2)
         .attr('y', 15)
-        .attr('x', "25%")
+        .attr('x', VIEW_WIDTH / 4) // start in the middle of the viewbox
         .attr('height', 10) // quarter of viewport height
         .style(
             'fill',
@@ -201,7 +200,7 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
     const xScale = d3
         .scaleLinear()
         .domain([min, max])
-        .range([0, width / 2]).clamp(true);
+        .range([0, 200])
 
     const xAxis = d3
         .axisBottom(xScale)
@@ -211,7 +210,7 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
     legend
         .append('g')
         .attr('class', 'axis')
-        .attr('transform', `translate(${width / 4}, 22)`)   // start quarter from left, and 10 px below rectangle
+        .attr('transform', `translate(${VIEW_WIDTH / 4}, 22)`)   // start quarter from left, and 10 px below rectangle
         .attr("stroke", "black")
         .call(xAxis);
 
@@ -226,47 +225,12 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
     // Add title
     legend
         .append('text')
-        .attr('x', "50%")
+        .attr('x', VIEW_WIDTH / 2)
         .attr('y', 12)
         .attr('text-anchor', 'middle')
         .attr('font-size', '10px')
         .attr('font-weight', 'bold')
         .text(title);
-
-    // Ensure axis is responsive
-    window.addEventListener('resize', () => {
-        legend.attr('viewbox', `0 0 ${card.getBoundingClientRect().width} 40`);
-
-        // purge old axis
-        legend.select('.axis').remove();
-
-        // redraw axis
-        // TODO: this is hacky, but it works
-        const xScale = d3
-            .scaleLinear()
-            .domain([min, max])
-            .range([0, card.getBoundingClientRect().width / 2]).clamp(true);
-
-        const xAxis = d3
-            .axisBottom(xScale)
-            .tickValues([min, range33, range66, max])
-
-        // Add the x-axis to the legend
-        legend
-            .append('g')
-            .attr('class', 'axis')
-            .attr('transform', `translate(${card.getBoundingClientRect().width / 4}, 22)`)   // start quarter from left, and 22 px below rectangle
-            .attr("stroke", "black")
-            .call(xAxis);
-
-        // Make tick marks black
-        legend.selectAll('.tick line')
-            .attr('stroke', 'black');
-
-        // Hide upper tick bar
-        legend.selectAll(".domain ")
-            .attr("opacity", 0);
-    });
 }
 
 
@@ -343,50 +307,54 @@ const createSingleScaleColorMapping = (paths, svgDiv, expression, score, lowColo
                 return;
             }
 
+            let score = "NA"
+
             if (expression[tissue] == NA_FIELD_PLACEHOLDER) {
                 path.attr('fill', NA_FIELD_COLOR);
+                path.attr('aria-label', `${tissue}: No data`);
             } else {
                 path.attr('fill', color(expression[tissue]));
+                // log-transfom the expression score
+                const math = "raw";
+                // Apply math transformation to expression score
+                if (math == 'log2') {
+                    score = d3.format('.2f')(Math.log2(expression[tissue]));
+                } else if (math == 'log10') {
+                    score = d3.format('.2f')(Math.log10(expression[tissue]));
+                } else {
+                    //math == 'raw'
+                    score = d3.format('.2f')(expression[tissue]);
+                }
+                path.attr('aria-label', `${tissue}: score ${score}`);
             }
-
-            // log-transfom the expression score
-            const math = "raw";
-            let score;
-            // Apply math transformation to expression score
-            if (math == 'log2') {
-                score = d3.format('.2f')(Math.log2(expression[tissue]));
-            } else if (math == 'log10') {
-                score = d3.format('.2f')(Math.log10(expression[tissue]));
-            } else {
-                //math == 'raw'
-                score = d3.format('.2f')(expression[tissue]);
-            }
-
             const tooltip = document.createElement('div');
-            tooltip.classList.add('tooltip');
-            tooltip.style.position = 'relative';
+            tooltip.classList.add('tooltip');   // Bulma's style
+            tooltip.style.position = 'absolute';
+            tooltip.style.pointerEvents = 'none'; // Ensure the tooltip doesn't "intercept" mouse events
             tooltip.style.fontSize = "12px";
-            tooltip.style.bottom = `${0}px`;
-            tooltip.style.left = `${0}px`;
+            tooltip.style.bottom = "0px";
+            tooltip.style.left = "0px";
             tooltip.style.backgroundColor = 'white';
             tooltip.style.opacity = 0.8;
             tooltip.style.color = 'black';
             tooltip.style.padding = '5px';
             tooltip.style.border = '1px solid gray';
             tooltip.style.zIndex = 3;
+            tooltip.style.display = 'none'; // Initial state
 
             // Place tissue in score in a nice compact tooltip
             const tooltipText = `<strong>${tissue}</strong>: ${score}`;
             tooltip.innerHTML = tooltipText;
+            svgDiv.appendChild(tooltip); // Add it once to the DOM
 
-            // Add mouseover and mouseout events to create and destroy the tooltip
+            // Add mouseover and mouseout events to show and hide the tooltip
             path.mouseover(() => {
-                // Add tooltip to the bottom-left of the SVG
-                svgDiv.appendChild(tooltip);
-
+                tooltip.innerHTML = `<strong>${tissue}</strong>: ${score}`;
+                tooltip.style.display = 'block';
             });
+
             path.mouseout(() => {
-                svgDiv.querySelector('.tooltip').remove();
+                tooltip.style.display = 'none';
             });
 
         });
@@ -468,50 +436,57 @@ const createTissueColorMapping = (paths, svgDiv, expression, score, lowColor, mi
             if (!(tissue && color[tissue])) {
                 return;
             }
+
+            let expressionScore = "NA";
+
             const color_scale = color[tissue];
             if (expression[tissue] == NA_FIELD_PLACEHOLDER) {
                 path.attr('fill', NA_FIELD_COLOR);
+                path.attr('aria-label', `${tissue}: No data`);
             } else {
                 path.attr('fill', color_scale(expression[tissue]));
-            }
-
-            // log-transfom the expression score
-            const math = "raw";
-            let expressionScore;
-            // Apply math transformation to expression score
-            if (math == 'log2') {
-                expressionScore = d3.format('.2f')(Math.log2(expression[tissue]));
-            } else if (math == 'log10') {
-                expressionScore = d3.format('.2f')(Math.log10(expression[tissue]));
-            } else {
-                //math == 'raw'
-                expressionScore = d3.format('.2f')(expression[tissue]);
+                // log-transfom the expression score
+                const math = "raw";
+                // Apply math transformation to expression score
+                if (math == 'log2') {
+                    expressionScore = d3.format('.2f')(Math.log2(expression[tissue]));
+                } else if (math == 'log10') {
+                    expressionScore = d3.format('.2f')(Math.log10(expression[tissue]));
+                } else {
+                    //math == 'raw'
+                    expressionScore = d3.format('.2f')(expression[tissue]);
+                }
+                path.attr('aria-label', `${tissue}: score ${expressionScore}`);
             }
 
             const tooltip = document.createElement('div');
             tooltip.classList.add('tooltip');
-            tooltip.style.position = 'relative';
+            tooltip.style.position = 'absolute';
+            tooltip.style.pointerEvents = 'none'; // Ensure the tooltip doesn't "intercept" mouse events
             tooltip.style.fontSize = "12px";
-            tooltip.style.bottom = `${0}px`;
-            tooltip.style.left = `${0}px`;
+            tooltip.style.bottom = "0px";
+            tooltip.style.left = "0px";
             tooltip.style.backgroundColor = 'white';
             tooltip.style.opacity = 0.8;
             tooltip.style.color = 'black';
             tooltip.style.padding = '5px';
             tooltip.style.border = '1px solid gray';
             tooltip.style.zIndex = 3;
+            tooltip.style.display = 'none'; // Initial state
 
             // Place tissue in score in a nice compact tooltip
             const tooltipText = `<strong>${tissue}</strong>: ${expressionScore}`;
             tooltip.innerHTML = tooltipText;
+            svgDiv.appendChild(tooltip); // Add it once to the DOM
 
-            // Add mouseover and mouseout events to create and destroy the tooltip
+
+            // Add mouseover and mouseout events to show and hide the tooltip
             path.mouseover(() => {
+                tooltip.innerHTML = `<strong>${tissue}</strong>: ${expressionScore}`;
+                tooltip.style.display = 'block';
+
                 // clear legend
                 legendDiv.replaceChildren();
-
-                // Add tooltip to the bottom-left of the SVG
-                svgDiv.appendChild(tooltip);
 
                 const tissueScore = {min: score[tissue].min, max: score[tissue].max};
 
@@ -519,12 +494,14 @@ const createTissueColorMapping = (paths, svgDiv, expression, score, lowColor, mi
                 // draw legend for this tissue class
                 drawSVGLegend([lowColor, midColor, highColor], containerInfo, title, tissueScore);
             });
+
             path.mouseout(() => {
-                svgDiv.querySelector('.tooltip').remove();
+                tooltip.style.display = 'none';
                 // clear legend
                 legendDiv.replaceChildren();
 
                 legendDiv.appendChild(instructions);
+
             });
 
         });

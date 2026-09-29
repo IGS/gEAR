@@ -866,6 +866,7 @@ class AnalysisStepLabeledTsne {
                 throw new Error("No image data returned");
             } else {
                 img.src = `data:image/png;base64,${image}`;
+                img.alt = `tSNE plot of cells labeled by expression of ${document.querySelector(UI.labeledTsneGeneSymbolElt).value}`;
                 document.querySelector(UI.labeledTsnePlotContainer).appendChild(img);
             }
 

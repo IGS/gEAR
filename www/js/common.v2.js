@@ -6,6 +6,150 @@ let SITE_PREFS = null;
 
 const getCurrentUser = () => CURRENT_USER;
 
+// Utility function to escape HTML special characters to prevent XSS attacks when inserting user-generated content into the DOM
+const escapeHtml = (value) => {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+	}
+
+// Longest permalink (share_id) each scope's database column can hold
+const SHARE_ID_MAX_LENGTH = {dataset: 50, genecart: 50, layout: 24};
+
+// Characters update_share_id.cgi accepts (anything werkzeug's secure_filename() leaves unchanged):
+//  letters, digits, "-", "_" and ".", not starting or ending with "_" or "."
+const SHARE_ID_PATTERN = /^[A-Za-z0-9-](?:[A-Za-z0-9_.-]*[A-Za-z0-9-])?$/;
+
+/**
+ * Checks a proposed permalink (share_id) before it is sent to update_share_id.cgi.
+ *
+ * @param {string} value - The proposed permalink.
+ * @param {string} scope - "dataset", "genecart" or "layout".
+ * @returns {string} A message explaining why the permalink is invalid, or "" if it is valid.
+ */
+const validateShareId = (value, scope) => {
+    const maxLength = SHARE_ID_MAX_LENGTH[scope];
+    if (!value) {
+        return "Please enter a permalink.";
+    }
+    if (value.length > maxLength) {
+        return `A permalink can be at most ${maxLength} characters long.`;
+    }
+    if (!SHARE_ID_PATTERN.test(value)) {
+        return "Use only letters, numbers, hyphens, underscores and periods, and don't start or end with an underscore or period.";
+    }
+    return "";
+}
+
+const normalizeDomainCitations = (citationConfig) => {
+    const citationEntries = Array.isArray(citationConfig) ? citationConfig : [];
+
+    const normalizedCitations = [];
+    for (const entry of citationEntries) {
+        if (typeof entry === 'string' && entry.trim().length > 0) {
+            normalizedCitations.push({lines: [entry.trim()], links: []});
+            continue;
+        }
+
+        if (!entry || typeof entry !== 'object') {
+            continue;
+        }
+
+        const lines = Array.isArray(entry.lines)
+            ? entry.lines.filter((line) => typeof line === 'string' && line.trim().length > 0)
+            : [];
+
+        const links = Array.isArray(entry.links)
+            ? entry.links
+                .filter((link) => link && typeof link === 'object')
+                .map((link) => ({
+                    label: typeof link.label === 'string' ? link.label.trim() : '',
+                    url: typeof link.url === 'string' ? link.url.trim() : ''
+                }))
+                .filter((link) => link.label.length > 0 && link.url.length > 0)
+            : [];
+
+        if (lines.length > 0 || links.length > 0) {
+            normalizedCitations.push({lines, links});
+        }
+    }
+
+    return normalizedCitations;
+}
+
+const buildCitationCopyText = (citations) => citations
+    .map((citation) => {
+        const lines = [...citation.lines];
+        for (const link of citation.links) {
+            lines.push(`${link.label} (${link.url})`);
+        }
+        return lines.join('\n');
+    })
+    .join('\n\n');
+
+const renderDomainCitations = (domainPreferences = null) => {
+    const citationContainer = document.getElementById('citation-content');
+    const citationCard = document.getElementById('citation-c');
+    if (!citationContainer) {
+        return '';
+    }
+
+    const citations = normalizeDomainCitations(domainPreferences?.citations);
+
+    if (citations.length === 0) {
+        citationContainer.innerHTML = '';
+        if (citationCard) {
+            citationCard.dataset.hasCitations = 'false';
+            citationCard.classList.add('is-hidden');
+        }
+        return '';
+    }
+
+    if (citationCard) {
+        citationCard.dataset.hasCitations = 'true';
+        citationCard.classList.remove('is-hidden');
+    }
+
+    citationContainer.innerHTML = '';
+
+    for (let citationIndex = 0; citationIndex < citations.length; citationIndex++) {
+        const citation = citations[citationIndex];
+        const citationEntry = document.createElement('div');
+
+        for (const line of citation.lines) {
+            citationEntry.append(document.createTextNode(line));
+            citationEntry.append(document.createElement('br'));
+        }
+
+        for (let linkIndex = 0; linkIndex < citation.links.length; linkIndex++) {
+            const link = citation.links[linkIndex];
+            const linkElement = document.createElement('a');
+            linkElement.href = link.url;
+            linkElement.target = '_blank';
+            linkElement.rel = 'noopener noreferrer';
+            linkElement.textContent = link.label;
+            citationEntry.append(linkElement);
+
+            if (linkIndex < citation.links.length - 1) {
+                citationEntry.append(document.createElement('br'));
+            }
+        }
+
+        citationContainer.append(citationEntry);
+
+        if (citationIndex < citations.length - 1) {
+            const divider = document.createElement('hr');
+            divider.classList.add('my-2');
+            citationContainer.append(divider);
+        }
+    }
+
+    return buildCitationCopyText(citations);
+}
+
 // If a page wants to use this action, it can register a callback function
 let pageSpecificLoginUIUpdates = () => {};
 const registerPageSpecificLoginUIUpdates = (fn) => pageSpecificLoginUIUpdates = fn;
@@ -36,6 +180,8 @@ window.addEventListener("unhandledrejection", (event) => {
  * @returns {void}
  */
 const initCommonUI = async () => {
+    let citationCopyText = renderDomainCitations();
+
     // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
@@ -51,6 +197,19 @@ const initCommonUI = async () => {
 
         const logoSmall = document.getElementById('navbar-logo-small');
         logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
+
+        const domainTaglineElement = document.getElementById('domain-tagline');
+        if (domainTaglineElement) {
+            const domainTagline = SITE_PREFS.domain_tagline;
+            if (typeof domainTagline === 'string' && domainTagline.trim().length > 0) {
+                domainTaglineElement.textContent = domainTagline;
+                domainTaglineElement.classList.remove('is-hidden');
+            } else {
+                domainTaglineElement.classList.add('is-hidden');
+            }
+        }
+
+        citationCopyText = renderDomainCitations(SITE_PREFS);
 
         // Load analytics
         const head = document.getElementsByTagName('head')[0];
@@ -111,11 +270,17 @@ const initCommonUI = async () => {
         window.location.replace('./index.html');
     });
 
-    document.getElementById('citation-copy').addEventListener('click', () => {
-        const citationText = `gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.
-Orvis J, et al. Nat Methods. 2021 Jun 25.
-doi: 10.1038/s41592-021-01200-9
-PMID: 34172972`;
+    const citationCopyButton = document.getElementById('citation-copy');
+    citationCopyButton?.addEventListener('click', () => {
+        const citationText = citationCopyText
+            || document.getElementById('citation-content')?.textContent?.trim()
+            || '';
+
+        if (citationText.length === 0) {
+            createToast("No citation text available to copy.", "is-danger");
+            return;
+        }
+
         copyToClipboard(citationText).then((copied) => {
             if (copied) {
                 createToast("Citation copied to clipboard.", "is-success");
@@ -194,7 +359,9 @@ PMID: 34172972`;
         toggleClass('#navbar-logo-normal', 'is-hidden', false);
         toggleClass('#logo-c-text', 'is-hidden', false);
         toggleClass('#navbar-logo-small', 'is-hidden', true);
-        toggleClass('#citation-c', 'is-hidden', false);
+        const citationCard = document.getElementById('citation-c');
+        const shouldShowCitationCard = citationCard?.dataset.hasCitations === 'true';
+        toggleClass('#citation-c', 'is-hidden', !shouldShowCitationCard);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", true);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", false);
 
@@ -262,30 +429,73 @@ PMID: 34172972`;
 
 
 const getDomainPreferences = async () => {
-    const response = await fetch('/site_domain_prefs.json');
-    return response.json();
+    const prefsResponse = await fetch('/site_domain_prefs.json');
+    const prefs = await prefsResponse.json();
+
+    const cacheResponse = await fetch('/cache_version.json');
+    const cacheData = await cacheResponse.json();
+
+    // Merge cache_version into the preferences object
+    prefs.cache_version = cacheData.cache_version;
+
+    return prefs;
 }
 
 /**
- * Appends the cache version to an asset URL to bust browser cache.
- * 
- * @param {string} assetPath - The path to the CSS/JS file (e.g., 'css/common.v2.css')
- * @returns {string} - The asset path with version query parameter
- * 
- * @example
- * const cssUrl = versionedAsset('css/common.v2.css');
- * // Returns: 'css/common.v2.css?v=2026.02.10.123456'
+ * Inserts a versioned CSS file into the document head.
+ * @param {string} href - The href path to the CSS file.
+ * @param {string} cacheVersion - The cache version to append as a query parameter.
  */
-const versionedAsset = (assetPath) => {
-    if (!SITE_PREFS || !SITE_PREFS.cache_version) {
-        console.warn('Cache version not loaded yet, returning unversioned asset path');
-        return assetPath;
-    }
-    const separator = assetPath.includes('?') ? '&' : '?';
-    return `${assetPath}${separator}v=${SITE_PREFS.cache_version}`;
+const insertVersionedCSS = (href, cacheVersion) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `${href}?v=${cacheVersion}`;
+    document.head.appendChild(link);
 }
 
+/**
+ * Inserts a versioned JS file into the document head.
+ * @param {string} href - The href path to the JS file.
+ * @param {string} cacheVersion - The cache version to append as a query parameter.
+ */
+const insertVersionedJS = (href, cacheVersion) => {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = `${href}?v=${cacheVersion}`;
+    document.body.appendChild(script);
+}
 
+/**
+ * Loads the domain-specific funding HTML into a target container.
+ *
+ * @param {Object|null} domainPreferences - Optional domain preferences object.
+ * @param {string} fundingContainerId - The ID of the container that receives funding HTML.
+ * @returns {Promise<void>}
+ */
+const loadDomainFunding = async (domainPreferences = null, fundingContainerId = 'funding') => {
+    try {
+        const fundingContainer = document.getElementById(fundingContainerId);
+        if (!fundingContainer) {
+            return;
+        }
+
+        const prefs = domainPreferences || await getDomainPreferences();
+        if (!prefs || !prefs.domain_label) {
+            logErrorInConsole('Missing domain_label in domain preferences while loading funding include.');
+            return;
+        }
+
+        const fundingResponse = await fetch(`/include/by_domain/${prefs.domain_label}/funding.html`);
+        if (!fundingResponse.ok) {
+            logErrorInConsole(`Failed to load funding include for domain ${prefs.domain_label}.`);
+            return;
+        }
+
+        fundingContainer.innerHTML = await fundingResponse.text();
+    } catch (error) {
+        logErrorInConsole('Unexpected error loading domain funding include.', error);
+    }
+}
 
 /**
  * Retrieves the value of a specified URL parameter.
@@ -613,6 +823,7 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
     toastButton.classList.add("delete");
+    toastButton.setAttribute("aria-label", "Dismiss notification");
     toastButton.addEventListener("click", (event) => {
         const notification = event.currentTarget.closest(".js-toast.notification");
         notification.remove();
@@ -620,7 +831,19 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.appendChild(toastButton);
     toast.appendChild(opts?.isHTML ? (() => {
         const span = document.createElement("span");
-        span.innerHTML = msg;
+        const lines = String(msg).split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            span.appendChild(document.createTextNode(lines[i]));
+            if (i < lines.length - 1) {
+                span.appendChild(document.createElement("br"));
+            }
+        }
+        lines.forEach((line, index) => {
+            if (index > 0) {
+                span.appendChild(document.createElement("br"));
+            }
+            span.appendChild(document.createTextNode(line));
+        });
         return span;
     })() : document.createTextNode(msg));
 
@@ -795,13 +1018,25 @@ const resetSteps = (event) => {
  * @returns {string} The generated unique identifier.
  */
 const guid = (uidLength) => {
+    // Use the crypto API to generate a UUID if it's available, otherwise fallback to a custom implementation
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        if (uidLength == 'long') {
+            return crypto.randomUUID();
+        }
+        if (uidLength == 'short') {
+            return crypto.randomUUID().split('-')[0];
+        }
+    }
+
+    // Fallback implementation
+    const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     if (uidLength == 'long') {
-        return crypto.randomUUID();
+        return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
     }
     if (uidLength == 'short') {
-        return crypto.randomUUID().split('-')[0];
+        return `${s4()}${s4()}`;
     }
-}
+};  
 
 for (const jsStep of jsSteps) {
     // Add "capture=true" to trigger parent before children events
@@ -976,6 +1211,15 @@ const apiCallsMixin = {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: apiCallsMixin.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/mg_plotly`, payload, otherOpts);
+        return data;
+    },
+    /**
+     * Fetches citation information for a given PubMed ID.
+     * @param {string} pubmedId - The PubMed ID for which to fetch citation information.
+     * @returns {Promise<object>} - A promise that resolves to the fetched citation data.
+     */
+    async fetchCitationFromPubmedId(pubmedId) {
+        const {data} = await axios.post("cgi/get_citation_from_pubmed_id.cgi", convertToFormData({pubmed_id: pubmedId}));
         return data;
     },
     /**
@@ -1222,6 +1466,20 @@ const apiCallsMixin = {
         let url = `/api/h5ad/${datasetId}`
         if (analysisId) url += `?analysis_id=${analysisId}`;
         const {data} = await axios.get(url);
+        return data;
+    },
+    /**
+     * Fetches coordinate information for the passed gene symbol from the assembly on the HiGlass server
+     *
+     * @param {string} geneSymbol - The gene symbol to search for. Single-gene only
+     * @param {string} assembly - The genome assembly to use for the search.
+     * @returns {Promise<any>} - The fetched gene coords.
+     */
+    async fetchHiglassGeneCoords(geneSymbol, assembly) {
+        const urlParams = new URLSearchParams();
+        urlParams.append('assembly', assembly);
+
+        const {data} = await axios.get(`/api/higlass/genes/${geneSymbol}?${urlParams.toString()}`);
         return data;
     },
     /**
@@ -1622,6 +1880,7 @@ const apiCallsMixin = {
 export {
     apiCallsMixin,
     createToast,
+    escapeHtml,
     getCurrentUser,
     getDomainPreferences,
     getRootUrl,
@@ -1636,8 +1895,13 @@ export {
     commonDateTime,
     copyToClipboard,
     convertToFormData,
+    doLogin,
     trigger,
     openModal,
     closeModal,
-    versionedAsset,
+    insertVersionedCSS,
+    insertVersionedJS,
+    loadDomainFunding,
+    SHARE_ID_MAX_LENGTH,
+    validateShareId,
 };

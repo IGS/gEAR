@@ -1,3 +1,11 @@
+"""
+mg_plotly_data.py - Generate multigene Plotly charts for a dataset.
+
+Serves /plot/<dataset_id>/mg_plotly in www/api/api.py. Supports dotplot,
+heatmap, mg_violin, volcano, and quadrant plots.
+"""
+
+import base64
 import json
 import sys  # for debug prints
 
@@ -9,7 +17,7 @@ import scipy.sparse
 from flask import request
 from flask_restful import Resource
 from gear.mg_plotting import PlotError
-from gear.utils import catch_memory_error
+from gear.utils.resource_limits import catch_memory_error
 from plotly.utils import PlotlyJSONEncoder
 
 from .common import (
@@ -66,27 +74,6 @@ LOG10_TRANSFORMED_DATASETS = [
 
 CLUSTER_LIMIT = 5000
 
-def create_composite_index_column(df, columns):
-    """
-    Create a composite index column by joining values from multiple columns.
-
-    Args:
-        df (pandas.DataFrame): The DataFrame containing the columns.
-        columns (list): A list of column names to be joined.
-
-    Returns:
-        pandas.Series: A Series containing the composite index values.
-
-    Example:
-        >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
-        >>> create_composite_index_column(df, ['A', 'B'])
-        0    1;4
-        1    2;5
-        2    3;6
-        dtype: object
-    """
-    return df[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
-
 class MGPlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
     Parameters
@@ -103,8 +90,25 @@ class MGPlotlyData(Resource):
 
     @catch_memory_error()
     def post(self, dataset_id):
+        """
+        Build a multigene Plotly figure from the request options.
+
+        Main request body keys: plot_type, gene_symbols, analysis, obs_filters,
+        primary_col, secondary_col, sort_order, colorscale, plus plot-type-specific
+        options (heatmap clustering, volcano/quadrant comparison conditions and cutoffs).
+
+        Returns:
+            dict: "success" and "message", plus "plot_json" (Plotly figure) or, when
+            return_image is set, a base64 "image" and "image_format".
+        """
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        req = request.get_json()
+        if not req:
+            return {
+                "success": -1,
+                'message': "No JSON body provided."
+            }
         analysis = req.get('analysis', None)
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
@@ -149,6 +153,8 @@ class MGPlotlyData(Resource):
         projection_id = req.get('projection_id', None)    # projection id of csv output
         expression_min_clip = req.get('expression_min_clip', None)
         colorblind_mode = req.get('colorblind_mode', False)
+        return_image = req.get('return_image', False)   # Whether to return a base64 encoded image string in the response for direct use in the frontend
+
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         ds = geardb.get_dataset_by_id(dataset_id)
@@ -316,8 +322,9 @@ class MGPlotlyData(Resource):
                         # ! This will pass on cases where the sort value is not in the column. Will be handled in the "filter" section
                         reordered_col = col.cat.reorder_categories(
                             sort_order[key], ordered=True)
+                        selected.obs = selected.obs.copy()
                         selected.obs[key] = reordered_col
-                    except:
+                    except Exception:
                         pass
 
             # Filter dataframe on the chosen observation filters
@@ -363,6 +370,7 @@ class MGPlotlyData(Resource):
 
                     reordered_col = col.cat.reorder_categories(
                         filters[key], ordered=True)
+                    selected.obs = selected.obs.copy()
                     selected.obs[key] = reordered_col
         except PlotError as pe:
             return {
@@ -381,24 +389,15 @@ class MGPlotlyData(Resource):
                     , ref_val
                     , de_test_algo
                     , is_log10
+                    , use_adj_pvals
+                    , pval_threshold
+                    , [lower_logfc_threshold, upper_logfc_threshold]
                     )
             except PlotError as pe:
                 return {
                     'success': -1,
                     'message': str(pe),
                 }
-
-            # Build a dictionary to easily move gene_syms to "text" property and ensembl ids to "customdata" property
-            ensm2genesymbol = pd.Series(df["gene_symbol"].values, index=df["ensm_id"]).to_dict()
-
-            # Volcano plot expects specific parameter names (unless we wish to change the options)
-            fig = mg.create_volcano_plot(df
-                , query_val
-                , ref_val
-                , pval_threshold
-                , [lower_logfc_threshold, upper_logfc_threshold]
-                , use_adj_pvals
-                )
 
             downcolor = None
             upcolor = None
@@ -407,7 +406,16 @@ class MGPlotlyData(Resource):
                 downcolor = "rgb(254, 232, 56)"
                 upcolor = "rgb(0, 34, 78)"
 
-            mg.modify_volcano_plot(fig, query_val, ref_val, ensm2genesymbol, downcolor, upcolor)
+            # Volcano plot expects specific parameter names (unless we wish to change the options)
+            fig = mg.create_volcano_plot(df
+                , query_val
+                , ref_val
+                , pval_threshold
+                , [lower_logfc_threshold, upper_logfc_threshold]
+                , use_adj_pvals
+                , downcolor
+                , upcolor
+                )
 
             if gene_symbols:
                 dataset_genes = df['gene_symbol'].unique().tolist()
@@ -502,7 +510,7 @@ class MGPlotlyData(Resource):
             if colorblind_mode:
                 colorscale = "cividis_r"
 
-            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale)
+            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale, non_interactive=return_image)
 
         elif plot_type == "heatmap":
 
@@ -522,6 +530,12 @@ class MGPlotlyData(Resource):
                 subsample_limit = min(subsample_limit, CLUSTER_LIMIT)
             df = df.sample(subsample_limit, random_state=1)
 
+            # Preserve per-observation identity through the melt/pivot below so that
+            # individual samples sharing the same groupby/clusterbar values are not
+            # averaged together (that aggregation should only happen for matrixplots).
+            obs_id_col = "__obs_id__"
+            df[obs_id_col] = df.index.astype(str)
+
             groupby_filters = []
             if primary_col:
                 groupby_filters.append(primary_col)
@@ -534,7 +548,6 @@ class MGPlotlyData(Resource):
                 # These will be added to the dataframe later
                 for field in clusterbar_fields:
                     if field not in groupby_filters:
-
                         return {
                             'success': -1,
                             'message': f"Clusterbar field '{field}' must be included in the primary or secondary groupings."
@@ -548,75 +561,68 @@ class MGPlotlyData(Resource):
                 if gb not in df:
                     df[gb] = selected.obs[gb]
 
-            if groupby_filters:
-                # For the remaining data, create a special composite index for the specified groupings
-                df['groupby_composite'] = create_composite_index_column(df, groupby_filters)
-                df['groupby_composite'] = df['groupby_composite'].astype('category')
+            id_vars = groupby_filters + clusterbar_fields
+            id_vars = list(set(id_vars))
+            melt_id_vars = list(set(id_vars + [obs_id_col]))
 
+            # 1) Flatten to long-form
+            # 2) Create a gene symbol column by mapping to the Ensembl IDs
+            df = df.melt(id_vars=melt_id_vars)
 
+            # Add "gene_symbol" as a column, make it categorical to ensure the sort order is preserved when melted
+            df["gene_symbol"] = df[var_index].map(ensm_to_gene).astype('category')
+            df["gene_symbol"] = df["gene_symbol"].cat.reorder_categories(
+                        normalized_genes_list, ordered=True)
+            df = df.sort_values(by=["gene_symbol"])
 
-            groupby_filters.append("groupby_composite")
+            # drop Ensembl ID index since it may not aggregate and throw warnings
+            df = df.drop(columns=[var_index])
 
             # Groupby to remove the replicates
-            # Ensure the composite index is used as the index for plot labeling
             if matrixplot:
                 if not primary_col:
                     return {
                         'success': -1,
                         'message': "A primary grouping is required for matrixplots. Please update this curation"
                     }
-
-                grouped = df.groupby(groupby_filters, observed=False)
+                df = df.drop(columns=[obs_id_col])
+                groupby = ["gene_symbol"]
+                groupby.extend(groupby_filters)
+                grouped = df.groupby(groupby, observed=True)
                 df = grouped.mean() \
                     .dropna() \
-                    .reset_index() \
-                    .set_index("groupby_composite")
-
-            # Since this is the new index in the matrixplot, it does not exist as a droppable series
-            # These two statements ensure that the current columns are the same if that option is set or not
-            groupby_filters.remove("groupby_composite")
-            if not matrixplot:
-                df = df.drop(columns="groupby_composite")
-
+                    .reset_index()
             # Sort based on the specified sort order
-            df = df.sort_values(by=groupby_filters)
+            df = df.sort_values(by=id_vars)
 
             # Reverse Cividis so that dark is higher expression
             if colorblind_mode:
-                colorscale = "cividis_r"
-
-            # Drop the obs metadata now that the dataframe is sorted
-            # They cannot be in there when the clustergram is made
-            # But save it to add back in later
-            cols_to_drop = mg.union(groupby_filters, clusterbar_fields)
-
-            orig_df = df.copy()
-            df_cols = pd.concat([df.pop(cat) for cat in cols_to_drop], axis=1)
+                colorscale = "cividis"
+                reverse_colorscale = True   # Adding _r to colorscale also works, but this plays on the trace options already added.
 
             # "df" must be obs label for rows and genes for cols only
-            fig = mg.create_clustergram(df
-                , normalized_genes_list
-                , is_log10
-                , cluster_obs
-                , cluster_genes
-                , flip_axes
-                , center_around_zero
-                , distance_metric
-                , colorscale
-                , reverse_colorscale
-                , hide_obs_labels
-                , hide_gene_labels
-                )
-
-            df = orig_df
-            clusterbar_indexes = mg.build_obs_group_indexes(df, filters, clusterbar_fields)
-
-            # Create labels based only on the included filters
-            obs_labels = None
-            if "groupby_composite" in df and matrixplot:
-                obs_labels = mg.create_clustergram_observation_labels(df, fig, "groupby_composite", flip_axes)
-
-            mg.add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels, is_log10, flip_axes)
+            try:
+                fig = mg.create_heatmap(df
+                    , groupby_filters
+                    , clusterbar_fields
+                    , is_log10
+                    , cluster_obs
+                    , cluster_genes
+                    , flip_axes
+                    , center_around_zero
+                    , distance_metric
+                    , colorscale
+                    , reverse_colorscale
+                    , title
+                    , hide_obs_labels
+                    , hide_gene_labels
+                    , None if matrixplot else obs_id_col
+                    )
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
 
         elif plot_type == "mg_violin":
             df = selected.to_df()
@@ -663,6 +669,7 @@ class MGPlotlyData(Resource):
                 , is_log10
                 , colorscale
                 , reverse_colorscale
+                , non_interactive=return_image
                 )
 
             # Add jitter-based args (to make beeswarm plot)
@@ -686,10 +693,6 @@ class MGPlotlyData(Resource):
         if adata.isbacked:
             adata.file.close()
 
-        # If figure is actualy a JSON error message, send that instead
-        if "success" in fig and fig["success"] == -1:
-            return fig
-
         fig.update_layout(autosize=True)
 
         # change background to pure white
@@ -701,7 +704,7 @@ class MGPlotlyData(Resource):
 
         # Title is addressed in the creation of dotplot subplots
         # But we can add it here for other plots
-        if title and not plot_type == "dotplot":
+        if title and plot_type not in ["heatmap", "dotplot"]:
             fig.update_layout(
                 title={
                     "text":title
@@ -744,8 +747,21 @@ class MGPlotlyData(Resource):
             )
 
         # Pop any default height and widths being added
-        fig["layout"].pop("height", None)
-        fig["layout"].pop("width", None)
+        fig["layout"].pop("height", None)   # type: ignore
+        fig["layout"].pop("width", None)    # type: ignore
+
+        # Return image as base-encoded PDF if requested
+        if return_image:
+            image_format = "pdf"
+            img_bytes = fig.to_image(format=image_format)
+            img_b64 = base64.b64encode(img_bytes).decode('utf-8')
+            return {
+                "success": success
+                , "message": message
+                , "image": img_b64
+                , "image_format": image_format
+            }
+
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 

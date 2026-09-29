@@ -1,3 +1,9 @@
+"""
+queue.py - RabbitMQ connection helpers.
+
+Creates blocking or asynchronous pika connections for gEAR job publishers and consumers.
+"""
+
 import os
 import sys
 
@@ -5,6 +11,20 @@ import pika
 
 
 def get_connection(host="localhost", heartbeat_time=None, socket_time=None):
+    """
+    Create and return a blocking RabbitMQ connection.
+
+    Args:
+        host (str): RabbitMQ hostname.
+        heartbeat_time (int | None): Heartbeat interval in seconds (0 disables heartbeats).
+        socket_time (int | None): Socket timeout in seconds.
+
+    Returns:
+        pika.BlockingConnection: The open connection.
+
+    Raises:
+        Exception: Re-raised if the connection cannot be established.
+    """
     try:
         # Connect to job queue
         # heartbeat_interval: http://stackoverflow.com/a/16155184/2900840
@@ -34,6 +54,9 @@ def get_async_connection(host="localhost", heartbeat_time=None, socket_time=None
         raise
 
 class RabbitMQQueue:
+    """
+    Wrapper for connecting to RabbitMQ as a publisher or consumer.
+    """
     def __init__(self):
         pass
 

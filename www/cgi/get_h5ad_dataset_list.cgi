@@ -17,8 +17,8 @@ import geardb
 
 def main():
     form = cgi.FieldStorage()
-    session_id = form.getvalue("session_id")
-    share_id = form.getvalue("share_id", None)
+    session_id = form.getfirst("session_id")
+    share_id = form.getfirst("share_id", None)
     if share_id == "null":
         share_id = None
 

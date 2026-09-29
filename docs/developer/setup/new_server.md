@@ -4,90 +4,103 @@
 
 Instances of a gEAR Portal are most often run within a cloud instance, where you can choose your own operating system and resources.  On Google Cloud for a starter instance I chose an e2-standard-2 (2 vCPUs and 48GB RAM) with 300GB of solid state disk space.  You'll definitely want to increase the CPU as you gain more simultaneous users and RAM depending on your dataset sizes.  Once you create and start the instance:
 
+NOTE: Extra apt install commands are present in the R setup and in the python setup.
+
 ```bash
     sudo apt update
     sudo apt upgrade
-    sudo apt install build-essential
+    sudo apt install build-essential \
+        curl \
+        git \
+        rsync \
+        vim \
+        unzip \
+        wget \
+        ca-certificates \
+        fonts-roboto \
+        fontconfig
+    sudo fc-cache -f -v    # cache the fonts
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
 
-```bash
-    cd && mkdir git
-    sudo apt install git
-    cd git
-    git clone https://github.com/IGS/gEAR.git
-```
+### If VM has Hyperdisks
+
+Doing a git checkout with the Hyperdisk mounted may overwrite the symlinked "datasets" and "uploads" directories.
+
+To fix:
+
+`ln -s  /mnt/disks/datastore/datasets /var/www/datasets`
+`ln -s  /mnt/disks/datastore/uploads /var/www/uploads`
 
 ### MYSQL
 
 `sudo apt install mysql-server`
 
-Follow instructions in our setup.mysql.md document
+Follow instructions in [the MySQL setup](./mysql.md) document
 
 ### R
 
 Not necessary if you want projectR to run on a Google Cloud Run service (configurable in gear.ini)
 
-Please consult `setup.r_rpy2.md` for packages to install in order to install R and requisite R packages
+Please consult [the R setup](./r_rpy2.md) for packages to install in order to install R and requisite R packages
 
 ### RabbitMQ
 
 Not necessary if you want projectR to run in the Apache environment or do not want to setup the RabbitMQ messaging service (configurable in gear.ini)
 
-Follow instructions in setup.rabbit_mq.md document
+Follow instructions in [the RabbitMQ setup](./rabbitmq.md) document
 
 ### Python
 
-Follow instructions in setup.python.md document
+Follow instructions in [the Python setup](./python.md) document
 
 ### APACHE
 
 `sudo apt install apache2 apache2-dev`
 
-Follow instructions in setup.apache.md document
+Follow instructions in [the Apache setup](./apache.md) document
 
 ### Sass
 
-Used for changing theme colors between portal flavors.
-NOTE: Ruby Sass is end-of-life and they recommend switching to Dart Sass
+Used for changing theme colors between portal flavors (e.g. `www/css/gear-theme-purple.scss`).
 
-`sudo apt install ruby-sass`
+Ruby Sass (`ruby-sass`) is end-of-life and may not be packaged on current Ubuntu releases. Install Dart Sass instead, either via npm or a standalone release from <https://github.com/sass/dart-sass/releases>:
+
+```bash
+sudo npm install -g sass
+sass www/css/gear-theme-purple.scss www/css/gear-theme-purple.css
+```
 
 ### gEAR portal
 
 ```bash
-cd ~jorvis/git
-git clone https://github.com/jorvis/gEAR.git
+cd ~/git
+git clone https://github.com/IGS/gEAR.git
 cd /var
-sudo rm -rf www && sudo ln -s ~jorvis/git/gEAR/www
-```
-
-### Executables
-
-There are some third-party executables that gEAR will need for some functionality
-
-```bash
-cd ~jorvis/git/gEAR; mkdir -p src;
-rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubClone /opt/gEAR/src/ \
-  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubCheck /opt/gEAR/src/ \
-  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/bigBedToBed /opt/gEAR/src/ \
+sudo rm -rf www && sudo ln -s ~/git/gEAR/www
 ```
 
 ### Systemd Services
 
-More information about these services can be found at `gEAR/systemd/README.md`
+More information about these services can be found in [systemd.md](./systemd.md), [RabbitMQ Consumers](../services/rabbitmq_consumers.md) and [Spatial Panel](../services/spatial.md).
 
 ```bash
-cd ~jorvis/git/gEAR/systemd
-sudo cp *target /etc/systemd/system/
-sudo cp *service /etc/systemd/system/
+cd ~/git/gEAR/systemd
+sudo cp *.target *.service *.slice /etc/systemd/system/
 
-# Start the services
-cd /etc/systemd/system
+echo "**IMPORTANT**: In the *.service files, replace <gear_root> with the gEAR root on this server"
+echo "  (spatial-panel.service also has <domain url> and a Python path to check)"
 
-sudo systemctl enable projectr-consumer.target
-sudo systemctl start projectr-consumer.target
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Enable services to start on boot
+sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target anndata-upload-consumer.target spatial-upload-consumer.target
+
+# Enable and start the group of consumers at once
+sudo systemctl enable gear-consumers.target
+sudo systemctl start gear-consumers.target
 
 sudo systemctl enable spatial-panel.service
 sudo systemctl start spatial-panel.service

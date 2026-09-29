@@ -2,81 +2,30 @@
 
 ## Before building
 
-* From the gEAR root, `cd docker`
-* `cp gear.ini.docker.template gear.ini.docker`
-  * Alternatively ask @adkinsrs for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
+* [Orbstack](https://orbstack.dev/) is recommended over Docker Desktop, but certainly optional. It is faster, lighter, and still uses the same Docker command-line tools.  Docker Desktop gets the job done just fine as well.
+  * Unfortunately Orbstack does not have Windows support.
+* Perform a `git clone` on the gEAR repository if you have not.  This is so you can hot-load code changes into your container and still be able to commit it.
+* From the gEAR root, `cd docker`. All commands assume you are in this directory
 * `cp docker-compose.yml.template docker-compose.yml`
   * Alternatively ask @adkinsrs for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets
   * @adkinsrs's file is hard-coded to his paths so be sure to change those.
+* `mkdir mysql` - Necessary to mount the MySQL data directory for preserving
 
-## Acquiring the gEAR image
+## Files from @adkinsrs
 
-There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions in Github (if @adkinsrs forgets to push the latest image up).
+There are various .template files hanging around with some missing paths.  @adkinsrs has live versions of the files that he can give you.
 
-### Method 1: Pull image
+* gear.ini - Goes in <gear_root> directory (parent directory of "docker")
+* docker-compose.yml - Goes in "docker" directory. Ensure the volume mount paths reflect your own gEAR repo location.
+* feature_mapping.tar.gz - Extract this directory into `<gear_root>/www/`. Contains orthology mapping files in hdf5 format.
+* MySQL dump file.  Please consult [MySQL Setup Notes](./docker_mysql.md) to load this file after you bring the docker compose stack up
+  * Do note that if there may be weighted gene list entries in the db and you do not have the physical file, then you may have errors.
 
-NOTE: If on a Linux environment, change the "mac-m1" tag in the pull and tag commands to "linux"
+### Getting datasets
 
-* Pull the image
-  * `docker pull adkinsrs/umgear:mac-m1`
-* Tag the image (to align with what is in `docker-compose.yml`
-  * `docker tag adkinsrs/umgear:mac-m1 umgear:main`
+Dataset files to use need to be housed on the host machine initially since they are not contained in the gEAR codebase and thus will not be available in the Dockerized version of gEAR out of the box
 
-### Method 2: Build image
-
-* Ensure you are in the "devel" branch of gEAR before building (`git checkout devel`)
-* To build run `docker build -t umgear:main .`
-  * If you tag it under a new image, ensure it is reflected in the docker-compose.yml file
-* The build can take a while, particularly in the Bioconductor installation steps. Fortunately completed steps are cachable.
-
-In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.
-
-## Starting the stack
-
-If you used Method 1, in the `docker-compose.yml file` ensure the "build" step from the "web" service is commented out or deleted.
-
-To start:
-`docker compose up -d`
-To stop:
-`docker compose down -v`
-
-IMPORTANT: If you did Method 1, from the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure a working gear.ini file is present in the codebase after mounting the code as a volume in the "web" service in the docker-compose.yml file.
-
-Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
-
-### Get feature mapping files
-
-Ask @adkinsrs for these (which will probably be in tar.gz format).  These hdf5 files should go in `<gear_root>/www/feature_mapping` so that orthology mapping will work.
-
-## ProjectR
-
-Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
-
-## "panel" service
-
-If you do not plan on working on spatial panel stuff, feel free to comment out the "panel" service block from the docker-compose.yml file and skip this step.
-
-You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/services/spatial/Dockerfile`
-
-You can view logs with `docker compose logs panel`
-
-## Annotations and Datasets
-
-* Annotation and dataset files to use need to be housed on the host machine initially since they are not contained in the gEAR codebase and thus will not be available in the Dockerized version of gEAR out of the box
-* Right now the only annotation I am including is Mouse - release 94.  This is because each annotation directory is about 1Gb each and would overrun the storage on my computer and blow up the size of the 'dataset' Docker image if all were added.  We only need one annotation for sandboxing and development though.
-* I am also using the Hertzano/Ament P2 mouse cochlea dataset for testing (as recommended by Brian Herb)
-
-### Loading annotation data
-
-* After launching the Docker containers via docker-compose, the annotation data may not be loaded into the MySQL database.  To do this (substitute species and release number as needed):
-
-1. Run `docker compose exec web /bin/bash`
-2. `cd /opt/gEAR/annotations/mouse`
-3. Run `../../bin/load_genbank_annotations.py -i ./release-94 -id 1 -r 94` which will load the annotation file
-
-## Getting datasets
-
-Generally, for development purposes, it is best to just have datasets for a couple of dataset collections, such as "Hearing (site default)" and "Ear (diverse variety)"
+Generally, for development purposes, it is best to just have datasets for a couple of dataset collections, such as "Hearing (site default)".
 
 The following dataset IDs are representative of both of the aforementioned dataset collections:
 
@@ -84,52 +33,148 @@ The following dataset IDs are representative of both of the aforementioned datas
 7812a487-932b-32f7-2de7-33dd3155c849
 c69485b2-6f8d-c60e-7337-e7ebad89b2c0
 6fdd350c-4f82-07e2-3a39-408f105db16d
+8779ce11-719d-58db-e626-c850e96a5379
+cf8272cb-57fa-e841-0b50-9198e62fe2ff
+deb21a3b-677c-13e6-92cc-740fe8505e7c
+64485ca3-cf99-2993-99a3-54df3a09195c
 320ca057-0119-4f32-8397-7761ea084ed1
 df726e89-b7ac-d798-83bf-2bd69d7f3b52
-deb21a3b-677c-13e6-92cc-740fe8505e7c
+09e5076e-754e-8738-30aa-5c7062ad9447
+2f4dc784-f581-6a43-0c51-0613b16c4930
 bee735e5-d180-332c-7892-dd751dd76bb8
 bad48d04-db27-26bc-2324-e88506f751fd
-8779ce11-719d-58db-e626-c850e96a5379
-09e5076e-754e-8738-30aa-5c7062ad9447
-64485ca3-cf99-2993-99a3-54df3a09195c
-cf8272cb-57fa-e841-0b50-9198e62fe2ff
-2f4dc784-f581-6a43-0c51-0613b16c4930
-1b12dde9-1762-7564-8fbd-1b07b750505f
-a2dd9f06-5223-0779-8dfc-8dce7a3897e1
-f7de7db2-b4cb-ebe3-7f1f-b278f46f1a7f
-e34fa5c6-1083-cacb-eedf-23f59f2e005f
-e78db16a-3927-348c-f5aa-4256330a7dff
-f04627f7-6824-1e15-6a93-8de550c7b0a4
-1531b46d-8435-f31a-3898-20abc2fc974a
-cc90d264-ce9d-0b7b-1898-0e357c94b155
 ```
 
 You can write some script to loop through these IDs and download them to your "datasets" directory. If your docker-compose.yml file mounting is configured correctly then you can do this outside of the container
 
 `cd <gear_root>/www/datasets`
 `wget https://umgear.org/datasets/<dataset_id>.h5ad .`
+`cd <gear_root>/www/datasets_uploaded`
+`wget https://umgear.org/datasets_uploaded/<dataset_id>.svg .`
 
-## MySQL
+## Acquiring the gEAR images
 
-* See [MySQL Setup Notes](./docker_mysql.md) for more information.  Shaun has a dump file you can use (just ask @adkinsrs).  However do note that if there is a dataset or weighted gene list entry in the db and you do not have the physical file, then you may have errors.
+The easiest way to get the gEAR stack is to `cd docker` (if you have not done so) and run `docker compose up -d`, which will pull the images off of Docker Hub.
 
-## Running the docker container
+Running `docker compose up -d` will also perform a check to see if the image (typically the "latest" tag) has been updated in the Docker Hub registry and will pull that down if it needs to.
+
+After all containers are up, if you have not done so set up MySQL [MySQL Setup Notes](./docker_mysql.md)
+
+## Starting the stack
+
+To start:
+`docker compose up -d`
+
+Perform `docker compose ps` to see the status of running containers.
+
+To stop:
+`docker compose down -v`
+
+You can also pass the name of a specific service, like "web" to any docker compose command to only do this just for that service.  An example would be `docker compose up -d web`
 
 The docker-compose.yml file is set up to mount the gEAR code as a volume, allowing you to make immediate edits to be reflected inside the container.  If making changes within `<gear_root>/www/api`, they will apply once you run `docker compose restart web`.
 
-At any time you can run `docker compose exec web tail -f /var/log/apache2/ssl_umgear_error.log` to view a running error log.
+Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
 
-## Spatial panel
+### Viewing logs
 
-```
-cd <gear_root>/spatial
-docker build -t panel_app .
-```
+To view potential logs, run `docker compose logs` for all services or `docker compose logs <service>` for a single service.
 
-This will enable the spatial panel dashboard to be used in the docker-compose.yml stack
+If you want to view Apache logs, from server-side (Python) code, you can run `docker compose exec web tail -f /var/log/apache2/ssl_umgear_error.log` to view a running error log.  Sometimes it may be necessary to view "/var/log/apache2/error.log" instead.
+
+## Other services
+
+### ProjectR
+
+Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
+
+### RabbitMQ and consumer services
+
+The compose template defines a `queue` service (`rabbitmq:4.1`, port 5672, with a healthcheck) and three consumer services that wait for it to be healthy:
+
+| Compose service | Image | Consumer script |
+| --- | --- | --- |
+| `gosling_upload_consumer` | `adkinsrs/gear_gosling_upload_consumer` | `listeners/gosling_upload_consumer.py` |
+| `anndata_upload_consumer` | `adkinsrs/gear_anndata_upload_consumer` | `listeners/anndata_upload_consumer.py` |
+| `spatial_upload_consumer` | `adkinsrs/gear_spatial_upload_consumer` | `listeners/spatial_upload_consumer.py` |
+
+A `projectr_consumer` service is present but commented out. Each consumer mounts `../listeners`, `../lib` and `../www/uploads/files`, so code edits take effect after `docker compose restart <service>`. In `docker/gear.ini.docker.template`, `queue_host = queue` and `queue_enabled = 0`; set `queue_enabled = 1` in `[dataset_uploader]` to route uploads through the consumers. See [RabbitMQ Consumers](../services/rabbitmq_consumers.md).
+
+### "panel" service
+
+If you do not plan on working on spatial panel stuff, feel free to comment out the "panel" service block from the docker-compose.yml file and skip this step.
+
+The compose file pulls `adkinsrs/spatial_panel_app:latest`. You can build it yourself from `<gear_root>/services/spatial/Dockerfile` (bake target `panel`). See [Spatial Panel Service](../services/spatial.md).
+
+You can view logs with `docker compose logs panel`
+
+## Building the images manually (Advanced)
+
+These steps will both build all images and push to the adkinsrs Docker Hub repository.  You will not have access to this repo (unless you are Shaun), so you just do the `docker compose up -d` method, or rewrite `Dockerfile`, `docker-bake.hcl`, and `docker-compose.yml` to point to your own space.
+
+1. `cd docker`
+2. Build intermediate images with `DATE=$(date +%Y-%m-%d) docker buildx bake --allow=fs.read=.. intermediate`
+3. Build the docker compose stack images with `DATE=$(date +%Y-%m-%d) docker buildx bake --allow=fs.read=.. default`
+
+The "DATE" environment variable allows us to create a date stamp as a tag in addition to the standard "latest" tag.
+
+### Images and bake targets
+
+`docker/docker-bake.hcl` defines these targets:
+
+| Target | Dockerfile | Image | Group |
+| --- | --- | --- | --- |
+| `python-base` | `docker/Dockerfile.python` | `gear-python-base` | intermediate |
+| `r-base` | `docker/Dockerfile.r` | `gear-r-base` | intermediate |
+| `listener-python-base` | `listeners/Dockerfile.python_base` | `gear-listener-python-base` | intermediate |
+| `web` | `docker/Dockerfile` | `umgear` | default |
+| `panel` | `services/spatial/Dockerfile` | `spatial_panel_app` | default |
+| `gosling_upload_consumer` | `listeners/Dockerfile.gosling_upload` | `gear_gosling_upload_consumer` | default |
+| `anndata_upload_consumer` | `listeners/Dockerfile.anndata_upload` | `gear_anndata_upload_consumer` | default |
+| `spatial_upload_consumer` | `listeners/Dockerfile.spatial_upload` | `gear_spatial_upload_consumer` | default |
+| `projectr_consumer` | `listeners/Dockerfile.projectr` | `gear_projectr_consumer` | none (not used) |
+| `projectr_cloud_run` | `services/projectr/Dockerfile` | Artifact Registry `projectr_service` | none |
+
+Build order matters: `listener-python-base` copies Python from `gear-python-base` and installs `listeners/requirements.txt`; the anndata and spatial consumer images copy Python from `listener-python-base` (the anndata image also copies R from `gear-r-base`). The Gosling and ProjectR consumer images are standalone `python:3.14-slim` builds. Build a single target with e.g. `docker buildx bake --allow=fs.read=.. anndata_upload_consumer`.
+
+### The three "umgear" Dockerfiles
+
+The web image is built from three Dockerfiles in `<gear_root>/docker`:
+
+#### Dockerfile.python (The Python Base)
+
+This file is dedicated entirely to compiling Python 3.x and installing requirements.txt.
+
+**When you build it**: Only when you need to add a new package to requirements.txt or upgrade the Python version.
+
+**RPy2**: The "rpy2" package is actually built in the final Docker (umgear) image, due to some dependencies on R.
+
+**The output**: This is currently built and pushed as adkinsrs/gear-python-base:YYYY-MM-DD and also tagged with the "latest" tag.
+
+#### Dockerfile.r (The R Base)
+
+This file is dedicated entirely to compiling R and running your Bioconductor scripts.
+
+**When you build it**: Almost never. Only touch this if the team specifically requests a new version of Bioconductor or a brand-new R system library.
+
+**The output**: This is currently built and pushed as adkinsrs/gear-r-base:YYYY-MM-DD and also tagged with the "latest" tag.
+
+#### Dockerfile (The Final App)
+
+This is your main daily-driver file. It starts with a clean Ubuntu image, uses COPY --from=... to pull in the pre-compiled folders from your registry, installs Apache, and copies over your Flask API and HTML/JS files.
+
+Currently the inherited R and Python images are set to use the "latest" tag of a locally built image, as most of the time we want the most up-to-date version. If for some reason you need an earlier version, edit the Dockerfile to use one of the existing `adkinsrs/<image>:YYYY-MM-DD` tags stored in Docker Hub.
+
+**When you build it**: Every time you update the website, tweak the Apache configuration, or change a CGI script.  Anything gEAR-code related, basically.
+
+**The output**: This builds in seconds and becomes your final production image.  This is pushed as adkinsrs/umgear:YYYY-MM-DD and also tagged with the "latest" tag.
 
 ## Issues and potential solutions
 
 * I cannot log in
-  * Clear your browser's cache
+  * Clear your browser's cache. This can be quickly done with Ctrl-Shift-R (or Cmd-Shift-R on Mac)
   * Use the email address in the 'username' place.  I'm an idiot and always forget that.
+
+* Running commands with executables give various errors related to library packages
+  * If are you on a newer Mac OS system, and the default built image does not work, you may need to explicitly add `--platform=linux/amd64` to your build command options, to ensure the right libraries are being used.
+  * If you change this, make sure the "web" service in the docker-compose.yml file has the `platform: linux/amd64` option added as well.

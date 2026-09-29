@@ -51,6 +51,7 @@ def main():
     extract_dir.mkdir(parents=True, exist_ok=True)
 
     sp_class.process_file(args.input_file, organism_id=args.organism_id, dataset_id=args.dataset_id, extract_dir=extract_dir)
+    sp_class.standardize_sdata()
 
     output_filename = args.dataset_id
     if args.h5ad:

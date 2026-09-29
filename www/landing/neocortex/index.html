@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
-<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
-<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if lt IE 7]>      <html lang="en-us" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html lang="en-us" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html lang="en-us" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html lang="en-us" class="no-js"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -31,8 +31,8 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="workspace">
-            <h1><a href="https://doi.org/10.1101/2024.02.26.581612">NeMO Analytics: A Curated Compendium of Transcriptomic Data for the Exploration of Neocortical Development</a></h1>
+          <section id="content-c" role="main" class="m-3" data-nav-link="workspace">
+            <h1><a href="https://www.nature.com/articles/s41593-026-02204-4">NeMO Analytics: A Curated Compendium of Transcriptomic Data for the Exploration of Neocortical Development</a></h1>
             <!-- This is the section to be populated for new pages -->
             <p id="author-list">Shreyash Sonthalia, Brian Herb, Ricky S. Adkins, Joshua Orvis, Guangyan Li, Xiangyu Liao, Qingjie Yu,
               Xoel Mato Blanco, Alex Casella, Jinrui Liu, Genevieve Stein-O’Brien, Brian Caffo,
@@ -244,7 +244,7 @@
       </div>
       <footer>
         <div>
-          <!-- content here TO BE inserted via common.js -->
+          <div id="funding"></div>
         </div>
       </footer>
 
@@ -252,7 +252,8 @@
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script type="module">
-        import { initCommonUI } from '../../js/common.v2.js';
+        import { getDomainPreferences, initCommonUI, loadDomainFunding } from '../../js/common.v2.js';
+        await loadDomainFunding(await getDomainPreferences());
         initCommonUI();
       </script>
 
