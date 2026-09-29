@@ -109,19 +109,19 @@ I cannot add comments to the bash code without breaking the command.  So consult
 ```bash
     ./pip3 install --upgrade pip
     ./pip3 install \
-    aiohttp==3.13.5 \
+    aiohttp==3.14.3 \
     aiohttp_retry==2.9.1 \
     anndata==0.12.11 \
     biocode==0.10.0 \
     biopython==1.87 \
     biothings-client==0.5.0 \
-    cairosvg==2.7.1 \
+    cairosvg==2.9.1 \
     colorcet==3.1.0 \
     datashader==0.19.0 \
     Flask==3.1.3 \
     Flask-RESTful==0.3.9 \
     google-analytics-data==0.21.0 \
-    google-auth
+    google-auth==2.57.0 \
     gosling==0.3.0 \
     h11==0.16.0 \
     hic2cool==0.8.3 \
@@ -143,12 +143,12 @@ I cannot add comments to the bash code without breaking the command.  So consult
     openpyxl==3.1.5 \
     pandas==2.3.3 \
     panel==1.9.3 \
-    Pillow==12.2.0 \
+    Pillow==12.3.0 \
     pika==1.3.2 \
     pims==0.7.0 \
     plotly==6.6.0 \
     pybigwig==0.3.25 \
-    requests==2.31.0 \
+    requests==2.33.1 \
     rpy2==3.6.7 \
     scanpy==1.12.1 \
     scipy==1.17.1 \
