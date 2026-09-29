@@ -53,12 +53,19 @@ def test_symlink_inside_an_allowed_directory_cannot_escape(www, tmp_path):
         analysis.ZarrAdapter(www / "datasets" / "spatial" / "evil.zarr")
 
 
-def test_missing_store_and_table_messages_have_no_path(www):
+# get_sdata() imports spatialdata, so only this test needs the spatial stack. The mark lets
+#  "pytest -m spatial" select it; importorskip skips it (rather than failing) where the stack
+#  isn't installed, e.g. the core CI job. The rest of this module runs everywhere.
+@pytest.mark.spatial
+def test_missing_store_message_has_no_path(www):
+    pytest.importorskip("spatialdata")
     missing = analysis.ZarrAdapter(www / "datasets" / "spatial" / "NOPE.zarr")
     with pytest.raises(FileNotFoundError) as excinfo:
         missing.get_sdata()
     assert str(excinfo.value) == "Dataset NOPE was not found"
 
+
+def test_missing_table_message_has_no_path(www):
     no_table = analysis.ZarrAdapter(www / "datasets" / "spatial" / "DS1.zarr")
     with pytest.raises(FileNotFoundError) as excinfo:
         no_table.get_adata()

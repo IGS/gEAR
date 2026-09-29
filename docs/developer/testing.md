@@ -108,7 +108,10 @@ Markers here mean "needs an optional dependency stack":
 |---|---|---|
 | `spatial` | SpatialData, spatialdata-io | `requirements-spatial.txt` |
 
-A marked module sets `pytestmark = pytest.mark.<name>` and calls `pytest.importorskip()` for each package it needs. Without the stack installed, the whole module is skipped, so a plain `pytest` always runs the core tests. That is what the core CI job runs.
+A test that needs a stack gets its marker and an import check, so it is skipped instead of failing where the stack isn't installed. Without the stack, a plain `pytest` still runs every core test; that is what the core CI job runs. There are two ways to do this:
+
+- **Whole module** (for example `test_spatial.py`): set `pytestmark = pytest.mark.spatial` near the top, and call `pytest.importorskip("spatialdata")` at module level.
+- **Single test** in an otherwise core module (for example `test_analysis_paths.py`): decorate the test with `@pytest.mark.spatial`, and call `pytest.importorskip("spatialdata")` as the test's first line. A module-level `importorskip` would skip the core tests too.
 
 To add a stack (for example `epigenome`):
 
