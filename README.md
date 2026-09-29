@@ -1,5 +1,12 @@
 # gEAR Portal
 
+![Website](https://img.shields.io/website?url=https%3A%2F%2Fumgear.org&up_message=visit&color=%23544A8E&labelColor=%23CCCCCC&style=for-the-badge&label=gEAR)
+![Website](https://img.shields.io/website?url=https%3A%2F%2Fnemoanalytics.org&up_message=visit&color=%232A5A60&labelColor=%23CCCCCC&style=for-the-badge&label=NeMO%20Analytics)
+
+![Website](https://img.shields.io/website?url=https%3A%2F%2Fsenescence.umgear.org&up_message=visit&color=%23505250&labelColor=%23CCCCCC&style=for-the-badge&label=SENgEAR)
+![Website](https://img.shields.io/website?url=https%3A%2F%2Fcancer.umgear.org&up_message=visit&color=%236f94cd&labelColor=%23CCCCCC&style=for-the-badge&label=cancer%20gEAR)
+![Website](https://img.shields.io/website?url=https%3A%2F%2Finflammation.umgear.org&up_message=visit&color=%23780000&labelColor=%23CCCCCC&style=for-the-badge&label=inflammation%20gEAR)
+
 **Description**:  The gEAR Portal was created as a data archive and viewer for gene expression data including microarrays, bulk RNA-Seq, single-cell RNA-Seq and more.  Initially created for the [hearing research community](https://umgear.org), instances of the gEAR have been cloned for other communities such as [brain research](https://nemoanalytics.org).
 
 Other things to include:
@@ -11,6 +18,7 @@ Other things to include:
   - [NeMO Analytics](https://nemoanalytics.org) - Portal for brain research
   - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
   - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
+  - [Inflammation gEAR](https://inflammation.umgear.org) - Portal for inflammation research
 
 **Screenshot**: Example of home page after searching for a gene:
 
