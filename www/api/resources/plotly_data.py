@@ -31,6 +31,35 @@ from .common import (
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
+# Color for the "NA" (missing value) group. Lightgray matches the na_color of the static tSNE plots (tsne_data.py)
+NA_COLOR = "#D3D3D3"
+
+
+def fill_missing_obs(obs: pd.DataFrame) -> pd.DataFrame:
+    """
+    Replace missing values in categorical and string obs columns with "NA".
+
+    Plotly silently drops NaN groups (https://github.com/IGS/gEAR/issues/888), and the curator UI
+    already lists "NA" as a level for columns with missing values (see h5ad.py), so saved colors,
+    orders and filters can refer to it. A "<col>_colors" column is filled with NA_COLOR instead,
+    so the NA group still maps to a valid color. Numeric columns are left alone.
+    """
+    obs = obs.copy()
+    for col in obs.columns:
+        series = obs[col]
+        is_categorical = isinstance(series.dtype, pd.CategoricalDtype)
+        if not (is_categorical or pd.api.types.is_object_dtype(series.dtype)) or not series.isna().any():
+            continue
+
+        is_color_column = col.endswith("_colors") and col.removesuffix("_colors") in obs.columns
+        fill_value = NA_COLOR if is_color_column else "NA"
+        # A categorical cannot be filled with a value that is not one of its categories
+        if is_categorical and fill_value not in series.cat.categories:
+            series = series.cat.add_categories(fill_value)
+        obs[col] = series.fillna(fill_value)
+    return obs
+
+
 class PlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
     Parameters
@@ -224,6 +253,9 @@ class PlotlyData(Resource):
 
         adata.obs = order_by_time_point(adata.obs)
 
+        # Must happen before reordering and filtering, which may refer to the "NA" group
+        adata.obs = fill_missing_obs(adata.obs)
+
         # Reorder the categorical values in the observation dataframe
         try:
             if order:
@@ -236,8 +268,10 @@ class PlotlyData(Resource):
                     try:
                         # Some columns might be numeric, therefore
                         # we don't want to reorder these
+                        # Categories missing from the saved order (i.e. "NA") are placed last
+                        full_order = list(order[key]) + [c for c in col.cat.categories if c not in order[key]]
                         reordered_col = col.cat.reorder_categories(
-                            order[key], ordered=True)
+                            full_order, ordered=True)
                         adata.obs[key] = reordered_col
                     except Exception:
                         pass
@@ -284,13 +318,6 @@ class PlotlyData(Resource):
                     if col not in selected.obs:
                         raise PlotError(f"Filter series '{col}' not found in observation metadata for dataset ID {dataset_id}.")
 
-                    # if there is an "NA" value in the filters but no "NA" in the dataframe
-                    # check if it is a missing value, and if so, impute it
-                    if "NA" in values and "NA" not in selected.obs[col].cat.categories:
-                        values.remove("NA")
-                        selected.obs[col].cat.add_categories("NA")
-                        selected.obs[col] = selected.obs[col].fillna("NA")
-
                     selected_filter = selected.obs[col].isin(values)
                     selected = selected[selected_filter, :]
         except PlotError as pe:
@@ -330,10 +357,6 @@ class PlotlyData(Resource):
         dataframe = selected.to_df()
         dataframe = pd.concat([dataframe,selected.obs], axis=1)
 
-        # fill any missing adata.obs values with "NA"
-        # The below line gives the error - TypeError: Cannot setitem on a Categorical with a new category (NA), set the categories first
-        #df = df.fillna("NA")
-
         # Valid analysis column names from api/resources/h5ad.py
         analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']
         analysis_umap_columns = ['X_umap_1', 'X_umap_2']
@@ -362,6 +385,11 @@ class PlotlyData(Resource):
             selected.file.close()
 
         if color_map and color_name:
+            # If the saved color map has no "NA" entry, give the NA group NA_COLOR so that
+            # the remapping below does not shift the curator's colors onto other groups
+            if isinstance(color_map, dict) and "NA" not in color_map and (dataframe[color_name] == "NA").any():
+                color_map = {**color_map, "NA": NA_COLOR}
+
             # Validate if all color map keys are in the dataframe columns
             # Ran into an issue where the color map keys were truncated compared to the dataframe column values
             col_values = set(dataframe[color_name].unique())
@@ -370,13 +398,6 @@ class PlotlyData(Resource):
                 message =  "WARNING: Color map has values not in the dataframe column '{}': {}\n".format(color_name, diff)
                 message += "Will set color map key values to the unique values in the dataframe column."
                 print(message, file=sys.stderr)
-                # If any element in diff is nan and color_map contains a valid missing value key like "NA", change the value in the dataframe to match the color_map key
-                for key in list(diff):
-                    if pd.isna(key) and "NA" in color_map.keys():
-                        dataframe[color_name] = dataframe[color_name].replace({key: "NA"})
-                        col_values.remove(key)  # Remove the nan value from the set
-                        col_values = col_values.union({"NA"})
-                        break
 
                 # Sort both the colormap and dataframe column alphabetically
                 # Check for mixed types before sorting for efficiency
@@ -411,16 +432,18 @@ class PlotlyData(Resource):
             else:
                 names = dataframe[color_name].unique().tolist()
                 color_map = plotly_color_map(names)
+                if "NA" in color_map:
+                    color_map["NA"] = NA_COLOR
 
                 # Check if color hexcodes exist and use if validated
                 color_code = "{}_colors".format(color_name)
                 if color_code in dataframe.columns:
-                    grouped = dataframe.groupby([color_name, color_code])
+                    grouped = dataframe.groupby([color_name, color_code], observed=True)
                     # Ensure one-to-one mapping of color names to codes
                     if len(grouped) == len(names):
                         # Test if names are color hexcodes and use those if applicable
                         color_hex = dataframe[color_code].unique().tolist()
-                        if re.search(COLOR_HEX_PTRN, color_hex[0]):
+                        if all(re.search(COLOR_HEX_PTRN, str(code)) for code in color_hex):
                             color_map = {name[0]:name[1] for name, group in grouped}
 
         # Save original passed-in colormap or palette, so that it is not written by the colorblind version
