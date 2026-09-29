@@ -115,7 +115,7 @@ Most child tables use `ON DELETE CASCADE`, so deleting a `guser` removes their d
 
 - `gene_urls` (columns `gene_id`, `label`, `url`) is inserted into by `lib/loaderutils.py`, `bin/load_zfin_id_urls.py` and `bin/load_mirna_fam_data.py` but has no `CREATE TABLE` in `create_schema.sql`.
 - Several `bin/` scripts (`remove_marked_datasets.py`, `rescore_*_dataset_coloring.py`, `convert_legacy_dataset_to_3tab.py`) query a legacy `expression` table that is not in the schema.
-- The seed `guser` rows use MD5 hashes while the column comment mentions SHA3-256.
+- The seed `guser` rows use MD5 hashes while the column comment mentions SHA3-256.  Older entries will still use the MD5 hashes for legacy purposes, while any new users or updated passwords use the SHA3-256 hashes.
 
 ## Related documentation
 

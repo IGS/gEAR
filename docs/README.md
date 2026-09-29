@@ -147,8 +147,12 @@ When adding or updating documentation:
 - **GitHub Repository**: <https://github.com/IGS/gEAR>
 - **Issue Tracker**: <https://github.com/IGS/gEAR/issues>
 - **Production Instances**:
-  - [UMgEAR](https://umgear.org) - Hearing research portal
-  - [NeMO Analytics](https://nemoanalytics.org) - Brain research portal
+  - [UMgEAR](https://umgear.org) - Portal for hearing research
+  - [NeMO Analytics](https://nemoanalytics.org) - Portal for brain research
+  - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
+  - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
+  - [Inflammation gEAR](https://inflammation.umgear.org) - Portal for inflammation research
+
 
 ## Getting Help
 

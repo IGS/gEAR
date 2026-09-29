@@ -230,8 +230,11 @@ There is no separate `[rabbitmq]` section.
 - **GitHub Wiki**: [End-user documentation](https://github.com/IGS/gEAR/wiki)
 - **Issue Tracker**: [GitHub Issues](https://github.com/IGS/gEAR/issues)
 - **Production Instances**:
-  - [UMgEAR](https://umgear.org) - Hearing research
-  - [NeMO Analytics](https://nemoanalytics.org) - Brain research
+  - [UMgEAR](https://umgear.org) - Portal for hearing research
+  - [NeMO Analytics](https://nemoanalytics.org) - Portal for brain research
+  - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
+  - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
+  - [Inflammation gEAR](https://inflammation.umgear.org) - Portal for inflammation research
 
 ## Getting Help
 
