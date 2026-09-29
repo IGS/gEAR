@@ -3,7 +3,7 @@ aiohttp==3.13.5
 aiohttp_retry==2.9.1
 anndata==0.12.11
 biopython==1.87
-google-auth
+google-auth==2.57.0
 hic2cool==0.8.3
 more_itertools==11.0.2
 mygene==3.2.2
@@ -17,7 +17,7 @@ pybigwig==0.3.25
 requests==2.31.0
 scanpy==1.12.1
 scipy==1.17.1
-setuptools<82
+setuptools==81.0.0
 spatialdata==0.7.3
 spatialdata_io==0.7.1
 zarrs==0.2.3

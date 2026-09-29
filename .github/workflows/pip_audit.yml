@@ -1,38 +1,41 @@
 name: Pip audit check
 
 # Runs pip-audit on the requirements files to check for known vulnerabilities in dependencies.
+# The requirements files are audited as-is (no-deps + disable-pip), so nothing is installed and no
+# system packages are needed. This only checks the listed packages, not their transitive dependencies,
+# and requires every requirement to be pinned with "==" (URL requirements like diffxpy are skipped).
+# To run the same check locally:
+#   uvx pip-audit --no-deps --disable-pip -r docker/requirements.txt -r listeners/requirements.txt -r services/projectr/requirements.txt -r services/spatial/requirements.txt
 
 on:
   push:
     branches: [devel, main]
     paths:
-      - "lib/**"
-      - "www/cgi/**"
-      - "www/api/**"
-      - "listeners/**"
-      - "services/**"
-      - 'docker/*'
-      - '.github/*'
+      - "docker/requirements.txt"
+      - "listeners/requirements.txt"
+      - "services/*/requirements.txt"
+      - ".github/workflows/pip_audit.yml"
   pull_request:
     branches: [devel, main]
     paths:
-      - "lib/**"
-      - "www/cgi/**"
-      - "www/api/**"
-      - "listeners/**"
-      - "services/**"
-      - 'docker/*'
-      - '.github/*'
+      - "docker/requirements.txt"
+      - "listeners/requirements.txt"
+      - "services/*/requirements.txt"
+      - ".github/workflows/pip_audit.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: install
-        run: python -m pip install -r docker/requirements.txt -r listeners/requirements.txt -r services/projectr/requirements.txt -r services/spatial/requirements.txt
       - uses: pypa/gh-action-pip-audit@v1.1.0
         with:
           inputs: docker/requirements.txt listeners/requirements.txt services/projectr/requirements.txt services/spatial/requirements.txt
           no-deps: true
+          # The action has no input for --disable-pip. Without it, pip-audit pip-installs
+          # every requirement into a temp venv, which needs system build packages.
+          internal-be-careful-extra-flags: --disable-pip
