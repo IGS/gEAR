@@ -42,7 +42,6 @@ requests==2.33.1
 scanpy==1.12.1
 scipy==1.17.1
 seaborn==0.13.2
-setuptools==81.0.0   # need some pkg_resources methods
 spatialdata==0.7.3
 spatialdata_io==0.7.1
 shadows==0.1a2

@@ -153,7 +153,6 @@ I cannot add comments to the bash code without breaking the command.  So consult
     scanpy==1.12.1 \
     scipy==1.17.1 \
     seaborn==0.13.2 \
-    setuptools==81.0.0 \
     spatialdata==0.7.3 \
     spatialdata_io==0.7.1 \
     spatialpandas==0.5.0 \
