@@ -247,7 +247,7 @@ class Analysis:
                 json_data["analysis_session_id"] = json_data.pop("user_session_id")
 
             # Analysis object expects a list for this
-            if "group_labels" in json_data and type(json_data["group_labels"] is dict):
+            if "group_labels" in json_data and isinstance(json_data["group_labels"], dict):
                 json_data["group_labels"] = list(json_data["group_labels"].values())
 
             # Handle cases, like in "get_stored_analysis.cgi" where we want to pass success
