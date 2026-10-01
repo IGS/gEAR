@@ -99,6 +99,7 @@ export const postPlotlyConfig = {
                 , displaylogo: false
                 , responsive: true
                 , modeBarButtonsToRemove: [
+                    "toImage",  // Use the tile's "Download Image" instead, which stamps the dataset citation
                     "zoom2d",
                     "autoScale2d",
                     "hoverClosestCartesian",

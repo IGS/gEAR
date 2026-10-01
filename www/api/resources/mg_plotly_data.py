@@ -17,6 +17,7 @@ import scipy.sparse
 from flask import request
 from flask_restful import Resource
 from gear.mg_plotting import PlotError
+from gear.plot_stamp import build_stamp_lines, stamp_plotly_figure
 from gear.utils.resource_limits import catch_memory_error
 from plotly.utils import PlotlyJSONEncoder
 
@@ -753,6 +754,7 @@ class MGPlotlyData(Resource):
         # Return image as base-encoded PDF if requested
         if return_image:
             image_format = "pdf"
+            stamp_plotly_figure(fig, build_stamp_lines(ds))
             img_bytes = fig.to_image(format=image_format)
             img_b64 = base64.b64encode(img_bytes).decode('utf-8')
             return {

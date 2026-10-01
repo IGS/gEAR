@@ -5,6 +5,7 @@ Registers the /spatial_download route used to download a standalone HTML
 export of the expanded spatial viewer.
 """
 
+import html
 from io import BytesIO
 
 import panel as pn
@@ -41,6 +42,15 @@ class DownloadHandler(RequestHandler):
             layout_components = [
                 pn.pane.Markdown(f"## Spatial Display Export: {panel_app.current_gene}", height=30)
             ]
+
+            # Dataset citation/watermark lines, built client-side by Citation.plotStampLines
+            stamp_lines = [html.escape(line.decode("utf-8")) for line in self.request.arguments.get("stamp_line", [])]
+            if stamp_lines:
+                layout_components.append(
+                    pn.pane.HTML(
+                        '<div style="color: #555555; font-size: 12px;">{}</div>'.format("<br>".join(stamp_lines))
+                    )
+                )
 
             # Extract all visualization rows, skipping the interactive controls at index 0
             built_ui = panel_app._build_layout()

@@ -1,7 +1,7 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
+import { apiCallsMixin, closeModal, createToast, getCurrentUser, getDomainPreferences, logErrorInConsole, openModal } from "../common.v2.js";
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 import { Citation } from "./citation.js";
@@ -14,6 +14,12 @@ For the given layout, a single-gene grid and a multi-gene grid are generated.
 const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  // "tsne_dynamic" is a legacy option
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
 const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
+
+// Citation/watermark text stamped below plots that are downloaded client-side (SVG, Gosling)
+const STAMP_COLOR = "#555555";
+const STAMP_FONT_SIZE = 11;     // px
+const STAMP_LINE_HEIGHT = 14;   // px
+const STAMP_PADDING = 6;        // px
 
 export class TileGrid {
 
@@ -1814,7 +1820,31 @@ class DatasetTile {
         const shareId = this.dataset.share_id;
         const geneSymbol = display.plotly_config.gene_symbol;
 
-        this.goslingApi.exportPng();    // exports as "gosling_visualization.png"
+        // Same canvas exportPng() would save, so the stamp can be drawn below it
+        const {canvas, resolution} = this.goslingApi.getCanvas({ resolution: 4 });
+        const stampLines = await this.getPlotStampLines();
+
+        const lineHeight = STAMP_LINE_HEIGHT * resolution;
+        const padding = STAMP_PADDING * resolution;
+
+        const stampedCanvas = document.createElement("canvas");
+        stampedCanvas.width = canvas.width;
+        stampedCanvas.height = canvas.height + (padding * 2) + (lineHeight * stampLines.length);
+
+        const ctx = stampedCanvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, stampedCanvas.width, stampedCanvas.height);
+        ctx.drawImage(canvas, 0, 0);
+
+        ctx.fillStyle = STAMP_COLOR;
+        ctx.font = `${STAMP_FONT_SIZE * resolution}px sans-serif`;
+        ctx.textBaseline = "top";
+        stampLines.forEach((line, i) => {
+            ctx.fillText(line, padding, canvas.height + padding + (i * lineHeight));
+        });
+
+        const blob = await new Promise((resolve) => stampedCanvas.toBlob(resolve, "image/png"));
+        saveBlobAsFile(blob, `${shareId}_${geneSymbol}_gosling.png`);
     }
 
     /**
@@ -1971,6 +2001,21 @@ class DatasetTile {
     }
 
     /**
+     * Builds the citation/watermark lines stamped below this tile's downloaded plots.
+     *
+     * @returns {Promise<string[]>} Lines of plain text, top to bottom.
+     */
+    async getPlotStampLines() {
+        let sitePrefs = {};
+        try {
+            sitePrefs = await getDomainPreferences();
+        } catch (error) {
+            console.warn("Could not load site domain preferences for the plot stamp.", error);
+        }
+        return Citation.plotStampLines(this.dataset, sitePrefs);
+    }
+
+    /**
      * Downloads the current Plotly plot as an image.
      *
      * @async
@@ -1996,6 +2041,13 @@ class DatasetTile {
         const func = isMultigene ? apiCallsMixin.fetchMgPlotlyData : apiCallsMixin.fetchPlotlyData;
 
         const data = await func(datasetId, analysisObj, plotType, plotConfig);
+
+        // Reset return image
+        delete plotConfig.return_image;
+
+        if (data?.success < 1) {
+            throw new Error (data?.message ? data.message : "Unknown error.")
+        }
 
         const {image, image_format} = data;
         if (!image) {
@@ -2024,7 +2076,6 @@ class DatasetTile {
         // save memory (but breaks download)
         URL.revokeObjectURL(download);
         hiddenLink.remove();
-
     }
 
     /**
@@ -2198,30 +2249,68 @@ class DatasetTile {
         const shareId = this.dataset.share_id;
         const geneSymbol = display.plotly_config.gene_symbol;
 
-        // get the svg element and serialize it for download
-        const svgDiv = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
-        const serializer = new XMLSerializer();
-        let svgSource = serializer.serializeToString(svgDiv);
-        if (!svgSource.match(/^<svg[^>]+xmlns="http:\/\/www.w3.org\/2000\/svg"/)) {
-        svgSource = svgSource.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"');
+        const cardImage = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+        const plotSvg = cardImage?.querySelector(".svg svg");
+        if (!plotSvg) {
+            createToast("SVG plot is not available for download.");
+            return;
         }
+        const legendSvg = cardImage.querySelector(".legend svg");
+
+        // Stack the legend, the colored SVG, and the stamp in one standalone SVG, using their on-screen sizes
+        const svgNS = "http://www.w3.org/2000/svg";
+        const width = plotSvg.getBoundingClientRect().width || 400;
+        const legendHeight = legendSvg ? legendSvg.getBoundingClientRect().height : 0;
+        const plotHeight = plotSvg.getBoundingClientRect().height || width;
+        const stampLines = await this.getPlotStampLines();
+        const stampTop = legendHeight + plotHeight + STAMP_PADDING;
+        const height = stampTop + (STAMP_LINE_HEIGHT * stampLines.length) + STAMP_PADDING;
+
+        const root = document.createElementNS(svgNS, "svg");
+        root.setAttribute("xmlns", svgNS);
+        root.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+        root.setAttribute("width", width);
+        root.setAttribute("height", height);
+        root.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+        const background = document.createElementNS(svgNS, "rect");
+        background.setAttribute("width", "100%");
+        background.setAttribute("height", "100%");
+        background.setAttribute("fill", "#ffffff");
+        root.append(background);
+
+        // Nested <svg> elements keep their own viewBox, so only their position and size need setting
+        const placeSvg = (svg, y, svgHeight) => {
+            const copy = svg.cloneNode(true);
+            for (const prop of ["width", "height", "position"]) {
+                copy.style.removeProperty(prop);
+            }
+            copy.setAttribute("x", 0);
+            copy.setAttribute("y", y);
+            copy.setAttribute("width", width);
+            copy.setAttribute("height", svgHeight);
+            root.append(copy);
+        };
+        if (legendSvg) {
+            placeSvg(legendSvg, 0, legendHeight);
+        }
+        placeSvg(plotSvg, legendHeight, plotHeight);
+
+        stampLines.forEach((line, i) => {
+            const text = document.createElementNS(svgNS, "text");
+            text.setAttribute("x", STAMP_PADDING);
+            text.setAttribute("y", stampTop + (i * STAMP_LINE_HEIGHT));
+            text.setAttribute("dominant-baseline", "hanging");
+            text.setAttribute("font-family", "sans-serif");
+            text.setAttribute("font-size", STAMP_FONT_SIZE);
+            text.setAttribute("fill", STAMP_COLOR);
+            text.textContent = line;
+            root.append(text);
+        });
+
+        const svgSource = new XMLSerializer().serializeToString(root);
         const blob = new Blob([svgSource], { type: "image/svg+xml;charset=utf-8" });
-        // create a hidden element that will be clicked to download the PNG
-        const hiddenLink = document.createElement("a");
-        const download = URL.createObjectURL(blob);
-        // download URL
-
-        hiddenLink.download = `${shareId}_${geneSymbol}_${this.svgScoringMethod}_scoring.svg`;
-        hiddenLink.href = download;
-
-        hiddenLink.setAttribute('target', '_blank');
-
-        // click the hidden link to download the PNG
-        hiddenLink.click();
-
-        // save memory (but breaks download)
-        URL.revokeObjectURL(download);
-        hiddenLink.remove();
+        saveBlobAsFile(blob, `${shareId}_${geneSymbol}_${this.svgScoringMethod}_scoring.svg`);
     }
 
     /**
@@ -2420,8 +2509,12 @@ class DatasetTile {
             return;
         }
 
-        const urlParams = window.gearSpatialUrlParams;
+        // Copy so repeated downloads do not keep appending to the synced parameters
+        const urlParams = new URLSearchParams(window.gearSpatialUrlParams);
         urlParams.append("_", Date.now());   // add timestamp to prevent caching issues
+        for (const line of await this.getPlotStampLines()) {
+            urlParams.append("stamp_line", line);
+        }
 
         // Must hit regular URL and not websocket (ws) version
         // because the HTTP version is unidirectional and will return response data
@@ -2532,6 +2625,26 @@ class DatasetTile {
     }
 }
 
+
+/**
+ * Saves a blob to the user's computer through a temporary hidden link.
+ *
+ * @param {Blob} blob - The file contents.
+ * @param {string} filename - The name to save the file as.
+ */
+const saveBlobAsFile = (blob, filename) => {
+    const download = URL.createObjectURL(blob);
+    const hiddenLink = document.createElement("a");
+    hiddenLink.classList.add("is-hidden");
+    hiddenLink.download = filename;
+    hiddenLink.href = download;
+    document.body.appendChild(hiddenLink);
+    hiddenLink.click();
+    hiddenLink.remove();
+
+    // Revoking right away can cancel the download in some browsers
+    setTimeout(() => URL.revokeObjectURL(download), 1000);
+}
 
 /**
  * Retrieves updates and additions to the plot from the plot-display-config JS object.

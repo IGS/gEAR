@@ -8,6 +8,36 @@ export class Citation {
         return `https://umgear.org/p?id=d.${shareId}`;
     }
 
+    /**
+     * Builds the citation/watermark lines stamped below downloaded plots.
+     * Mirrors build_stamp_lines in lib/gear/plot_stamp.py, which stamps the server-rendered downloads.
+     *
+     * @param {Object} dataset - Dataset being plotted (title, pubmed_id, share_id).
+     * @param {Object} [sitePrefs={}] - Site domain preferences (domain_url, domain_short_display_label).
+     * @returns {string[]} Lines of plain text, top to bottom.
+     */
+    static plotStampLines(dataset, sitePrefs={}) {
+        const maxTitleLength = 100;
+        const siteUrl = (sitePrefs.domain_url || window.location.origin).replace(/\/+$/, "");
+        const siteLabel = sitePrefs.domain_short_display_label || "gEAR";
+
+        let title = (dataset.title || "").trim();
+        if (title.length > maxTitleLength) {
+            title = `${title.slice(0, maxTitleLength - 1).trimEnd()}…`;
+        }
+
+        // Point back to the dataset permalink when there is no publication to cite
+        const pubmedId = String(dataset.pubmed_id ?? "").trim();
+        let siteLine = `Made with ${siteLabel} · ${siteUrl}`;
+        if (/^\d+$/.test(pubmedId)) {
+            siteLine = `PMID ${pubmedId} · Made with ${siteLabel} · ${siteUrl.replace(/^https?:\/\//, "")}`;
+        } else if (dataset.share_id) {
+            siteLine = `Made with ${siteLabel} · ${siteUrl}/p?id=d.${dataset.share_id}`;
+        }
+
+        return [title, siteLine].filter(Boolean);
+    }
+
     static gEAR(authors, year, title, shareId, accessDate, license) {
         if (authors.length > 2) {
             authors = `${authors[0]} et al.`;

@@ -28,6 +28,7 @@ import seaborn as sns
 from flask import request
 from flask_restful import Resource, inputs, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
+from gear.plot_stamp import build_stamp_lines, stamp_matplotlib_figure
 from gear.plotting import PlotError
 
 if typing.TYPE_CHECKING:
@@ -422,6 +423,7 @@ def validate_args(
             - "message" (str): Description of the validation result or error.
             - "adata" (AnnData, optional): The AnnData object if validation is successful.
             - "ana" (object, optional): The analysis object if validation is successful.
+            - "ds" (Dataset, optional): The dataset if validation is successful.
 
     Raises:
         Does not raise exceptions; all errors are caught and returned in the result dictionary.
@@ -477,6 +479,7 @@ def validate_args(
         "message": "Validation successful.",
         "adata": adata,
         "ana": ana,
+        "ds": ds,
     }
 
 
@@ -748,6 +751,7 @@ def generate_tsne_figure(
     plot_by_group=None,
     hide_group_nonmembers=False,
     two_way_palette=None,
+    stamp_lines: list[str] | None = None,
 ) -> dict:
     """
     Generates a t-SNE (or other embedding) figure for single-cell gene expression data.
@@ -817,6 +821,8 @@ def generate_tsne_figure(
         Whether to hide data points that are not members of a particular group when using plot_by_group.
     two_way_palette : str or None, optional
         Name of a two-way color palette for special sorting.
+    stamp_lines : list[str] or None, optional
+        Citation/watermark lines drawn below the high-DPI (downloaded) figure.
 
     Returns
     -------
@@ -1164,7 +1170,12 @@ def generate_tsne_figure(
             image_format = "pdf"
             # Force into a TrueType font for editability in PDF editor software
             plt.rcParams["pdf.fonttype"] = "truetype"
-            io_fig.savefig(io_pic, format="pdf")
+            if stamp_lines:
+                stamp_matplotlib_figure(io_fig, stamp_lines)
+                # The stamp sits below the figure canvas, so trim to the drawn content
+                io_fig.savefig(io_pic, format="pdf", bbox_inches="tight")
+            else:
+                io_fig.savefig(io_pic, format="pdf")
         else:
             # WebP has a hard limit of 16383 pixels in either dimension
             # Fall back to PNG if the figure size exceeds this limit
@@ -1235,7 +1246,8 @@ class MGTSNEData(Resource):
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
             args.get("make_zero_gray", True),
-            args.get("enforce_equal_aspect", False)
+            args.get("enforce_equal_aspect", False),
+            stamp_lines=build_stamp_lines(validation["ds"]) if args.get("high_dpi") else None,
         )
 
 
@@ -1293,4 +1305,5 @@ class TSNEData(Resource):
             args.get("plot_by_group", None),
             args.get("hide_group_nonmembers", False),
             args.get("two_way_palette", False),
+            stamp_lines=build_stamp_lines(validation["ds"]) if args.get("high_dpi") else None,
         )

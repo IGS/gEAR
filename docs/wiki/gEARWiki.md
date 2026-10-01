@@ -138,7 +138,7 @@ Each dataset panel on the Gene Expression and Projection pages has two buttons i
 - Any extra links the dataset owner has added
 - **Download Bundle** -- the original files as uploaded (downloadable datasets only)
 - **Download H5AD** -- the processed H5AD file (downloadable datasets only)
-- **Download Image** -- the current plot (PNG or SVG depending on the display; an HTML report for spatial displays)
+- **Download Image** -- the current plot (PDF, PNG or SVG depending on the display; an HTML report for spatial displays). The dataset title, its PubMed ID or gEAR link, and a "Made with gEAR" line are printed below the plot so the figure can be cited
 - **Download Projection** -- the projection output, on the Projection page only
 - **Download Metadata** -- the dataset's metadata file
 
