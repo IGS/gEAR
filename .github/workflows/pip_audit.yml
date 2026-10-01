@@ -42,7 +42,5 @@ jobs:
           # Known vulnerabilities we are deferring (see #1241). Remove each group once the package is bumped.
           # Comments cannot go inside the block below, since every word in it is passed as a vuln ID.
           # Line 1 - jupyterlab 4.0.5 (fixed in 4.6.2): bump expected from the Jupyter notebook integration branch.
-          # Line 2 - mysql-connector-python 8.0.28 (fixed in 9.1.0): major version bump, needs testing against our MySQL server.
           ignore-vulns: |
             PYSEC-2026-1707 PYSEC-2026-1706 PYSEC-2026-1482 PYSEC-2026-164 PYSEC-2026-2537 PYSEC-2024-322 PYSEC-2026-2538 PYSEC-2026-2534 PYSEC-2026-2536 PYSEC-2026-2535 PYSEC-2026-3671 PYSEC-2026-3672 PYSEC-2026-1481 CVE-2026-67338 CVE-2026-73626
-            PYSEC-2026-1685

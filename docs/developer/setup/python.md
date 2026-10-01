@@ -137,7 +137,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     mod-wsgi==6.0.6 \
     more_itertools==11.0.2 \
     mygene==3.2.2 \
-    mysql-connector-python==8.0.28 \
+    mysql-connector-python==9.7.0 \
     numba==0.65.0 \
     numpy==2.4.0 \
     openpyxl==3.1.5 \
