@@ -61,7 +61,7 @@ PLOT_TYPE_TO_BASIS = {
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 # Max number of legend items per column allowed in vertical legend
-NUM_LEGENDS_PER_COL = 20
+NUM_LEGENDS_PER_COL = 16
 
 parser = reqparse.RequestParser(bundle_errors=True)
 
@@ -1051,7 +1051,7 @@ def generate_tsne_figure(
     # If there are more columns of plots, increase the font size for readability
     label_scale = "medium" if num_plots_wide < 5 else "large"
     title_scale = "large" if num_plots_wide < 5 else "x-large"
-    legend_scale = "medium" if horizontal_legend else "small"
+    legend_scale = "large" if horizontal_legend else "medium"
 
     mpl.rcParams.update(
         {
