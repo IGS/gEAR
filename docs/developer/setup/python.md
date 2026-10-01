@@ -130,6 +130,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     hvplot==0.12.2 \
     jupyterlab==4.0.5 \
     jupyter==1.0.0 \
+    kaleido==1.4.0 \
     leidenalg==0.10.2 \
     legacy-cgi==2.6.4 \
     llvmlite==0.47.0 \
