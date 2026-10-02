@@ -1386,9 +1386,11 @@ const populateGeneTable = (data, plotType) => {
     geneTableBody.replaceChildren();
 
     for (const gene of plotSelectedGenes) {
-        const row = document.createElement("tr");
-        row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.x}</td><td>${gene.y}</td>`;
-        geneTableBody.appendChild(row);
+        const row = geneTableBody.insertRow();
+        // Gene symbols come from user-uploaded datasets, so insert as text rather than HTML
+        for (const value of [gene.gene_symbol, gene.x, gene.y]) {
+            row.insertCell().textContent = value;
+        }
     }
 };
 

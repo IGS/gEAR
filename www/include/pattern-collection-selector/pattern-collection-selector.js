@@ -85,7 +85,7 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
         // clear the patterns-manually-entered input element
         document.getElementById('dropdown-pattern-list-search-input').value = '';
         showSearchNotFound(null);
-        document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
+        document.getElementById('dropdown-pattern-list-selector-label').textContent = 'Quick search using pattern lists';
 
         // and finally the related pattern lists and patterns
         // Doing it this way to not break the Proxy object on projection.js
@@ -428,7 +428,7 @@ export const populatePatternWeights = async () => {
 
         document.getElementById('dropdown-content-weights').appendChild(row);
 
-        const thisRow = document.querySelector(`.dropdown-weight-item[data-label="${weight.label}"]`);
+        const thisRow = document.querySelector(`.dropdown-weight-item[data-label="${CSS.escape(weight.label)}"]`);
 
         // Event listener to select the weight and update the selectedPattern.selectedWeights
         // Multiple weights can be selected
@@ -493,7 +493,7 @@ export const selectPatternWeights = (labels) => {
 
     // select our labels
     for (const label of labels) {
-        document.querySelector(`.dropdown-weight-item[data-label="${label}"]`).click();
+        document.querySelector(`.dropdown-weight-item[data-label="${CSS.escape(label)}"]`).click();
     }
 
 }
@@ -503,5 +503,5 @@ export const selectPatternWeights = (labels) => {
  */
 const updatePatternListSelectorLabel = () => {
     const shareId = selectedPattern.shareId;
-    document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = shareId ? selectedPattern.label : 'Quick search using pattern sources';
+    document.querySelector('#dropdown-pattern-list-selector-label').textContent = shareId ? selectedPattern.label : 'Quick search using pattern sources';
 }

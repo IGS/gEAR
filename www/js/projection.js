@@ -148,7 +148,7 @@ const populatePatternResultsList = () => {
 
     for (const label of sortedLabels) {
         const row = template.content.cloneNode(true);
-        row.querySelector('li').innerHTML = label;
+        row.querySelector('li').textContent = label;
         row.querySelector('li').dataset.weight = label;
         document.getElementById('pattern-result-list').appendChild(row);
 
@@ -253,7 +253,7 @@ const parseDatasetCollectionURLParams = () => {
 
     datasetCollectionState.selectedShareId = layoutShareId;
     datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[layoutShareId];
-    document.querySelector('#dropdown-dc-selector-label').innerHTML = datasetCollectionState.selectedLabel;
+    document.querySelector('#dropdown-dc-selector-label').textContent = datasetCollectionState.selectedLabel;
 };
 
 /**

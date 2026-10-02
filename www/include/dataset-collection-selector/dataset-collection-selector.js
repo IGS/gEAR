@@ -249,9 +249,9 @@ export const setActiveDCCategory = (category) => {
 const updateDatasetCollectionSelectorLabel = () => {
     if (datasetCollectionState.selectedLabel.length > DatasetCollectionSelectorLabelMaxLength) {
         const truncated_label = `${datasetCollectionState.selectedLabel.substring(0, DatasetCollectionSelectorLabelMaxLength)}...`;
-        document.querySelector('#dropdown-dc-selector-label').innerHTML = truncated_label;
+        document.querySelector('#dropdown-dc-selector-label').textContent = truncated_label;
     } else {
-        document.querySelector('#dropdown-dc-selector-label').innerHTML = datasetCollectionState.selectedLabel;
+        document.querySelector('#dropdown-dc-selector-label').textContent = datasetCollectionState.selectedLabel;
     }
 }
 
