@@ -1036,7 +1036,7 @@ const guid = (uidLength) => {
     if (uidLength == 'short') {
         return `${s4()}${s4()}`;
     }
-};  
+};
 
 for (const jsStep of jsSteps) {
     // Add "capture=true" to trigger parent before children events
@@ -1820,8 +1820,9 @@ const apiCallsMixin = {
      * @param {string} ldesc - The description of the gene list.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
-    async saveGeneListInfoChanges(gcId, visibility, title, organismId, ldesc) {
-        const payload = {session_id: apiCallsMixin.sessionId, gc_id: gcId, visibility, title, organism_id: organismId, ldesc};
+    async saveGeneListInfoChanges(gcId, changes={}) {
+        const {visibility, title, organismId, ldesc, genes} = changes;
+        const payload = {session_id: apiCallsMixin.sessionId, gc_id: gcId, visibility, title, organism_id: organismId, ldesc, genes};
         const {data} = await axios.post("/cgi/save_genecart_changes.cgi", convertToFormData(payload));
         return data;
     },

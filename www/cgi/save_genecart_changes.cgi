@@ -17,10 +17,11 @@ Requires:
     - Organism (organism_id)
     - Long description (ldesc)
     - Public/private visibility (visibility)
+    - Genes (genes) - whitespace/comma-separated gene symbols. Only used for unweighted-list
+      carts, where it replaces all existing members. Duplicate symbols are removed.
 
 """
 
-import os
 import cgi
 import json
 import os
@@ -33,8 +34,6 @@ import geardb
 def main():
     print('Content-Type: application/json\n\n')
 
-    cnx = geardb.Connection()
-    cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getfirst('session_id')
     gc_id = form.getfirst('gc_id')
@@ -43,6 +42,10 @@ def main():
     organism_id = form.getfirst('organism_id')
     label = form.getfirst('title')
     ldesc = form.getfirst('ldesc')
+    genes = form.getfirst('genes', '')
+
+    # Split on commas and any whitespace, then remove duplicates while keeping the original order
+    gene_symbols = list(dict.fromkeys(genes.replace(',', ' ').split()))
 
     result = {}
 
@@ -74,8 +77,6 @@ def main():
         print(json.dumps(result))
         return
 
-    #print("visibility:{0} gc.is_public:{1}".format(visibility, gc.is_public), file=sys.stderr)
-
     if user.id == gc.user_id:
         # see what has changed and execute updates to the DB
         # ? SAdkins - Why are we checking for differences? Can't we just update regardless, or are we trying to reduce transactions?
@@ -90,6 +91,15 @@ def main():
 
         if gc.ldesc != ldesc:
             gc.save_change('ldesc', ldesc)
+
+        # Genes need to be handled differently.  They are stored in `gene_cart_member`, so the existing
+        # members are replaced.  An empty gene list is ignored so a cart cannot be emptied.
+        if gene_symbols and gc.gctype == "unweighted-list":
+            gc.genes = list()
+            for gene_sym in gene_symbols:
+                gc.add_gene(geardb.Gene(gene_symbol=gene_sym))
+            # Overwrite existing members with the new set
+            gc.save_members()
 
         result = { 'gene_cart': gc, 'success': 1 }
 
