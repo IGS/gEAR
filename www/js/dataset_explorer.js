@@ -1787,7 +1787,7 @@ const createRenameCollectionPopover = () => {
                 <p>Please provide a new name for the dataset collection</p>
                 <div class='field'>
                     <div class='control'>
-                        <input id='collection-name' class='input' type='text' placeholder='Collection name'>
+                        <input id='collection-name' class='input' maxlength='255' type='text' placeholder='Collection name'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>

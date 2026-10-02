@@ -49,6 +49,11 @@ def main():
         print(json.dumps(result))
         return
 
+    # layout name has a limit of 255 characters, per the schema SQL file
+    if len(layout_name) > 255:
+        result = {'error': "Dataset collection name is too long. It must be 255 characters or less."}
+        print(json.dumps(result))
+        return
 
     layout.label = layout_name
 
