@@ -37,6 +37,47 @@ def test_dataset_changes_require_login(script, query, error):
     assert not result.logged("dataset.save_change")
 
 
+class TestSaveDatasetInfoChanges:
+    # check_dataset_ownership() reads the owner from "SELECT d.id, d.owner_id FROM dataset d WHERE d.id = %s"
+    OWNER_SQL = [{"match": "FROM dataset d WHERE d.id", "rows": [["DS1", 1]]}]
+    FORM = {"dataset_id": "DS1", "visibility": "1", "is_downloadable": "1", "title": "A dataset",
+            "pubmed_id": "", "geo_id": "", "ldesc": "Wnt/\u03b2-catenin signaling"}
+
+    def run(self, session_id="owner", fail_save=None, **query):
+        db = {**DB, "sql": self.OWNER_SQL, "fail_save": fail_save or {}}
+        return run_cgi("save_datasetinfo_changes.cgi", db=db, query={**self.FORM, "session_id": session_id, **query})
+
+    def test_owner_saves_changes(self):
+        result = self.run(title="New title")
+        assert result.json()["success"] == 1
+        saved = {e["attribute"]: e["value"] for e in result.logged("dataset.save_change")}
+        assert saved["title"] == "New title"
+        assert saved["ldesc"] == self.FORM["ldesc"]
+
+    def test_unsupported_characters_explain_the_problem(self):
+        result = self.run(fail_save={"ldesc": 1366})    # ER_TRUNCATED_WRONG_VALUE_FOR_FIELD
+        body = result.json()    # fails if the script crashed or printed twice
+        assert body["success"] == 0
+        assert "description" in body["error"] and "ASCII" in body["error"]
+        assert "saving ldesc" in body["error_detail"]
+
+    def test_too_long_value(self):
+        body = self.run(title="x" * 300, fail_save={"title": 1406}).json()    # ER_DATA_TOO_LONG
+        assert body["success"] == 0
+        assert "title" in body["error"] and "too long" in body["error"]
+
+    def test_other_database_error(self):
+        body = self.run(fail_save={"ldesc": 2013}).json()
+        assert body["success"] == 0
+        assert body["error"].startswith("Could not save the description.")
+
+    def test_non_owner_changes_nothing(self):
+        body = run_cgi("save_datasetinfo_changes.cgi", db={**DB, "sql": self.OWNER_SQL},
+                       query={**self.FORM, "session_id": "other"})
+        assert body.json()["success"] == 0 and body.json()["owns_dataset"] is False
+        assert not body.logged("dataset.save_change")
+
+
 class TestValidateShareId:
     # The share ID exists: "SELECT share_id FROM dataset WHERE share_id = %s" echoes it back
     VALID_SHARE = {"match": "FROM dataset WHERE share_id", "rows": "echo"}

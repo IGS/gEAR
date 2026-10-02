@@ -17,6 +17,7 @@ Spec keys (all optional):
     sql             [{"match": "substring", "rows": [[...], ...] | "echo"}]
                     First matching rule wins. "echo" returns [[first param]].
     fail_sql        ["substring", ...]  -- execute() raises for matching statements
+    fail_save       {attribute: errno}  -- Dataset.save_change() raises a database error with that errno
     lastrowid       value of cursor.lastrowid (default 1)
 
 Queries against user_session are answered from "sessions" unless an sql rule matches first.
@@ -34,6 +35,14 @@ try:
     from mysql.connector import Error as _DatabaseError
 except ImportError:
     _DatabaseError = RuntimeError
+
+
+def _database_error(msg, errno):
+    """Build a database error carrying an errno, as mysql.connector would raise."""
+    if _DatabaseError is RuntimeError:
+        return RuntimeError(msg)
+    return _DatabaseError(msg=msg, errno=errno)
+
 
 _SPEC = json.loads(Path(os.environ["GEAR_FAKE_DB"]).read_text()) if os.environ.get("GEAR_FAKE_DB") else {}
 _LOG = os.environ.get("GEAR_FAKE_DB_LOG")
@@ -147,6 +156,9 @@ class Dataset(types.SimpleNamespace):
 
     def save_change(self, attribute, value):
         _log("dataset.save_change", dataset=self.id, attribute=attribute, value=value)
+        errno = _SPEC.get("fail_save", {}).get(attribute)
+        if errno is not None:
+            raise _database_error(f"fake database error saving {attribute}", errno)
 
     def _serialize_json(self):
         return dict(vars(self))

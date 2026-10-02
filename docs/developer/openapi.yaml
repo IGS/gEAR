@@ -5424,7 +5424,10 @@ paths:
       summary: Edit metadata of a dataset the user owns
       description: 'Requires a logged-in user who owns the dataset. Every field below is compared to the stored
         value and saved if different, so omitted fields are overwritten with null; send all of them. Errors use
-        HTTP 200 and `success: 0` (an invalid session returns error "User must be logged in").'
+        HTTP 200 and `success: 0` (an invalid session returns error "User must be logged in"). If the database
+        rejects a field (e.g. characters the column cannot store, or a value that is too long), saving stops
+        and `error` names that field, with the raw database error in `error_detail`; fields before it in the
+        order visibility, is_downloadable, title, pubmed_id, geo_id, ldesc may already be saved.'
       requestBody:
         required: true
         content:
@@ -5478,6 +5481,9 @@ paths:
                   owns_dataset:
                     type: boolean
                     description: Present (false) when the user does not own the dataset.
+                  error_detail:
+                    type: string
+                    description: Raw database error, present when saving a field failed.
   /cgi/save_default_display.cgi:
     post:
       operationId: cgiSaveDefaultDisplay

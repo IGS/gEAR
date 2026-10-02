@@ -29,6 +29,9 @@ import sys
 import re
 import shutil
 
+import mysql.connector
+from mysql.connector import errorcode
+
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
@@ -65,23 +68,26 @@ def main():
     if owns_dataset == True:
         # see what has changed and execute updates to the DB
         # ? SAdkins - Why are we checking for differences? Can't we just update regardless, or are we trying to reduce transactions?
-        if dataset.is_public != visibility:
-            dataset.save_change('is_public', visibility)
+        changes = [
+            ('is_public', visibility, 'visibility'),
+            ('is_downloadable', is_downloadable, 'downloadable setting'),
+            ('title', title, 'title'),
+            ('pubmed_id', pubmed_id, 'PubMed ID'),
+            ('geo_id', geo_id, 'GEO ID'),
+            ('ldesc', ldesc, 'description'),
+        ]
 
-        if dataset.is_downloadable != is_downloadable:
-            dataset.save_change("is_downloadable", is_downloadable)
+        for attribute, value, label in changes:
+            if getattr(dataset, attribute) == value:
+                continue
 
-        if dataset.title != title:
-            dataset.save_change('title', title)
-
-        if dataset.pubmed_id != pubmed_id:
-            dataset.save_change('pubmed_id', pubmed_id)
-
-        if dataset.geo_id != geo_id:
-            dataset.save_change('geo_id', geo_id)
-
-        if dataset.ldesc != ldesc:
-            dataset.save_change('ldesc', ldesc)
+            try:
+                dataset.save_change(attribute, value)
+            except mysql.connector.Error as err:
+                print("Error saving dataset {0} {1}: {2}".format(dataset.id, attribute, err), file=sys.stderr)
+                result = {'error': build_save_error_message(err, label), 'error_detail': str(err), 'success': 0}
+                print(json.dumps(result))
+                return
 
         result = { 'dataset': dataset, 'success': 1 }
 
@@ -96,6 +102,22 @@ def main():
         result['success'] = 0
 
         print(json.dumps(result))
+
+
+def build_save_error_message(err, label):
+    """
+    Return a user-facing message explaining why saving the given field failed.
+    """
+    if err.errno == errorcode.ER_TRUNCATED_WRONG_VALUE_FOR_FIELD:
+        return ("Could not save the {0}: it contains characters that cannot be stored "
+                "(e.g. Greek letters, symbols, or \"smart\" quotes copied from a document). "
+                "Please use only plain ASCII characters. "
+                "If you need help, contact us with the error details below.").format(label)
+
+    if err.errno == errorcode.ER_DATA_TOO_LONG:
+        return "Could not save the {0}: it is too long.".format(label)
+
+    return "Could not save the {0}. If you need help, contact us with the error details below.".format(label)
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
