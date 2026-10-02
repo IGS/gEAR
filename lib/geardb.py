@@ -3729,14 +3729,21 @@ class GeneCart:
         cursor.close()
         conn.close()
 
-    def remove_all_members(self):
+    def remove_all_members(self, cursor=None):
         """
         Remove all members from the gene cart.
+
+        If a cursor is passed, the delete runs on it and the caller is responsible for
+        committing.  Otherwise a new connection is opened and committed here.
         """
+        sql = "DELETE FROM gene_cart_member WHERE gene_cart_id = %s"
+
+        if cursor is not None:
+            cursor.execute(sql, (self.id,))
+            return
+
         conn = Connection()
         cursor = conn.get_cursor()
-
-        sql = "DELETE FROM gene_cart_member WHERE gene_cart_id = %s"
         cursor.execute(sql, (self.id,))
 
         conn.commit()
@@ -3774,24 +3781,26 @@ class GeneCart:
             )
             self.id = cursor.lastrowid
 
-            # Save the members of the cart
+            # Save the members of the cart in the same transaction as the cart itself
             if self.gctype == "unweighted-list":
-                try:
-                    self.save_members()
-                except:
-                    raise
+                self.save_members(cursor=cursor)
         else:
             # ID already populated
-            # TODO: Update cart properties, delete existing members, add current ones
+            # TODO: Update cart properties.  Members can be replaced with save_members()
             raise Exception("Called feature not yet implemented")
 
         cursor.close()
         conn.commit()
         conn.close()
 
-    def save_members(self):
+    def save_members(self, cursor=None):
         """
-        Save the members of the cart to the database.  Only works for unweighted-list carts.
+        Replace the members of the cart in the database with self.genes.  Only works for
+        unweighted-list carts.  Duplicate gene symbols are only saved once.
+
+        If a cursor is passed, the writes run on it and the caller is responsible for
+        committing.  Otherwise a new connection is opened, and the delete and inserts are
+        committed together so a failed insert does not leave the cart emptied.
         """
         if self.id is None:
             raise Exception("Error: no gene cart id. Cannot save members.")
@@ -3803,22 +3812,27 @@ class GeneCart:
                 "Error: save_members() only works for unweighted-list carts."
             )
 
-        conn = Connection()
-        cursor = conn.get_cursor()
+        conn = None
+        if cursor is None:
+            conn = Connection()
+            cursor = conn.get_cursor()
 
         gcm_insert_qry = (
             "INSERT INTO gene_cart_member (gene_cart_id, gene_symbol) VALUES (%s, %s)"
         )
 
         # Remove any existing members first
-        self.remove_all_members()
+        self.remove_all_members(cursor=cursor)
 
-        for gene in self.genes:
-            cursor.execute(gcm_insert_qry, (self.id, gene.gene_symbol))
+        # dict.fromkeys removes duplicates while keeping the original order
+        gene_symbols = dict.fromkeys(gene.gene_symbol for gene in self.genes)
+        for gene_symbol in gene_symbols:
+            cursor.execute(gcm_insert_qry, (self.id, gene_symbol))
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+        if conn is not None:
+            conn.commit()
+            cursor.close()
+            conn.close()
 
     def save_change(self, attribute=None, value=None):
         """

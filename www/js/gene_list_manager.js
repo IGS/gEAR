@@ -353,14 +353,22 @@ class ResultItem {
             const newOrgId = parentElt.querySelector(`.js-editable-organism select`).value;
             const newOrgText = parentElt.querySelector(`.js-editable-organism select option[value='${newOrgId}']`).textContent;
 
-            const newGenes = this.gctype === "unweighted-list" ? parentElt.querySelector(`.js-editable-genes textarea`).value : "";
+            // Split on commas and whitespace, and remove duplicate symbols (Set keeps insertion order)
+            const newGenes = this.gctype === "unweighted-list"
+                ? [...new Set(parentElt.querySelector(`.js-editable-genes textarea`).value.split(/[\s,]+/).filter(gene => gene.length > 0))]
+                : [];
+
+            if (this.gctype === "unweighted-list" && newGenes.length === 0) {
+                createToast("A gene list must have at least one gene");
+                return;
+            }
 
             const changes = {
                 visibility: intNewVisibility,
                 title: newTitle,
                 organismId: newOrgId,
                 ldesc: newLdesc,
-                genes: newGenes
+                genes: newGenes.join(" ")
             }
 
             try {
@@ -415,12 +423,13 @@ class ResultItem {
             this.rowItem.querySelector(`.js-display-title`).textContent = newTitle;
             this.rowItem.querySelector(`.js-display-organism`).textContent = this.expandedRowItem.querySelector(`.js-display-organism span:last-of-type`).textContent;
 
-            // Update the unweighted-genes preview
-            if (this.gctype == "unweighted-list") {
-                // Update the number of genes on the preview button
-                this.geneCount = newGenes.split(/\s+/).filter(gene => gene.length > 0).length;
-                console.log(this.geneCount);
-                this.fixPreviewGenesButton(parentElt)
+            // Update the unweighted-genes count and clear the cached previews so they are fetched again
+            if (this.gctype === "unweighted-list") {
+                this.geneCount = newGenes.length;
+                this.rowItem.querySelector(`.js-display-num-genes`).textContent = this.geneCount;
+                for (const viewElt of [this.expandedRowItem, this.resultListItem]) {
+                    this.resetPreviewGenes(viewElt);
+                }
             }
 
             // Put interface back to view mode.
@@ -506,6 +515,21 @@ class ResultItem {
 
     }
 
+
+    // Clears the cached gene preview and returns the preview button to its closed state
+    resetPreviewGenes(parentElt) {
+        const previewGenesContainer = parentElt.querySelector(".js-preview-genes-container");
+        previewGenesContainer.replaceChildren();
+        previewGenesContainer.classList.add("is-hidden");
+
+        const buttonElt = parentElt.querySelector(`.js-preview-genes-button-container button`);
+        buttonElt.classList.add("is-outlined");
+        buttonElt.querySelector("i").classList.remove("mdi-eye-off");
+        buttonElt.querySelector("i").classList.add("mdi-format-list-bulleted");
+
+        // Resets the label and its "off" state to the current gene count
+        this.fixPreviewGenesButton(parentElt);
+    }
 
     //Sets up the gene list toggle functionality.
     setupGeneListToggle(parentElt, className, ajaxUrl, handleData) {

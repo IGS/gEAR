@@ -17,10 +17,11 @@ Requires:
     - Organism (organism_id)
     - Long description (ldesc)
     - Public/private visibility (visibility)
+    - Genes (genes) - whitespace/comma-separated gene symbols. Only used for unweighted-list
+      carts, where it replaces all existing members. Duplicate symbols are removed.
 
 """
 
-import os
 import cgi
 import json
 import os
@@ -33,8 +34,6 @@ import geardb
 def main():
     print('Content-Type: application/json\n\n')
 
-    cnx = geardb.Connection()
-    cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getfirst('session_id')
     gc_id = form.getfirst('gc_id')
@@ -45,9 +44,8 @@ def main():
     ldesc = form.getfirst('ldesc')
     genes = form.getfirst('genes', '')
 
-    # Clean up the genes string to remove commas, newlines, tabs, and extra spaces
-    genes = genes.replace(',', ' ').replace('  ', ' ')
-    genes = genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
+    # Split on commas and any whitespace, then remove duplicates while keeping the original order
+    gene_symbols = list(dict.fromkeys(genes.replace(',', ' ').split()))
 
     result = {}
 
@@ -94,18 +92,14 @@ def main():
         if gc.ldesc != ldesc:
             gc.save_change('ldesc', ldesc)
 
-        # Genes need to be handled differently.  They are stored in `gene_cart_member`, so need to avoid duplicating genes here
-        if genes and gc.gctype == "unweighted-list":
-            genes = genes.split(' ')
+        # Genes need to be handled differently.  They are stored in `gene_cart_member`, so the existing
+        # members are replaced.  An empty gene list is ignored so a cart cannot be emptied.
+        if gene_symbols and gc.gctype == "unweighted-list":
             gc.genes = list()
-            # Add new genes as members
-            for gene_sym in genes:
-                if len(gene_sym) > 0:
-                    gene = geardb.Gene(gene_symbol=gene_sym)
-                    gc.add_gene(gene)
-            # Overwite existing members with the new set
+            for gene_sym in gene_symbols:
+                gc.add_gene(geardb.Gene(gene_symbol=gene_sym))
+            # Overwrite existing members with the new set
             gc.save_members()
-
 
         result = { 'gene_cart': gc, 'success': 1 }
 
