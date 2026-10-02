@@ -65,7 +65,7 @@ def main():
     # Does user own the dataset...
     owns_dataset = check_dataset_ownership(cursor, user.id, dataset.id)
 
-    if owns_dataset == True:
+    if owns_dataset:
         # see what has changed and execute updates to the DB
         # ? SAdkins - Why are we checking for differences? Can't we just update regardless, or are we trying to reduce transactions?
         changes = [
@@ -77,17 +77,25 @@ def main():
             ('ldesc', ldesc, 'description'),
         ]
 
-        for attribute, value, label in changes:
-            if getattr(dataset, attribute) == value:
-                continue
+        # Save all changed fields in one transaction, so a rejected field leaves the dataset unchanged
+        changed = [(attribute, value, label) for attribute, value, label in changes
+                   if getattr(dataset, attribute) != value]
 
+        for attribute, value, label in changed:
             try:
-                dataset.save_change(attribute, value)
+                cursor.execute("UPDATE dataset SET {0} = %s WHERE id = %s".format(attribute), (value, dataset.id))
             except mysql.connector.Error as err:
+                cnx.rollback()
                 print("Error saving dataset {0} {1}: {2}".format(dataset.id, attribute, err), file=sys.stderr)
                 result = {'error': build_save_error_message(err, label), 'error_detail': str(err), 'success': 0}
                 print(json.dumps(result))
                 return
+
+        cnx.commit()
+
+        # Update the attributes in the dataset object
+        for attribute, value, label in changed:
+            setattr(dataset, attribute, value)
 
         result = { 'dataset': dataset, 'success': 1 }
 
@@ -111,13 +119,14 @@ def build_save_error_message(err, label):
     if err.errno == errorcode.ER_TRUNCATED_WRONG_VALUE_FOR_FIELD:
         return ("Could not save the {0}: it contains characters that cannot be stored "
                 "(e.g. Greek letters, symbols, or \"smart\" quotes copied from a document). "
-                "Please use only plain ASCII characters. "
+                "Please use only plain ASCII characters. No changes were saved. "
                 "If you need help, contact us with the error details below.").format(label)
 
     if err.errno == errorcode.ER_DATA_TOO_LONG:
-        return "Could not save the {0}: it is too long.".format(label)
+        return "Could not save the {0}: it is too long. No changes were saved.".format(label)
 
-    return "Could not save the {0}. If you need help, contact us with the error details below.".format(label)
+    return ("Could not save the {0}. No changes were saved. "
+            "If you need help, contact us with the error details below.").format(label)
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):

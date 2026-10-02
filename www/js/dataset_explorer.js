@@ -574,9 +574,9 @@ class ResultItem {
                 if (!data?.success) {
                     let msg = data?.error || "Failed to save dataset changes";
                     if (data?.error_detail) {
-                        msg += ` (Details: ${data.error_detail})`;
+                        msg += `\nDetails: ${data.error_detail}`;
                     }
-                    createToast(msg, "is-danger", true);
+                    createToast(msg, "is-danger", true, { isHTML: true });
                     return;
                 }
                 createToast("Dataset changes saved", "is-success");

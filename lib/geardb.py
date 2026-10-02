@@ -1159,6 +1159,12 @@ class Connection:
         """
         self.mysql_cnx.commit()
 
+    def rollback(self):
+        """
+        Roll back the current transaction.
+        """
+        self.mysql_cnx.rollback()
+
     def close(self):
         """
         Close the MySQL connection if it is still open.

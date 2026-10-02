@@ -16,8 +16,8 @@ Spec keys (all optional):
     verification_short   value returned by get_verification_code_short_form()
     sql             [{"match": "substring", "rows": [[...], ...] | "echo"}]
                     First matching rule wins. "echo" returns [[first param]].
-    fail_sql        ["substring", ...]  -- execute() raises for matching statements
-    fail_save       {attribute: errno}  -- Dataset.save_change() raises a database error with that errno
+    fail_sql        ["substring" | {"match": "substring", "errno": int}, ...]
+                    execute() raises a database error (with that errno, if given) for matching statements
     lastrowid       value of cursor.lastrowid (default 1)
 
 Queries against user_session are answered from "sessions" unless an sql rule matches first.
@@ -156,9 +156,6 @@ class Dataset(types.SimpleNamespace):
 
     def save_change(self, attribute, value):
         _log("dataset.save_change", dataset=self.id, attribute=attribute, value=value)
-        errno = _SPEC.get("fail_save", {}).get(attribute)
-        if errno is not None:
-            raise _database_error(f"fake database error saving {attribute}", errno)
 
     def _serialize_json(self):
         return dict(vars(self))
@@ -226,9 +223,10 @@ class _Cursor:
         flat = " ".join(str(query).split())
         params = list(params or ())
         _log("sql", query=flat, params=params)
-        for pattern in _SPEC.get("fail_sql", []):
+        for rule in _SPEC.get("fail_sql", []):
+            pattern, errno = (rule["match"], rule.get("errno")) if isinstance(rule, dict) else (rule, None)
             if pattern in flat:
-                raise _DatabaseError(f"fake database error for: {pattern}")
+                raise _database_error(f"fake database error for: {pattern}", errno)
         self.rows = []
         for rule in _SPEC.get("sql", []):
             if rule["match"] in flat:
@@ -262,6 +260,9 @@ class Connection:
 
     def commit(self):
         _log("commit")
+
+    def rollback(self):
+        _log("rollback")
 
     def close(self):
         pass

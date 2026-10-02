@@ -43,39 +43,53 @@ class TestSaveDatasetInfoChanges:
     FORM = {"dataset_id": "DS1", "visibility": "1", "is_downloadable": "1", "title": "A dataset",
             "pubmed_id": "", "geo_id": "", "ldesc": "Wnt/\u03b2-catenin signaling"}
 
-    def run(self, session_id="owner", fail_save=None, **query):
-        db = {**DB, "sql": self.OWNER_SQL, "fail_save": fail_save or {}}
+    def run(self, session_id="owner", fail_sql=None, **query):
+        db = {**DB, "sql": self.OWNER_SQL, "fail_sql": fail_sql or []}
         return run_cgi("save_datasetinfo_changes.cgi", db=db, query={**self.FORM, "session_id": session_id, **query})
 
-    def test_owner_saves_changes(self):
-        result = self.run(title="New title")
-        assert result.json()["success"] == 1
-        saved = {e["attribute"]: e["value"] for e in result.logged("dataset.save_change")}
-        assert saved["title"] == "New title"
-        assert saved["ldesc"] == self.FORM["ldesc"]
+    @staticmethod
+    def updated(result):
+        """{column: value} for each UPDATE dataset statement."""
+        return {w["query"].split()[3]: w["params"][0] for w in result.writes()}
 
-    def test_unsupported_characters_explain_the_problem(self):
-        result = self.run(fail_save={"ldesc": 1366})    # ER_TRUNCATED_WRONG_VALUE_FOR_FIELD
+    def test_owner_saves_changes_in_one_commit(self):
+        result = self.run(title="New title")
+        body = result.json()
+        assert body["success"] == 1 and body["dataset"]["title"] == "New title"
+        updated = self.updated(result)
+        assert updated["title"] == "New title" and updated["ldesc"] == self.FORM["ldesc"]
+        assert "owner_id" not in updated
+        assert len(result.logged("commit")) == 1 and not result.logged("rollback")
+
+    def test_unchanged_fields_are_not_written(self):
+        result = self.run(ldesc="")
+        assert "title" not in self.updated(result)
+
+    def test_unsupported_characters_roll_back_everything(self):
+        # ER_TRUNCATED_WRONG_VALUE_FOR_FIELD on the description, after visibility and title were updated
+        result = self.run(title="New title", fail_sql=[{"match": "SET ldesc", "errno": 1366}])
         body = result.json()    # fails if the script crashed or printed twice
         assert body["success"] == 0
         assert "description" in body["error"] and "ASCII" in body["error"]
-        assert "saving ldesc" in body["error_detail"]
+        assert "No changes were saved" in body["error"]
+        assert "SET ldesc" in body["error_detail"]
+        assert result.logged("rollback") and not result.logged("commit")
 
     def test_too_long_value(self):
-        body = self.run(title="x" * 300, fail_save={"title": 1406}).json()    # ER_DATA_TOO_LONG
+        body = self.run(title="x" * 300, fail_sql=[{"match": "SET title", "errno": 1406}]).json()    # ER_DATA_TOO_LONG
         assert body["success"] == 0
         assert "title" in body["error"] and "too long" in body["error"]
 
     def test_other_database_error(self):
-        body = self.run(fail_save={"ldesc": 2013}).json()
+        body = self.run(fail_sql=[{"match": "SET ldesc", "errno": 2013}]).json()
         assert body["success"] == 0
-        assert body["error"].startswith("Could not save the description.")
+        assert body["error"].startswith("Could not save the description. No changes were saved.")
 
     def test_non_owner_changes_nothing(self):
-        body = run_cgi("save_datasetinfo_changes.cgi", db={**DB, "sql": self.OWNER_SQL},
-                       query={**self.FORM, "session_id": "other"})
-        assert body.json()["success"] == 0 and body.json()["owns_dataset"] is False
-        assert not body.logged("dataset.save_change")
+        result = self.run(session_id="other")
+        body = result.json()
+        assert body["success"] == 0 and body["owns_dataset"] is False
+        assert result.writes() == [] and not result.logged("commit")
 
 
 class TestValidateShareId:
