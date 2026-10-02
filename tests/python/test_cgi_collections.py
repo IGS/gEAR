@@ -1,8 +1,12 @@
 """Dataset collection (layout) CGIs: ownership checks and single, well-formed JSON responses."""
 
+from pathlib import Path
+
 import pytest
 
 from helpers.cgi_harness import run_cgi
+
+USERHISTORY = {"gear.userhistory": Path(__file__).resolve().parent / "fakes" / "accounts_userhistory.py"}
 
 # Session "owner" is user 1, who owns collection L1; "other" is a different logged-in user.
 DB = {
@@ -33,6 +37,56 @@ class TestRenameLayout:
         result = run_cgi("rename_layout.cgi", db=DB,
                          query={"session_id": "owner", "layout_share_id": "NOPE", "layout_name": "X"})
         assert result.json()["error"] == "Dataset Collection not found."
+
+    def test_name_is_trimmed(self):
+        result = run_cgi("rename_layout.cgi", db=DB,
+                         query={"session_id": "owner", "layout_share_id": "L1", "layout_name": "  New name  "})
+        assert result.json()["layout_label"] == "New name"
+
+    def test_name_at_limit_is_saved(self):
+        name = "x" * 255
+        result = run_cgi("rename_layout.cgi", db=DB,
+                         query={"session_id": "owner", "layout_share_id": "L1", "layout_name": name})
+        assert result.json()["layout_label"] == name
+
+    @pytest.mark.parametrize("name, error", [
+        (None, "cannot be empty"),
+        ("   ", "cannot be empty"),
+        ("x" * 256, "too long"),
+    ])
+    def test_invalid_name_is_refused(self, name, error):
+        query = {"session_id": "owner", "layout_share_id": "L1"}
+        if name is not None:
+            query["layout_name"] = name
+        result = run_cgi("rename_layout.cgi", db=DB, query=query)
+        assert error in result.json()["error"]
+        assert not result.logged("layout.save")
+
+
+class TestAddLayout:
+    def run(self, **query):
+        return run_cgi("add_layout.cgi", db=DB, fake_modules=USERHISTORY, query={"session_id": "owner", **query})
+
+    def test_owner_can_add(self):
+        result = self.run(layout_name="  My collection  ")
+        assert result.json() == {"layout_label": "My collection", "layout_share_id": "NEWLAYOUT"}
+        assert result.logged("layout.save", "My collection")
+        assert result.logged("userhistory.add_record")
+
+    def test_anonymous_is_refused(self):
+        result = run_cgi("add_layout.cgi", db=DB, fake_modules=USERHISTORY, query={"layout_name": "X"})
+        assert "logged in" in result.json()["error"]
+        assert not result.logged("layout.save")
+
+    @pytest.mark.parametrize("name, error", [
+        (None, "cannot be empty"),
+        ("   ", "cannot be empty"),
+        ("x" * 256, "too long"),
+    ])
+    def test_invalid_name_is_refused(self, name, error):
+        result = self.run(**({} if name is None else {"layout_name": name}))
+        assert error in result.json()["error"]
+        assert not result.logged("layout.save")
 
 
 class TestUpdateLayoutVisibility:

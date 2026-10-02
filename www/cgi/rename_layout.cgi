@@ -24,7 +24,7 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getfirst('session_id')
     layout_share_id = form.getfirst('layout_share_id')
-    layout_name = form.getfirst('layout_name')
+    layout_name = (form.getfirst('layout_name') or '').strip()
 
     user = geardb.get_user_from_session_id(session_id)
 
@@ -46,6 +46,11 @@ def main():
     # Only the owner may rename a collection
     if layout.user_id != user.id:
         result = {'error': "You can only rename dataset collections you own."}
+        print(json.dumps(result))
+        return
+
+    if not layout_name:
+        result = {'error': "Dataset collection name cannot be empty."}
         print(json.dumps(result))
         return
 

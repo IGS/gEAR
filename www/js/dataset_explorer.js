@@ -1657,7 +1657,7 @@ const createNewCollectionPopover = () => {
                 <p>Please provide a name for the new dataset collection</p>
                 <div class='field'>
                     <div class='control'>
-                        <input id='collection-name' class='input' type='text' placeholder='Collection name'>
+                        <input id='collection-name' class='input' maxlength='255' type='text' placeholder='Collection name'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1752,7 +1752,7 @@ const createNewCollectionPopover = () => {
                 }
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to create new collection");
+                createToast(error.message || "Failed to create new collection");
             } finally {
                 event.target.classList.remove("is-loading");
                 popoverContent.remove();
@@ -1881,7 +1881,7 @@ const createRenameCollectionPopover = () => {
                 }
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to rename collection");
+                createToast(error.message || "Failed to rename collection");
             } finally {
                 event.target.classList.remove("is-loading");
                 popoverContent.remove();

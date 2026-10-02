@@ -125,6 +125,19 @@ class _Layout:
         _log("layout.save_change", layout=self.share_id, attribute=attribute, value=value)
 
 
+class Layout(_Layout):
+    """Fake geardb.Layout constructed directly by a CGI (e.g. add_layout.cgi); save() assigns a share ID."""
+
+    def __init__(self, user_id=None, label=None, is_current=0, members=None, **kwargs):
+        super().__init__({"id": None, "user_id": user_id, "label": label})
+        self.is_current = is_current
+
+    def save(self):
+        if self.share_id is None:
+            self.id, self.share_id = _SPEC.get("lastrowid", 1), "NEWLAYOUT"
+        super().save()
+
+
 def get_layout_by_share_id(layout_share_id):
     for spec in _SPEC.get("layouts", []):
         if spec.get("share_id") == layout_share_id:

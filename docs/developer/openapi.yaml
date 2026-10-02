@@ -1617,8 +1617,8 @@ paths:
       - Collections (layouts)
       summary: Create a new, empty layout (collection) for the user
       description: Requires a logged-in user. Saves an empty, non-current layout with the given label and records
-        a 'layout_added' user-history entry. Note the response has no success key; failure is signalled only by
-        an 'error' key (HTTP 200).
+        a 'layout_added' user-history entry. The label is trimmed and must be 1-255 characters. Note the response
+        has no success key; failure is signalled only by an 'error' key (HTTP 200).
       requestBody:
         required: true
         content:
@@ -5266,7 +5266,8 @@ paths:
       - Collections (layouts)
       summary: Rename a layout
       description: Requires a logged-in user who owns the layout. Sets the layout label and returns the new label
-        and share ID.
+        and share ID. The label is trimmed and must be 1-255 characters; failure is signalled by an 'error' key
+        (HTTP 200).
       requestBody:
         required: true
         content:
