@@ -8,7 +8,6 @@ a NEW GeneCart object
 
 import cgi
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -80,26 +79,26 @@ def main():
 
     if upload_type == 'pasted_genes':
         gc.gctype = 'unweighted-list'
-        pasted_genes = form.getfirst('new_cart_pasted_genes').replace(',', ' ').replace('  ', ' ')
-        pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
+        new_genes = form.getfirst('new_cart_pasted_genes', '')
 
-        for gene_sym in pasted_genes.split(' '):
-            if len(gene_sym) > 0:
-                gene = geardb.Gene(gene_symbol=gene_sym)
-                gc.add_gene(gene)
+        # Split on commas and any whitespace, then remove duplicates while keeping the original order
+        pasted_genes = list(dict.fromkeys(new_genes.replace(',', ' ').split()))
+
+        for gene_sym in pasted_genes:
+            gc.add_gene(geardb.Gene(gene_symbol=gene_sym))
 
     elif upload_type == 'uploaded-unweighted':
         gc.gctype = 'unweighted-list'
 
         fileitem = form['new_cart_file']
         if fileitem.filename:
-            pasted_genes = fileitem.file.read().decode().replace(",", " ")
-            pasted_genes = re.sub(r"\s+", " ", pasted_genes)
-            pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
+            file_genes = fileitem.file.read().decode()
 
-            for gene_sym in pasted_genes.split(' '):
-                gene = geardb.Gene(gene_symbol=gene_sym)
-                gc.add_gene(gene)
+            # Split on commas and any whitespace, then remove duplicates while keeping the original order
+            pasted_genes = list(dict.fromkeys(file_genes.replace(',', ' ').split()))
+
+            for gene_sym in pasted_genes:
+                gc.add_gene(geardb.Gene(gene_symbol=gene_sym))
         else:
             exit_with_error("Didn't detect an uploaded file for an uploaded-unweighted submission")
 

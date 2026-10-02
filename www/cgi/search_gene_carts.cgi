@@ -183,8 +183,8 @@ def main():
         ofh.write("QRY_params:\n{0}\n".format(qry_params))
         ofh.close()
 
-    print(qry, file=sys.stderr)
-    print(qry_params, file=sys.stderr)
+    #print(qry, file=sys.stderr)
+    #print(qry_params, file=sys.stderr)
 
     try:
         cursor.execute(qry, qry_params)
