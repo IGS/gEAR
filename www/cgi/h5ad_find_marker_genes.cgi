@@ -69,11 +69,6 @@ def main():
 
     cluster_method = 'louvain'
 
-    # primary or public analysis should not be overwritten
-    # this will alter the analysis object save destination
-    if ana.type == 'primary' or ana.type == 'public':
-        ana.type = 'user_unsaved'
-
     ## dirty hack for BICCN dataset customization
     # BICCN Mini-Atlas (Integrated)
     if ana.type == 'primary':
@@ -101,6 +96,12 @@ def main():
                             'debbff92-dbe4-4b61-8cc8-b19d45ddf1d4'
         ]:
             cluster_method = 'subclass_label'
+
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
+    # (done after the BICCN check above, which needs to see the 'primary' type)
+    if ana.type == 'primary' or ana.type == 'public':
+        ana.type = 'user_unsaved'
 
     dest_datafile_path = ana.dataset_path
 
