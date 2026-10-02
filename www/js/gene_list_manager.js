@@ -338,9 +338,11 @@ class ResultItem {
             parentElt.querySelector(`.js-editable-ldesc textarea`).value = this.longDesc;
             parentElt.querySelector(`.js-editable-organism select`).value = this.organismId;
             parentElt.querySelector(`.js-action-links`).classList.remove("is-hidden");
+
+            // No need to undo genes as they are not displayed in the normal view outside of the preview (which does its own fetch)
         });
 
-        // Save button for editing a gene list
+        // Save button for editing metadata from a gene list
         parentElt.querySelector(".js-edit-gc-save").addEventListener("click", async (e) => {
             const newVisibility = parentElt.querySelector(`.js-editable-visibility input`).checked;
             // convert "true/false" visibility to 1/0
@@ -351,9 +353,18 @@ class ResultItem {
             const newOrgId = parentElt.querySelector(`.js-editable-organism select`).value;
             const newOrgText = parentElt.querySelector(`.js-editable-organism select option[value='${newOrgId}']`).textContent;
 
+            const newGenes = this.gctype === "unweighted-list" ? parentElt.querySelector(`.js-editable-genes textarea`).value : "";
+
+            const changes = {
+                visibility: intNewVisibility,
+                title: newTitle,
+                organismId: newOrgId,
+                ldesc: newLdesc,
+                genes: newGenes
+            }
 
             try {
-                const data = await apiCallsMixin.saveGeneListInfoChanges(this.geneListId, intNewVisibility, newTitle, newOrgId, newLdesc);
+                const data = await apiCallsMixin.saveGeneListInfoChanges(this.geneListId, changes);
                 createToast("Gene list changes saved", "is-success");
 
             } catch (error) {
@@ -404,9 +415,16 @@ class ResultItem {
             this.rowItem.querySelector(`.js-display-title`).textContent = newTitle;
             this.rowItem.querySelector(`.js-display-organism`).textContent = this.expandedRowItem.querySelector(`.js-display-organism span:last-of-type`).textContent;
 
+            // Update the unweighted-genes preview
+            if (this.gctype == "unweighted-list") {
+                // Update the number of genes on the preview button
+                this.geneCount = newGenes.split(/\s+/).filter(gene => gene.length > 0).length;
+                console.log(this.geneCount);
+                this.fixPreviewGenesButton(parentElt)
+            }
+
             // Put interface back to view mode.
             toggleEditableMode(true, parentElt);
-
         });
 
         // Toggle editable mode when edit button is clicked for a gene list
@@ -427,6 +445,16 @@ class ResultItem {
 
                 // set the current value as selected
                 editableOrganismIdElt.value = this.organismId;
+
+                // Hide gene textarea box if gctypeLabel is not "Unweighted"
+                if (this.gctype === "unweighted-list") {
+                    const geneSymbols = await fetchGeneCartMembers(this.shareId);
+                    const geneString = geneSymbols.map(gene => gene.label).join(" ");
+                    parentElt.querySelector(`.js-editable-genes textarea`).value = geneString
+                    parentElt.querySelector(`.js-editable-genes`).classList.remove("is-hidden");
+                } else {
+                    parentElt.querySelector(`.js-editable-genes`).classList.add("is-hidden");
+                }
 
                 // Show editable versions where there are some and hide the display versions
                 toggleEditableMode(false, parentElt);
@@ -467,7 +495,6 @@ class ResultItem {
             buttonLabel.textContent = `Info`;
         } else if (this.gctype === "unweighted-list") {
             buttonElt.classList.add("js-gc-unweighted-gene-list-toggle");
-
             buttonLabel.textContent = `${this.geneCount} genes`;
         } else if (this.gctype === "labeled-list") {
             // Not implemented yet
@@ -522,6 +549,7 @@ class ResultItem {
 
                     const infoContainer = document.createElement("div");
                     infoContainer.classList.add("js-info-container");
+                    previewGenesContainer.replaceChildren();    // clear any existing content
                     previewGenesContainer.appendChild(infoContainer);
 
                     // ? Should we re-add the preview table for weighted gene lists?

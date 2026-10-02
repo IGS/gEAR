@@ -43,6 +43,11 @@ def main():
     organism_id = form.getfirst('organism_id')
     label = form.getfirst('title')
     ldesc = form.getfirst('ldesc')
+    genes = form.getfirst('genes', '')
+
+    # Clean up the genes string to remove commas, newlines, tabs, and extra spaces
+    genes = genes.replace(',', ' ').replace('  ', ' ')
+    genes = genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
 
     result = {}
 
@@ -74,8 +79,6 @@ def main():
         print(json.dumps(result))
         return
 
-    #print("visibility:{0} gc.is_public:{1}".format(visibility, gc.is_public), file=sys.stderr)
-
     if user.id == gc.user_id:
         # see what has changed and execute updates to the DB
         # ? SAdkins - Why are we checking for differences? Can't we just update regardless, or are we trying to reduce transactions?
@@ -90,6 +93,19 @@ def main():
 
         if gc.ldesc != ldesc:
             gc.save_change('ldesc', ldesc)
+
+        # Genes need to be handled differently.  They are stored in `gene_cart_member`, so need to avoid duplicating genes here
+        if genes and gc.gctype == "unweighted-list":
+            genes = genes.split(' ')
+            gc.genes = list()
+            # Add new genes as members
+            for gene_sym in genes:
+                if len(gene_sym) > 0:
+                    gene = geardb.Gene(gene_symbol=gene_sym)
+                    gc.add_gene(gene)
+            # Overwite existing members with the new set
+            gc.save_members()
+
 
         result = { 'gene_cart': gc, 'success': 1 }
 

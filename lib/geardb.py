@@ -2222,7 +2222,6 @@ class DatasetDisplay:
                 "Can only save changes to existing dataset displays currently"
             )
         else:
-            # gene_cart_member entries are deleted by foreign key cascade
             conn = Connection()
             cursor = conn.get_cursor()
 
@@ -3730,6 +3729,20 @@ class GeneCart:
         cursor.close()
         conn.close()
 
+    def remove_all_members(self):
+        """
+        Remove all members from the gene cart.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        sql = "DELETE FROM gene_cart_member WHERE gene_cart_id = %s"
+        cursor.execute(sql, (self.id,))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
     def save(self):
         """
         Will perform a save or an update depending on whether the ID attribute is
@@ -3737,10 +3750,6 @@ class GeneCart:
         """
         conn = Connection()
         cursor = conn.get_cursor()
-
-        gcm_insert_qry = (
-            "INSERT INTO gene_cart_member (gene_cart_id, gene_symbol) VALUES (%s, %s)"
-        )
 
         if self.id is None:
             # ID is empty, this is a new one
@@ -3765,12 +3774,12 @@ class GeneCart:
             )
             self.id = cursor.lastrowid
 
-            # Only save unweighted-list genes as members.  Weighted lists will have lots more members
-            # and can be read from disk instead of storing in the db.
+            # Save the members of the cart
             if self.gctype == "unweighted-list":
-                for gene in self.genes:
-                    cursor.execute(gcm_insert_qry, (self.id, gene.gene_symbol))
-
+                try:
+                    self.save_members()
+                except:
+                    raise
         else:
             # ID already populated
             # TODO: Update cart properties, delete existing members, add current ones
@@ -3778,6 +3787,37 @@ class GeneCart:
 
         cursor.close()
         conn.commit()
+        conn.close()
+
+    def save_members(self):
+        """
+        Save the members of the cart to the database.  Only works for unweighted-list carts.
+        """
+        if self.id is None:
+            raise Exception("Error: no gene cart id. Cannot save members.")
+
+        # Only save unweighted-list genes as members.  Weighted lists will have lots more members
+        # and can be read from disk instead of storing in the db.
+        if self.gctype != "unweighted-list":
+            raise Exception(
+                "Error: save_members() only works for unweighted-list carts."
+            )
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        gcm_insert_qry = (
+            "INSERT INTO gene_cart_member (gene_cart_id, gene_symbol) VALUES (%s, %s)"
+        )
+
+        # Remove any existing members first
+        self.remove_all_members()
+
+        for gene in self.genes:
+            cursor.execute(gcm_insert_qry, (self.id, gene.gene_symbol))
+
+        conn.commit()
+        cursor.close()
         conn.close()
 
     def save_change(self, attribute=None, value=None):
