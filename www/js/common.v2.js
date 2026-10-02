@@ -193,10 +193,10 @@ const initCommonUI = async () => {
 
         // insert the page logo based on the site preferences
         const logoNormal = document.getElementById('navbar-logo-normal');
-        logoNormal.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-normal.png"
+        logoNormal.src = `/img/by_domain/${SITE_PREFS.domain_label}/logo-main-normal.png`
 
         const logoSmall = document.getElementById('navbar-logo-small');
-        logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
+        logoSmall.src = `/img/by_domain/${SITE_PREFS.domain_label}/logo-main-small.png`
 
         const domainTaglineElement = document.getElementById('domain-tagline');
         if (domainTaglineElement) {
@@ -267,7 +267,7 @@ const initCommonUI = async () => {
 
     // Makes the logo clickable as it was in v1
     document.getElementById('logo-c').addEventListener('click', () => {
-        window.location.replace('./index.html');
+        window.location.replace('/index.html');
     });
 
     const citationCopyButton = document.getElementById('citation-copy');
@@ -1036,7 +1036,7 @@ const guid = (uidLength) => {
     if (uidLength == 'short') {
         return `${s4()}${s4()}`;
     }
-};  
+};
 
 for (const jsStep of jsSteps) {
     // Add "capture=true" to trigger parent before children events
