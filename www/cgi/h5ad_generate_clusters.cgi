@@ -23,6 +23,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.analysis import get_analysis
+from gear.colorblind import categorical_colors, is_enabled, remove_colorblind_copies
 
 # this is needed so that we don't get TclError failures in the underlying modules
 matplotlib.use('Agg')
@@ -70,6 +71,7 @@ def main():
     resolution = float(form.getfirst('resolution'))
     compute_clusters = form.getfirst('compute_clusters')
     cluster_info = json.loads(form.getfirst("cluster_info"))    # "old_label", "new_label", "keep"
+    colorblind_mode = is_enabled(form.getfirst('colorblind_mode', ''))
 
     adata = ana.get_adata()
 
@@ -156,16 +158,10 @@ def main():
         # Rename "louvain" to a generic "clustering" for consistency
         adata.obs.rename(columns={"louvain":"clustering"}, inplace=True)
 
-        if plot_tsne == 1:
-            ax = sc.pl.tsne(adata, color='clustering', legend_loc='on data', save="_clustering.png")
-        if plot_umap == 1:
-            ax = sc.pl.umap(adata, color='clustering', legend_loc='on data', save="_clustering.png")
+        plot_clusters(adata, plot_tsne, plot_umap, colorblind_mode, legend_loc='on data')
     else:
         adata.obs.rename(columns={"louvain":"clustering"}, inplace=True)
-        if plot_tsne == 1:
-            ax = sc.pl.tsne(adata, color='clustering', save="_clustering.png")
-        if plot_umap == 1:
-            ax = sc.pl.umap(adata, color='clustering', save="_clustering.png")
+        plot_clusters(adata, plot_tsne, plot_umap, colorblind_mode)
 
     result["success"] = 1
     result["group_labels"] = group_labels
@@ -173,6 +169,30 @@ def main():
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
+
+
+def plot_clusters(adata, plot_tsne, plot_umap, colorblind_mode, **plot_kwargs):
+    """
+    Plot the clustering on the requested embeddings as figures/{tsne,umap}_clustering.png.
+    In colorblind mode also save a {tsne,umap}_clustering_colorblind.png copy; otherwise remove any old copy.
+    """
+    plotters = []
+    if plot_tsne == 1:
+        plotters.append(('tsne', sc.pl.tsne))
+    if plot_umap == 1:
+        plotters.append(('umap', sc.pl.umap))
+
+    for _, plotter in plotters:
+        plotter(adata, color='clustering', save="_clustering.png", **plot_kwargs)
+
+    if colorblind_mode:
+        # Passing a palette makes scanpy color the categories with it (the h5ad was already written)
+        num_clusters = len(adata.obs['clustering'].astype('category').cat.categories)
+        for _, plotter in plotters:
+            plotter(adata, color='clustering', palette=categorical_colors(num_clusters),
+                    save="_clustering_colorblind.png", **plot_kwargs)
+    else:
+        remove_colorblind_copies('figures', ["{0}_clustering".format(name) for name, _ in plotters])
 
 
 if __name__ == '__main__':

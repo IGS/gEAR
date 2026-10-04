@@ -64,14 +64,7 @@ class TopPCAGenes(Resource):
 
         ana = get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
 
-        dest_datafile_path = ana.dataset_path
-        dest_directory = os.path.dirname(dest_datafile_path)
-
-        #print("DEBUG: dest_directory: {0}".format(dest_directory), file=sys.stderr)
-
-        if not os.path.exists(dest_directory):
-            os.makedirs(dest_directory)
-
+        # Read from the requested analysis before redirecting where the figure is saved
         try:
             adata = ana.get_adata()
         except Exception as e:
@@ -79,6 +72,19 @@ class TopPCAGenes(Resource):
                 "success": -1,
                 "message": str(e),
             }
+
+        # primary or public analysis should not be overwritten (and the primary directory is shared
+        # by every dataset); save to the user's unsaved analysis, where get_analysis_image.cgi looks
+        if ana.type == 'primary' or ana.type == 'public':
+            ana.type = 'user_unsaved'
+
+        dest_datafile_path = ana.dataset_path
+        dest_directory = os.path.dirname(dest_datafile_path)
+
+        #print("DEBUG: dest_directory: {0}".format(dest_directory), file=sys.stderr)
+
+        if not os.path.exists(dest_directory):
+            os.makedirs(dest_directory)
 
 
         import scanpy as sc

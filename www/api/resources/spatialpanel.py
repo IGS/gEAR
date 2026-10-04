@@ -429,6 +429,7 @@ class SpatialPanel(Resource):
         min_genes = int(min_genes) if min_genes is not None else 0
         expression_min_clip = req.get('expression_min_clip', None)
         nosave = req.get('disable_save', True)  # Disable save button for saving displays
+        colorblind_mode = bool(req.get('colorblind_mode', False))  # Per-viewer palette; the cached CSV is unaffected
 
         x_range_start = req.get('x_range_start', None)
         x_range_end = req.get('x_range_end', None)
@@ -440,7 +441,8 @@ class SpatialPanel(Resource):
             "gene_symbol": gene_symbol,
             "projection_id": projection_id,
             "expression_min_clip": expression_min_clip,
-            "nosave": nosave
+            "nosave": nosave,
+            "colorblind_mode": colorblind_mode
         }
 
         # All 4 values must be provided to set the initial view range, otherwise ignore them

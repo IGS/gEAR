@@ -603,7 +603,8 @@ export class Analysis {
         const url = "./cgi/get_analysis_image.cgi";
 
         try {
-            const response = await axios.get(url, { params });
+            // Colorblind viewers get a step's colorblind copy of the image, if it has one
+            const response = await axios.get(url, { params: { ...params, colorblind_mode: apiCallsMixin.colorblindMode } });
             if (response?.status === 200) {
                 const imgSrc = response.request.responseURL;
                 const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
@@ -1907,7 +1908,8 @@ class AnalysisSteptSNE {
             'compute_tsne': computeTsne,
             'compute_umap': computeUmap,
             'plot_tsne': plotTsne,
-            'plot_umap': plotUmap
+            'plot_umap': plotUmap,
+            'colorblind_mode': apiCallsMixin.colorblindMode
         }
 
         try {
@@ -2163,7 +2165,8 @@ class AnalysisStepClustering {
                 compute_clusters: computeClustering,
                 plot_tsne: plotTsne,
                 plot_umap: plotUmap,
-                cluster_info: JSON.stringify(clusterInfo)
+                cluster_info: JSON.stringify(clusterInfo),
+                colorblind_mode: apiCallsMixin.colorblindMode
             }));
 
             if (!data.success || data.success < 1) {
@@ -2408,7 +2411,8 @@ class AnalysisStepMarkerGenes {
                 'analysis_id': this.analysis.id,
                 'analysis_type': this.analysis.type,
                 'session_id': this.analysis.analysisSessionId,
-                'marker_genes': JSON.stringify([...this.genesOfInterest])
+                'marker_genes': JSON.stringify([...this.genesOfInterest]),
+                'colorblind_mode': apiCallsMixin.colorblindMode
             }));
 
             if ((!data.success) || (data.success < 1)) {

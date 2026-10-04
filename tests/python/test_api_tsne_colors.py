@@ -68,3 +68,27 @@ def test_incomplete_curator_colors_fall_back_to_obs_color_column(plotted_uns):
 def test_colorblind_mode_with_a_single_category(plotted_uns):
     uns = plotted_uns(build_adata(["a"]), colorblind_mode=True)
     assert len(uns["cluster_colors"]) == 1
+
+
+@pytest.mark.parametrize("colorblind_mode, palette", [(False, "YlOrRd"), (True, "cividis_r")])
+def test_zero_gray_expression_scale_keeps_the_chosen_palette(monkeypatch, colorblind_mode, palette):
+    """make_zero_gray (on by default) must not replace the colorblind cividis scale."""
+    import matplotlib.pyplot as plt
+
+    captured = {}
+
+    def fake_embedding(adata, **kwargs):
+        captured.update(kwargs)
+        raise _StopBeforePlotting
+
+    monkeypatch.setattr(tsne_data.sc.pl, "embedding", fake_embedding)
+    ana = types.SimpleNamespace(dataset_id="DS1", id="DS1", dataset_path="/nonexistent/DS1.h5ad")
+    with pytest.raises(_StopBeforePlotting):
+        tsne_data.generate_tsne_figure(
+            build_adata(["a"]), ana, ["G1"], "tsne_static", "tSNE_1", "tSNE_2",
+            expression_palette="YlOrRd", colorblind_mode=colorblind_mode, make_zero_gray=True,
+        )
+
+    cmap = captured["color_map"]
+    assert np.allclose(cmap(0.0), [192 / 256, 192 / 256, 192 / 256, 1])
+    assert np.allclose(cmap(1.0), plt.get_cmap(palette)(1.0))

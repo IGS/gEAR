@@ -18,6 +18,7 @@ import gosling as gos
 import requests
 from flask import request
 from flask_restful import Resource
+from gear.colorblind import categorical_colors
 from gear.trackhub import (
     fetch_trackdb_path,
     parse_hub_from_file,
@@ -290,7 +291,7 @@ def build_assembly_json_from_array(assembly_array) -> list:
         values.append({"chrom": chromosome, "chromStart": 1, "chromEnd": size})
     return values
 
-def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
+def build_bed_annotation_tracks(assembly, zoom=False, title="left", colorblind=False):
     """
     Builds a Gosling view for gene and exon annotation tracks based on BED files for a given genome assembly.
 
@@ -302,6 +303,8 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         If True, returns zoomed annotation tracks using `build_bed_zoomed_annotation_tracks`. Default is False.
     title : str, optional
         The title or identifier for the annotation view. Default is "left".
+    colorblind : bool, optional
+        If True, color the strands with colorblind-friendly colors instead of dark blue/red. Default is False.
 
     Returns
     -------
@@ -359,7 +362,8 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     #row = expanded_row if zoom else condensed_row
     row=condensed_row
 
-    color = gos.Color(field="strand", type="nominal", domain=["+", "-"], range=["darkblue", "darkred"])  # type:ignore
+    strand_colors = categorical_colors(2) if colorblind else ["darkblue", "darkred"]
+    color = gos.Color(field="strand", type="nominal", domain=["+", "-"], range=strand_colors)  # type:ignore
     tooltip=[
                 gos.Tooltip(field="start", type="genomic", alt="Start Position"),  # type: ignore
                 gos.Tooltip(field="end", type="genomic", alt="End Position"),  # type: ignore
@@ -570,7 +574,7 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bool=False, prefix:str="", position_str:str="NA"):
+def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bool=False, prefix:str="", position_str:str="NA", colorblind:bool=False):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
@@ -581,6 +585,9 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
             - "bigDataUrl" (str): The URL to the data file for the track.
             - Optional: "color" (str), and other track-specific attributes.
         zoom (bool, optional): If True, builds both left and right tracks for zoomed-in views. Defaults to False.
+        colorblind (bool, optional): If True, replace the hub's track colors (including multiWig overlay members)
+            with colorblind-friendly colors, assigned in track order, and use a colorblind-friendly Hi-C colorscale.
+            Defaults to False.
 
     Returns:
         tuple:
@@ -605,6 +612,10 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
     hic_found = False
 
     multiwig_groups = {}
+
+    # In colorblind mode, data tracks take palette colors in hub order (so both zoom panels match).
+    # The first two colors are left to the gene annotation strands.
+    track_palette = iter(categorical_colors(len(track_descriptors) + 2)[2:]) if colorblind else None
 
     # Build each individual track based on its type
     for group_track in track_descriptors:
@@ -645,6 +656,8 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         # Get other attributes to pass to the class
         color = group_track.get("color", "orange")  # Default color if not specified
+        if track_palette is not None and spec_builder_class != HiCSpec:
+            color = next(track_palette)
 
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
         title = group_track.get("shortLabel", group_track.get("longLabel", "bigDataUrl"))
@@ -661,7 +674,8 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         try:
             spec_builder = spec_builder_class(
-                data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility, **kwargs
+                data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility,
+                colorblind=colorblind, **kwargs
             )
 
             # If our datatype is HiC, do two things:
@@ -693,7 +707,7 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
         for group_track in group_tracks["tracks"]:
             track_obj = BigWigSpec(
                 data_url = _resolve_track_url(group_track, use_gosling=True),
-                color=group_track.get("color", "orange"),
+                color=next(track_palette) if track_palette is not None else group_track.get("color", "orange"),
                 ident=group_track.get("track") or group_track.get("shortLabel", "").replace(" ", "_").lower(),
                 zoom=zoom
             )
@@ -840,8 +854,9 @@ class TrackSpec(ABC):
     Extra keyword arguments (e.g. hub stanza fields such as "gos_" options) are set
     as instance attributes.
     """
-    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full", **kwargs):
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full", colorblind=False, **kwargs):
         self.data_url = data_url
+        self.colorblind = colorblind  # Use colorblind-friendly colorscales (e.g. Hi-C)
         self.color = color  # Passed as RGB string
         self.zoom = zoom
         self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
@@ -1187,7 +1202,7 @@ class HiCSpec(TrackSpec):
                 xe=gos.Xe(field="xe", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 y=gos.Y(field="ys", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 ye=gos.Ye(field="ye", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
-                color=gos.Color(field="value", type="quantitative", range="bupu", legend=True),  # pyright: ignore[reportArgumentType]
+                color=gos.Color(field="value", type="quantitative", range="cividis" if self.colorblind else "bupu", legend=True),  # pyright: ignore[reportArgumentType]
                 style=gos.Style(matrixExtent="full"), # pyright: ignore[reportArgumentType]
             ).properties(
                 width=width,
@@ -1388,6 +1403,8 @@ class GoslingSpec(Resource):
             zoom = True
         else:
             zoom = False
+        # Per-viewer setting; the spec is built per request and never stored
+        colorblind = args.get("colorblind_mode", "false").lower() == "true"
 
         response = {
             "success": 0,
@@ -1433,17 +1450,17 @@ class GoslingSpec(Resource):
         # Add BED annotation tracks to left (and right if zoom) gos_tracks in the first index position
         # build left and right track
         # Insert into gos_tracks["left"] at index 0 (and gos_tracks["right"] if zoom)
-        gos_tracks["left"].append(build_bed_annotation_tracks(assembly, zoom, "left"))
+        gos_tracks["left"].append(build_bed_annotation_tracks(assembly, zoom, "left", colorblind=colorblind))
         (parent_view_left, hic_found) = build_gosling_tracks(
-            gos_tracks["left"], tracks, zoom=zoom, prefix="left-", position_str=position_str
+            gos_tracks["left"], tracks, zoom=zoom, prefix="left-", position_str=position_str, colorblind=colorblind
         )
         parent_view_right = None
         if zoom:
             gos_tracks["right"].append(
-                build_bed_annotation_tracks(assembly, zoom, "right")
+                build_bed_annotation_tracks(assembly, zoom, "right", colorblind=colorblind)
             )
             (parent_view_right, _) = build_gosling_tracks(
-                gos_tracks["right"], tracks, zoom=zoom, prefix="right-", position_str=position_str
+                gos_tracks["right"], tracks, zoom=zoom, prefix="right-", position_str=position_str, colorblind=colorblind
             )
 
         # Start building the Gosling spec

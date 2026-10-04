@@ -1444,6 +1444,7 @@ const apiCallsMixin = {
         urlParams.append('assembly', assembly);
         urlParams.append('hub_url', hubUrl);
         urlParams.append('zoom', zoom);
+        urlParams.append('colorblind_mode', Boolean(apiCallsMixin.colorblindMode));
 
         // JSON is returned
         const {data} = await axios.get(`/api/plot/${datasetId}/gosling?${urlParams.toString()}`, otherOpts);
@@ -1709,7 +1710,7 @@ const apiCallsMixin = {
      */
     async prepSpatialPanelData(datasetId, plotConfig, otherOpts={}) {
         // NOTE: gene_symbol should already be already passed to plotConfig
-        const payload = { ...plotConfig };
+        const payload = { ...plotConfig, colorblind_mode: apiCallsMixin.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/spatialpanel`, payload, otherOpts);
         return data;
     },

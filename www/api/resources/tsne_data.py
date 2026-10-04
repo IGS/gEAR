@@ -886,7 +886,8 @@ def generate_tsne_figure(
 
     expression_color = "cividis_r" if colorblind_mode else expression_palette
     if make_zero_gray:
-        expression_color = create_colorscale_with_zero_gray(expression_palette)
+        # Build from expression_color so colorblind mode keeps cividis with a gray zero
+        expression_color = create_colorscale_with_zero_gray(expression_color)
 
     # --- Plot setup ---
     columns = []
