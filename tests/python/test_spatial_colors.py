@@ -7,6 +7,8 @@ import pytest
 
 from gear import colorblind
 
+pytestmark = pytest.mark.spatial
+
 for module in ("datashader", "holoviews", "bokeh", "param", "colorcet", "matplotlib"):
     pytest.importorskip(module)
 
