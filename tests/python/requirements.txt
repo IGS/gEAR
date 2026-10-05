@@ -2,8 +2,10 @@
 # Versions match docker/requirements.txt (production) where the package is pinned there.
 anndata==0.12.11
 biopython==1.87      # gear.trackhub
+colorcet==3.1.0      # gear.colorblind, gear.mg_plotting
 Flask==3.1.3
 Flask-RESTful==0.3.9
+gosling==0.3.0       # resources.gosling_spec
 legacy-cgi==2.6.4   # cgi was removed in Python 3.13
 matplotlib==3.10.7
 mygene==3.2.2
