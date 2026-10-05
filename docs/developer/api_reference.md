@@ -380,7 +380,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `get_h5ad_dataset_list.cgi` | List H5AD datasets viewable by the user (public/user/shared) for the workbench | session_id, share_id |
 | `get_stored_analysis.cgi` | Return the JSON for one stored analysis | session_id, dataset_id, analysis_id, analysis_type |
 | `get_stored_analysis_list.cgi` | List stored analyses for a dataset (primary/public/user_saved/user_unsaved) | session_id, dataset_id |
-| `h5ad_apply_primary_filter.cgi` | Apply cell/gene count filters to an H5AD (copies primary into user space first) | analysis_id, analysis_type, dataset_id, session_id, filter_cells_lt_n_genes, filter_cells_gt_n_genes, filter_genes_lt_n_cells, filter_genes_gt_n_cells |
+| `h5ad_apply_primary_filter.cgi` | Apply cell/gene count filters to an H5AD (copies primary into user space first) | analysis_id, analysis_type, dataset_id, session_id, filter_cells_lt_n_genes, filter_cells_gt_n_genes, filter_genes_lt_n_cells, filter_genes_gt_n_cells, colorblind_mode |
 | `h5ad_compare_genes.cgi` | Compare marker genes between a query cluster and a reference cluster (or all others) | analysis_id, analysis_type, dataset_id, session_id, query_cluster, reference_cluster, n_genes, method, corr_method, group_labels |
 | `h5ad_find_marker_genes.cgi` | Rank marker genes per cluster and return the top-gene table | analysis_id, analysis_type, dataset_id, session_id, n_genes, compute_marker_genes |
 | `h5ad_generate_clusters.cgi` | Run Leiden/Louvain clustering and rename/merge/drop clusters | analysis_id, analysis_type, dataset_id, session_id, resolution, compute_clusters, cluster_info, plot_tsne, plot_umap, colorblind_mode |

@@ -24,7 +24,7 @@ class _Analysis:
     def dataset_path(self):
         return os.path.join(os.environ["GEAR_TEST_ANALYSIS_DIR"], self.type, f"{self.dataset_id}.h5ad")
 
-    def get_adata(self):
+    def get_adata(self, **kwargs):
         print(f"FAKE get_adata from type {self.type}", file=sys.stderr)
         rng = np.random.default_rng(0)
         n_cells, n_genes = 40, 12
@@ -44,4 +44,7 @@ class _Analysis:
 
 
 def get_analysis(analysis_obj, dataset_id, session_id, is_spatial=False):
+    # Like the real get_analysis: a passed analysis dict must have an "id" (None means the primary analysis)
+    if analysis_obj is not None:
+        analysis_obj["id"]
     return _Analysis(analysis_obj, dataset_id)

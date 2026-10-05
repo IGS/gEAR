@@ -940,7 +940,8 @@ class AnalysisStepPrimaryFilter {
                 filter_cells_lt_n_genes: this.filterCellsLtNGenes || "",
                 filter_cells_gt_n_genes: this.filterCellsGtNGenes || "",
                 filter_genes_lt_n_cells: this.filterGenesLtNCells || "",
-                filter_genes_gt_n_cells: this.filterGenesGtNCells || ""
+                filter_genes_gt_n_cells: this.filterGenesGtNCells || "",
+                colorblind_mode: apiCallsMixin.colorblindMode
             }));
 
             if (!data.success || data.success < 1) {

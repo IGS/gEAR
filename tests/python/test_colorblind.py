@@ -226,6 +226,15 @@ class TestStepCopies:
         assert self.run(tmp_path, script, {**query, "colorblind_mode": "false"}) == [
             "dotplot_goi.png", "stacked_violin_goi.png"]
 
+    def test_primary_filter_copies(self, tmp_path):
+        query = {"dataset_id": "DS1", "analysis_type": "primary", "session_id": "owner",
+                 "filter_cells_lt_n_genes": "", "filter_cells_gt_n_genes": "",
+                 "filter_genes_lt_n_cells": "", "filter_genes_gt_n_cells": ""}
+        script = "h5ad_apply_primary_filter.cgi"
+        assert self.run(tmp_path, script, {**query, "colorblind_mode": "true"}) == [
+            "highest_expr_genes.png", "highest_expr_genes_colorblind.png"]
+        assert self.run(tmp_path, script, {**query, "colorblind_mode": "false"}) == ["highest_expr_genes.png"]
+
     def test_tsne_without_genes_makes_no_copy(self, tmp_path):
         query = {**self.TSNE_QUERY, "genes_to_color": "", "colorblind_mode": "true"}
         assert self.run(tmp_path, "h5ad_generate_tsne.cgi", query) == ["tsne.png"]
