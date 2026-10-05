@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# clone_datasets.sh
+# migrate_datasets_across_vms.sh
 #
 # Copies datasets (H5AD files + dataset / dataset_display rows) from a VM in one
 # GCP project to a VM in another, reassigning ownership to user IDs that exist
@@ -15,8 +15,8 @@
 # projects.
 #
 # Usage:
-#   ./clone_datasets.sh datasets.txt              # dry run (default): checks + builds SQL only
-#   ./clone_datasets.sh datasets.txt --execute    # actually copy files and import
+#   ./migrate_datasets_across_vms.sh datasets.txt              # dry run (default): checks + builds SQL only
+#   ./migrate_datasets_across_vms.sh datasets.txt --execute    # actually copy files and import
 #
 # datasets.txt: one dataset per line, whitespace-separated:
 #     <dataset_id>
