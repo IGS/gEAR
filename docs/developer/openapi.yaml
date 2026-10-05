@@ -66,7 +66,8 @@ paths:
       - Analysis
       summary: Save a PCA loadings plot for selected principal components.
       description: Runs scanpy.pl.pca_loadings for the requested components and saves the PNG into the figures/
-        directory next to the analysis h5ad (the image is not returned). The session ID comes from the session_id
+        directory next to the analysis h5ad (the image is not returned). Primary/public analyses are read as requested
+        but the PNG is saved to the user_unsaved copy, where get_analysis_image.cgi looks. The session ID comes from the session_id
         form field, not the cookie. Called by the single-cell workbench (www/js/classes/analysis.js).
       requestBody:
         required: true
@@ -941,6 +942,17 @@ paths:
           - 'true'
           - 'false'
           default: 'false'
+      - name: colorblind_mode
+        in: query
+        required: false
+        description: '"true" uses colorblind-friendly colors for this viewer: a cividis Hi-C colorscale, and glasbey_cool
+          colors for gene strands and for every data track in place of the hub colors. The spec is not stored.'
+        schema:
+          type: string
+          enum:
+          - 'true'
+          - 'false'
+          default: 'false'
       responses:
         '200':
           description: Spec built.
@@ -1279,6 +1291,11 @@ paths:
                   type: boolean
                   default: true
                   description: Disable the Panel app's save-display button (sent as "nosave").
+                colorblind_mode:
+                  type: boolean
+                  default: false
+                  description: Passed to the Panel app, which uses reversed cividis for expression and glasbey_cool
+                    for clusters. Not saved with the display or in the cached CSV.
                 x_range_start:
                   type: number
                   description: Initial view range; used only if all four range keys are given.
@@ -4292,6 +4309,13 @@ paths:
                   filter_genes_gt_n_cells:
                     type: integer
                     description: Keep genes expressed in at most N cells (max_cells).
+                  colorblind_mode:
+                    type: string
+                    enum:
+                    - 'true'
+                    - 'false'
+                    description: '`true` also saves highest_expr_genes_colorblind.png (glasbey_cool boxes); otherwise
+                      an old colorblind copy is removed.'
       responses:
         '200':
           description: Filter result. Failures (missing dataset/analysis, plot failure) return success 0 with HTTP
@@ -4396,7 +4420,7 @@ paths:
       summary: Rank marker genes per cluster and return the top-gene table
       description: Optionally recomputes scanpy rank_genes_groups (and plots it) on the cluster column, then returns
         the top N marker gene symbols per cluster plus per-cluster cell counts. Primary/public analyses are redirected
-        to a `user_unsaved` copy.
+        to a `user_unsaved` copy. A few BICCN primary datasets use their annotation column instead of louvain.
       requestBody:
         required: true
         content:
@@ -4477,6 +4501,13 @@ paths:
                   cluster_info:
                     type: string
                     description: JSON array of {old_label, new_label, keep}; `[]` to skip relabeling.
+                  colorblind_mode:
+                    type: string
+                    enum:
+                    - 'true'
+                    - 'false'
+                    description: '`true` also saves <tsne|umap>_clustering_colorblind.png (glasbey_cool palette); otherwise an
+                      old colorblind copy is removed.'
                   plot_tsne:
                     type: integer
                     enum:
@@ -4528,6 +4559,13 @@ paths:
                   marker_genes:
                     type: string
                     description: JSON array of gene symbols (empty strings ignored).
+                  colorblind_mode:
+                    type: string
+                    enum:
+                    - 'true'
+                    - 'false'
+                    description: '`true` also saves dotplot_goi_colorblind.png and stacked_violin_goi_colorblind.png (reversed
+                      cividis); otherwise old colorblind copies are removed.'
       responses:
         '200':
           description: Plot status. Missing dataset/analysis returns success 0 with HTTP 200.
@@ -4608,6 +4646,13 @@ paths:
                   genes_to_color:
                     type: string
                     description: Optional comma-separated gene symbols to color by.
+                  colorblind_mode:
+                    type: string
+                    enum:
+                    - 'true'
+                    - 'false'
+                    description: '`true` with genes_to_color also saves <tsne|umap>_colorblind.png (reversed cividis); otherwise
+                      an old colorblind copy of each replotted embedding is removed.'
                   use_scaled:
                     type: string
                     enum:
@@ -7797,6 +7842,9 @@ components:
         analysis_name:
           type: string
           description: Scanpy figure base name, e.g. pca_variance_ratio
+        colorblind_mode:
+          type: string
+          description: '"true" serves <analysis_name>_colorblind.png instead, if the step saved one.'
     Cgi1TagList:
       type: object
       properties:

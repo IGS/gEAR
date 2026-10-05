@@ -11,6 +11,7 @@ import sys
 
 import colorcet as cc
 import datashader as ds
+import matplotlib
 import holoviews as hv
 import numpy as np
 import pandas as pd
@@ -639,6 +640,23 @@ def sort_clusters(clusters) -> list:
     return sorted_clusters
 
 
+def get_color_maps(df, colorblind_mode=False):
+    """
+    Return (expression_cmap, cluster_cmap) for the viewers.
+
+    The normal cluster colors come from the cached dataframe's "colors" column. Colorblind mode
+    (a per-viewer setting, never saved) uses reversed cividis for expression and colorcet glasbey_cool
+    for clusters, matching lib/gear/colorblind.py (this service cannot import it).
+    """
+    if not colorblind_mode:
+        return cc.m_CET_L4_r, dict(zip(df['clusters'], df['colors']))
+
+    sorted_clusters = sort_clusters(df['clusters'].unique())
+    palette = cc.glasbey_cool
+    cluster_cmap = {cluster: palette[i % len(palette)] for i, cluster in enumerate(sorted_clusters)}
+    return matplotlib.colormaps["cividis_r"], cluster_cmap
+
+
 ### Classes
 class Settings(param.Parameterized):
     """
@@ -662,4 +680,8 @@ class Settings(param.Parameterized):
 
     nosave = param.Boolean(
         doc="If true, do not show the contents related to saving.", default=False
+    )
+
+    colorblind_mode = param.Boolean(
+        doc="If true, use colorblind-friendly palettes for this viewer (never saved).", default=False
     )

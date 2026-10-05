@@ -317,20 +317,21 @@ class Analysis:
         made to the dataset ownership won't require updating of this as well.  This method will
         just return the correct value.
 
-        Returns one of the values 'owner', 'gear' or 'community'
+        Returns one of the values 'owner', 'gear' or 'community', or None when the analysis has no
+        recorded owner (vetting can't be determined, which is not an error).
 
         If the owner is also a curator it gives priority to the curator status (gear)
         """
 
+        # Primary analyses come with the dataset and have no owner of their own
         if self.type == "primary":
             # ? is this right
             self.vetting = "gear"
+            return self.vetting
 
-        # Analysis.user_id must be knownor we can't do this
+        # Without a known owner there is nothing to compare against; leave vetting unset
         if self.user_id is None:
-            raise Exception(
-                "ERROR: Attempted to call Analysis.discover_vetting() without an owner assigned to the analysis"
-            )
+            return self.vetting
 
         current_user = get_user_by_id(current_user_id)
 

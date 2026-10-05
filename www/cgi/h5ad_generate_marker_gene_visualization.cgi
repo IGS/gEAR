@@ -22,6 +22,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.analysis import get_analysis
+from gear.colorblind import CONTINUOUS_CMAP, is_enabled, remove_colorblind_copies
 
 # this is needed so that we don't get TclError failures in the underlying modules
 
@@ -69,6 +70,7 @@ def main():
         return
 
     marker_genes = json.loads(form.getfirst('marker_genes'))
+    colorblind_mode = is_enabled(form.getfirst('colorblind_mode', ''))
 
     # client may send empty string when generating marker
     # gene visualizations more than once
@@ -131,6 +133,15 @@ def main():
 
     sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, use_raw=False, save='goi.png')
     sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, use_raw=False, save='goi.png')
+
+    # Colorblind copies are dotplot_goi_colorblind.png and stacked_violin_goi_colorblind.png
+    if colorblind_mode:
+        sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, use_raw=False, cmap=CONTINUOUS_CMAP,
+                      save='goi_colorblind.png')
+        sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, use_raw=False, cmap=CONTINUOUS_CMAP,
+                             save='goi_colorblind.png')
+    else:
+        remove_colorblind_copies('figures', ['dotplot_goi', 'stacked_violin_goi'])
 
     result["success"] = 1
 

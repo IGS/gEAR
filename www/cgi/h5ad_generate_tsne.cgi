@@ -24,6 +24,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.analysis import get_analysis
+from gear.colorblind import CONTINUOUS_CMAP, is_enabled, remove_colorblind_copies
 
 # this is needed so that we don't get TclError failures in the underlying modules
 
@@ -56,6 +57,7 @@ def main():
 
     plot_tsne = int(form.getfirst('plot_tsne'))
     plot_umap = int(form.getfirst('plot_umap'))
+    colorblind_mode = is_enabled(form.getfirst('colorblind_mode', ''))
 
     result = {"success": 0}
 
@@ -125,6 +127,23 @@ def main():
 
     missing_gene = None
 
+    def plot_embeddings(color_map, suffix=""):
+        """Plot the requested embeddings, saved as figures/{tsne,umap}{suffix}.png"""
+        plot_kwargs = {'color_map': color_map, 'save': "{0}.png".format(suffix)}
+        if genes_to_color:
+            plot_kwargs['color'] = genes_to_color
+            if use_scaled == 'true':
+                plot_kwargs['use_raw'] = False
+
+        if plot_tsne == 1:
+            sc.pl.tsne(adata, **plot_kwargs)
+
+        if plot_umap == 1:
+            sc.pl.umap(adata, **plot_kwargs)
+
+    # Only gene coloring uses a colormap, so that is the only case that gets a colorblind copy
+    make_colorblind_copy = colorblind_mode and bool(genes_to_color)
+
     if genes_to_color:
         # Catch the error if any gene names are passed which aren't in the dataset
         try:
@@ -141,18 +160,9 @@ def main():
 
             # This can error like: ValueError: key "RFX7" is invalid! specify valid sample annotation
             # original color map: RdBu_r
-            if use_scaled == 'true':
-                if plot_tsne == 1:
-                    sc.pl.tsne(adata, color=genes_to_color, color_map='YlOrRd', use_raw=False, save=".png")
-
-                if plot_umap == 1:
-                    sc.pl.umap(adata, color=genes_to_color, color_map='YlOrRd', use_raw=False, save=".png")
-            else:
-                if plot_tsne == 1:
-                    sc.pl.tsne(adata, color=genes_to_color, color_map='YlOrRd', save=".png")
-
-                if plot_umap == 1:
-                    sc.pl.umap(adata, color=genes_to_color, color_map='YlOrRd', save=".png")
+            plot_embeddings('YlOrRd')
+            if make_colorblind_copy:
+                plot_embeddings(CONTINUOUS_CMAP, suffix="_colorblind")
         except ValueError as err:
             # scanpy seems to change this error string every release
             #print("DEBUG: error string:{0}".format(str(err)), file=sys.stderr)
@@ -163,11 +173,12 @@ def main():
             else:
                 missing_gene = 'Unknown'
     else:
-        if plot_tsne == 1:
-            sc.pl.tsne(adata, color_map='YlOrRd', save=".png")
+        plot_embeddings('YlOrRd')
 
-        if plot_umap == 1:
-            sc.pl.umap(adata, color_map='YlOrRd', save=".png")
+    # Drop colorblind copies left from an earlier run, so they never show an outdated plot
+    if not make_colorblind_copy:
+        replotted = [name for name, plotted in (('tsne', plot_tsne), ('umap', plot_umap)) if plotted == 1]
+        remove_colorblind_copies('figures', replotted)
 
     if missing_gene is None:
         result = {'success': 1, 'missing_gene': ''}

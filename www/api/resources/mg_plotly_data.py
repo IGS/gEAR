@@ -617,6 +617,7 @@ class MGPlotlyData(Resource):
                     , hide_obs_labels
                     , hide_gene_labels
                     , None if matrixplot else obs_id_col
+                    , colorblind=bool(colorblind_mode)
                     )
             except PlotError as pe:
                 return {

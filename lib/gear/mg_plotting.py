@@ -21,6 +21,8 @@ from plotly.subplots import make_subplots
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import linkage, leaves_list
 
+from gear.colorblind import CATEGORICAL_PALETTE
+
 ALPHABET_COLORS = px.colors.qualitative.Alphabet
 BOLD_COLORS = px.colors.qualitative.Bold
 D3_COLORS = px.colors.qualitative.D3
@@ -225,7 +227,7 @@ def create_floating_dot_legend(fig: go.Figure):
 
 ### Heatmap fxns
 
-def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start_pos: float, flip_axes: bool=False, pivot_cols=None, cluster_obs=False, obs_index_col=None):
+def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start_pos: float, flip_axes: bool=False, pivot_cols=None, cluster_obs=False, obs_index_col=None, colorblind: bool=False):
     """
     Add one single-row categorical heatmap ("clusterbar") per field to a heatmap figure.
 
@@ -241,6 +243,7 @@ def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start
         pivot_cols (optional): Unused.
         cluster_obs (bool, optional): Whether observations were clustered, which changes axis labels. Defaults to False.
         obs_index_col (str, optional): If set, the heatmap is per-observation and bars use integer positions.
+        colorblind (bool, optional): If True, color every bar with the colorblind-friendly palette. Defaults to False.
 
     Raises:
         PlotError: If a clusterbar field is not a level of obs_columns.
@@ -268,7 +271,7 @@ def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start
         y = [curr_bar_pos]
         text = [categories]
 
-        palette = get_categorical_palette(i)
+        palette = get_categorical_palette(i, colorblind)
         unique_vals = list(dict.fromkeys(categories))
         # map colors to categories
         color_map = {val: i for i, val in enumerate(unique_vals)}
@@ -520,7 +523,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
                     cluster_genes:bool=False, flip_axes:bool=False, center_around_zero:bool=False,
                     distance_metric:str="euclidean", colorscale:str|None="cividis", reverse_colorscale:bool=False,
                     title:str|None=None, hide_obs_labels:bool=False, hide_gene_labels:bool=False,
-                    obs_index_col:str|None=None,
+                    obs_index_col:str|None=None, colorblind:bool=False,
                     ) -> go.Figure:
     """
     Create a gene-by-observation expression heatmap, with optional dendrograms and clusterbars.
@@ -547,6 +550,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
         hide_gene_labels (bool, optional): Hide gene axis tick labels. Defaults to False.
         obs_index_col (str, optional): Column that uniquely identifies observations, to plot each
             observation individually instead of averaging within groups.
+        colorblind (bool, optional): Use the colorblind-friendly palette for clusterbars. Defaults to False.
 
     Returns:
         go.Figure: The heatmap figure.
@@ -774,7 +778,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
 
     # Add clusterbars if they are needed.
     if clusterbar_fields:
-        add_clusterbars(fig, pivot_df.columns, clusterbar_fields, bars_start, flip_axes, pivot_cols, cluster_obs, obs_index_col)
+        add_clusterbars(fig, pivot_df.columns, clusterbar_fields, bars_start, flip_axes, pivot_cols, cluster_obs, obs_index_col, colorblind)
 
 
     x_visible = True
@@ -928,7 +932,7 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale
     # If scale is discrete, use the colorscale
     if colorscale:
         if colorscale.lower() in px.colors.named_colorscales():
-            px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), len(colors))
+            colors = px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), len(colors))
         elif colorscale not in color_swatch_map:
             # Not all the quantitivate colorscales available are in the color_swatch_map
             raise Exception("Colorscale {} not a valid colorscale to choose from".format(colorscale))
@@ -1661,10 +1665,14 @@ def create_composite_index_column(df, columns):
     """
     return df[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
 
-def get_categorical_palette(index):
+def get_categorical_palette(index, colorblind=False):
     """
     Return a Colorcet Glasbey categorical palette, cycling through four palettes by index.
+    In colorblind mode, always return the colorblind-friendly palette.
     """
+    if colorblind:
+        return CATEGORICAL_PALETTE
+
     # Cycle through Colorcet categorical palettes
     palettes = [cc.glasbey_dark, cc.glasbey_cool, cc.glasbey_warm, cc.glasbey_hv]
     return palettes[index % len(palettes)]
@@ -1692,7 +1700,9 @@ def get_discrete_colors(fields: list, colorscale: str | None="vivid", reverse_co
     colors = None
     if colorscale.lower() in px.colors.named_colorscales():
         num_colors = len(fields)
-        px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), num_colors)
+        colors = px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), num_colors)
+        if reverse_colorscale:
+            colors = colors[::-1]
     elif colorscale not in color_swatch_map:
         # Not all the quantitivate colorscales available are in the color_swatch_map
         raise Exception("Colorscale {} not a valid colorscale to choose from".format(colorscale))
