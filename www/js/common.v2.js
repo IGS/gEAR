@@ -16,6 +16,34 @@ const escapeHtml = (value) => {
         .replace(/'/g, "&#39;");
 	}
 
+// Longest permalink (share_id) each scope's database column can hold
+const SHARE_ID_MAX_LENGTH = {dataset: 50, genecart: 50, layout: 24};
+
+// Characters update_share_id.cgi accepts (anything werkzeug's secure_filename() leaves unchanged):
+//  letters, digits, "-", "_" and ".", not starting or ending with "_" or "."
+const SHARE_ID_PATTERN = /^[A-Za-z0-9-](?:[A-Za-z0-9_.-]*[A-Za-z0-9-])?$/;
+
+/**
+ * Checks a proposed permalink (share_id) before it is sent to update_share_id.cgi.
+ *
+ * @param {string} value - The proposed permalink.
+ * @param {string} scope - "dataset", "genecart" or "layout".
+ * @returns {string} A message explaining why the permalink is invalid, or "" if it is valid.
+ */
+const validateShareId = (value, scope) => {
+    const maxLength = SHARE_ID_MAX_LENGTH[scope];
+    if (!value) {
+        return "Please enter a permalink.";
+    }
+    if (value.length > maxLength) {
+        return `A permalink can be at most ${maxLength} characters long.`;
+    }
+    if (!SHARE_ID_PATTERN.test(value)) {
+        return "Use only letters, numbers, hyphens, underscores and periods, and don't start or end with an underscore or period.";
+    }
+    return "";
+}
+
 const normalizeDomainCitations = (citationConfig) => {
     const citationEntries = Array.isArray(citationConfig) ? citationConfig : [];
 
@@ -165,10 +193,10 @@ const initCommonUI = async () => {
 
         // insert the page logo based on the site preferences
         const logoNormal = document.getElementById('navbar-logo-normal');
-        logoNormal.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-normal.png"
+        logoNormal.src = `/img/by_domain/${SITE_PREFS.domain_label}/logo-main-normal.png`
 
         const logoSmall = document.getElementById('navbar-logo-small');
-        logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
+        logoSmall.src = `/img/by_domain/${SITE_PREFS.domain_label}/logo-main-small.png`
 
         const domainTaglineElement = document.getElementById('domain-tagline');
         if (domainTaglineElement) {
@@ -239,7 +267,7 @@ const initCommonUI = async () => {
 
     // Makes the logo clickable as it was in v1
     document.getElementById('logo-c').addEventListener('click', () => {
-        window.location.replace('./index.html');
+        window.location.replace('/index.html');
     });
 
     const citationCopyButton = document.getElementById('citation-copy');
@@ -810,12 +838,6 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
                 span.appendChild(document.createElement("br"));
             }
         }
-        lines.forEach((line, index) => {
-            if (index > 0) {
-                span.appendChild(document.createElement("br"));
-            }
-            span.appendChild(document.createTextNode(line));
-        });
         return span;
     })() : document.createTextNode(msg));
 
@@ -1008,7 +1030,7 @@ const guid = (uidLength) => {
     if (uidLength == 'short') {
         return `${s4()}${s4()}`;
     }
-};  
+};
 
 for (const jsStep of jsSteps) {
     // Add "capture=true" to trigger parent before children events
@@ -1422,6 +1444,7 @@ const apiCallsMixin = {
         urlParams.append('assembly', assembly);
         urlParams.append('hub_url', hubUrl);
         urlParams.append('zoom', zoom);
+        urlParams.append('colorblind_mode', Boolean(apiCallsMixin.colorblindMode));
 
         // JSON is returned
         const {data} = await axios.get(`/api/plot/${datasetId}/gosling?${urlParams.toString()}`, otherOpts);
@@ -1687,7 +1710,7 @@ const apiCallsMixin = {
      */
     async prepSpatialPanelData(datasetId, plotConfig, otherOpts={}) {
         // NOTE: gene_symbol should already be already passed to plotConfig
-        const payload = { ...plotConfig };
+        const payload = { ...plotConfig, colorblind_mode: apiCallsMixin.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/spatialpanel`, payload, otherOpts);
         return data;
     },
@@ -1792,8 +1815,9 @@ const apiCallsMixin = {
      * @param {string} ldesc - The description of the gene list.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
-    async saveGeneListInfoChanges(gcId, visibility, title, organismId, ldesc) {
-        const payload = {session_id: apiCallsMixin.sessionId, gc_id: gcId, visibility, title, organism_id: organismId, ldesc};
+    async saveGeneListInfoChanges(gcId, changes={}) {
+        const {visibility, title, organismId, ldesc, genes} = changes;
+        const payload = {session_id: apiCallsMixin.sessionId, gc_id: gcId, visibility, title, organism_id: organismId, ldesc, genes};
         const {data} = await axios.post("/cgi/save_genecart_changes.cgi", convertToFormData(payload));
         return data;
     },
@@ -1874,4 +1898,6 @@ export {
     insertVersionedCSS,
     insertVersionedJS,
     loadDomainFunding,
+    SHARE_ID_MAX_LENGTH,
+    validateShareId,
 };

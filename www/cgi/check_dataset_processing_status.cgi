@@ -6,10 +6,16 @@ this returns the status of the dataset processing.  It does
 a bit extra, pulling the process ID from the JSON file and
 making sure that process is in fact still running.
 
+The upload page uses the API route /api/import/dataset/<share_uid>/status instead.
+This CGI is kept for checking a status by hand, since session_id is passed as a
+parameter rather than a cookie:
+
+    curl "https://<host>/cgi/check_dataset_processing_status.cgi?session_id=...&share_uid=..."
+
 Structure returned:
 
 {
-    "job_id": 1234,
+    "job_id": "<uuid>",
     "status": "processing",
     "message": "Processing the dataset.  This may take a while.",
     "progress": 0
@@ -26,8 +32,6 @@ from pathlib import Path
 
 
 def main():
-    print('Content-Type: application/json\n\n')
-
     form = cgi.FieldStorage()
     session_id = form.getfirst('session_id')
     share_uid = form.getfirst('share_uid')
@@ -39,7 +43,6 @@ def main():
             "message": "No session_id provided.",
             "progress": 0
         }
-        print(json.dumps(status))
         return status
 
     if share_uid is None:
@@ -49,12 +52,21 @@ def main():
             "message": "No share_uid provided.",
             "progress": 0
         }
-        print(json.dumps(status))
         return status
 
     user_upload_file_root = Path(__file__).resolve().parents[1] / 'uploads' / 'files'
     user_upload_file_base = user_upload_file_root / session_id / share_uid
-    status_file = user_upload_file_base / 'status.json'
+    status_file = (user_upload_file_base / 'status.json').resolve()
+
+    # Keep crafted session_id/share_uid values (e.g. "../..") from reading outside the uploads area
+    if not status_file.is_relative_to(user_upload_file_root):
+        status = {
+            "job_id": -1,
+            "status": "error",
+            "message": "Invalid session_id or share_uid.",
+            "progress": 0
+        }
+        return status
 
     if not status_file.is_file():
         status = {
@@ -64,7 +76,6 @@ def main():
             "progress": 0
         }
         print(f"ERROR: Failed to find status file: {status_file}", file=sys.stderr)
-        print(json.dumps(status))
         return status
 
     with open(status_file, 'r') as f:
@@ -72,13 +83,14 @@ def main():
 
     state = status.get('status', '')
 
-    if state in 'complete':
+    if state == 'complete':
         status['progress'] = 100
         return status
 
     if state == 'processing':
+        # Queued jobs have a UUID job_id; the consumer tracks those, so nothing to check here
         job_id = status.get("job_id", -1)
-        if job_id > 0:
+        if job_id not in (None, "", -1):
             pass
 
         else:
@@ -106,4 +118,5 @@ def main():
 
 if __name__ == '__main__':
     result = main()
+    print('Content-Type: application/json\n\n')
     print(json.dumps(result))

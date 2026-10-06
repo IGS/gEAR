@@ -1,3 +1,9 @@
+"""
+orthologs.py - Map gene symbols to their orthologs within a dataset.
+
+Serves /h5ad/<dataset_id>/orthologs in www/api/api.py.
+"""
+
 import sys
 
 import geardb
@@ -198,6 +204,9 @@ def last_chance_map(gene_symbol: str, gene_map_set: set, normalize_gene):
     return []
 
 class Orthologs(Resource):
+    """
+    Flask-RESTful resource for mapping gene symbols to dataset orthologs.
+    """
 
     @catch_memory_error()
     def post(self, dataset_id):

@@ -13,6 +13,8 @@ from pathlib import Path
 import geardb
 from gear.anndata_processor import write_status
 from gear.spatialhandler import SPATIALTYPE2CLASS
+from gear.utils.job_coordination import UploadCancelledError
+from gear.utils.archives import ARCHIVE_READ_ERRORS, ArchiveReadError, archive_error_message
 from gear.utils.obs import (
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
@@ -48,7 +50,10 @@ def process_spatial_synchronously(
 
     sample_taxid = metadata.get("sample_taxid", None)
     organism_id = geardb.get_organism_id_by_taxon_id(sample_taxid)
+    # store_expression_dataset.cgi saves the upload as <share_uid>.tar.gz or <share_uid>.tar
     filepath = staging_area / f"{share_uid}.tar.gz"
+    if not filepath.exists():
+        filepath = staging_area / f"{share_uid}.tar"
     output_path = staging_area / f"{share_uid}.zarr"
 
     spatial_obj = SPATIALTYPE2CLASS[spatial_format]()
@@ -82,6 +87,13 @@ def process_spatial_synchronously(
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
 
+    def _read_archive():
+        try:
+            spatial_obj.process_file(filepath.as_posix(), extract_dir=staging_area, organism_id=organism_id)
+        except ARCHIVE_READ_ERRORS as e:
+            # Includes a truncated .tar.gz, which fails with EOFError rather than tarfile.ReadError
+            raise ArchiveReadError(archive_error_message(e, filepath.name)) from e
+
     def _write_zarr():
         # Remove existing Zarr store if present; a safeguard in case a prior
         # attempt failed after the store was partially written.
@@ -96,7 +108,7 @@ def process_spatial_synchronously(
         (
             "Reading and parsing spatial data archive...",
             "reading spatial data archive",
-            lambda: spatial_obj.process_file(filepath.as_posix(), extract_dir=staging_area, organism_id=organism_id),
+            _read_archive,
         ),
         (
             "Subsetting spatial data...",
@@ -132,14 +144,37 @@ def process_spatial_synchronously(
 
     total_steps = len(steps) + (1 if perform_primary_analysis else 0)
 
+    def _cancelled_result() -> dict:
+        """Result returned when the upload was deleted while it was being processed."""
+        return {
+            "success": 0,
+            "cancelled": True,
+            "message": f"The upload was deleted (staging directory {staging_area} no longer exists); processing stopped.",
+        }
+
     for step_index, (message, error_label, action) in enumerate(steps, start=1):
+        # delete_upload_in_progress.cgi removes the staging directory; stop instead of writing into it
+        if not staging_area.is_dir():
+            return _cancelled_result()
+
         status["message"] = message
         status["progress"] = int(((step_index - 1) / total_steps) * 100)
         write_status(status_file, status)
 
         try:
             action()
+        except UploadCancelledError:
+            return _cancelled_result()
+        except ArchiveReadError as e:
+            if not staging_area.is_dir():
+                return _cancelled_result()
+            status["status"] = "error"
+            status["message"] = str(e)
+            write_status(status_file, status)
+            return {"success": 0, "message": status["message"]}
         except MemoryError:
+            if not staging_area.is_dir():
+                return _cancelled_result()
             # A bare MemoryError's str() is typically empty/unhelpful on its own -
             # give a specific, actionable message instead of falling through to the
             # generic branch below.
@@ -152,10 +187,16 @@ def process_spatial_synchronously(
             write_status(status_file, status)
             return {"success": 0, "message": status["message"]}
         except Exception as e:
+            # A write into a deleted staging directory surfaces as an error here too
+            if not staging_area.is_dir():
+                return _cancelled_result()
             status["status"] = "error"
             status["message"] = f"Error {error_label}: {e}"
             write_status(status_file, status)
             return {"success": 0, "message": status["message"]}
+
+    if not staging_area.is_dir():
+        return _cancelled_result()
 
     status["status"] = "complete"
     status["progress"] = 100

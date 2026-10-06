@@ -1,3 +1,10 @@
+"""
+metadata.py - Dataset metadata reading, validation, and persistence.
+
+Reads dataset metadata (e.g. from the metadata spreadsheet template), optionally
+enriches it with GEO data, validates it, and saves it to MySQL or JSON.
+"""
+
 import json
 import sys
 from io import StringIO
@@ -331,7 +338,7 @@ class Metadata:
         if 'geo_id' == 'None':
             geo_id = None
 
-        if type(geo_id) is str:
+        if isinstance(geo_id, str):
             geo_id = geo_id.strip()
 
         ldesc = get_value_from_df(df, 'summary')
@@ -348,7 +355,7 @@ class Metadata:
         if 'pubmed_id' == 'None':
             pubmed_id = None
 
-        if type(pubmed_id) is str:
+        if isinstance(pubmed_id, str):
             pubmed_id = pubmed_id.strip()
 
             # Users entering multiple pubmed IDs will cause failure.  Take the first

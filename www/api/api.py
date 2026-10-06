@@ -1,3 +1,10 @@
+"""
+api.py - Flask-RESTful application that registers the gEAR API resources.
+
+Maps each resource class in www/api/resources/ to its URL route. In production
+Apache serves these routes under the /api prefix.
+"""
+
 # Include our lib directory on system path
 # so we have access to modules
 import os

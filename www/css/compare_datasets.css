@@ -4,7 +4,8 @@ input[type=number] {
 }
 
 #post-plot-content-c {
-    height:92vh;
+    /* min-height (not height) so tall content (gene table, gene tags) pushes the footer down instead of overlapping it */
+    min-height:92vh;
 }
 
 /* override loader from the themed CSS */

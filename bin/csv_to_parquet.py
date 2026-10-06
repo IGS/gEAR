@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 
+"""
+csv_to_parquet.py - Convert every CSV file under a directory to Parquet.
+
+Searches the directory recursively, converts text columns to categoricals (which speeds up
+Datashader rendering), and writes each file next to the original with a .parquet extension.
+With --delete, removes each CSV once it has been converted.
+
+Usage: csv_to_parquet.py <directory> [--delete]
+"""
+
 import pandas as pd
 from pathlib import Path
 import argparse
 import sys
-
-"""
-This script crowls through a specified directory and its subdirectories to find all CSV files,
-converts them to Parquet format, and optionally deletes the original CSV files after successful conversion.
-"""
 
 def convert_directory(root_dir, delete_original=False):
     root_path = Path(root_dir)

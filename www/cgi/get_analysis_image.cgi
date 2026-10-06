@@ -14,14 +14,16 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.analysis import get_analysis
+from gear.colorblind import is_enabled, variant_name
 
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
+    colorblind_mode = is_enabled(form.getfirst('colorblind_mode', ''))
     result = {"success": 0}
 
     ds = geardb.get_dataset_by_id(dataset_id)
@@ -55,7 +57,7 @@ def main():
 
     # this has to be what the scanpy library calls it, since we don't seem to be able to
     #  control it: scanpy GitHub ticket #73
-    analysis_name = form.getvalue('analysis_name')
+    analysis_name = form.getfirst('analysis_name')
 
     data_file_path = ana.dataset_path
     ana_directory = os.path.normpath(os.path.dirname(data_file_path))
@@ -66,6 +68,13 @@ def main():
     image_path = os.path.normpath(image_path)
     if not image_path.startswith(ana_directory):
         raise Exception("Invalid filename: {}".format(image_path))
+
+    # Colorblind viewers get the step's colorblind copy when one was made (only some steps make one)
+    if colorblind_mode:
+        colorblind_path = os.path.normpath(
+            "{0}/figures/{1}.png".format(ana_directory, variant_name(analysis_name)))
+        if colorblind_path.startswith(ana_directory) and os.path.exists(colorblind_path):
+            image_path = colorblind_path
 
     try:
         with open(image_path, 'rb') as f:

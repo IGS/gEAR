@@ -1,3 +1,9 @@
+"""
+userhistory.py - User activity history records.
+
+Provides UserHistory for adding and retrieving entries in a user's activity history.
+"""
+
 import geardb
 import re
 import sys

@@ -23,8 +23,8 @@ def main():
     
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_share_id = form.getvalue('layout_share_id')
+    session_id = form.getfirst('session_id')
+    layout_share_id = form.getfirst('layout_share_id')
 
     current_user_id = get_user_id_from_session_id(cursor, session_id)
     layout_id = get_layout_id_from_share_id(cursor, layout_share_id)
@@ -44,6 +44,9 @@ def main():
     print(json.dumps(result))
 
 def get_layout_id_from_share_id(cursor, layout_share_id):
+    """
+    Return the layout ID for a layout share ID, or None if not found.
+    """
     qry = ("SELECT id FROM layout WHERE share_id = %s")
     cursor.execute(qry, (layout_share_id, ) )
     layout_id = None
@@ -54,6 +57,9 @@ def get_layout_id_from_share_id(cursor, layout_share_id):
     return layout_id    
 
 def get_user_id_from_session_id(cursor, session_id):
+    """
+    Return the user ID for a session ID, or None if not found.
+    """
     qry = ("SELECT user_id FROM user_session WHERE session_id = %s")
     cursor.execute(qry, (session_id, ) )
     user_id = None

@@ -1,3 +1,9 @@
+"""
+panel_app_expanded.py - Panel app entry point for the expanded spatial viewer.
+
+Serves ExpandedSpatialViewer when session arguments are passed, otherwise "OK".
+"""
+
 import logging
 
 import panel as pn

@@ -21,8 +21,8 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_name = form.getvalue('layout_name')
+    session_id = form.getfirst('session_id')
+    layout_name = (form.getfirst('layout_name') or '').strip()
 
     user = geardb.get_user_from_session_id(session_id)
 
@@ -30,6 +30,17 @@ def main():
         result = {'error':[]}
         error = "Not able to add layout. User must be logged in."
         result['error'] = error
+        print(json.dumps(result))
+        return
+
+    if not layout_name:
+        result = {'error': "Dataset collection name cannot be empty."}
+        print(json.dumps(result))
+        return
+
+    # layout name has a limit of 255 characters, per the schema SQL file
+    if len(layout_name) > 255:
+        result = {'error': "Dataset collection name is too long. It must be 255 characters or less."}
         print(json.dumps(result))
         return
 

@@ -1,7 +1,13 @@
 #!/opt/bin/python3
 
 """
+scan_datasets_for_ensembl_and_gene_symbols.py - Survey dataset H5AD files for Ensembl IDs and gene symbols.
 
+Checks every H5AD in www/datasets (skipping files over 4 GB and any listed in scan.skip.list)
+to see whether it is indexed on Ensembl IDs and has gene symbols. Datasets that are fine are
+added to scan.skip.list, so later runs skip them. For datasets that need fixing, it writes
+add_ensembl_id_to_h5ad_missing_release__file_based.py commands to fix_cmds.sh; datasets with no
+gene symbols have their var columns logged to investigate.log. Makes no changes to the datasets.
 """
 
 import os

@@ -49,7 +49,7 @@ def main() -> dict:
         result['message'] = 'Invalid dataset_id.'
         return result
 
-    #filename = os.path.basename(form.getvalue('metadata-file-input'))
+    #filename = os.path.basename(form.getfirst('metadata-file-input'))
     dest_filepath = os.path.join(user_upload_file_base, "{0}.xlsx".format(dataset_id))
 
     fh = open(dest_filepath, 'wb')

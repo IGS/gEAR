@@ -32,10 +32,10 @@ from gear.analysis import get_analysis
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
     if not dataset_id:
         return_error_response("No dataset_id provided")
@@ -89,12 +89,18 @@ def main():
     print(json.dumps(result))
 
 def make_pc_columns(num_pcs):
+    """
+    Build principal component column labels (PC1..PCn).
+    """
     columns = []
     for i in range(num_pcs):
         columns.append("PC" + str(i + 1))
     return columns
 
 def return_error_response(msg):
+    """
+    Print a JSON error response with the given message.
+    """
     result = dict()
     result['success'] = 0
     result['message'] = msg

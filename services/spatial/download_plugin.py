@@ -1,3 +1,10 @@
+"""
+download_plugin.py - Panel server plugin that exports the spatial viewer as HTML.
+
+Registers the /spatial_download route used to download a standalone HTML
+export of the expanded spatial viewer.
+"""
+
 from io import BytesIO
 
 import panel as pn
@@ -9,7 +16,7 @@ pn.extension(loading_indicator=True, defer_load=True, nthreads=4)
 class DownloadHandler(RequestHandler):
     """
     throw‑away app that only exists to render the current spatial panel as a
-    PNG.  It is mounted at a different prefix so every fetch creates a new
+    standalone HTML file.  It is mounted at a different prefix so every fetch creates a new
     session and `__panel__` runs.
 
     We cannot use the panel_app_expanded as the download endpoint because the download
@@ -20,6 +27,9 @@ class DownloadHandler(RequestHandler):
     """
 
     def get(self):
+        """
+        Render the viewer from the query arguments and return it as an embedded HTML file.
+        """
         try:
             # 1. Instantiate the refactored Viewer
             panel_app = ExpandedSpatialViewer(session_args_override=self.request.arguments)

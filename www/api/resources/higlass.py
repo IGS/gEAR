@@ -1,3 +1,9 @@
+"""
+higlass.py - Look up gene coordinates on the gEAR HiGlass server.
+
+Serves /higlass/genes/<gene_symbol> in www/api/api.py.
+"""
+
 import os
 
 import requests
@@ -37,8 +43,17 @@ def get_gene_coords_from_higlass(tileset_id: str, gene_name: str):
 
 
 class HiGlassGene(Resource):
+    """
+    Flask-RESTful resource that returns HiGlass annotation data for a gene.
+    """
 
     def get(self, gene_symbol):
+        """
+        Return the HiGlass suggest entry (chr, txStart, txEnd, geneName, ...) for the gene, or None.
+
+        Query params: assembly (required). Raises ValueError if the assembly has no
+        annotation BEDdb tileset.
+        """
 
         # Get the assembly from the query parameters
         assembly = request.args.get('assembly', "")

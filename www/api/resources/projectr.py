@@ -1,3 +1,12 @@
+"""
+projectr.py - Project gene-list patterns onto a dataset with projectR.
+
+Serves /projectr/<dataset_id>, /projectr/<dataset_id>/output_file, and
+/projectr/<projection_id>/status in www/api/api.py. Projections run either
+inline or through the "projectr" RabbitMQ queue, and chunks are sent to the
+projectR Cloud Run service.
+"""
+
 import asyncio
 import functools
 import gc
@@ -199,6 +208,9 @@ def get_existing_projection_result(
 
 
 def write_to_json(projections_dict: dict, projection_json_file: Path) -> None:
+    """
+    Write the projections dict to the given JSON file.
+    """
     with open(projection_json_file, "w") as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
 
@@ -268,6 +280,9 @@ def create_new_uuid(*args) -> uuid.UUID:
 
 
 def create_unweighted_loading_df(genecart: geardb.GeneCart) -> pd.DataFrame:
+    """
+    Build a loading dataframe from an unweighted gene cart, giving each gene a weight of 1.
+    """
     # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
     gene_collection = geardb.GeneCollection()
     genecart.get_genes()
@@ -287,6 +302,12 @@ def create_unweighted_loading_df(genecart: geardb.GeneCart) -> pd.DataFrame:
 
 
 def create_weighted_loading_df(genecart_id: str) -> pd.DataFrame:
+    """
+    Read the weighted gene cart's pattern file (genes x patterns) into a dataframe.
+
+    Raises:
+        FileNotFoundError: If the pattern file does not exist.
+    """
     file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
     try:
         return pd.read_csv(file_path, sep="\t")
@@ -295,6 +316,9 @@ def create_weighted_loading_df(genecart_id: str) -> pd.DataFrame:
 
 
 def chunk_dataframe(df: pd.DataFrame, chunk_size: int):
+    """
+    Yield (chunk index, dataframe) pairs, splitting the dataframe by columns into chunks of chunk_size.
+    """
     # Chunk dataset by samples/cells (cols). Is a generator function
     # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
     index_slices = sliced(range(len(df.columns)), chunk_size)
@@ -303,9 +327,15 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int):
         yield idx, df.iloc[:, list(index_slice)]
 
 def init_job_status(projection_id: str) -> dict:
+    """
+    Return a new "pending" job status dict for the projection.
+    """
     return {"status": "pending", "result": {"projection_id":projection_id}, "error": None}
 
 def write_result_to_file(result, filename) -> None:
+    """
+    Write a chunk's projectR result as JSON to CHUNK_OUTPUTS_DIR.
+    """
     # Write chunked dataframe results to a file, using the projection ID and the dataframe indexes in the filename
     filepath = CHUNK_OUTPUTS_DIR.joinpath(filename)
     with open(filepath, "w") as f:
@@ -477,6 +507,9 @@ async def fetch_one(client: RetryClient, payload: dict) -> dict:
         ) from te
 
 def write_projection_status(file, status):
+    """
+    Write the job status dict as JSON to the given file.
+    """
     with open(file, "w") as fh:
         json.dump(status, fh)
 
@@ -491,6 +524,25 @@ def projectr_callback(
     zscore: bool,
     full_output: bool,
 ) -> dict:
+    """
+    Run a projectR projection of a gene cart onto a dataset and save the results.
+
+    Uses a lock file so that only one worker runs a given projection; other workers
+    wait and reuse its output. Progress is written to the job status file.
+
+    Args:
+        dataset_id (str): Target dataset ID.
+        genecart_id (str): Gene cart (pattern) share ID.
+        projection_id (str): Projection UUID used for output and status file names.
+        session_id (str): User session ID, used to load the analysis.
+        scope (str): Gene cart scope, e.g. "unweighted-list".
+        algorithm (str): Projection algorithm (e.g. "pca", "binary", "nmf", "fixednmf").
+        zscore (bool): Whether to z-score the dataset before projecting.
+        full_output (bool): Whether to also compute a p-value matrix.
+
+    Returns:
+        dict: Job status with "status", "result", and "error" keys.
+    """
     success = 1
     message = ""
 
@@ -1077,6 +1129,12 @@ class ProjectROutputFile(Resource):
     """
 
     def post(self, dataset_id: str) -> dict:
+        """
+        Return the projection ID of an existing projection matching the request, or None.
+
+        Request params: genecart_id, algorithm, zscore. Creates the projection
+        directories and JSON files if they do not exist.
+        """
         args = parser.parse_args()
         genecart_id = args["genecart_id"]
         algorithm = args["algorithm"]
@@ -1175,6 +1233,13 @@ class ProjectR(Resource):
     """
 
     def post(self, dataset_id: str) -> dict:
+        """
+        Start (or reuse) a projectR projection of a gene cart onto the dataset.
+
+        Request params: genecart_id, algorithm, scope, zscore, full_output, and
+        projection_id (optional). Returns a job status dict ("status", "result",
+        "error") that clients poll through ProjectRStatus.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = run_projectr_parser.parse_args()
 
@@ -1395,6 +1460,9 @@ class ProjectRStatus(Resource):
     Get the status of a ProjectR job.
     """
     def get(self, projection_id):
+        """
+        Return the job status dict for the projection; the status file is deleted once complete.
+        """
         safe_projection_id = secure_filename(str(projection_id))
         JOB_STATUS_FILE = JOB_STATUS_DIR.joinpath(f"job_{safe_projection_id}.json")
         # Validate the final path is within the job status dir

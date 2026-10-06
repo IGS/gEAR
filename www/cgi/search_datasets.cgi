@@ -22,6 +22,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.userhistory import UserHistory
+from gear.utils.fulltext import to_boolean_mode_query
 
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 20
@@ -68,16 +69,25 @@ def main():
     include_public_membership = True if include_public_membership == 'true' else False
 
     if page and not page.isdigit():
-        raise ValueError("Page must be a number")
+        # The Content-Type header is only printed at the end, so raising here gave an HTTP 500
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Page must be a number"}))
+        return
 
     if page and int(page) < 1:
-        raise ValueError("Page must be greater than 0")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Page must be greater than 0"}))
+        return
 
     if limit and not limit.isdigit():
-        raise ValueError("Limit must be a number")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Limit must be a number"}))
+        return
 
     if limit and int(limit) < 1:
-        raise ValueError("Limit must be greater than 0")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Limit must be greater than 0"}))
+        return
 
     datasets_collection = geardb.DatasetCollection()
     shared_dataset_id_str = None
@@ -135,14 +145,18 @@ def main():
     else:
         wheres.append("d.is_public = 1")
 
-    if search_terms:
-        selects.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE) as rscore')
-        wheres.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE)')
+    # Punctuation is an operator in boolean mode (e.g. "-" excludes a word), so the user's text
+    #  is converted first; if nothing searchable is left, search as if no terms were given
+    fulltext_query = to_boolean_mode_query(' '.join(search_terms))
+
+    if fulltext_query:
+        selects.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST(%s IN BOOLEAN MODE) as rscore')
+        wheres.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST(%s IN BOOLEAN MODE)')
 
         # this is the only instance where a placeholder can be in the SELECT statement, so it will
         #  be the first qry param
-        qry_params.insert(0, ' '.join(search_terms))
-        qry_params.append(' '.join(search_terms))
+        qry_params.insert(0, fulltext_query)
+        qry_params.append(fulltext_query)
 
     if organism_ids:
         ## only numeric characters and the comma are allowed here
@@ -173,7 +187,7 @@ def main():
 
     if sort_by == 'relevance':
         # relevance can only be ordered if a search term was used
-        if search_terms:
+        if fulltext_query:
             orders_by.append(" rscore DESC")
         else:
             orders_by.append(" d.date_added DESC")
@@ -237,7 +251,13 @@ def main():
         ofh.write(f"QRY_params:\n{qry_params}\n")
         ofh.close()
 
-    cursor.execute(qry, qry_params)
+    try:
+        cursor.execute(qry, qry_params)
+    except Exception as e:
+        print(f"search_datasets.cgi: query failed: {e}", file=sys.stderr)
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "The search could not be run. Please try different search terms."}))
+        return
 
     # NOTE: Must keep as a list to preserve order
     matching_dataset_ids = list()
@@ -284,10 +304,16 @@ def main():
         """
 
     # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
-    if search_terms:
+    if fulltext_query:
         qry_params.pop(0)
 
-    cursor.execute(qry_count, qry_params)
+    try:
+        cursor.execute(qry_count, qry_params)
+    except Exception as e:
+        print(f"search_datasets.cgi: count query failed: {e}", file=sys.stderr)
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'datasets': [], 'success': 0, 'problem': "The search could not be run. Please try different search terms."}))
+        return
 
     # compile pagination information
     result["pagination"] = {}
@@ -317,6 +343,9 @@ def main():
         )
 
 def get_shared_dataset_id_string(user, cursor):
+    """
+    Return dataset IDs shared with the user as a quoted, comma-separated SQL list string.
+    """
     qry = "SELECT dataset_id FROM dataset_shares WHERE is_allowed = 1 AND user_id = %s"
     cursor.execute(qry, [user.id,])
 

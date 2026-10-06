@@ -326,7 +326,7 @@ const fetchGeneAnnotations = async (searchToken = null) => {
             const sortedGeneSymbols = Object.keys(annotationData).sort((a, b) => a.localeCompare(b));
             for (const geneSymbol of sortedGeneSymbols) {
                 const row = template.content.cloneNode(true);
-                row.querySelector('li').innerHTML = geneSymbol;
+                row.querySelector('li').textContent = geneSymbol;
                 document.getElementById('gene-result-list').appendChild(row);
 
                 // due to a python issue, at some point in depth the data becomes a string. Parse it.
@@ -509,7 +509,7 @@ const parseDatasetCollectionURLParams = () => {
 
     datasetCollectionState.selectedShareId = layoutShareId;
     datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[layoutShareId];
-    document.getElementById('dropdown-dc-selector-label').innerHTML = datasetCollectionState.selectedLabel;
+    document.getElementById('dropdown-dc-selector-label').textContent = datasetCollectionState.selectedLabel;
 };
 
 /**
@@ -806,24 +806,24 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // if an individual dataset was shared, show its info
         if (datasetShareId) {
-            document.getElementById("share-entrance-dataset-label").innerHTML = shareData['dataset_label'];
+            document.getElementById("share-entrance-dataset-label").textContent = shareData['dataset_label'];
             document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
 
             if (shareData['owner_name']) {
-                document.getElementById("share-entrance-dataset-owner-label").innerHTML = shareData['owner_name'];
+                document.getElementById("share-entrance-dataset-owner-label").textContent = shareData['owner_name'];
             } else {
-                document.getElementById("share-entrance-dataset-owner-label").innerHTML = 'Unknown';
+                document.getElementById("share-entrance-dataset-owner-label").textContent = 'Unknown';
             }
 
             // if a dataset collection was shared, show its info
         } else if (layoutShareId) {
-            document.getElementById("share-entrance-layout-label").innerHTML = shareData['layout_label'];
+            document.getElementById("share-entrance-layout-label").textContent = shareData['layout_label'];
             document.getElementById("share-entrance-layout").classList.remove('is-hidden');
 
             if (shareData['owner_name']) {
-                document.getElementById("share-entrance-layout-owner-label").innerHTML = shareData['owner_name'];
+                document.getElementById("share-entrance-layout-owner-label").textContent = shareData['owner_name'];
             } else {
-                document.getElementById("share-entrance-layout-owner-label").innerHTML = 'Unknown';
+                document.getElementById("share-entrance-layout-owner-label").textContent = 'Unknown';
             }
         }
 
@@ -832,7 +832,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         } else {
             if (shareData['gene_symbol']) {
                 document.getElementById("share-entrance-genes-autoselected").classList.remove('is-hidden');
-                document.getElementById("share-entrance-genes-label").innerHTML = shareData['gene_symbol'];
+                document.getElementById("share-entrance-genes-label").textContent = shareData['gene_symbol'];
                 document.getElementById("share-entrance-genes").classList.remove('is-hidden');
 
                 // insert the gene symbol and trigger a search

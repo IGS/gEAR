@@ -9,9 +9,9 @@ import json
 from pathlib import Path
 
 def load_cache_version():
-    """Load current cache version from site_domain_prefs.json"""
-    prefs_file = Path(__file__).parent.parent / 'www' / 'site_domain_prefs.json'
-    with open(prefs_file) as f:
+    """Load current cache version from cache_version.json"""
+    version_file = Path(__file__).parent.parent / 'www' / 'cache_version.json'
+    with open(version_file) as f:
         prefs = json.load(f)
         return prefs.get('cache_version', 'UNKNOWN')
 
@@ -33,8 +33,8 @@ def check_html_file(html_path):
     # Check if file has the inline versioning script
     has_inline_script = 'fetch(\'/site_domain_prefs.json\')' in content
     
-    # Check if file uses versionedAsset function
-    uses_versioned_asset = 'versionedAsset(' in content
+    # Check if file uses the insertVersionedJS/insertVersionedCSS helpers from common.v2.js
+    uses_versioned_asset = 'insertVersionedJS(' in content or 'insertVersionedCSS(' in content
     
     return {
         'unversioned_css': unversioned_css,
@@ -76,7 +76,7 @@ def main():
             print(f"      Unversioned CSS: {', '.join(result['unversioned_css'][:3])}")
         if result['unversioned_js']:
             print(f"      Unversioned JS: {', '.join(result['unversioned_js'][:3])}")
-        print(f"      Suggested fix: Add inline versioning script or use versionedAsset()")
+        print(f"      Suggested fix: Add inline versioning script or use insertVersionedJS()/insertVersionedCSS()")
     
     print(f"\n📊 Summary:")
     print(f"  Total files: {len(html_files)}")
@@ -84,7 +84,7 @@ def main():
     print(f"  Need attention: {len(non_compliant)} ({len(non_compliant)/len(html_files)*100:.1f}%)")
     
     if non_compliant:
-        print(f"\n💡 Tip: See docs/developer/cache_busting_guide.md for implementation options")
+        print(f"\n💡 Tip: See docs/developer/misc/cache_busting_guide.md for implementation options")
         return 1
     else:
         print(f"\n🎉 All HTML files are using cache-busting!")

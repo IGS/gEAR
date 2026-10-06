@@ -1,5 +1,9 @@
 # obs.py - obs-dataframe sanitization/categorization helpers for AnnData uploads.
 
+"""
+obs.py - obs dataframe sanitization and categorization helpers for AnnData uploads.
+"""
+
 import pandas as pd
 
 

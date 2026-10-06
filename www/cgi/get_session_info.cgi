@@ -26,7 +26,7 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
+    session_id = form.getfirst('session_id')
 
     result = {'email':None, 'name':None, 'success':0}
 

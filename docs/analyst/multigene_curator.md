@@ -1,3 +1,6 @@
+> [!WARNING]
+> This document is obsolete and kept for historical reference only. It describes an earlier version of the multigene curator. For current instructions, see [Multigene curator](../wiki/gEARWiki.md#multigene-curator) in the gEAR documentation.
+
 # Multigene Curator Tool
 
 > The multigene curator allows users to create custom displays for a dataset they own or other public datasets of interest. A user can create one or more displays for others to toggle or set as their default display when searching genes.

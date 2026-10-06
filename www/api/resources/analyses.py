@@ -1,3 +1,9 @@
+"""
+analyses.py - List public and user-saved analyses for a dataset.
+
+Serves /h5ad/<dataset_id>/analyses in www/api/api.py.
+"""
+
 from flask import request
 from flask_restful import Resource
 import geardb
@@ -11,6 +17,12 @@ class Analyses(Resource):
     """Resource for retrieving all public and private analysis."""
 
     def get(self, dataset_id):
+        """
+        Return public and private analyses for the dataset that have tSNE or UMAP calculated.
+
+        The user is identified by the gear_session_id cookie; "private" is empty when
+        not logged in.
+        """
         session_id = request.cookies.get('gear_session_id', None)
         user = geardb.get_user_from_session_id(session_id)
 

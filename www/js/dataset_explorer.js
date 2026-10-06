@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 
 /* Imported variables
@@ -571,6 +571,14 @@ class ResultItem {
 
             try {
                 const data = await apiCallsMixin.saveDatasetInfoChanges(this.datasetId, intNewVisibility, intIsDownloadable, newTitle, newPubmedId, newGeoId, newLdesc);
+                if (!data?.success) {
+                    let msg = data?.error || "Failed to save dataset changes";
+                    if (data?.error_detail) {
+                        msg += `\nDetails: ${data.error_detail}`;
+                    }
+                    createToast(msg, "is-danger", true, { isHTML: true });
+                    return;
+                }
                 createToast("Dataset changes saved", "is-success");
 
             } catch (error) {
@@ -890,9 +898,10 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${escapeHtml(this.shareId)}>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.dataset}' value='${escapeHtml(this.shareId)}'>
                         </div>
                     </div>
+                    <p id='dataset-link-name-help' class='help has-text-danger-dark'></p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
                             <button id='confirm-dataset-link-rename' class='button is-primary' disabled>Update</button>
@@ -946,15 +955,14 @@ class ResultItem {
                 });
             });
 
-            document.getElementById("dataset-link-name").addEventListener("keyup", () => {
-                const newLinkName = document.getElementById("dataset-link-name");
-                const confirmRenameLink = document.getElementById("confirm-dataset-link-rename");
+            // "input" also catches pasted text; explain an invalid permalink instead of sending it
+            document.getElementById("dataset-link-name").addEventListener("input", () => {
+                const newLinkName = document.getElementById("dataset-link-name").value;
+                const unchanged = newLinkName === this.shareId;
+                const problem = unchanged ? "" : validateShareId(newLinkName, "dataset");
 
-                if (newLinkName.value.length === 0 || newLinkName.value === this.shareId) {
-                    confirmRenameLink.disabled = true;
-                    return;
-                }
-                confirmRenameLink.disabled = false;
+                document.getElementById("dataset-link-name-help").textContent = problem;
+                document.getElementById("confirm-dataset-link-rename").disabled = unchanged || Boolean(problem);
             });
 
             // Add event listener to cancel button
@@ -1649,7 +1657,7 @@ const createNewCollectionPopover = () => {
                 <p>Please provide a name for the new dataset collection</p>
                 <div class='field'>
                     <div class='control'>
-                        <input id='collection-name' class='input' type='text' placeholder='Collection name'>
+                        <input id='collection-name' class='input' maxlength='255' type='text' placeholder='Collection name'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1744,7 +1752,7 @@ const createNewCollectionPopover = () => {
                 }
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to create new collection");
+                createToast(error.message || "Failed to create new collection");
             } finally {
                 event.target.classList.remove("is-loading");
                 popoverContent.remove();
@@ -1779,7 +1787,7 @@ const createRenameCollectionPopover = () => {
                 <p>Please provide a new name for the dataset collection</p>
                 <div class='field'>
                     <div class='control'>
-                        <input id='collection-name' class='input' type='text' placeholder='Collection name'>
+                        <input id='collection-name' class='input' maxlength='255' type='text' placeholder='Collection name'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1873,7 +1881,7 @@ const createRenameCollectionPopover = () => {
                 }
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to rename collection");
+                createToast(error.message || "Failed to rename collection");
             } finally {
                 event.target.classList.remove("is-loading");
                 popoverContent.remove();
@@ -1914,9 +1922,10 @@ const createRenameCollectionPermalinkPopover = () => {
                         </a>
                     </div>
                     <div class='control'>
-                        <input id='collection-link-name' class='input' type='text' placeholder='permalink'>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.layout}'>
                     </div>
                 </div>
+                <p id='collection-link-name-help' class='help has-text-danger-dark'></p>
                 <div class='field is-grouped' style='width:250px'>
                     <p class="control">
                         <button id='confirm-collection-link-rename' class='button is-primary' disabled>Update</button>
@@ -1975,15 +1984,15 @@ const createRenameCollectionPermalinkPopover = () => {
             });
         });
 
-        document.getElementById("collection-link-name").addEventListener("keyup", () => {
-            const newLinkName = document.getElementById("collection-link-name");
-            const confirmRenameLink = document.getElementById("confirm-collection-link-rename");
+        // "input" also catches pasted text; explain an invalid permalink instead of sending it
+        //  (layout.share_id holds at most 24 characters)
+        document.getElementById("collection-link-name").addEventListener("input", () => {
+            const newLinkName = document.getElementById("collection-link-name").value;
+            const unchanged = newLinkName === datasetCollectionState.selectedShareId;
+            const problem = unchanged ? "" : validateShareId(newLinkName, "layout");
 
-            if (newLinkName.value.length === 0 || newLinkName.value === datasetCollectionState.selectedShareId) {
-                confirmRenameLink.disabled = true;
-                return;
-            }
-            confirmRenameLink.disabled = false;
+            document.getElementById("collection-link-name-help").textContent = problem;
+            document.getElementById("confirm-collection-link-rename").disabled = unchanged || Boolean(problem);
         });
 
         // Add event listener to cancel button
@@ -2748,6 +2757,12 @@ const submitSearch = async (page=1) => {
         // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
         clearResultsViews();
 
+        // The CGI reports bad input or a failed query as success 0 with a "problem" message
+        if (!data.success) {
+            createToast(data.problem || "Failed to search datasets");
+            return;
+        }
+
         processSearchResults(data);
         setupPagination(data.pagination);
     } catch (error) {
@@ -2829,13 +2844,19 @@ const updateDatasetCollectionButtons = (collection=null) => {
 
     // Add event to update the collection visibility on the server
     collectionVisibilityInput.addEventListener("change", async (event) => {
-        const visibility = event.target.checked;
+        let visibility = event.target.checked;
         try {
-            await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
+            const data = await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
+            if (!data?.success) {
+                throw new Error(data?.error || "Failed to update collection visibility");
+            }
             createToast("Collection visibility updated", "is-success");
         } catch (error) {
             logErrorInConsole(error);
-            createToast("Failed to update collection visibility");
+            createToast(error.message || "Failed to update collection visibility");
+            // Revert the checkbox so it matches what is stored on the server
+            visibility = !visibility;
+            event.target.checked = visibility;
         }
         // update label
         event.target.closest(".field").querySelector("label").textContent = visibility ? "Public collection" : "Private collection";

@@ -1,3 +1,10 @@
+"""
+spatialpanel.py - Prepare spatial data for the Holoviz Panel spatial viewer.
+
+Serves /plot/<dataset_id>/spatialpanel in www/api/api.py. Writes per-gene CSV
+and image caches that services/spatial reads, and returns the embed script.
+"""
+
 import datetime
 import json
 import os
@@ -294,6 +301,17 @@ def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
     return dataframe
 
 def map_colors(dataframe: pd.DataFrame, found_img: bool, is_cool_dataset: bool) -> pd.DataFrame:
+    """
+    Add a "colors" column mapping each cluster to a color, unless one already exists.
+
+    Args:
+        dataframe (pd.DataFrame): Dataframe with a categorical "clusters" column.
+        found_img (bool): Whether a tissue image is shown (picks a palette suited to it).
+        is_cool_dataset (bool): Use the glasbey_cool palette instead.
+
+    Returns:
+        pd.DataFrame: The dataframe with cluster colors.
+    """
     # Assuming df is your DataFrame and it has a column "clusters"
     unique_clusters = dataframe["clusters"].cat.categories
     sorted_clusters = sort_clusters(unique_clusters)
@@ -387,6 +405,15 @@ class SpatialPanel(Resource):
     File name for the prepared csv file to import in the Panel app.
     """
     def post(self, dataset_id):
+        """
+        Cache the gene's spatial data and return a script tag that embeds the Panel viewer.
+
+        Main request body keys: gene_symbol, projection_id, is_zoomed, min_genes,
+        expression_min_clip, disable_save, and x/y range start/end.
+
+        Returns:
+            dict: "script" (embed script or None), "success", and "message".
+        """
 
         req = request.get_json()
         if req is None:
@@ -402,6 +429,7 @@ class SpatialPanel(Resource):
         min_genes = int(min_genes) if min_genes is not None else 0
         expression_min_clip = req.get('expression_min_clip', None)
         nosave = req.get('disable_save', True)  # Disable save button for saving displays
+        colorblind_mode = bool(req.get('colorblind_mode', False))  # Per-viewer palette; the cached CSV is unaffected
 
         x_range_start = req.get('x_range_start', None)
         x_range_end = req.get('x_range_end', None)
@@ -413,7 +441,8 @@ class SpatialPanel(Resource):
             "gene_symbol": gene_symbol,
             "projection_id": projection_id,
             "expression_min_clip": expression_min_clip,
-            "nosave": nosave
+            "nosave": nosave,
+            "colorblind_mode": colorblind_mode
         }
 
         # All 4 values must be provided to set the initial view range, otherwise ignore them

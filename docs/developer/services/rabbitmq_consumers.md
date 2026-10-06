@@ -7,7 +7,9 @@ RabbitMQ consumers are background worker processes that handle asynchronous job 
 - **Technology**: RabbitMQ message broker, Python consumers
 - **Location**: `listeners/` directory
 - **Deployment**: Systemd services
-- **Purpose**: Async processing of ProjectR, analysis, and other long-running tasks
+- **Purpose**: Async processing of dataset uploads (H5AD, spatial, Gosling tracks) and ProjectR jobs
+- **Queue client**: `lib/gearqueue.py` (`Connection`, `AsyncConnection`, built on pika)
+- **Logs**: each consumer appends to `/var/log/gEAR_queue/<queue_name>.log`, plus stdout/stderr in the journal
 
 ## Architecture
 
@@ -18,14 +20,14 @@ RabbitMQ Queue
     ↓
 Consumer Workers (systemd)
     ↓
-Job Processing (ProjectR, Analysis, etc.)
+Job Processing (uploads, ProjectR)
     ↓
 Result Storage (Database, File System)
 ```
 
 ## Available Consumers
 
-### Anndata Upload Consume
+### Anndata Upload Consumer
 
 Facilitates uploading of various file formats into Anndata (H5AD) format.
 
@@ -35,7 +37,7 @@ Facilitates uploading of various file formats into Anndata (H5AD) format.
 - **Service Group**: `systemd/anndata-upload-consumer.target`
 
 
-### Gosling Upload Consume
+### Gosling Upload Consumer
 
 Facilitates uploading of track files for the epigenome uploader.
 
@@ -58,17 +60,18 @@ Facilitates uploading of spatial transcriptomics datasets (Visium, VisiumHD, Cur
 Processes matrix projection jobs for dimensionality reduction.
 
 - **Listener**: `listeners/projectr_consumer.py`
-- **Queue**: `projectr_jobs`
+- **Queue**: `projectr`
 - **Service Template**: `systemd/projectr-consumer@.service`
 - **Service Group**: `systemd/projectr-consumer.target`
 
-### Additional Consumers
+### Queue Summary
 
-More consumers can be added following the same pattern:
-
-- Analysis pipeline consumer
-- Dataset processing consumer
-- Export generation consumer
+| Consumer | Queue | `gear.ini` section (`queue_host`) | Workers in `.target` |
+| --- | --- | --- | --- |
+| `anndata_upload_consumer.py` | `anndata_upload_jobs` | `[dataset_uploader]` | 2 |
+| `gosling_upload_consumer.py` | `trackhub_copy_jobs` | `[dataset_uploader]` | 3 |
+| `spatial_upload_consumer.py` | `spatial_upload_jobs` | `[dataset_uploader]` | 2 |
+| `projectr_consumer.py` | `projectr` | `[projectR_service]` | 3 |
 
 ### Consumer Group Target
 
@@ -91,28 +94,35 @@ Add new consumers to this file's `Wants=` line as they're created.
    sudo systemctl start rabbitmq-server
    ```
 
-   See also: `docs/developer/setup/rabbitmq.md`
+   See also: [../setup/rabbitmq.md](../setup/rabbitmq.md)
 
 2. **Python Dependencies**
 
    ```bash
-   pip install pika  # RabbitMQ Python client
+   pip install -r listeners/requirements.txt  # includes pika
    ```
 
 3. **R and Packages** (for ProjectR)
 
-   See: `docs/developer/setup/r_rpy2.md`
+   See: [../setup/r_rpy2.md](../setup/r_rpy2.md)
 
 ### Configuration
 
-Configure in `gear.ini`:
+Queue settings live in `gear.ini` (see `gear.ini.template`). Each section that uses RabbitMQ has the same two keys:
 
 ```ini
-[<service]
+[dataset_uploader]
+;; 0 - disable RabbitMQ, 1 - enable
+queue_enabled = 1
+queue_host = localhost
+
+[projectR_service]
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
 queue_enabled = 0
 queue_host = localhost
 ```
+
+`[dataset_uploader]` is read by the anndata, spatial and Gosling upload consumers; `[projectR_service]` by the ProjectR consumer. `[nemoarchive_import]` has the same keys for the NeMO Archive importer. There are no credential or virtual-host settings; connections use pika defaults on `queue_host`.
 
 ### Installing Services
 
@@ -128,8 +138,11 @@ sudo cp anndata-upload-consumer.target /etc/systemd/system
 sudo cp spatial-upload-consumer@.service /etc/systemd/system
 sudo cp spatial-upload-consumer.target /etc/systemd/system
 sudo cp gear-consumers.target /etc/systemd/system
+sudo cp gear-consumers.slice /etc/systemd/system
 
-### At this point you may need to edit the paths in the .service files, as the ones in the repository are generic
+# Replace <gear_root> in each *@.service file with the gEAR checkout path,
+# and check the interpreter path (/opt/bin/python3).
+# Size MemoryHigh/MemoryMax in gear-consumers.slice for the VM (see ../setup/rabbitmq.md).
 
 # Reload systemd
 sudo systemctl daemon-reload
@@ -148,11 +161,11 @@ sudo systemctl enable gear-consumers.target
 Start all consumers in one group:
 
 ```bash
-# Start all ProjectR consumers
-sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
+# Start selected consumer groups
+sudo systemctl start projectr-consumer.target gosling-upload-consumer.target anndata-upload-consumer.target spatial-upload-consumer.target
 
 # Check status
-sudo systemctl status projectr-consumer.target gosling-upload-consumer.target
+sudo systemctl status projectr-consumer.target anndata-upload-consumer.target
 ```
 
 ### Starting Every Consumer Group at Once
@@ -251,20 +264,27 @@ The `@` symbol in service filenames indicates a template. This allows spawning m
 
 ```ini
 [Unit]
-Description=ProjectR Consumer Worker %i
-After=network.target rabbitmq-server.service
+Description="ProjectR Consumer for RabbitMQ - #%i"
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/developer/services/rabbitmq_consumers.md
+After=rabbitmq-server.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
-User=www-data
-WorkingDirectory=/var/www/gEAR
-ExecStart=/usr/bin/python3 listeners/projectr_consumer.py
+Environment=APACHE_STARTED_BY_SYSTEMD=true
+ExecStart=/opt/bin/python3 <gear_root>/listeners/projectr_consumer.py
+Slice=gear-consumers.slice
+KillMode=mixed
+PrivateTmp=true
 Restart=always
-RestartSec=10
+RestartSec=2s
 
 [Install]
-WantedBy=projectr-consumer.target
+WantedBy=multi-user.target
 ```
+
+The other `*@.service` files follow the same pattern (the Gosling unit omits the `StartLimit*` settings). `Slice=gear-consumers.slice` puts every worker under the aggregate memory limit defined in `systemd/gear-consumers.slice`.
 
 **Usage:**
 
@@ -281,7 +301,7 @@ Target files group related services together.
 ```ini
 [Unit]
 Description=ProjectR Consumer Workers
-Wants=projectr-consumer@1.service projectr-consumer@2.service
+Wants=projectr-consumer@1.service projectr-consumer@2.service projectr-consumer@3.service
 
 [Install]
 WantedBy=multi-user.target
@@ -312,71 +332,23 @@ WantedBy=multi-user.target
 
 ## Writing Custom Consumers
 
-### Basic Consumer Template
+Use the existing consumers as templates rather than writing raw pika code. Each one:
 
-```python
-#!/usr/bin/env python3
-import pika
-import json
-import sys
+1. Adds `lib/` to `sys.path` and imports `gearqueue` and `ServerConfig`.
+2. Sets a module-level `queue_name` and a log file under `/var/log/gEAR_queue/`.
+3. Defines an `_on_request(channel, method_frame, properties, body)` callback that decodes the JSON message, does the work, and acknowledges the message.
+4. Wraps `gearqueue.AsyncConnection(host=..., publisher_or_consumer="consumer", queue_name=queue_name, on_message_callback=_on_request, ...)` in a `Consumer` class that reconnects with backoff.
+5. Reads `queue_host` from the relevant `gear.ini` section in `main()`.
 
-def callback(ch, method, properties, body):
-    """Process incoming job"""
-    job_data = json.loads(body)
-
-    # Process job
-    result = process_job(job_data)
-
-    # Acknowledge message
-    ch.basic_ack(delivery_tag=method.delivery_tag)
-
-    return result
-
-def process_job(data):
-    """Your job processing logic"""
-    # Implement your processing here
-    pass
-
-def main():
-    # Connect to RabbitMQ
-    credentials = pika.PlainCredentials('guest', 'guest')
-    parameters = pika.ConnectionParameters(
-        host='localhost',
-        credentials=credentials
-    )
-
-    connection = pika.BlockingConnection(parameters)
-    channel = connection.channel()
-
-    # Declare queue
-    channel.queue_declare(queue='my_jobs', durable=True)
-
-    # Set QoS (prefetch count)
-    channel.basic_qos(prefetch_count=1)
-
-    # Start consuming
-    channel.basic_consume(
-        queue='my_jobs',
-        on_message_callback=callback
-    )
-
-    print('Waiting for messages...')
-    channel.start_consuming()
-
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print('Interrupted')
-        sys.exit(0)
-```
+Publishers use `gearqueue.Connection(host=..., publisher_or_consumer="publisher")` and `publish(queue_name=..., message=...)` (see `www/api/resources/projectr.py` for an example).
 
 ### Creating Service File
 
-1. Create consumer script in `listeners/`
-2. Create systemd service file in `systemd/`
-3. Copy to `/etc/systemd/system/`
-4. Start service
+1. Create the consumer script in `listeners/`
+2. Add `systemd/<name>@.service` and `systemd/<name>.target` (copy an existing pair; keep `Slice=gear-consumers.slice`)
+3. Add the new target to `Wants=` in `systemd/gear-consumers.target`
+4. Optionally add `listeners/Dockerfile.<name>`, a `docker/docker-bake.hcl` target, and a compose service
+5. Copy the unit files to `/etc/systemd/system/`, `daemon-reload`, and start the target
 
 ## Troubleshooting
 
@@ -400,8 +372,8 @@ sudo journalctl -u projectr-consumer@1.service -n 50
 
 **Verify gear.ini configuration:**
 
-- Check RabbitMQ credentials
-- Verify `use_rabbitmq = true`
+- Verify `queue_host` points at the RabbitMQ server
+- Verify `queue_enabled = 1` in the relevant section (otherwise the web side does not publish to the queue)
 
 ### Consumer Crashes
 
@@ -509,8 +481,10 @@ channel.basic_publish(
 # Pull latest code
 git pull origin devel
 
-# Restart consumers
-sudo systemctl restart projectr-consumer.target
+# Restart all consumer workers (restarting a .target does not restart the
+# services it Wants=, so address the instances directly)
+sudo systemctl restart 'projectr-consumer@*' 'anndata-upload-consumer@*' \
+    'spatial-upload-consumer@*' 'gosling-upload-consumer@*'
 ```
 
 ### Viewing Queue Statistics
@@ -534,10 +508,11 @@ sudo rabbitmqctl purge_queue projectr
 
 ## Related Documentation
 
-- `docs/developer/setup/rabbitmq.md` - RabbitMQ setup
-- `docs/developer/setup/r_rpy2.md` - R setup for ProjectR
-- `systemd/README.md` - Systemd service management
-- RabbitMQ docs: https://www.rabbitmq.com/documentation.html
+- [RabbitMQ setup](../setup/rabbitmq.md) - installation and memory sizing
+- [systemd](../setup/systemd.md) - service management
+- [R / rpy2 setup](../setup/r_rpy2.md) - R setup for ProjectR
+- [ProjectR service](./projectr.md)
+- RabbitMQ docs: <https://www.rabbitmq.com/documentation.html>
 
 ## Getting Help
 

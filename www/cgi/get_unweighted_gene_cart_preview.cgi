@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+get_unweighted_gene_cart_preview.cgi - Preview the genes in an unweighted gene cart.
 
+Input: share_id (gene cart share ID).
+Output: JSON {success, gene_info: {ensembl_id: {gene_symbol, product}}} or {success: 0, message}.
 """
 
 import cgi
@@ -18,7 +21,7 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    share_id = form.getvalue('share_id')
+    share_id = form.getfirst('share_id')
     valid_chars = "%s%s" % (string.ascii_letters, string.digits)
     share_id = ''.join(c for c in share_id if c in valid_chars)
 

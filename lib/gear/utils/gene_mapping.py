@@ -1,5 +1,9 @@
 # gene_mapping.py - Gene symbol -> Ensembl ID mapping for AnnData objects/var dataframes.
 
+"""
+gene_mapping.py - Gene symbol to Ensembl ID mapping for AnnData objects and var dataframes.
+"""
+
 import typing
 
 import pandas as pd

@@ -3,6 +3,13 @@
 # This script is used to update the share id (permalink)
 # of either a layout, genecart, or dataset.
 
+"""
+update_share_id.cgi - Change the share ID (permalink) of a dataset, layout, or gene cart owned by the user.
+
+Input: session_id (required), share_id, new_share_id, scope ('dataset', 'layout', 'genecart').
+Output: JSON {success, error}. Gene carts also get cart files and projection paths renamed.
+"""
+
 import cgi
 import json
 import os
@@ -25,6 +32,9 @@ def is_safe_id(value: str) -> bool:
 
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
+
+# Longest share_id each scope's database column can hold (www/js/common.v2.js SHARE_ID_MAX_LENGTH)
+SHARE_ID_MAX_LENGTH = {"dataset": 50, "genecart": 50, "layout": 24}
 BY_DATASET_DIR = abs_path_www.joinpath("projections", "by_dataset")
 BY_GENECART_DIR = abs_path_www.joinpath("projections", "by_genecart")
 
@@ -58,8 +68,16 @@ def main():
         return
 
     if not is_safe_id(share_id) or not is_safe_id(new_share_id):
-        error = "share_id and new_share_id must not contain path separators or unsafe characters."
+        error = ("This is not a valid permalink. Use only letters, numbers, hyphens, underscores and periods, "
+                 "and don't start or end with an underscore or period.")
         result['error'] = error
+        print(json.dumps(result))
+        return
+
+    # A longer value would fail to save (the column would reject it), so explain the limit instead
+    max_length = SHARE_ID_MAX_LENGTH.get(scope)
+    if max_length and len(new_share_id) > max_length:
+        result['error'] = f"This is not a valid permalink. It can be at most {max_length} characters long."
         print(json.dumps(result))
         return
 

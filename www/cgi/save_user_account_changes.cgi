@@ -147,6 +147,9 @@ def main():
 
 
 def save_new_password(cursor, help_id, encoded_pass):
+    """
+    Store an encoded password for the user identified by help_id.
+    """
     qry = """
         UPDATE guser
         SET pass = %s
@@ -155,6 +158,9 @@ def save_new_password(cursor, help_id, encoded_pass):
     cursor.execute(qry, (encoded_pass, help_id,))
 
 def generate_new_help_id(cursor, help_id):
+      """
+      Replace the user's help_id with a new random UUID so the old one cannot be reused.
+      """
       new_help_id = str(uuid.uuid4())
 
       qry = """

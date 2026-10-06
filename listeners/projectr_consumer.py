@@ -117,6 +117,9 @@ class Consumer:
         self._consumer = self._new_connection()
 
     def run(self) -> None:
+        """
+        Run the consumer loop, reconnecting after errors until interrupted.
+        """
         while True:
             try:
                 # create the consumer (which starts in the callback chain)
@@ -165,6 +168,9 @@ class Consumer:
 
 
 def main() -> None:
+    """
+    Start a projectR queue consumer using the queue host from gear.ini.
+    """
     # TODO: potentially add multiprocessing to start workers via script rather than running multiple times on command line
     host = servercfg["projectR_service"]["queue_host"]
     consumer = Consumer(host=host)

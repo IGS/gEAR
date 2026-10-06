@@ -1,3 +1,10 @@
+"""
+main.py - Flask service that runs projectR projections on dataset chunks.
+
+Deployed on Google Cloud Run. The API in www/api/resources/projectr.py posts
+target and loading dataframes here and receives the projection results.
+"""
+
 import os
 import sys
 from io import StringIO
@@ -24,6 +31,9 @@ app = Flask(__name__)
 
 # create a 4-character random string
 def random_string(length: int = 4) -> str:
+    """
+    Return a random alphanumeric string of the given length.
+    """
     import random
     import string
 
@@ -96,6 +106,15 @@ def status() -> str:
 
 @app.route("/", methods=["POST"])
 def index() -> Response:
+    """
+    Project loading patterns onto a target dataframe chunk.
+
+    Request body keys: target and loadings (split-orient JSON dataframes),
+    algorithm, projection_id, chunk_idx, full_output.
+
+    Returns:
+        Response: JSON with "projection" and "pval" split-orient dataframes.
+    """
     req_json = request.get_json()
     target = req_json["target"]
     loadings = req_json["loadings"]

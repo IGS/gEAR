@@ -885,9 +885,11 @@ const populateGeneTable = (data) => {
     geneTableBody.replaceChildren();
 
     for (const gene of selectedGeneData) {
-        const row = document.createElement("tr");
-        row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.ensembl_id}</td><td>${gene.pval}</td><td>${gene.foldchange}</td>`;
-        geneTableBody.appendChild(row);
+        const row = geneTableBody.insertRow();
+        // Gene symbols come from user-uploaded datasets, so insert as text rather than HTML
+        for (const value of [gene.gene_symbol, gene.ensembl_id, gene.pval, gene.foldchange]) {
+            row.insertCell().textContent = value;
+        }
     }
 
 	// If not statistical test, hide p-value column (deleting can cause issues with subsequent calls to this function)

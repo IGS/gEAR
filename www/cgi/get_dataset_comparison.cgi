@@ -1,5 +1,14 @@
 #!/opt/bin/python3
 
+"""
+get_dataset_comparison.cgi - Compare expression between two conditions of a dataset.
+
+Input: dataset_id, compare_key, condition_x, condition_y, obs_filters (JSON dict of lists),
+       fold_change_cutoff, std_dev_num_cutoff, log_transformation ("2"/"10"), statistical_test.
+Output: JSON {success, x, y, values, fold_changes, gene_ids, symbols, pvals_adj,
+        fold_change_std_dev, compare_key, condition_x, condition_y} or {success: 0, error}.
+"""
+
 import cgi
 import json
 import math
@@ -26,25 +35,23 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
-    filters = form.getvalue('obs_filters', "")    # Dict of lists
+    dataset_id = form.getfirst('dataset_id')
+    filters = form.getfirst('obs_filters', "")    # Dict of lists
 
-    compare_key = form.getvalue('compare_key')
-    x_compare = form.getvalue('condition_x')    # list of conditions
-    y_compare = form.getvalue('condition_y')
-    std_dev_num_cutoff = form.getvalue('std_dev_num_cutoff')
+    compare_key = form.getfirst('compare_key')
+    x_compare = form.getfirst('condition_x')    # list of conditions
+    y_compare = form.getfirst('condition_y')
+    std_dev_num_cutoff = form.getfirst('std_dev_num_cutoff')
     std_dev_num_cutoff = float(std_dev_num_cutoff) if std_dev_num_cutoff else None
-    fold_change_cutoff = form.getvalue('fold_change_cutoff')
+    fold_change_cutoff = form.getfirst('fold_change_cutoff')
     fold_change_cutoff = float(fold_change_cutoff) if fold_change_cutoff else None
-    log_transformation = form.getvalue('log_transformation')
-    statistical_test = form.getvalue('statistical_test')
+    log_transformation = form.getfirst('log_transformation')
+    statistical_test = form.getfirst('statistical_test')
 
     ds = geardb.get_dataset_by_id(dataset_id)
     if not ds:
-        return {
-            "success": -1,
-            'message': "No dataset found with that ID"
-        }
+        # Previously returned a dict that was never printed, so the response body was empty
+        return_error_response("No dataset found with that ID")
     is_spatial = ds.dtype == "spatial"
 
     if not x_compare or not y_compare:
@@ -73,15 +80,24 @@ def main():
     if statistical_test:
         perform_ranking = True
 
-    filters = json.loads(filters)
+    try:
+        # An empty obs_filters value means "no filters"
+        filters = json.loads(filters) if filters else {}
+        x_compare = json.loads(x_compare)
+        y_compare = json.loads(y_compare)
+    except json.JSONDecodeError as e:
+        return_error_response(f"Invalid JSON in obs_filters, condition_x or condition_y: {e}")
+
+    if compare_key not in adata.obs.columns:
+        return_error_response(f"Comparison column '{compare_key}' was not found in this dataset.")
+
     # Filter by obs filters
     if filters:
         for col, values in filters.items():
+            if col not in adata.obs.columns:
+                return_error_response(f"Filter column '{col}' was not found in this dataset.")
             selected_filter = adata.obs[col].isin(values)
             adata = adata[selected_filter, :]
-
-    x_compare = json.loads(x_compare)
-    y_compare = json.loads(y_compare)
 
     # Error if any condition in x matches any condition in y
     intersection_conditions = intersection(x_compare, y_compare)
@@ -125,6 +141,10 @@ def main():
     adata_x_subset = adata[condition_x_repls_filter, :]
     adata_y_subset = adata[condition_y_repls_filter, :]
 
+    # The mean of an empty selection is NaN, which is not valid JSON
+    if adata_x_subset.n_obs == 0 or adata_y_subset.n_obs == 0:
+        return_error_response("No observations match the X or Y condition (after any filters). Please choose different conditions or filters.")
+
     df_x = pd.DataFrame({
         # adata.X ends up being 2 dimensional array with gene's values going down a column.
         # We tranpose so a gene's replicate values are in a list and then we take the average
@@ -134,9 +154,10 @@ def main():
     })
 
     if perform_ranking:
-        df_x['pvals_adj'] = adata.uns['rank_genes_groups']['pvals_adj']
-        # Currently this series is 1D tuples.  Change each to a string
-        df_x['pvals_adj'] = df_x['pvals_adj'].apply(lambda x: float(x[0]) if isinstance(x, tuple) else float(x))
+        # rank_genes_groups lists genes by score, not in var order, so match p-values by gene name
+        ranked = adata.uns['rank_genes_groups']
+        pvals_by_gene = pd.Series(ranked['pvals_adj']['x'], index=ranked['names']['x'], dtype=float)
+        df_x['pvals_adj'] = pvals_by_gene.reindex(df_x.index).to_numpy()
 
     result = {
                'fold_change_std_dev': None,
@@ -163,6 +184,8 @@ def main():
         if perform_ranking:
             result['pvals_adj'].append(row['pvals_adj'])
 
+    if len(result['fold_changes']) < 2:
+        return_error_response("At least two genes are needed to compare these conditions.")
     fold_change_std_dev = statistics.stdev(result['fold_changes'])
 
     filtered_values = list()
@@ -242,18 +265,27 @@ def main():
         log_base = 10
 
     if log_base:
-        for (e1_raw, e2_raw) in result['values']:
+        # Genes whose log is undefined (negative values) are dropped, so every
+        #  per-gene list must be filtered together to stay aligned with x/y
+        num_genes = len(result['values'])
+        keep = []
+        log_values = []
+        for idx, (e1_raw, e2_raw) in enumerate(result['values']):
             transformed_e1 = get_log(e1_raw, log_base)
             transformed_e2 = get_log(e2_raw, log_base)
 
             if transformed_e1 is not None and transformed_e2 is not None:
-                filtered_x.append(transformed_e1)
-                filtered_y.append(transformed_e2)
-                filtered_values.append([transformed_e1,transformed_e2])
+                keep.append(idx)
+                log_values.append([transformed_e1, transformed_e2])
 
-        result['values'] = filtered_values
-        result['x'] = filtered_x
-        result['y'] = filtered_y
+        result['values'] = log_values
+        result['x'] = [value[0] for value in log_values]
+        result['y'] = [value[1] for value in log_values]
+        if len(keep) != num_genes:
+            # pvals_adj is empty when no statistical test was run, so only filter full-length lists
+            for key in ('gene_ids', 'symbols', 'fold_changes', 'pvals_adj'):
+                if len(result[key]) == num_genes:
+                    result[key] = [result[key][i] for i in keep]
 
     result['fold_change_std_dev'] = "{0:.2f}".format(fold_change_std_dev)
     result["compare_key"] = compare_key
@@ -264,6 +296,11 @@ def main():
     print(json.dumps(result))
 
 def fold_change(x, y):
+    """
+    Compute the fold change between two values (larger over smaller).
+
+    If the smaller value is zero, the larger value is returned instead.
+    """
     if x >= y:
         if y == 0:
             return x
@@ -273,6 +310,12 @@ def fold_change(x, y):
     return y / x
 
 def get_log(val, base):
+    """
+    Return the log of a value in the given base.
+
+    Returns:
+        0 if val is 0, None if the log is undefined (negative val), else the log.
+    """
     if val == 0:
         return 0
     try:
@@ -286,9 +329,13 @@ def intersection(lst1, lst2):
     return list(set(lst1) & set(lst2))
 
 def return_error_response(msg):
+    """
+    Print a JSON error response with the given message and exit.
+    """
     result = dict()
     result['success'] = 0
     result['error'] = msg
+    result['message'] = msg     # compare_datasets.js reads "message"
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

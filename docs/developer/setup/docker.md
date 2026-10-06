@@ -88,17 +88,29 @@ If you want to view Apache logs, from server-side (Python) code, you can run `do
 
 Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
 
+### RabbitMQ and consumer services
+
+The compose template defines a `queue` service (`rabbitmq:4.1`, port 5672, with a healthcheck) and three consumer services that wait for it to be healthy:
+
+| Compose service | Image | Consumer script |
+| --- | --- | --- |
+| `gosling_upload_consumer` | `adkinsrs/gear_gosling_upload_consumer` | `listeners/gosling_upload_consumer.py` |
+| `anndata_upload_consumer` | `adkinsrs/gear_anndata_upload_consumer` | `listeners/anndata_upload_consumer.py` |
+| `spatial_upload_consumer` | `adkinsrs/gear_spatial_upload_consumer` | `listeners/spatial_upload_consumer.py` |
+
+A `projectr_consumer` service is present but commented out. Each consumer mounts `../listeners`, `../lib` and `../www/uploads/files`, so code edits take effect after `docker compose restart <service>`. In `docker/gear.ini.docker.template`, `queue_host = queue` and `queue_enabled = 0`; set `queue_enabled = 1` in `[dataset_uploader]` to route uploads through the consumers. See [RabbitMQ Consumers](../services/rabbitmq_consumers.md).
+
 ### "panel" service
 
 If you do not plan on working on spatial panel stuff, feel free to comment out the "panel" service block from the docker-compose.yml file and skip this step.
 
-You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/services/spatial/Dockerfile`
+The compose file pulls `adkinsrs/spatial_panel_app:latest`. You can build it yourself from `<gear_root>/services/spatial/Dockerfile` (bake target `panel`). See [Spatial Panel Service](../services/spatial.md).
 
 You can view logs with `docker compose logs panel`
 
 ## Building the images manually (Advanced)
 
-These steps will both build all images and push to the adkinsrs Docker Hub repository.  You will not have access to this repo (unless you are Shaun), so you just do the `docker compose up -d` method, or rewrite `Dockerfile`, `docker-bake.hci`, and `docker-compose.yml` to point to your own space.
+These steps will both build all images and push to the adkinsrs Docker Hub repository.  You will not have access to this repo (unless you are Shaun), so you just do the `docker compose up -d` method, or rewrite `Dockerfile`, `docker-bake.hcl`, and `docker-compose.yml` to point to your own space.
 
 1. `cd docker`
 2. Build intermediate images with `DATE=$(date +%Y-%m-%d) docker buildx bake --allow=fs.read=.. intermediate`
@@ -106,9 +118,28 @@ These steps will both build all images and push to the adkinsrs Docker Hub repos
 
 The "DATE" environment variable allows us to create a date stamp as a tag in addition to the standard "latest" tag.
 
+### Images and bake targets
+
+`docker/docker-bake.hcl` defines these targets:
+
+| Target | Dockerfile | Image | Group |
+| --- | --- | --- | --- |
+| `python-base` | `docker/Dockerfile.python` | `gear-python-base` | intermediate |
+| `r-base` | `docker/Dockerfile.r` | `gear-r-base` | intermediate |
+| `listener-python-base` | `listeners/Dockerfile.python_base` | `gear-listener-python-base` | intermediate |
+| `web` | `docker/Dockerfile` | `umgear` | default |
+| `panel` | `services/spatial/Dockerfile` | `spatial_panel_app` | default |
+| `gosling_upload_consumer` | `listeners/Dockerfile.gosling_upload` | `gear_gosling_upload_consumer` | default |
+| `anndata_upload_consumer` | `listeners/Dockerfile.anndata_upload` | `gear_anndata_upload_consumer` | default |
+| `spatial_upload_consumer` | `listeners/Dockerfile.spatial_upload` | `gear_spatial_upload_consumer` | default |
+| `projectr_consumer` | `listeners/Dockerfile.projectr` | `gear_projectr_consumer` | none (not used) |
+| `projectr_cloud_run` | `services/projectr/Dockerfile` | Artifact Registry `projectr_service` | none |
+
+Build order matters: `listener-python-base` copies Python from `gear-python-base` and installs `listeners/requirements.txt`; the anndata and spatial consumer images copy Python from `listener-python-base` (the anndata image also copies R from `gear-r-base`). The Gosling and ProjectR consumer images are standalone `python:3.14-slim` builds. Build a single target with e.g. `docker buildx bake --allow=fs.read=.. anndata_upload_consumer`.
+
 ### The three "umgear" Dockerfiles
 
-Information about the three Dockerfiles found in `<gear_root>/docker`
+The web image is built from three Dockerfiles in `<gear_root>/docker`:
 
 #### Dockerfile.python (The Python Base)
 

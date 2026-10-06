@@ -1,5 +1,12 @@
 # gEAR Portal
 
+[![UMgEAR](https://img.shields.io/website?url=https%3A%2F%2Fumgear.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%23544A8E&labelColor=%23CCCCCC&style=for-the-badge&label=UMgEAR)](https://umgear.org)
+[![NeMO Analytics](https://img.shields.io/website?url=https%3A%2F%2Fnemoanalytics.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%232A5A60&labelColor=%23CCCCCC&style=for-the-badge&label=NeMO%20Analytics)](https://nemoanalytics.org)
+
+[![SENgEAR](https://img.shields.io/website?url=https%3A%2F%2Fsenescence.umgear.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%23505250&labelColor=%23CCCCCC&style=for-the-badge&label=SENgEAR)](https://senescence.umgear.org)
+[![Cancer gEAR](https://img.shields.io/website?url=https%3A%2F%2Fcancer.umgear.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%236f94cd&labelColor=%23CCCCCC&style=for-the-badge&label=cancer%20gEAR)](https://cancer.umgear.org)
+[![Inflammation gEAR](https://img.shields.io/website?url=https%3A%2F%2Finflammation.umgear.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%23780000&labelColor=%23CCCCCC&style=for-the-badge&label=inflammation%20gEAR)](https://inflammation.umgear.org)
+
 **Description**:  The gEAR Portal was created as a data archive and viewer for gene expression data including microarrays, bulk RNA-Seq, single-cell RNA-Seq and more.  Initially created for the [hearing research community](https://umgear.org), instances of the gEAR have been cloned for other communities such as [brain research](https://nemoanalytics.org).
 
 Other things to include:
@@ -8,9 +15,10 @@ Other things to include:
 - **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
 - **Production / Demo instances**
   - [UMgEAR](https://umgear.org) - Portal for hearing research
-  - [NeMO Analytics](nemoanalytics.org) - Portal for brain research
+  - [NeMO Analytics](https://nemoanalytics.org) - Portal for brain research
   - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
   - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
+  - [Inflammation gEAR](https://inflammation.umgear.org) - Portal for inflammation research
 
 **Screenshot**: Example of home page after searching for a gene:
 
@@ -26,7 +34,7 @@ For detailed setup instructions, see:
 
 ## Usage
 
-To learn how to use the software you can go to any existing portal and click the documentation link at the top, which will take you to a page like [this one](https://umgear.org/manual.html).  It has walk-through slides and YouTube videos for most topics.
+To learn how to use the software, see the user documentation in the [gEAR wiki](https://github.com/IGS/gEAR/wiki) (source in [docs/wiki](docs/wiki/gEARWiki.md)), which is also linked from the Help item in every portal's navigation panel. Video guides for the main tools are on the portal's home page (My Workspace).
 
 ## Developer Documentation
 
@@ -43,7 +51,7 @@ For developers and team members working on gEAR:
   - Component-specific guides (MySQL, Apache, Python, R, RabbitMQ)
   - Docker development environment
 
-- **[Utility Scripts](docs/developer/scripts/README.md)** - Documentation for 105+ scripts in `/bin`
+- **[Utility Scripts](docs/misc/scripts/README.md)** - Documentation for the 121 scripts in `/bin`
   - Data conversion and format scripts
   - H5AD manipulation tools
   - Database loading scripts
@@ -53,7 +61,10 @@ For developers and team members working on gEAR:
 - **[Microservices](docs/developer/services/README.md)** - Service documentation
   - ProjectR service (matrix projection)
   - Spatial panel service
-  - RabbitMQ consumers
+  - RabbitMQ consumers (dataset upload, spatial upload, Gosling track upload, ProjectR)
+  - Plugins
+
+- **[Documentation index](docs/README.md)** - Map of all documentation (developer, analyst, wiki, misc)
 
 ## Known issues
 

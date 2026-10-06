@@ -1,3 +1,10 @@
+"""
+analysis.py - Analysis objects and path helpers for gEAR datasets.
+
+Defines Analysis and SpatialAnalysis, which locate and load the stored data for primary,
+public, user-saved and user-unsaved analyses, plus AnalysisCollection for grouping them.
+"""
+
 import json
 import sys
 import typing
@@ -14,6 +21,22 @@ if typing.TYPE_CHECKING:
 
 this_dir = Path(__file__).resolve().parent  # lib/gear
 root_dir = this_dir.parents[1]
+
+# Directories a .zarr store may be read from: primary spatial datasets and upload staging areas.
+#  Each is resolved on its own, because on some hosts www/datasets (or www/uploads) is a symlink
+#  to a mounted disk outside www, so resolving www alone would reject every dataset there.
+ZARR_ALLOWED_DIRS = (
+    root_dir / "www" / "datasets",
+    root_dir / "www" / "datasets" / "spatial",
+    root_dir / "www" / "uploads" / "files",
+)
+
+# NOTE: exception messages raised here can end up in JSON responses, so they name the dataset or
+#  analysis but never a filesystem path. Paths are logged to stderr instead.
+
+def _log_path(message: str, path) -> None:
+    """Log a filesystem path for debugging, without putting it in a user-facing message."""
+    print(f"gear.analysis: {message}: {path}", file=sys.stderr)
 
 # You can use the analysis functions to create an Analysis|SpatialAnalysis object in a high-level way
 # without needing to know the details of the class or its path conventions
@@ -72,7 +95,8 @@ def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | 
         # Check that the h5ad file exists
         if not ana.dataset_path.exists():
             filetype = "zarr" if is_spatial else "h5ad"
-            raise FileNotFoundError(f"No {filetype} file found for the passed in analysis: {ana.dataset_path}")
+            _log_path(f"missing {filetype} for analysis {ana.id}", ana.dataset_path)
+            raise FileNotFoundError(f"No {filetype} file found for analysis {ana.id} of dataset {dataset_id}")
     else:
         # Otherwise, return the primary analysis for the dataset
         ana = get_primary_analysis(dataset_id, is_spatial)
@@ -93,7 +117,8 @@ def get_primary_analysis(dataset_id, is_spatial=False) -> "SpatialAnalysis | Ana
 
     # Let's not fail if the file isn't there
     if not Path(dataset_file_path).exists():
-        raise FileNotFoundError(f"No {filetype} file found for this dataset {dataset_file_path}")
+        _log_path(f"missing {filetype} for dataset {dataset_id}", dataset_file_path)
+        raise FileNotFoundError(f"No {filetype} file found for dataset {dataset_id}")
     if is_spatial:
         ana = SpatialAnalysis(type="primary", dataset_id=dataset_id)
     else:
@@ -222,7 +247,7 @@ class Analysis:
                 json_data["analysis_session_id"] = json_data.pop("user_session_id")
 
             # Analysis object expects a list for this
-            if "group_labels" in json_data and type(json_data["group_labels"] is dict):
+            if "group_labels" in json_data and isinstance(json_data["group_labels"], dict):
                 json_data["group_labels"] = list(json_data["group_labels"].values())
 
             # Handle cases, like in "get_stored_analysis.cgi" where we want to pass success
@@ -280,6 +305,9 @@ class Analysis:
 
     @property
     def dataset_path(self) -> Path:
+        """
+        Path to this analysis's H5AD file within its base directory.
+        """
         return self.base_path / f"{self.dataset_id}.h5ad"
 
     def discover_vetting(self, current_user_id: int | None = None):
@@ -289,20 +317,21 @@ class Analysis:
         made to the dataset ownership won't require updating of this as well.  This method will
         just return the correct value.
 
-        Returns one of the values 'owner', 'gear' or 'community'
+        Returns one of the values 'owner', 'gear' or 'community', or None when the analysis has no
+        recorded owner (vetting can't be determined, which is not an error).
 
         If the owner is also a curator it gives priority to the curator status (gear)
         """
 
+        # Primary analyses come with the dataset and have no owner of their own
         if self.type == "primary":
             # ? is this right
             self.vetting = "gear"
+            return self.vetting
 
-        # Analysis.user_id must be knownor we can't do this
+        # Without a known owner there is nothing to compare against; leave vetting unset
         if self.user_id is None:
-            raise Exception(
-                "ERROR: Attempted to call Analysis.discover_vetting() without an owner assigned to the analysis"
-            )
+            return self.vetting
 
         current_user = get_user_by_id(current_user_id)
 
@@ -411,6 +440,9 @@ class Analysis:
 
     @property
     def marker_gene_json_path(self):
+        """
+        Path (as a string) to this analysis's marker gene table JSON file.
+        """
         return f"{self.base_path}/{self.dataset_id}.marker_gene_table.json"
 
     def _parent_path_by_type(self, atype=None) -> Path:
@@ -454,6 +486,9 @@ class Analysis:
 
     @property
     def primary_path(self) -> Path:
+        """
+        Directory where primary dataset files are stored.
+        """
         return root_dir / "www" / "datasets"
 
     @property
@@ -499,12 +534,27 @@ class SpatialAnalysis(Analysis):
 
     @property
     def dataset_path(self) -> Path:
+        """
+        Path to the dataset file: the .zarr store for primary analyses, otherwise the H5AD file.
+        """
         if self.type == "primary":
             return self.primary_path / f"{self.dataset_id}.zarr"
         else:
             return self.base_path / f"{self.dataset_id}.h5ad"
 
     def determine_platform(self, sdata):
+        """
+        Return the spatial platform name stored in the SpatialData table's uns metadata.
+
+        Args:
+            sdata (SpatialData): Spatial data object with a "table" entry.
+
+        Returns:
+            str: The platform name from ``sdata.tables["table"].uns["platform"]``.
+
+        Raises:
+            ValueError: If no platform information is present.
+        """
         try:
             platform = sdata.tables["table"].uns["platform"]
             return platform
@@ -512,6 +562,9 @@ class SpatialAnalysis(Analysis):
             raise ValueError("No platform information found in the dataset")
 
     def discover_type(self) -> str | None:
+        """
+        Discover the analysis type (see Analysis.discover_type) and set the matching adapter.
+        """
         super().discover_type()
         # This is a good time to set the adapter too
         self.set_adapter()
@@ -557,6 +610,9 @@ class SpatialAnalysis(Analysis):
 
     @property
     def primary_path(self) -> Path:
+        """
+        Directory where primary spatial dataset files are stored.
+        """
         return root_dir / "www" / "datasets" / "spatial"
 
     def set_adapter(self) -> None:
@@ -577,6 +633,9 @@ class SpatialAnalysis(Analysis):
             self.adapter_cls = H5adAdapter
 
 class AnalysisCollection:
+    """
+    Container grouping analyses into public, user-saved and user-unsaved lists.
+    """
     def __init__(self, public=None, user_saved=None, user_unsaved=None):
         self.public = [] if public is None else public
         self.user_saved = [] if user_saved is None else user_saved
@@ -687,11 +746,13 @@ class ZarrAdapter:
     """
 
     def __init__(self, zarr_path: Path):
+        # Guard against path traversal. Compare real locations, so a symlink inside the store can't
+        #  point elsewhere, while each allowed directory may itself be a symlink (see ZARR_ALLOWED_DIRS).
         resolved = Path(zarr_path).resolve()
-        allowed_base = (root_dir / "www").resolve()
-        if not resolved.is_relative_to(allowed_base):
-            raise ValueError(f"Zarr path '{zarr_path}' is outside the allowed datasets directory.")
-        self.zarr_path = zarr_path
+        if not any(resolved.is_relative_to(allowed.resolve()) for allowed in ZARR_ALLOWED_DIRS):
+            _log_path("refusing zarr path outside the allowed directories", f"{zarr_path} -> {resolved}")
+            raise ValueError("The requested dataset is not in an allowed location.")
+        self.zarr_path = Path(zarr_path)
 
     def get_sdata(self) -> "SpatialData":
         """
@@ -706,7 +767,8 @@ class ZarrAdapter:
         import spatialdata as sd
 
         if not self.zarr_path.exists():
-            raise FileNotFoundError(f"Dataset not found at {self.zarr_path}")
+            _log_path("missing zarr store", self.zarr_path)
+            raise FileNotFoundError(f"Dataset {self.zarr_path.stem} was not found")
         return sd.read_zarr(self.zarr_path)
 
     def get_adata(self) -> "AnnData" :
@@ -727,5 +789,6 @@ class ZarrAdapter:
         import anndata
 
         if not table_path.exists():
-            raise FileNotFoundError(f"No 'table' found in SpatialData tables at {table_path}")
+            _log_path("missing SpatialData table", table_path)
+            raise FileNotFoundError(f"Dataset {self.zarr_path.stem} has no 'table' in its SpatialData tables")
         return anndata.read_zarr(table_path)

@@ -1,7 +1,13 @@
+"""
+panel_common.py - Holoviz Panel viewer classes for spatial datasets.
+
+Defines BaseSpatialViewer and its condensed and expanded subclasses, served by
+panel_app.py and panel_app_expanded.py.
+"""
+
 import json
 import traceback
 
-import colorcet as cc
 import holoviews as hv
 import hvplot
 import hvplot.pandas  # noqa
@@ -20,6 +26,7 @@ from common import (
     create_umap_plot,
     create_umap_sample,
     create_violin_plot,
+    get_color_maps,
     link_crosshairs,
     link_ranges,
     list_image_channels,
@@ -99,6 +106,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
             if 'display_name' in args:
                 self.settings.display_name = get_arg('display_name', "")
+
+            if 'colorblind_mode' in args:
+                self.settings.colorblind_mode = get_arg('colorblind_mode', False) is True
 
             if 'make_default' in args:
                 make_default = get_arg('make_default', False)
@@ -243,12 +253,11 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.expression_agg = self.agg["expression"]
         self.expression_df = create_expression_df(self.expression_agg)
         self.expression_df = self.expression_df[self.expression_df['raw_value'] > 0]
-        self.expression_cmap = cc.m_CET_L4_r
 
         self.clusters_agg = self.agg["clusters"]
         self.clusters_df = create_clusters_df(self.clusters_agg)
         self.clusters_df["clusters"] = self.clusters_df["clusters_cat_codes"].map(self.cluster_map)
-        self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
+        self.expression_cmap, self.cluster_cmap = get_color_maps(self.df, self.settings.colorblind_mode)
 
         # Precompute the UMAP aggregation and sample for the UMAP plots
         _, _, self.umap_marker_radius = compute_aggregation_params(self.df, x_col="UMAP1", y_col="UMAP2", target_markers=30_000)
@@ -261,6 +270,10 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             "dataset_id": self.settings.dataset_id,
             "filename": self.settings.filename,
         }
+
+        # Keep the viewer's palette in downloaded HTML exports
+        if self.settings.colorblind_mode:
+            state["colorblind_mode"] = True
 
         # Include expression clip if it exists
         if self.settings.expression_min_clip is not None:

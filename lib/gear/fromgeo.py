@@ -1,3 +1,10 @@
+"""
+fromgeo.py - Retrieve and merge NCBI GEO metadata.
+
+Fetches metadata for GEO series/sample IDs and merges it into a user's
+dataset metadata.
+"""
+
 import json
 
 import pandas as pd

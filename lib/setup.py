@@ -1,3 +1,10 @@
+"""
+setup.py - Package installation script for the gEAR library utilities.
+
+Allows the lib modules to be installed into the gEAR server environment instead
+of relying on PYTHONPATH modifications.
+"""
+
 from setuptools import setup, find_packages
 
 # This is mostly here so we can install the gEAR library utilities in the same environment as the gEAR server,

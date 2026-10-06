@@ -1,5 +1,7 @@
 # Purpose
 
+> **Historical note:** These notes describe the pre-2024 front page. `ui-panel-dataset-collection.js`, `ui-panel-dataset.js` and `js/classes/display.js` no longer exist. Tiles are now rendered by `TileGrid` / `DatasetTile` in `www/js/classes/tilegrid.js` (used by `www/js/expression.js` and `www/js/projection.js`), with API calls in `apiCallsMixin` in `www/js/common.v2.js`. See [Adding New Display Types](../misc/adding_new_display_types.md) for the current stack. The database and `lib/geardb.py` notes below may still be useful.
+
 Personal notes for debugging how a specific analyses is shown on the front page in one of the data panels.
 
 # The stack
