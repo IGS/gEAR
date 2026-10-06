@@ -122,7 +122,21 @@ cd /var/www
 chmod 777 datasets datasets/spatial analyses/* carts/ projections/ uploads/files/ img/dataset_previews/ cache/spatial_panel/
 ```
 
+### E-mail support
+
+The portal uses e-mail only when users create a new account or use the "forgot password" link
+functionality. Here are the steps for setting this up (assuming running on a GCP node):
+
+- $ sudo apt install sendmail
+- Go to your Google Account Settings
+- Make sure that 2-step verification is turned ON
+- Go to your Google Account App Passwords page (https://myaccount.google.com/apppasswords)
+- Give your app a custom name, like 'gear-emailer' and click Create
+- Copy the 16-character password that appears in the model
+- Put your email and this password in your portal's gear.ini file
+
+
 ### Undocumented currently
 
-- Setting up mail server so forgot password works
+
 - What to do for helpdesk config?
