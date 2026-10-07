@@ -16,6 +16,7 @@ import pandas as pd
 import scipy.sparse
 from flask import request
 from flask_restful import Resource
+from gear.colorblind import CONTINUOUS_CMAP
 from gear.mg_plotting import PlotError
 from gear.utils.resource_limits import catch_memory_error
 from plotly.utils import PlotlyJSONEncoder
@@ -446,7 +447,7 @@ class MGPlotlyData(Resource):
                     'message': str(pe),
                 }
 
-            colorscale = "viridis" if colorblind_mode else None
+            colorscale = mg.COLORBLIND_SWATCH if colorblind_mode else None
 
             fig = mg.create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale)
             # Annotate selected genes
@@ -508,7 +509,7 @@ class MGPlotlyData(Resource):
 
             # Reverse Cividis so that dark is higher expression
             if colorblind_mode:
-                colorscale = "cividis_r"
+                colorscale = CONTINUOUS_CMAP
 
             fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale, non_interactive=return_image)
 
@@ -661,9 +662,9 @@ class MGPlotlyData(Resource):
 
             violin_func = mg.create_stacked_violin_plot if stacked_violin else mg.create_violin_plot
 
-            # I think Viridis lends itself to quantitative plots than Cividis.
+            # One distinct colorblind-friendly color per gene/group (gear.colorblind)
             if colorblind_mode:
-                colorscale = "viridis"
+                colorscale = mg.COLORBLIND_SWATCH
 
             fig = violin_func(df
                 , groupby_filters

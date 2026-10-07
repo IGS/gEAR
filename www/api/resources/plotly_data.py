@@ -18,6 +18,7 @@ import plotly.express.colors as pxc
 import scipy.sparse
 from flask import request
 from flask_restful import Resource
+from gear.colorblind import CONTINUOUS_CMAP, categorical_colors
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
@@ -453,18 +454,20 @@ class PlotlyData(Resource):
         # NOTE: If no color_name category, just leave color as "purple"
         # Using the reversed cividis scale so that higher expression values are darker
         if colorblind_mode:
-            # Discrete scales = Viridis
+            # Discrete scales = colorblind categorical palette (gear.colorblind)
             # Continuous scales = Reversed Cividis
             if palette:
-                palette = "cividis_r"
+                palette = CONTINUOUS_CMAP
             elif color_map:
                 if isinstance(color_map, list):
-                    color_map = pxc.get_colorscale("cividis_r")
+                    color_map = pxc.get_colorscale(CONTINUOUS_CMAP)
                 elif isinstance(color_map, dict):
-                    num_entries = len(color_map)
-                    viridis_colors =  pxc.get_colorscale("viridis")
-                    sampled_colors = pxc.sample_colorscale(viridis_colors, num_entries)
-                    color_map = {key: value for key, value in zip(color_map.keys(), sampled_colors)}
+                    # The "NA" group stays gray, as in normal mode, rather than taking a palette color
+                    groups = [key for key in color_map if key != "NA"]
+                    colorblind_map = dict(zip(groups, categorical_colors(len(groups))))
+                    if "NA" in color_map:
+                        colorblind_map["NA"] = NA_COLOR
+                    color_map = colorblind_map
 
         if 'replicate' in dataframe and plot_type == 'scatter':
             dataframe = dataframe.drop(['replicate'], axis=1)

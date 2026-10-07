@@ -63,6 +63,18 @@ def test_get_discrete_colors_samples_named_colorscales(mg_plotting):
 
 
 
+def test_colorblind_swatch_gives_palette_colors_in_order(mg_plotting):
+    assert mg_plotting.get_discrete_colors(["a", "b", "c"], mg_plotting.COLORBLIND_SWATCH)[:3] == colorblind.categorical_colors(3)
+
+
+def test_quadrant_plot_colorblind_swatch(mg_plotting):
+    import pandas as pd
+    df = pd.DataFrame({"s1_c_log2FC": [1.0, -1.0], "s2_c_log2FC": [1.0, -1.0],
+                       "ensm_id": ["E1", "E2"], "gene_symbol": ["G1", "G2"]})
+    fig = mg_plotting.create_quadrant_plot(df, "ctrl", "c1", "c2", colorscale=mg_plotting.COLORBLIND_SWATCH)
+    # UP/UP and DOWN/DOWN take the first two palette colors
+    assert [trace.marker.color for trace in fig.data] == colorblind.categorical_colors(2)
+
 def test_quadrant_plot_uses_sampled_colorscale(mg_plotting):
     import pandas as pd
     df = pd.DataFrame({"s1_c_log2FC": [1.0, -1.0], "s2_c_log2FC": [1.0, -1.0],

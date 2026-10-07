@@ -31,6 +31,9 @@ LIGHT24_COLORS = px.colors.qualitative.Light24
 SAFE_COLORS = px.colors.qualitative.Safe
 VIVID_COLORS = px.colors.qualitative.Vivid
 
+# Swatch name that colorblind mode passes as a colorscale (see gear.colorblind)
+COLORBLIND_SWATCH = "colorblind"
+
 color_swatch_map = {
     "alphabet": ALPHABET_COLORS
     , "bold": BOLD_COLORS
@@ -39,6 +42,7 @@ color_swatch_map = {
     , "light24": LIGHT24_COLORS
     , "safe": SAFE_COLORS
     , "vivid": VIVID_COLORS
+    , COLORBLIND_SWATCH: list(CATEGORICAL_PALETTE)
 }
 
 PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
