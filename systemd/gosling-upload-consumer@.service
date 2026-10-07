@@ -5,6 +5,8 @@ After=rabbitmq-server.service
 
 [Service]
 Type=simple
+User=www-data
+Group=www-data
 Environment=APACHE_STARTED_BY_SYSTEMD=true
 ExecStart=/opt/bin/python3 <gear_root>/listeners/gosling_upload_consumer.py
 # Joins the aggregate memory budget shared across all gEAR consumer families -- see
