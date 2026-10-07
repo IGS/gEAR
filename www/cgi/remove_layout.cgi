@@ -49,7 +49,7 @@ def main():
 
     result = { 'success': None }
 
-    if owns_layout == True and layout.id != 0:
+    if owns_layout and layout.id != 0:
         layout.remove()
         result['success'] = 1
         cnx.commit()
