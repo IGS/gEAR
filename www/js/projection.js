@@ -337,6 +337,7 @@ const selectPatternWeightResult = async (label) => {
 
         const minclip = document.getElementById('minclip').checked ? 0 : null;
         await tilegrid.renderDisplays(label, isMulti, svgScoringMethod, minclip, projectionOpts);
+        updateScoringMethodVisibility();
     }
 };
 
@@ -409,6 +410,7 @@ const setupTileGrid = async (shareId, type = "layout") => {
             // create array of selected weight labels
             const selectedWeights = Array.from(selectedPattern.selectedWeights).map((w) => w.label);
             await tilegrid.renderDisplays(selectedWeights, isMulti, svgScoringMethod, minclip, projectionOpts);
+            updateScoringMethodVisibility();
         }
     } catch (error) {
         logErrorInConsole(error);
@@ -454,6 +456,20 @@ const validateProjectionSearchForm = () => {
 
     return true;
 };
+
+/**
+ * Shows the SVG scoring method dropdown only when it applies: single-pattern mode with at least
+ * one tile currently showing an SVG display. Re-checked whenever a tile renders a display.
+ */
+const updateScoringMethodVisibility = () => {
+    const isVisible = !isMulti && Boolean(tilegrid?.hasSvgDisplay());
+    for (const id of ["scoring-method-div", "result-panel-options-divider"]) {
+        document.getElementById(id).classList.toggle("is-hidden", !isVisible);
+    }
+}
+
+// Tiles announce each rendered display (including display switches from a tile's display chooser)
+document.addEventListener("tile-display-rendered", updateScoringMethodVisibility);
 
 /**
  * Handles the UI updates specific to the page login.
@@ -506,15 +522,15 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // if multi, clear the selected pattern symbol and hide the pattern-result-list container
         document.getElementById("pattern-result-list-c").classList.remove('is-hidden');
-        document.getElementById("scoring-method-div").classList.remove('is-hidden');
         if (isMulti) {
             document.getElementById("pattern-result-list-c").classList.add('is-hidden');
-            document.getElementById("scoring-method-div").classList.add('is-hidden');
         }
 
         try {
             const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
             tilegrid = await setupTileGridFn;
+            // Hidden until the new displays render; tiles showing an SVG will bring it back
+            updateScoringMethodVisibility();
 
             // auto-select the first pattern in the list
             const firstPattern = document.querySelector('.pattern-result-list-item');
@@ -621,6 +637,8 @@ document.getElementById('svg-scoring-method').addEventListener('change', (event)
 
     // Loop through all tiles with svgData and update the display based on the selected method
     for (const tile of tilegrid.tiles) {
+        // Remembered by the tile so a later display switch uses the current method
+        tile.svgScoringMethod = svgScoringMethod;
         if (tile.svg) {
             tile.updateSVGDisplay(svgScoringMethod);
         }
