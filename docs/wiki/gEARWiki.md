@@ -507,11 +507,84 @@ The dataset information shown in the Dataset Explorer can be edited by the datas
 Data in the gEAR platform can be downloaded, if the owner has marked the dataset as downloadable, in two ways:
 
 - As a bundled file ("Download Bundle"), containing the data files exactly as they were uploaded by the dataset owner. For more information on data formats used during upload, see our upload documentation ([Link](https://github.com/IGS/gEAR/blob/main/docs/wiki/UploadingOverview.md))
-- As a formatted H5AD file ("Download H5AD"), where each dataset upload is converted into an identical format. For more information on the H5AD file format see ([Link](https://anndata-tutorials.readthedocs.io/en/latest/getting-started.html))
+- As a formatted H5AD file ("Download H5AD"), where each dataset upload is converted into the AnnData H5AD format. For more information on the H5AD file format see ([Link](https://anndata-tutorials.readthedocs.io/en/latest/getting-started.html))
 
 To download a dataset, search a gene in a dataset collection that contains it, then use the dataset panel menu to select which download option you prefer. The menu also has "Download Metadata", "Download Image" and, on the Projection page, "Download Projection". H5AD files can also be downloaded from the Dataset Explorer with "Download dataset as h5ad", and analyses from the Single Cell Workbench with "Download analysis H5AD".
 
 <img width="700" alt="Download options in the dataset panel menu" src="Screenshots/DownloadData.png">
+
+### Reading a downloaded H5AD file
+
+Every H5AD file has the same three parts you usually need: `X` (the expression matrix, cells × genes), `obs` (cell metadata) and `var` (gene metadata, including a `gene_symbol` column). Files can still differ in two ways, depending on when and how the dataset was uploaded:
+
+- **Dense or sparse `X`.** Count-style uploads (MEX, 3-tab, many H5ADs) are stored as a sparse matrix. Excel uploads, some H5AD uploads and scaled Single Cell Workbench analyses are stored as a dense matrix.
+- **Older or newer file layout.** Datasets uploaded years ago use an older H5AD layout written by anndata versions before 0.8. Python's `anndata` and the R `anndata` package read both layouts. The Bioconductor package `anndataR` reads only the newer layout. On an older file it stops with "Either the file is not an H5AD file or it was created with anndata<0.8.0".
+
+In either case the cell and gene names live in `obs` and `var`, not on `X`, so attach them from there yourself. Don't rely on `X` already having row and column names.
+
+#### In Python
+
+```python
+import anndata as ad
+
+adata = ad.read_h5ad("dataset.h5ad")
+expr = adata.to_df()            # cells x genes pandas DataFrame, names attached (dense; use on small datasets or subsets)
+subset = adata[["CELL_1", "CELL_2"], ["GENE_ID_1"]].to_df()
+```
+
+#### In R
+
+The CRAN [`anndata`](https://cran.r-project.org/package=anndata) package calls Python's anndata through `reticulate`, so it reads both file layouts. With current versions of `reticulate`, the first call downloads the Python environment it needs. On older versions, run `anndata::install_anndata()` once.
+
+The function below works for dense and sparse `X` and for old and new files. It always returns a genes × cells matrix with names attached: a `dgCMatrix` when the file was sparse, a base `matrix` when it was dense.
+
+```r
+library(anndata)
+library(Matrix)
+
+# obs_names / var_names may come back as an R vector or as a Python index,
+# depending on package versions
+as_names <- function(idx) {
+  if (inherits(idx, "python.builtin.object")) {
+    unlist(reticulate::py_to_r(idx$tolist()))
+  } else {
+    as.character(idx)
+  }
+}
+
+read_gear_h5ad <- function(path) {
+  ad <- read_h5ad(path)
+  cells <- as_names(ad$obs_names)
+  genes <- as_names(ad$var_names)
+
+  X <- ad$X
+  if (is(X, "sparseMatrix")) {
+    X <- as(X, "CsparseMatrix")
+  } else {
+    X <- as.matrix(X)
+  }
+  dimnames(X) <- list(cells, genes)
+
+  obs <- as.data.frame(ad$obs)
+  rownames(obs) <- cells
+  var <- as.data.frame(ad$var)
+  rownames(var) <- genes
+
+  list(exprs = t(X), obs = obs, var = var)
+}
+
+dataset <- read_gear_h5ad("dataset.h5ad")
+dataset$exprs[1:5, 1:5]           # genes x cells
+head(dataset$obs)                 # cell metadata
+head(dataset$var$gene_symbol)     # gene symbols (row names are usually Ensembl IDs)
+```
+
+Notes:
+
+- Keep `exprs` sparse for large datasets. `as.matrix(dataset$exprs)` on a dataset with tens of thousands of cells can need many gigabytes of memory.
+- Row names are the dataset's gene identifiers, usually Ensembl IDs. To label rows by symbol, use `dataset$var$gene_symbol`. Symbols are not always unique, so `make.unique()` may be needed.
+- Analysis H5ADs from the Single Cell Workbench may also contain a `raw` slot holding the unscaled values: `ad$raw$X`, with gene names from `as_names(ad$raw$var_names)` and the same cell names as `X`.
+- If you only work with newer files, `anndataR::read_h5ad("dataset.h5ad", as = "SingleCellExperiment")` (or `as = "Seurat"`) gives a fully named object without Python.
 
 ## User profile and accessibility
 
