@@ -52,22 +52,33 @@ document.getElementById('genes-manually-entered').addEventListener('keydown', (e
  * The button's aria-controls attribute lists the IDs of the elements to show/hide.
  * @param {HTMLButtonElement} button - The toggle button (must have aria-expanded and aria-controls).
  */
-const toggleCollapsible = (button) => {
-    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+const setCollapsibleExpanded = (button, expand) => {
     const toggleIcon = button.querySelector('i');
 
     for (const targetId of button.getAttribute('aria-controls').split(' ')) {
-        document.getElementById(targetId).classList.toggle('is-hidden', isExpanded);
+        document.getElementById(targetId).classList.toggle('is-hidden', !expand);
     }
-    button.setAttribute('aria-expanded', String(!isExpanded));
-    toggleIcon.classList.toggle('mdi-chevron-up', !isExpanded);
-    toggleIcon.classList.toggle('mdi-chevron-down', isExpanded);
+    button.setAttribute('aria-expanded', String(expand));
+    toggleIcon.classList.toggle('mdi-chevron-up', expand);
+    toggleIcon.classList.toggle('mdi-chevron-down', !expand);
 }
 
+const isCollapsibleExpanded = (button) => button.getAttribute('aria-expanded') === 'true';
+
 // Collapse/expand the whole annotation panel, or just its functional annotation section
-for (const toggleId of ['annotation-panel-toggle', 'functional-annotation-toggle']) {
-    document.getElementById(toggleId).addEventListener('click', (event) => toggleCollapsible(event.currentTarget));
-}
+document.getElementById('annotation-panel-toggle').addEventListener('click', (event) => {
+    const expand = !isCollapsibleExpanded(event.currentTarget);
+    setCollapsibleExpanded(event.currentTarget, expand);
+
+    // Expanding the whole panel also opens the functional annotation section
+    if (expand) {
+        setCollapsibleExpanded(document.getElementById('functional-annotation-toggle'), true);
+    }
+});
+
+document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
+    setCollapsibleExpanded(event.currentTarget, !isCollapsibleExpanded(event.currentTarget));
+});
 
 // add event listener for when the submit-expression-search button is clicked
 document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
