@@ -58,6 +58,28 @@ section#annotation-panel h4 {
     font-weight: bold;
     font-size: 90%;
 }
+/* The "Gene annotation" header controls the whole panel, so make it stand out from the section headers below it.
+   The divider sits on the body so it disappears when the panel is collapsed. */
+section#annotation-panel > h3 {
+    font-size: 115%;
+}
+div#annotation-panel-body {
+    border-top: 1px solid lightgrey;
+    padding-top: 0.75rem;
+}
+/* Collapse/expand toggles are real buttons (keyboard accessible), styled to look like the heading text */
+button.panel-toggle {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+button.panel-toggle:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
 span.option-label {
     font-weight: bold;
     font-size: 90%;
