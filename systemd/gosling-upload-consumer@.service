@@ -2,6 +2,7 @@
 Description="TrackHub (Gosling Upload) RabbitMQ Consumer - #%i"
 Documentation=https://github.com/IGS/gEAR/blob/main/docs/developer/services/rabbitmq_consumers.md
 After=rabbitmq-server.service
+PartOf=gosling-upload-consumer.target
 
 [Service]
 Type=simple
