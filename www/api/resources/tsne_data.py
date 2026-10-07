@@ -28,6 +28,7 @@ import seaborn as sns
 from flask import request
 from flask_restful import Resource, inputs, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
+from gear.colorblind import CONTINUOUS_CMAP, categorical_colors
 from gear.plotting import PlotError
 
 if typing.TYPE_CHECKING:
@@ -257,26 +258,6 @@ def create_two_way_sorting(adata: "AnnData", gene_symbol: str) -> "AnnData":
     sort_order = np.argsort(np.abs(median - x_dense))
     ordered_obs = adata.obs.iloc[sort_order].index
     return adata[ordered_obs, :]  # type: ignore
-
-
-def get_colorblind_scale(n_colors: int) -> list[str]:
-    """
-    Generates a list of colorblind-friendly hex color codes.
-
-    This function uses the 'viridis' colormap from matplotlib, which is designed to be perceptually uniform and colorblind-friendly.
-    It returns a list of hex color strings corresponding to evenly spaced colors from the colormap.
-
-    Args:
-        n_colors (int): The number of distinct colors to generate.
-
-    Returns:
-        list[str]: A list of hex color codes as strings.
-    """
-    cividis = plt.get_cmap("viridis")
-    # max() keeps a single category from dividing by zero
-    colors = [cividis(i / max(n_colors - 1, 1)) for i in range(n_colors)]
-    # convert to hex since I ran into some issues using rpg colors
-    return [mcolors.rgb2hex(color) for color in colors]
 
 
 def is_categorical(series: "pd.Series") -> bool:
@@ -884,7 +865,7 @@ def generate_tsne_figure(
         elif expression_palette.startswith("multicolor_diverging"):
             create_projection_colorscale()
 
-    expression_color = "cividis_r" if colorblind_mode else expression_palette
+    expression_color = CONTINUOUS_CMAP if colorblind_mode else expression_palette
     if make_zero_gray:
         # Build from expression_color so colorblind mode keeps cividis with a gray zero
         expression_color = create_colorscale_with_zero_gray(expression_color)
@@ -945,9 +926,7 @@ def generate_tsne_figure(
                             for k in selected.obs[colorize_by].cat.categories
                         ]
             if colorblind_mode:
-                cb_colors = get_colorblind_scale(
-                    len(selected.obs[colorize_by].unique())
-                )
+                cb_colors = categorical_colors(len(selected.obs[colorize_by].unique()))
                 color_map = {
                     name: cb_colors[idx]
                     for idx, name in enumerate(selected.obs[colorize_by].cat.categories)
