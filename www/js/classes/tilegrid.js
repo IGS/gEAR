@@ -1,7 +1,7 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
+import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurrentUser, logErrorInConsole, openModal, triggerUrlDownload } from "../common.v2.js";
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 import { Citation } from "./citation.js";
@@ -992,6 +992,18 @@ class DatasetTile {
             });
         }
 
+        // Link downloads (bundle, h5ad, projection) get the metadata first, then the file at the link's current href.
+        // ("download-image" handlers are set up when the plot type is known.)
+        const metadataFirstTools = ["download-bundle", "download-h5ad", "download-projection"];
+        for (const item of dropdownItems) {
+            if (!metadataFirstTools.includes(item.dataset.tool)) continue;
+            item.addEventListener("click", async (event) => {
+                event.preventDefault();
+                const url = event.currentTarget.href;
+                await downloadWithMetadata(shareId, () => triggerUrlDownload(url));
+            });
+        }
+
         // Add links to the dropdown above the download-bundle item
         if (links.length) {
             const downloadBundle = dropdownContent.querySelector('.dropdown-item[data-tool="download-bundle"]');
@@ -1454,7 +1466,7 @@ class DatasetTile {
                     newDownloadImage.classList.remove("is-hidden");
                     newDownloadImage.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialHTML(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadSpatialHTML(display));
                     });
                 }
                 return;
@@ -1529,7 +1541,7 @@ class DatasetTile {
 
                     newDownloadImage.classList.remove("is-hidden");
                     newDownloadImage.addEventListener("click", async (event) => {
-                        await this.downloadPlotlyImage(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadPlotlyImage(display));
                     });
                 }
 
@@ -1550,7 +1562,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadScanpyImage(display, false);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadScanpyImage(display, false));
                     });
                 }
 
@@ -1565,7 +1577,7 @@ class DatasetTile {
 
                     newDownloadSVG.classList.remove("is-hidden");
                     newDownloadSVG.addEventListener("click", async (event) => {
-                        await this.downloadSVG(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadSVG(display));
                     });
                 }
 
@@ -1580,7 +1592,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialHTML(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadSpatialHTML(display));
                     });
                 }
             } else if (display.plot_type === "gosling") {
@@ -1603,7 +1615,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadGoslingPNG(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadGoslingPNG(display));
                     });
                 }
 
@@ -1622,7 +1634,7 @@ class DatasetTile {
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
                             // get the download URL
-                            await this.downloadScanpyImage(display, true);
+                            await downloadWithMetadata(this.dataset.share_id, () => this.downloadScanpyImage(display, true));
                         });
 
                     }
@@ -1637,7 +1649,7 @@ class DatasetTile {
 
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
-                            await this.downloadPlotlyImage(display, true);
+                            await downloadWithMetadata(this.dataset.share_id, () => this.downloadPlotlyImage(display, true));
                         });
                     }
                 }

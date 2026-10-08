@@ -6,7 +6,7 @@
 
 import { blockAnalysisStep, openNextAnalysisStep, UI } from "./analysis-ui.js";
 import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../helpers/stepper-fxns.js";
-import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js";
+import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, downloadWithMetadata, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js";
 
 let analysisLabels = new Set();
 
@@ -198,16 +198,18 @@ export class Analysis {
             type: "h5ad",
         }
 
-        // download the h5ad
+        // download the metadata, then the h5ad
         const url = `./cgi/download_source_file.cgi?${new URLSearchParams(params).toString()}`;
         try {
-            const {data} = await axios.get(url, {responseType: 'blob'});
-            const blob = new Blob([data], {type: 'application/octet-stream'});
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `${this.dataset.share_id}.${this.id}.h5ad`;
-            a.click();
+            await downloadWithMetadata(this.dataset.share_id, async () => {
+                const {data} = await axios.get(url, {responseType: 'blob'});
+                const blob = new Blob([data], {type: 'application/octet-stream'});
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `${this.dataset.share_id}.${this.id}.h5ad`;
+                a.click();
+            });
         } catch (error) {
             console.error("Error downloading analysis h5ad", this);
             logErrorInConsole(error);

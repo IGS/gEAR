@@ -91,7 +91,7 @@ def main():
             finally:
                 os.remove(temp_file_path)
         else:
-            raise FileNotFoundError("Metadata not found")
+            raise ValueError("Metadata not found for this dataset.")
     else:
         # if share ID is passed, retrieve the dataset by share ID
         if share_id:

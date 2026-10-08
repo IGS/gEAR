@@ -779,6 +779,51 @@ const logErrorInConsole = (error) => {
 }
 
 /**
+ * Downloads a dataset's metadata CSV first, then runs the requested dataset download (bundle, h5ad, image, projection).
+ * The metadata always goes with the data to follow FAIR/TRUST principles, so if the metadata is missing
+ * or cannot be downloaded, the dataset download is cancelled.
+ * @param {string} shareId - The share ID of the dataset.
+ * @param {Function} downloadFn - The dataset download to run (and await) once the metadata is handled.
+ * @returns {Promise<boolean>} - True if downloadFn ran, false if the download was cancelled.
+ */
+const downloadWithMetadata = async (shareId, downloadFn) => {
+    const params = new URLSearchParams({ type: "metadata", share_id: shareId || "" });
+    try {
+        const {data} = await axios.get(`./cgi/download_source_file.cgi?${params.toString()}`, {responseType: 'blob'});
+        const downloadUrl = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `${shareId}.metadata.csv`;
+        a.click();
+        // Give the browser time to start the download before freeing the blob
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+        logErrorInConsole(error);
+        // ? Do we want to have a popover to ask if the user wants to download anyways?
+        if (error.response?.status === 404) {
+            createToast("No metadata was found for this dataset, so the download was cancelled. Please contact the gEAR team.");
+        } else {
+            createToast("The dataset metadata could not be downloaded, so the download was cancelled.");
+        }
+        return false;
+    }
+
+    await downloadFn();
+    return true;
+}
+
+/**
+ * Starts a browser download of the given URL without navigating away from the page.
+ * @param {string} url - The URL to download.
+ */
+const triggerUrlDownload = (url) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "";
+    a.click();
+}
+
+/**
  * Copies the specified text to the clipboard.
  * @param {string} text - The text to be copied.
  * @returns {Promise<boolean>} - A promise that resolves to true if the text was successfully copied, false otherwise.
@@ -1892,6 +1937,7 @@ export {
     copyToClipboard,
     convertToFormData,
     doLogin,
+    downloadWithMetadata,
     trigger,
     openModal,
     closeModal,
@@ -1899,5 +1945,6 @@ export {
     insertVersionedJS,
     loadDomainFunding,
     SHARE_ID_MAX_LENGTH,
+    triggerUrlDownload,
     validateShareId,
 };

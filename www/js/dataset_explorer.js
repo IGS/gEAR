@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, downloadWithMetadata, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, triggerUrlDownload, validateShareId } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 
 /* Imported variables
@@ -498,19 +498,19 @@ class ResultItem {
         if (downloadSelector) {
 
             downloadSelector.addEventListener("click", async (e) => {
-                e.currentTarget.classList.add("is-loading");
+                // currentTarget is null after the await, so keep a reference to the button
+                const button = e.currentTarget;
+                button.classList.add("is-loading");
                 try {
-                    // download the h5ad
+                    // download the metadata, then the h5ad
                     const safeShareId = encodeURIComponent(String(this.shareId || ""));
 	                const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${safeShareId}`;
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.click();
+                    await downloadWithMetadata(this.shareId, () => triggerUrlDownload(url));
                 } catch (error) {
                     logErrorInConsole(error);
                     createToast("Failed to download dataset");
                 } finally {
-                    e.currentTarget.classList.remove("is-loading");
+                    button.classList.remove("is-loading");
                 }
             });
 
