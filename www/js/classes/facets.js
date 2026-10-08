@@ -1,8 +1,8 @@
 
 // Class for the faceted search widget
 // SAdkins - I let Github Copilot write this class for me (with minor adjustments)
-class FacetWidget {
-    constructor({aggregations, filters, onFilterChange, facetContainer, selectedFacetsTags, filterHeaderExtraClasses}) {
+export class FacetWidget {
+    constructor({aggregations, filters, onFilterChange, facetContainer, selectedFacetsTags, filterHeaderExtraClasses, filterItemLimit}) {
         this.origAggregations = aggregations || []; // Original aggregations from the server
         this.aggregations = aggregations || {}; // Counts of all categories (filter)
         this.filters = filters || {};   // Selected categories and values
@@ -11,6 +11,11 @@ class FacetWidget {
         this.selectedFacetsTags = selectedFacetsTags || document.getElementById('selected-facets-tags');
         this.allSelectedTag = document.getElementById('selected-facets-all');
         this.filterHeaderExtraClasses = filterHeaderExtraClasses || 'has-background-primary-dark has-text-primary-light';
+
+        // Filters with more items than this are not rendered, since a list of thousands of
+        // checkboxes (e.g. a per-cell ID column) would break the UI
+        this.filterItemLimit = filterItemLimit ?? 50;
+
         this.init();
     }
 
@@ -62,13 +67,18 @@ class FacetWidget {
         }
         // Update counts shown
         for (const filter of this.aggregations) {
-            const escapedFilterName = CSS.escape(filter.name);
 
+            // Filters over the item limit were never rendered (see renderFilters), so there is nothing to update
+            if (filter.items.length > this.filterItemLimit) {
+                continue;
+            }
+
+            const escapedFilterName = CSS.escape(filter.name);
             for (const item of filter.items) {
                 const escapedItemName = CSS.escape(item.name);
-                // NOTE: For some reason, CSS.escape() does not escape properly for document.getElementById()
+                // NOTE: getElementById requires the literal name and querySelector needs escaping
                 const filterItemCount = document.querySelector(`#filter-item-${escapedFilterName}-${escapedItemName} .filter-item-count`);
-                const filterItem = document.querySelector(`#filter-item-${escapedFilterName}-${escapedItemName}`);
+                const filterItem = document.getElementById(`filter-item-${filter.name}-${item.name}`);
                 // show item
                 filterItemCount.classList.remove('is-hidden');
                 filterItem.classList.remove('is-hidden');
@@ -103,9 +113,19 @@ class FacetWidget {
     renderFilters() {
         const facetWidgetContent = document.getElementById('facet-widget-content');
         const filters = this.aggregations;
+        const omittedFilters = [];
         for (const filter of filters) {
+            // Skip filters with more items than this.filterItemLimit, so we don't render 1000s of items in the UI
+            if (filter.items.length > this.filterItemLimit) {
+                omittedFilters.push(`${filter.name} (${filter.items.length} values)`);
+                continue;
+            }
+
             const filterElement = this.createFilterElement(filter);
             facetWidgetContent.appendChild(filterElement);
+        }
+        if (omittedFilters.length > 0) {
+            console.info(`Facet filters not shown because they have more than ${this.filterItemLimit} values: ${omittedFilters.join(', ')}`);
         }
         // add event listeners for filter toggle
         const filterHeaders = document.querySelectorAll('.filter-header');
@@ -122,7 +142,7 @@ class FacetWidget {
         filterElement.id = `filter-${filter.name}`;
         filterElement.className = 'filter';
         filterElement.innerHTML = `
-            <div class="filter-header panel-heading is-clickable ${this.filterHeaderExtraClasses} }">
+            <div class="filter-header panel-heading is-clickable ${this.filterHeaderExtraClasses}">
                 <span class="filter-name has-text-weight-semibold">${filter.name}</span>
                 <span class="loader is-hidden is-inline-flex"></span>
                 <span class="filter-toggle-icon icon is-pulled-right">
@@ -291,7 +311,10 @@ class FacetWidget {
             this.selectedFacetsTags.appendChild(tag);
             return;
         }
-        selectedTag.remove();
+        // Unchecking an item that has no tag (nothing to remove) is a no-op
+        if (selectedTag !== null && !isChecked) {
+            selectedTag.remove();
+        }
 
     }
 

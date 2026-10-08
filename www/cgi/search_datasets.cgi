@@ -1,8 +1,8 @@
 #!/opt/bin/python3
 
 """
-Used by by dataset_explorer.html, this script focuses on searching datasets and
-returns a list of matches with extended attributes.
+Used by by dataset_explorer.html and index.html, this script focuses on searching
+datasets and returns a list of matches with extended attributes.
 
 There are a few main categories of search:
 
@@ -22,6 +22,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.userhistory import UserHistory
+from gear.utils.fulltext import to_boolean_mode_query
 
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 20
@@ -34,18 +35,33 @@ def main():
     cursor = cnx.get_cursor()
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    custom_list = form.getvalue('custom_list')
-    search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
-    organism_ids = form.getvalue('organism_ids')
-    dtypes = form.getvalue('dtypes')
-    date_added = form.getvalue('date_added')
-    ownership = form.getvalue('ownership')
-    layout_share_id = form.getvalue('layout_share_id')
-    include_public_membership = form.getvalue('include_public_collection_membership')
-    page = form.getvalue('page', "1")    # page starts at 1
-    limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
-    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
+    session_id = form.getfirst('session_id')
+    custom_list = form.getfirst('custom_list')
+    search_terms = form.getfirst('search_terms')
+    if search_terms:
+        search_terms = search_terms.split(' ')
+    else:
+        search_terms = []
+    organism_ids = form.getfirst('organism_ids')
+    dtypes = form.getfirst('dtypes')
+    if dtypes:
+        dtypes = dtypes.split(',')
+    else:
+        dtypes = []
+    date_added = form.getfirst('date_added')
+    ownership = form.getfirst('ownership')
+    layout_share_id = form.getfirst('layout_share_id')
+    include_public_membership = form.getfirst('include_public_collection_membership')
+    page = form.getfirst('page')    # page starts at 1
+    if page is None:
+        page = "1"
+    limit = form.getfirst('limit')
+    if limit is None:
+        limit = str(DEFAULT_MAX_RESULTS)
+    sort_by_str = form.getfirst('sort_by', '')
+    if sort_by_str is None:
+        sort_by_str = ''
+    sort_by = re.sub("[^[a-z]]", "", sort_by_str)
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 1, 'problem': '', 'datasets': []}
 
@@ -53,16 +69,25 @@ def main():
     include_public_membership = True if include_public_membership == 'true' else False
 
     if page and not page.isdigit():
-        raise ValueError("Page must be a number")
+        # The Content-Type header is only printed at the end, so raising here gave an HTTP 500
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Page must be a number"}))
+        return
 
     if page and int(page) < 1:
-        raise ValueError("Page must be greater than 0")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Page must be greater than 0"}))
+        return
 
     if limit and not limit.isdigit():
-        raise ValueError("Limit must be a number")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Limit must be a number"}))
+        return
 
     if limit and int(limit) < 1:
-        raise ValueError("Limit must be greater than 0")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Limit must be greater than 0"}))
+        return
 
     datasets_collection = geardb.DatasetCollection()
     shared_dataset_id_str = None
@@ -105,39 +130,54 @@ def main():
                 qry_params.append(user.id)
 
         else:
+            # When no ownership filter is specified, show only public datasets and user's own datasets
+            # Shared and group datasets should only appear when explicitly requested via ownership filter
             ownership_bits.append("d.is_public = 1")
             ownership_bits.append("d.owner_id = %s")
+
             if shared_dataset_id_str:
                 ownership_bits.append(f"d.id IN ({shared_dataset_id_str})")
 
-            ownership_bits.append("d.owner_id IN \
-                                    (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
-                                    (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
-                                    ")
-            qry_params.extend([user.id, user.id])
+            qry_params.append(user.id)
 
         wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
 
     else:
         wheres.append("d.is_public = 1")
 
-    if search_terms:
-        selects.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE) as rscore')
-        wheres.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE)')
+    # Punctuation is an operator in boolean mode (e.g. "-" excludes a word), so the user's text
+    #  is converted first; if nothing searchable is left, search as if no terms were given
+    fulltext_query = to_boolean_mode_query(' '.join(search_terms))
+
+    if fulltext_query:
+        selects.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST(%s IN BOOLEAN MODE) as rscore')
+        wheres.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST(%s IN BOOLEAN MODE)')
 
         # this is the only instance where a placeholder can be in the SELECT statement, so it will
         #  be the first qry param
-        qry_params.insert(0, ' '.join(search_terms))
-        qry_params.append(' '.join(search_terms))
+        qry_params.insert(0, fulltext_query)
+        qry_params.append(fulltext_query)
 
     if organism_ids:
         ## only numeric characters and the comma are allowed here
         organism_ids = re.sub("[^,0-9]", "", organism_ids)
         wheres.append("d.organism_id in ({0})".format(organism_ids))
 
+    SPATIAL_DTYPES = ["spatial", "spatial-h5ad"]
+
     if dtypes:
+        for item in dtypes:
+            # Fix to catch single-cell variations
+            if item == "single-cell-rnaseq":
+                dtypes.append("scRNA-seq")
+                break
+            # Add all spatial dtype variations (i.e. spatial-h5ad)
+            if item == "spatial":
+                dtypes.extend(SPATIAL_DTYPES)
+                break
+
         ## only alphanumeric characters and the dash are allowed here
-        dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
+        dtypes = [re.sub("[^,A-Za-z0-9-]", "", item) for item in dtypes]
         dtype_str = (', '.join('"' + item + '"' for item in dtypes))
         wheres.append(f"d.dtype in ({dtype_str})")
 
@@ -147,7 +187,7 @@ def main():
 
     if sort_by == 'relevance':
         # relevance can only be ordered if a search term was used
-        if search_terms:
+        if fulltext_query:
             orders_by.append(" rscore DESC")
         else:
             orders_by.append(" d.date_added DESC")
@@ -211,12 +251,19 @@ def main():
         ofh.write(f"QRY_params:\n{qry_params}\n")
         ofh.close()
 
-    cursor.execute(qry, qry_params)
+    try:
+        cursor.execute(qry, qry_params)
+    except Exception as e:
+        print(f"search_datasets.cgi: query failed: {e}", file=sys.stderr)
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "The search could not be run. Please try different search terms."}))
+        return
 
     # NOTE: Must keep as a list to preserve order
     matching_dataset_ids = list()
     # this index keeps track of the size and position of each dataset if a layout was passed
-    for row in cursor:
+    rows = cursor.fetchall() or []
+    for row in rows:
         matching_dataset_ids.append(row[0])
 
     result['datasets'] = datasets_collection.get_by_dataset_ids(matching_dataset_ids)
@@ -233,14 +280,17 @@ def main():
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.single.default.png".format(WEB_IMAGE_ROOT, dataset.id)
+
+        elif dataset.dtype == "gosling":
+            dataset.preview_image_url = "{0}/gosling.png".format(WEB_IMAGE_ROOT)
         else:
-            dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+            dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
         # Multi-gene preview image
         if os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.mg_preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
-            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
         # add if the user is the owner of the dataset
         dataset.is_owner = True if user and dataset.owner_id == user.id else False
@@ -254,14 +304,24 @@ def main():
         """
 
     # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
-    if search_terms:
+    if fulltext_query:
         qry_params.pop(0)
 
-    cursor.execute(qry_count, qry_params)
+    try:
+        cursor.execute(qry_count, qry_params)
+    except Exception as e:
+        print(f"search_datasets.cgi: count query failed: {e}", file=sys.stderr)
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'datasets': [], 'success': 0, 'problem': "The search could not be run. Please try different search terms."}))
+        return
 
     # compile pagination information
     result["pagination"] = {}
-    result["pagination"]['total_results'] = cursor.fetchone()[0]
+    row = cursor.fetchone()
+    if row:
+        result["pagination"]['total_results'] = row[0]
+    else:
+        result["pagination"]['total_results'] = 0
     result["pagination"]['current_page'] = int(page)
     result["pagination"]['limit'] = int(limit)
     result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
@@ -283,6 +343,9 @@ def main():
         )
 
 def get_shared_dataset_id_string(user, cursor):
+    """
+    Return dataset IDs shared with the user as a quoted, comma-separated SQL list string.
+    """
     qry = "SELECT dataset_id FROM dataset_shares WHERE is_allowed = 1 AND user_id = %s"
     cursor.execute(qry, [user.id,])
 

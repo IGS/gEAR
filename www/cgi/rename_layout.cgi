@@ -4,7 +4,7 @@
 Renames a layout.
 
 Requires:
-1) Session id - which contains user_id
+1) Session id - which contains user_id (the user must own the layout)
 2) Layout share ID
 3) Layout name to be added
 """
@@ -22,9 +22,9 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_share_id = form.getvalue('layout_share_id')
-    layout_name = form.getvalue('layout_name')
+    session_id = form.getfirst('session_id')
+    layout_share_id = form.getfirst('layout_share_id')
+    layout_name = (form.getfirst('layout_name') or '').strip()
 
     user = geardb.get_user_from_session_id(session_id)
 
@@ -43,6 +43,23 @@ def main():
         print(json.dumps(result))
         return;
 
+    # Only the owner may rename a collection
+    if layout.user_id != user.id:
+        result = {'error': "You can only rename dataset collections you own."}
+        print(json.dumps(result))
+        return
+
+    if not layout_name:
+        result = {'error': "Dataset collection name cannot be empty."}
+        print(json.dumps(result))
+        return
+
+    # layout name has a limit of 255 characters, per the schema SQL file
+    # But we want to keep it shorter for practical purposes
+    if len(layout_name) > 110:
+        result = {'error': "Dataset collection name is too long. It must be 110 characters or less."}
+        print(json.dumps(result))
+        return
 
     layout.label = layout_name
 

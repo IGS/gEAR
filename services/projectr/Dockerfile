@@ -1,44 +1,44 @@
+# check=skip=JSONArgsRecommended
 
-# Use the official lightweight Python image.
-# https://hub.docker.com/_/python
-FROM python:3.10
+FROM python:3.14-slim
 
-# Allow statements and log messages to immediately appear in the Knative logs
+# Immediately flush logs
 ENV PYTHONUNBUFFERED=True
 
-RUN apt-get -qq update \
-    && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
-    # Required for R
-	gfortran \
-    # Required for rpy2
-    r-cran-rjava \
-    # Required for R-package devtools (which is required for SJD)
-    libharfbuzz-dev \
-    libfribidi-dev \
-    libfreetype6-dev \
-    libgit2-dev \
-    libpng-dev \
-    libtiff5-dev \
-    libjpeg-dev \
-    # Cleanup
-    && apt -qq clean autoclean \
-    && apt -qq autoremove -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libgomp1 \
+    libcurl4 \
+    libxml2 \
+    libdeflate0 \
+    libtirpc3 \
+    liblapack3 \
+    libblas3 \
+    libpng16-16 \
     && rm -rf /var/lib/apt/lists/*
 
-# ProjectR install.  Must be done before rpy2 is installed
-# NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
-COPY ./install_bioc.sh /tmp/
-COPY ./install_bioc.R /tmp/
-COPY ./install_packages.R /tmp/
-WORKDIR /tmp
-RUN /tmp/install_bioc.sh
-RUN Rscript --vanilla install_packages.R || exit 1
+# Copy pre-built artifacts from r-builder stage
+COPY --from=adkinsrs/gear-r-base:latest /usr/lib/x86_64-linux-gnu/libicuuc.so.70 /usr/lib/x86_64-linux-gnu/
+COPY --from=adkinsrs/gear-r-base:latest /usr/lib/x86_64-linux-gnu/libicui18n.so.70 /usr/lib/x86_64-linux-gnu/
+COPY --from=adkinsrs/gear-r-base:latest /usr/lib/x86_64-linux-gnu/libicudata.so.70 /usr/lib/x86_64-linux-gnu/
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/lib/R /usr/local/lib/R
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/R /usr/local/bin/R
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/Rscript /usr/local/bin/Rscript
+
+# LD_LIBRARY_PATH needs R library path for rpy2 compatibility
+RUN ldconfig
+ENV PATH="/usr/local/bin:${PATH}"
+ENV R_HOME="/usr/local/lib/R"
+ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib"
+
+# Force GCC 11 to use a newer C standard to understand R 4.x headers
+ENV CFLAGS="-std=gnu2x"
 
 # Install production dependencies.
 COPY ./requirements.txt /tmp/
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
-
-ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
+RUN pip install --no-cache-dir -r /tmp/requirements.txt \
+  && rm -rf ~/.cache/pip
+RUN find /opt/Python-${PYTHON_FULL_VERSION} -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Copy local code to the container image.
 ENV APP_HOME=/app
@@ -53,4 +53,4 @@ COPY . ./
 
 # SAdkins - "2 * CPU + 1" formula to set Gunicorn workers and threads together
 # https://medium.com/building-the-system/gunicorn-3-means-of-concurrency-efbb547674b7
-CMD exec gunicorn --bind :$PORT --workers 3 --threads 3 --timeout 0 main:app
+CMD exec python -m gunicorn --bind :${PORT:-8080} --workers 3 --threads 3 --timeout 0 main:app

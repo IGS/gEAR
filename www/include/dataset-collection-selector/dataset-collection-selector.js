@@ -1,15 +1,47 @@
 "use strict";
 
-let dataset_collection_data = null;
-let dataset_collection_label_index = {};
+export const datasetCollectionState = {
+    "data": null,
+    "labelIndex": {},
+    "selectedShareId": null,
+    "selectedLabel": null
+}
 
-let selected_dc_share_id = null;
-let selected_dc_label = null;
+let apiCallsMixin = null;
+let currentUser = null;
 
 // This many characters will be included and then three dots will be appended
-const DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT = 35;
+const DatasetCollectionSelectorLabelMaxLength = 35;
 
-document.addEventListener('DOMContentLoaded', () => {
+/**
+ * Shows (or hides, when searchTerm is null) the "no matches" message under the search box.
+ *
+ * @param {string|null} searchTerm - The search that found nothing, or null to hide the message.
+ */
+const showSearchNotFound = (searchTerm) => {
+    const message = document.getElementById('dropdown-dc-search-not-found');
+    message.textContent = searchTerm === null ? '' : `No dataset collections match "${searchTerm}".`;
+    message.classList.toggle('is-hidden', searchTerm === null);
+}
+
+// SAdkins - If I leave these global, then they are registered twice (once here and once in the entrypoint JS) leading to double event handling
+export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
+
+    // Importing these from common.js causes them to be re-initialized and break downstream
+    if (!apiCallsMixinObj) {
+        console.error("apiCallsMixin is not set.  Cannot register event listeners.");
+        return;
+    }
+
+    apiCallsMixin = apiCallsMixinObj;
+
+    if (!user) {
+        console.error("currentUser is not set.  Cannot register event listeners.");
+        return;
+    }
+
+    currentUser = user;
+
     // Add event listener to dropdown trigger
     document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
         const item = event.currentTarget;
@@ -43,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add a click listener to the dancel button
     document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
         document.querySelector('#dropdown-dc-search-input').value = '';
+        showSearchNotFound(null);
         document.querySelector('#dropdown-content-dc').innerHTML = '';
         document.querySelector('#dropdown-dc').classList.remove('is-active');
     });
@@ -50,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Monitor key strokes after user types more than 2 characters in the search box
     document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
+        showSearchNotFound(null);
 
         if (search_term.length === 0) {
             document.querySelector('#dropdown-content-dc').innerHTML = '';
@@ -67,20 +101,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const dc_item_template = document.querySelector('#tmpl-dc');
 
-        // build a label index for the dataset collections
-        for (const category in dataset_collection_data) {
-            // This data structure has mixed types - we only care about the arrayed categories
-            if (!Array.isArray(dataset_collection_data[category])) {continue}
+        // A collection can be in several categories at once (e.g. site-curated and public, or
+        //  your own public one), so list each share ID once. Different collections can still
+        //  share a label, and those are all listed.
+        const listedShareIds = new Set();
 
-            for (const entry of dataset_collection_data[category]) {
+        for (const category in datasetCollectionState.data) {
+            // This data structure has mixed types - we only care about the arrayed layout categories
+            if (!category.endsWith('_layouts') || !Array.isArray(datasetCollectionState.data[category])) {continue}
+
+            for (const entry of datasetCollectionState.data[category]) {
+                if (listedShareIds.has(entry.share_id)) {continue}
+
                 if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
+                    listedShareIds.add(entry.share_id);
                     const row = dc_item_template.content.cloneNode(true);
                     createDatasetCollectionListItem(row, entry);
                 }
             }
         }
+
+        if (listedShareIds.size === 0) {
+            showSearchNotFound(search_term);
+        }
     });
-});
+}
 
 /**
  * Fetches dataset collections.
@@ -89,27 +134,31 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>} - A promise that resolves when the dataset collections are fetched.
  * @throws {Error} - If an error occurs during the fetch.
  */
-const fetchDatasetCollections = async (shareId=null) => {
-    const layoutShareId = shareId || selected_dc_share_id || null;
+export const fetchDatasetCollections = async (shareId=null) => {
+    const layoutShareId = shareId || datasetCollectionState.selectedShareId || null;
 
     try {
-        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false, layoutShareId});
+        if (!apiCallsMixin) {
+            throw new Error("apiCallsMixin is not set.  Cannot fetch dataset collections.");
+        }
 
-        document.querySelector('#dropdown-dc').classList.remove('is-loading');
-        document.querySelector('#dropdown-dc').classList.remove('is-disabled');
+        datasetCollectionState.data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false, layoutShareId});
+
+        document.getElementById('dropdown-dc').classList.remove('is-loading');
+        document.getElementById('dropdown-dc').classList.remove('is-disabled');
 
         // build a label index for the dataset collections
-        for (const category in dataset_collection_data) {
+        for (const category in datasetCollectionState.data) {
             // This data structure has mixed types - we only care about the arrayed categories
-            if (!Array.isArray(dataset_collection_data[category])) {continue}
+            if (!Array.isArray(datasetCollectionState.data[category])) {continue}
 
-            for (const entry of dataset_collection_data[category]) {
-                dataset_collection_label_index[entry.share_id] = entry.label;
+            for (const entry of datasetCollectionState.data[category]) {
+                datasetCollectionState.labelIndex[entry.share_id] = entry.label;
             }
         }
 
-        if (dataset_collection_data.selected) {
-            selectDatasetCollection(dataset_collection_data.selected);
+        if (datasetCollectionState.data.selected) {
+            selectDatasetCollection(datasetCollectionState.data.selected);
         }
 
     } catch (error) {
@@ -122,13 +171,13 @@ const fetchDatasetCollections = async (shareId=null) => {
  *
  * @param {string} share_id - The share ID of the dataset collection to be selected.
  */
-const selectDatasetCollection = (share_id) => {
+export const selectDatasetCollection = (share_id) => {
     // reads the DC share_id passed and handles any UI and data updates to make
     //   it preselected
 
     const defaultLabel = "Choose a Dataset Collection";
-    selected_dc_share_id = share_id || null;
-    selected_dc_label = dataset_collection_label_index[selected_dc_share_id] || defaultLabel;
+    datasetCollectionState.selectedShareId = share_id || null;
+    datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[datasetCollectionState.selectedShareId] || defaultLabel;
 
     updateDatasetCollectionSelectorLabel();
 }
@@ -138,10 +187,11 @@ const selectDatasetCollection = (share_id) => {
  *
  * @param {string} category - The category to set as active. Possible values are 'domain', 'user', 'recent', 'group', and 'shared'.
  */
-const setActiveDCCategory = (category) => {
+export const setActiveDCCategory = (category) => {
     // clear the dataset collection search input and content
     document.querySelector('#dropdown-content-dc').innerHTML = '';
     document.querySelector('#dropdown-dc-search-input').value = '';
+    showSearchNotFound(null);
 
     const dc_item_template = document.querySelector('#tmpl-dc');
     let data = null;
@@ -152,20 +202,20 @@ const setActiveDCCategory = (category) => {
 
     switch (category) {
         case 'domain':
-            data = dataset_collection_data.domain_layouts;
+            data = datasetCollectionState.data.domain_layouts;
             break;
         case 'user':
-            data = dataset_collection_data.user_layouts;
+            data = datasetCollectionState.data.user_layouts;
             break;
         case 'recent':
-            //data = dataset_collection_data.recent_layouts;
+            //data = datasetCollectionState.data.recent_layouts;
             recentChosen = true;
             break;
         case 'group':
-            data = dataset_collection_data.group_layouts;
+            data = datasetCollectionState.data.group_layouts;
             break;
         case 'shared':
-            data = dataset_collection_data.shared_layouts;
+            data = datasetCollectionState.data.shared_layouts;
             break;
     }
 
@@ -193,15 +243,15 @@ const setActiveDCCategory = (category) => {
 }
 
 /**
- * Updates the label of the dataset collection selector based on the selected_dc_label.
- * If the selected_dc_label exceeds the length limit, it will be truncated and displayed with ellipsis.
+ * Updates the label of the dataset collection selector based on the datasetCollectionState.selectedLabel.
+ * If the datasetCollectionState.selectedLabel exceeds the length limit, it will be truncated and displayed with ellipsis.
  */
 const updateDatasetCollectionSelectorLabel = () => {
-    if (selected_dc_label.length > DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) {
-        const truncated_label = `${selected_dc_label.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT)}...`;
-        document.querySelector('#dropdown-dc-selector-label').innerHTML = truncated_label;
+    if (datasetCollectionState.selectedLabel.length > DatasetCollectionSelectorLabelMaxLength) {
+        const truncated_label = `${datasetCollectionState.selectedLabel.substring(0, DatasetCollectionSelectorLabelMaxLength)}...`;
+        document.querySelector('#dropdown-dc-selector-label').textContent = truncated_label;
     } else {
-        document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
+        document.querySelector('#dropdown-dc-selector-label').textContent = datasetCollectionState.selectedLabel;
     }
 }
 
@@ -223,10 +273,13 @@ const createDatasetCollectionListItem = (row, entry) => {
         tag_element.remove();
     }
 
+    // Keep a reference to this row's element (a lookup by share ID after appending would find the
+    //  first row with that ID, not necessarily this one)
+    const thisItem = row.querySelector('.ul-li');
+
     document.querySelector('#dropdown-content-dc').appendChild(row);
 
     // Create event listener to select the dataset collection
-    const thisItem = document.querySelector(`.dropdown-dc-item[data-share-id="${entry.share_id}"]`);
     thisItem.addEventListener('click', (event) => {
 
         // uncheck all the existing rows
@@ -237,10 +290,10 @@ const createDatasetCollectionListItem = (row, entry) => {
 
         const row_div = event.target.closest('div');
         row_div.classList.toggle('is-selected');
-        selected_dc_share_id = row_div.dataset.shareId;
-        selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
-        CURRENT_USER.saveLayoutShareId(selected_dc_share_id);
-        console.debug("Selected DC: ", selected_dc_share_id, selected_dc_label);
+        datasetCollectionState.selectedShareId = row_div.dataset.shareId;
+        datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[datasetCollectionState.selectedShareId];
+        currentUser.saveLayoutShareId(datasetCollectionState.selectedShareId);
+        console.debug("Selected DC: ", datasetCollectionState.selectedShareId, datasetCollectionState.selectedLabel);
 
         updateDatasetCollectionSelectorLabel();
 

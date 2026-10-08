@@ -37,8 +37,8 @@ def main():
     config.read('../../gear.ini')
 
     form = cgi.FieldStorage()
-    dataset_share_id = form.getvalue('dataset_share_id')
-    layout_share_id = form.getvalue('layout_share_id')
+    dataset_share_id = form.getfirst('dataset_share_id')
+    layout_share_id = form.getfirst('layout_share_id')
     dataset = None
     owner = None
 
@@ -59,10 +59,14 @@ def main():
             owner = geardb.get_user_by_id(layout.user_id)
             layout.get_members()
 
-            # just get the first dataset in the layout and use that one for search
-            for layout_display in layout.members:
-                dataset = geardb.get_dataset_by_id(id=layout_display.dataset_id)
-                break
+            if not layout.members:
+                # If the layout has no members, we can't get a dataset from it.
+                dataset = None
+            else:
+                # just get the first dataset in the layout and use that one for search
+                for layout_display in layout.members:
+                    dataset = geardb.get_dataset_by_id(d_id=layout_display.dataset_id)
+                    break
 
     if owner:
         result['owner_name'] = owner.user_name

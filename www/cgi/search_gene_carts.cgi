@@ -15,6 +15,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.userhistory import UserHistory
+from gear.utils.fulltext import to_boolean_mode_query
 
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 20
@@ -25,28 +26,48 @@ def main():
     cursor = cnx.get_cursor()
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
-    organism_ids = form.getvalue('organism_ids')
-    date_added = form.getvalue('date_added')
-    ownership = form.getvalue('ownership')
-    page = form.getvalue('page', "1")    # page starts at 1
-    limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
-    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
+    session_id = form.getfirst('session_id')
+    search_terms = form.getfirst('search_terms')
+    if search_terms:
+        search_terms = search_terms.split(' ')
+    else:
+        search_terms = []
+    organism_ids = form.getfirst('organism_ids')
+    date_added = form.getfirst('date_added')
+    ownership = form.getfirst('ownership')
+    page = form.getfirst('page')    # page starts at 1
+    if page is None:
+        page = "1"
+    limit = form.getfirst('limit')
+    if limit is None:
+        limit = str(DEFAULT_MAX_RESULTS)
+    sort_by_str = form.getfirst('sort_by')
+    if sort_by_str is None:
+        sort_by_str = ''
+    sort_by = re.sub("[^[a-z]]", "", sort_by_str)
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 0, 'problem': '', 'gene_carts': []}
 
     if page and not page.isdigit():
-        raise ValueError("Page must be a number")
+        # The Content-Type header is only printed at the end, so raising here gave an HTTP 500
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Page must be a number"}))
+        return
 
     if page and int(page) < 1:
-        raise ValueError("Page must be greater than 0")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Page must be greater than 0"}))
+        return
 
     if limit and not limit.isdigit():
-        raise ValueError("Limit must be a number")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Limit must be a number"}))
+        return
 
     if limit and int(limit) < 1:
-        raise ValueError("Limit must be greater than 0")
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "Limit must be greater than 0"}))
+        return
 
 
     gene_carts = list()
@@ -57,14 +78,14 @@ def main():
                "gc.user_id"]
     froms = ["gene_cart gc", "guser g", "organism o"]
     wheres = [
-        "gc.user_id = g.id ",
-        "AND gc.organism_id = o.id "
+        "gc.user_id = g.id",
+        "gc.organism_id = o.id"
     ]
     orders_by = []
 
     if not user:
         # user not logged in, they can only see public datasets
-        wheres.append("AND gc.is_public = 1")
+        wheres.append("gc.is_public = 1")
     else:
         # if any ownership filters are defined, collect those
         if ownership:
@@ -90,11 +111,11 @@ def main():
                         ")
                 qry_params.append(user.id)
 
-            wheres.append("AND ({0})".format(' OR '.join(ownership_bits)))
+            wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
 
         # otherwise, give the usual self and public.
         else:
-            wheres.append("AND (gc.is_public = 1 \
+            wheres.append("(gc.is_public = 1 \
                                 OR gc.user_id = %s \
                                 OR (gc.user_id IN \
                                     (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
@@ -103,49 +124,49 @@ def main():
                                 )")
             qry_params.extend([user.id, user.id])
 
-    if search_terms:
-        selects.append(' MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
-        wheres.append(' AND MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE)')
+    # Punctuation is an operator in boolean mode (e.g. "-" excludes a word), so the user's text
+    #  is converted first; if nothing searchable is left, search as if no terms were given
+    fulltext_query = to_boolean_mode_query(' '.join(search_terms))
+
+    if fulltext_query:
+        selects.append('MATCH(gc.label, gc.ldesc) AGAINST(%s IN BOOLEAN MODE) as rscore')
+        wheres.append('MATCH(gc.label, gc.ldesc) AGAINST(%s IN BOOLEAN MODE)')
 
         # this is the only instance where a placeholder can be in the SELECT statement, so it will
         #  be the first qry param
-        qry_params.insert(0, ' '.join(search_terms))
-        qry_params.append(' '.join(search_terms))
+        qry_params.insert(0, fulltext_query)
+        qry_params.append(fulltext_query)
 
     if organism_ids:
         ## only numeric characters and the comma are allowed here
         organism_ids = re.sub("[^,0-9]", "", organism_ids)
-        wheres.append("AND gc.organism_id in ({0})".format(organism_ids))
+        wheres.append(f"gc.organism_id in ({organism_ids})")
 
     if date_added:
         date_added = re.sub("[^a-z]", "", date_added)
-        wheres.append("AND gc.date_added BETWEEN date_sub(now(), INTERVAL 1 {0}) AND now()".format(date_added))
+        wheres.append(f"gc.date_added BETWEEN date_sub(now(), INTERVAL 1 {date_added}) AND now()")
 
     if sort_by == 'relevance':
         # relevance can only be ordered if a search term was used
-        if search_terms:
-            orders_by.append(" rscore DESC")
+        if fulltext_query:
+            orders_by.append("rscore DESC")
         else:
-            orders_by.append(" gc.date_added DESC")
+            orders_by.append("gc.date_added DESC")
     elif sort_by == 'title':
-        orders_by.append(" gc.label")
+        orders_by.append("gc.label")
     elif sort_by == 'owner':
-        orders_by.append(" g.user_name")
+        orders_by.append("g.user_name")
     else:
-        orders_by.append(" gc.date_added DESC")
+        orders_by.append("gc.date_added DESC")
 
     # build query
-    qry = """
-    SELECT {0}
-    FROM {1}
-    WHERE {2}
-    ORDER BY {3}
-    """.format(
-        ", ".join(selects),
-        ", ".join(froms),
-        " ".join(wheres),
-        " ".join(orders_by)
-    )
+    qry = f"""
+    SELECT {', '.join(selects)}
+    FROM {', '.join(froms)}
+    WHERE {' AND '.join(wheres)}
+    ORDER BY {', '.join(orders_by)}
+    """
+
 
     # if a limit is defined, add it to the query
     if int(limit):
@@ -162,41 +183,79 @@ def main():
         ofh.write("QRY_params:\n{0}\n".format(qry_params))
         ofh.close()
 
-    cursor.execute(qry, qry_params)
+    #print(qry, file=sys.stderr)
+    #print(qry_params, file=sys.stderr)
 
-    for row in cursor:
-        gc = geardb.GeneCart(id=row[0], gctype=row[2], label=row[3], ldesc=row[4], share_id=row[5],
-                             is_public=row[6], date_added=row[7], organism_id=row[10], user_id=row[11])
-        gc.user_name = row[1]
-        gc.organism = "{0} {1}".format(row[8], row[9])
-        gc.is_owner = True if user and gc.user_id == user.id else False
-        gc.get_genes()
-        gene_carts.append(gc)   # this appends as a JSON dumped string
+    try:
+        cursor.execute(qry, qry_params)
+    except Exception as e:
+        print(f"search_gene_carts.cgi: query failed: {e}", file=sys.stderr)
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**result, 'success': 0, 'problem': "The search could not be run. Please try different search terms."}))
+        return
+    rows = cursor.fetchall()
 
-    # Get count of total results
-    qry_count = """
-        SELECT COUNT(*)
-        FROM {0}
-        WHERE {1}
-        """.format(
-            ", ".join(froms),
-            " ".join(wheres)
-        )
+    result["pagination"] = {
+        "total_results": 0,
+        "current_page": int(page),
+        "limit": int(limit),
+        "total_pages": 0,
+        "next_page": None,
+        "prev_page": None,
+    }
 
-    # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
-    if search_terms:
-        qry_params.pop(0)
+    if rows:
 
-    cursor.execute(qry_count, qry_params)
+        for row in rows:
+            gc = geardb.GeneCart(id=row[0], gctype=row[2], label=row[3], ldesc=row[4], share_id=row[5],
+                                is_public=row[6], date_added=row[7], organism_id=row[10], user_id=row[11])
+            gc.user_name = row[1]
+            gc.organism = "{0} {1}".format(row[8], row[9])
+            gc.is_owner = True if user and gc.user_id == user.id else False
 
-    # compile pagination information
-    result["pagination"] = {}
-    result["pagination"]['total_results'] = cursor.fetchone()[0]
-    result["pagination"]['current_page'] = int(page)
-    result["pagination"]['limit'] = int(limit)
-    result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
-    result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
-    result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
+            # Add number of genes to the collection
+            if gc.gctype == "unweighted-list":
+                gc.get_genes()
+            elif gc.gctype == "weighted-list":
+                gc.get_gene_counts()
+            else:
+                # failsafe
+                gc.num_genes = 0
+
+            gene_carts.append(gc)   # this appends as a JSON dumped string
+
+        # Get count of total results
+        qry_count = """
+            SELECT COUNT(*)
+            FROM {0}
+            WHERE {1}
+            """.format(
+                ", ".join(froms),
+                " AND ".join(wheres)
+            )
+
+        # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
+        if fulltext_query:
+            qry_params.pop(0)
+
+        try:
+            cursor.execute(qry_count, qry_params)
+        except Exception as e:
+            print(f"search_gene_carts.cgi: count query failed: {e}", file=sys.stderr)
+            print('Content-Type: application/json\n\n')
+            print(json.dumps({**result, 'success': 0, 'problem': "The search could not be run. Please try different search terms."}))
+            return
+
+        row = cursor.fetchone()
+        total_results = 0
+        if row:
+            total_results = row[0]
+
+        # compile pagination information
+        result["pagination"]['total_results'] = total_results
+        result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
+        result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
+        result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
 
     result['gene_carts'] = gene_carts
     result['success'] = 1

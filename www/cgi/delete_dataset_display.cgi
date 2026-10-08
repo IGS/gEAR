@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+delete_dataset_display.cgi - Delete a saved dataset display owned by the user.
+
+Input: id (display ID), session_id (required; must match the display owner).
+Output: JSON {success: true/false}. A missing display is treated as success.
+"""
+
 import cgi, json
 import os, sys
 
@@ -12,8 +19,8 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    display_id = form.getvalue('id')
-    session_id = form.getvalue('session_id')
+    display_id = form.getfirst('id')
+    session_id = form.getfirst('session_id')
 
     # Exit if no display_id or session_id
     if not display_id or not session_id:
@@ -28,6 +35,15 @@ def main():
     cursor = cnx.get_cursor()
 
     display = geardb.get_display_by_id(display_id)
+
+    if not display:
+        # If display not found, return success as True
+        result = dict(success=True)
+        cursor.close()
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     user = geardb.get_user_from_session_id(session_id=session_id)
 

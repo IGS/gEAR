@@ -1,27 +1,70 @@
 # gEAR Portal
 
+[![UMgEAR](https://img.shields.io/website?url=https%3A%2F%2Fumgear.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%23544A8E&labelColor=%23CCCCCC&style=for-the-badge&label=UMgEAR)](https://umgear.org)
+[![NeMO Analytics](https://img.shields.io/website?url=https%3A%2F%2Fnemoanalytics.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%232A5A60&labelColor=%23CCCCCC&style=for-the-badge&label=NeMO%20Analytics)](https://nemoanalytics.org)
+
+[![SENgEAR](https://img.shields.io/website?url=https%3A%2F%2Fsenescence.umgear.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%23505250&labelColor=%23CCCCCC&style=for-the-badge&label=SENgEAR)](https://senescence.umgear.org)
+[![Cancer gEAR](https://img.shields.io/website?url=https%3A%2F%2Fcancer.umgear.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%236f94cd&labelColor=%23CCCCCC&style=for-the-badge&label=cancer%20gEAR)](https://cancer.umgear.org)
+[![Inflammation gEAR](https://img.shields.io/website?url=https%3A%2F%2Finflammation.umgear.org&up_message=visit&down_message=offline&down_color=%23E05D44&up_color=%23780000&labelColor=%23CCCCCC&style=for-the-badge&label=inflammation%20gEAR)](https://inflammation.umgear.org)
+
 **Description**:  The gEAR Portal was created as a data archive and viewer for gene expression data including microarrays, bulk RNA-Seq, single-cell RNA-Seq and more.  Initially created for the [hearing research community](https://umgear.org), instances of the gEAR have been cloned for other communities such as [brain research](https://nemoanalytics.org).
 
 Other things to include:
 
-  - **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, D3 and Plot.ly for data visualization and has embedded [Epiviz](https://epiviz.github.io/) support to display epigenetic data.
-  - **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
-  - **Production / Demo instances**
-	  - [UMgEAR](https://umgear.org) - Portal for hearing research
-	  - [NeMO Analytics](nemoanalytics.org) - Portal for brain research
+- **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, Plotly and Scanpy for data visualization and has embedded [Gosling](https://gosling-lang.github.io/) support to display epigenetic data.
+- **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
+- **Production / Demo instances**
+  - [UMgEAR](https://umgear.org) - Portal for hearing research
+  - [NeMO Analytics](https://nemoanalytics.org) - Portal for brain research
+  - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
+  - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
+  - [Inflammation gEAR](https://inflammation.umgear.org) - Portal for inflammation research
 
 **Screenshot**: Example of home page after searching for a gene:
 
- ![](https://github.com/IGS/gEAR/blob/269f8f971301c15b69c50f3d11ad3441b2d24c78/docs/gear_overview.png)
-
+ ![Overview of gEAR](https://github.com/IGS/gEAR/blob/269f8f971301c15b69c50f3d11ad3441b2d24c78/docs/gear_overview.png)
 
 ## Installation
 
-Setting up your own portal is admittedly a bit of work.  There are a lot of components to the portal and running on a server with at least 16 cores and 100GB+ of RAM is recommended.  The process is documented in the [setup.new_server.notes.md](docs/setup.new_server.notes.md) document.
+Setting up your own portal is admittedly a bit of work.  There are a lot of components to the portal and running on a server with at least 16 cores and 100GB+ of RAM is recommended.  The process is documented in the [Developer Documentation](docs/developer/README.md).
+
+For detailed setup instructions, see:
+
+- [Server Setup Guide](docs/developer/setup/README.md) - Complete installation guide
 
 ## Usage
 
-To learn how to use the software you can go to any existing portal and click the documentation link at the top, which will take you to a page like [this one](https://umgear.org/manual.html).  It has walk-through slides and YouTube videos for most topics.
+To learn how to use the software, see the user documentation in the [gEAR wiki](https://github.com/IGS/gEAR/wiki) (source in [docs/wiki](docs/wiki/gEARWiki.md)), which is also linked from the Help item in every portal's navigation panel. Video guides for the main tools are on the portal's home page (My Workspace).
+
+## Developer Documentation
+
+For developers and team members working on gEAR:
+
+- **[Developer Guide](docs/developer/README.md)** - Main developer documentation
+  - Architecture overview
+  - Development workflow
+  - Code style guidelines
+  - Common tasks
+
+- **[Setup Guides](docs/developer/setup/README.md)** - Server installation and configuration
+  - New server setup
+  - Component-specific guides (MySQL, Apache, Python, R, RabbitMQ)
+  - Docker development environment
+
+- **[Utility Scripts](docs/misc/scripts/README.md)** - Documentation for the 121 scripts in `/bin`
+  - Data conversion and format scripts
+  - H5AD manipulation tools
+  - Database loading scripts
+  - Validation and testing utilities
+  - Dataset management tools
+
+- **[Microservices](docs/developer/services/README.md)** - Service documentation
+  - ProjectR service (matrix projection)
+  - Spatial panel service
+  - RabbitMQ consumers (dataset upload, spatial upload, Gosling track upload, ProjectR)
+  - Plugins
+
+- **[Documentation index](docs/README.md)** - Map of all documentation (developer, analyst, wiki, misc)
 
 ## Known issues
 
@@ -29,21 +72,17 @@ This repository was hosted private for many years and we have just recently tran
 
 ## Getting help
 
-There are a few ways to get help with a gEAR Portal.  
+There are a few ways to get help with a gEAR Portal.
 
- - Check the provided [documentation](https://umgear.org/manual.html).
- - Use the contact form at the top of any existing portal.  [Here](https://umgear.org/contact.html), for example.
- - Submit a ticket on the [issue tracker](https://github.com/IGS/gEAR/issues)
-
+- Check the provided [documentation](https://github.com/IGS/gEAR/wiki).
+- Submit a ticket on the [issue tracker](https://github.com/IGS/gEAR/issues)
 
 ## Getting involved
 
 If you'd like to contribute to the gEAR in any form (documentation, bug fixes, new features, etc.) just fork the project and create a pull request. Within the project, we follow this [branching model](https://nvie.com/posts/a-successful-git-branching-model/).
 
-
-----
-
 ## Open source licensing info
+
 The gEAR is distributed under the GNU AFFERO GENERAL PUBLIC LICENSE V3   For more info, see the [LICENSE](LICENSE) document.
 
 [![DOI](https://zenodo.org/badge/289995740.svg)](https://zenodo.org/badge/latestdoi/289995740)

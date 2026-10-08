@@ -16,6 +16,9 @@ html, body {
     box-sizing: border-box; /* include padding and border in element's total width */
     min-width: 0; /* allow flex items to shrink */
 }
+#main-layout-c {
+    margin-bottom: 0;
+}
 
 
 /* Get rid of underlines on the tooltip elements */
@@ -40,14 +43,20 @@ html, body {
 
 
 /* -------------------- */
+/* -= Footer section =- */
+
+div.footer-divider-bar {
+    height: 3em;
+    margin: 0;
+}
+
+
+
+/* -------------------- */
 /* -= Header section =- */
 
 #header-bar {
     border-bottom: 1px solid rgb(200, 200, 200);
-}
-
-#logo-c:hover {
-    cursor: pointer;
 }
 
 #navbar-login input {
@@ -56,6 +65,10 @@ html, body {
 
 .navbar-dropdown {
     width: max-content;
+}
+
+#page-header-label {
+    font-weight: bold;
 }
 
 /* -------------------- */
@@ -84,6 +97,17 @@ html, body {
     transition: opacity 0.3s ease, max-height 0.3s ease;
 }
 
+#logo-c:hover {
+    cursor: pointer;
+}
+
+#logo-c hr {
+    border: none;
+    height: 1px;
+    /* Set the hr color */
+    background-color: #333;  /* Modern Browsers */
+}
+
 .menu-list a {
     border-radius: 10px;
     padding: 0.25rem 0.5rem;
@@ -97,6 +121,11 @@ html, body {
 
 p.menu-label {
     min-height: 1.5rem;
+}
+
+span.menu-label-text {
+    font-size: 120%;
+    font-weight: bold;
 }
 
 /* CSS class for the show animation */
@@ -128,6 +157,7 @@ p.menu-label {
 .select select[disabled], [disabled].input {
     border-color: grey;
     background-color: lightgrey;
+    color: #333333;
 }
 
 .select.is-success select, .input.is-success, .textarea.is-success{
@@ -193,3 +223,31 @@ div#beta-site-modal h3 {
     pointer-events: none;
 }
 
+
+/* -------------------------------- */
+/* -= Accessibility (WCAG 2.1) =- */
+
+/* Skip to main content link - visually hidden until focused */
+.skip-to-main-content {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 9999;
+}
+.skip-to-main-content:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #fff;
+    color: #362e5c;
+    font-weight: bold;
+    text-decoration: underline;
+    border: 2px solid #362e5c;
+    outline: none;
+}

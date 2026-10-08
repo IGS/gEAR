@@ -1,0 +1,185 @@
+# Python setup instructions
+
+## Overview
+
+These are instructions for setting up the Python environment, tested on Ubuntu 22.04.  Why not virtualenv or any
+other isolated python environment?  You could, but for a committed
+webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
+fixed paths have worked fine for decades.
+
+```bash
+    sudo apt -qq update
+    sudo DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+        apache2-dev \
+        libffi-dev \
+        libsqlite3-dev \
+        libreadline-dev \
+        libncursesw5-dev \
+        libssl-dev \
+        tk-dev \
+        libgdbm-dev \
+        libc6-dev \
+        liblzma-dev \
+        libbz2-dev \
+        zlib1g-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        libblosc-dev \
+        libhdf5-dev \
+        hdf5-helpers \
+        hdf5-tools \
+        libblas-dev \
+        liblapack-dev \
+        libcairo2-dev \
+        libxml2-dev \
+        libwebp-dev \
+        libpcre2-dev \
+        libicu-dev \
+        libdeflate-dev \
+        libssl3 \
+        libgfortran5 \
+        libuv1 \
+        libhdf5-dev \
+        pkg-config \
+        llvm \
+        apache2 \
+        php \
+        libapache2-mod-php \
+        php-gd
+    sudo apt -qq clean autoclean
+    sudo apt -qq autoremove -y
+    sudo rm -rf /var/lib/apt/lists/*
+
+    export PYTHONV=3.14.4
+    export PYTHON_MINORV=3.14
+
+    sudo mkdir /opt/Python-${PYTHONV}
+    sudo chown $USER /opt/Python-${PYTHONV}
+    cd /tmp
+    wget https://www.python.org/ftp/python/${PYTHONV}/Python-${PYTHONV}.tar.xz
+    tar -xf Python-${PYTHONV}.tar.xz
+    cd Python-${PYTHONV}/
+    # LDFLAGS, CPPFLAGS, and PKG_CONFIG_PATH are needed to ensure the build process can find the lzma library and headers,
+    # which are required for Python's lzma module.  Without these flags, the build process may fail to find lzma downstream.
+    ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared \
+        LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
+        CPPFLAGS="-I/usr/include" \
+        PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig"
+    make install
+    cd /tmp
+    rm -rf Python-${PYTHONV}*
+
+    export LD_LIBRARY_PATH="/opt/Python-${PYTHONV}/lib:${LD_LIBRARY_PATH}"
+
+    cd /opt/Python-${PYTHONV}/bin
+    sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
+
+    sudo mkdir /opt/bin
+    sudo rm /opt/bin/python3 # if it exists.
+    sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
+
+    sudo apt install r-base r-base-dev hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
+
+    # Disable user-installs to guarantee packages go into /opt/Python...
+    export PIP_USER=0
+```
+
+## pip install option A (reqs file)
+
+Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs. You can run `./pip3 install -r requirements.txt` as a shortcut.
+
+Previously only the "docker" path requirements.txt was necessary, but now that the pip installations are broken up amongst the various services, more requirements.txt files will be necessary to get a comprehensive package installation onto the monolith VM. For this reason, you may elect to use option B instead.
+
+`./pip3 install -r <git_repo_root/docker/requirements.txt`
+`./pip3 install -r <git_repo_root/services/spatial/requirements.txt`
+`./pip3 install -r <git_repo_root/services/projectr/requirements.txt`
+
+If the requirements.txt will not install due to a stack depth issue, you can use the `requirements.full.txt` instead, which was made using `pip freeze > requirements.full.txt`. This file contains all versioned scripts so pip does not have to compute the best version for non-mentioned packages.
+
+## pip install option B (manual)
+
+
+NOTE: Some of the packages will indirectly install dask-expr, which is currently broken for spatialdata, with no intention of fixing. So it is necessary to uninstall dask-expr to avoid issues with spatialdata (<https://github.com/scverse/spatialdata/pull/570>)
+
+NOTE 2: Really try to keep the requirements.txt in sync with the files below.  While you can use the file to do the installation, @jorvis prefers to have them explicitly listed here.
+
+I cannot add comments to the bash code without breaking the command.  So consult the requirements.txt file in the "docker" directory for any comments pertaining to why a version was installed.
+
+```bash
+    ./pip3 install --upgrade pip
+    ./pip3 install \
+    aiohttp==3.14.3 \
+    aiohttp_retry==2.9.1 \
+    anndata==0.12.11 \
+    biocode==0.10.0 \
+    biopython==1.87 \
+    biothings-client==0.5.0 \
+    cairosvg==2.9.1 \
+    colorcet==3.1.0 \
+    datashader==0.19.0 \
+    Flask==3.1.3 \
+    Flask-RESTful==0.3.9 \
+    google-analytics-data==0.21.0 \
+    google-auth==2.57.0 \
+    gosling==0.3.0 \
+    h11==0.16.0 \
+    hic2cool==0.8.3 \
+    httpcore==1.0.9 \
+    httpx==0.28.1 \
+    hvplot==0.12.2 \
+    jupyterlab==4.0.5 \
+    jupyter==1.0.0 \
+    kaleido==1.4.0 \
+    leidenalg==0.10.2 \
+    legacy-cgi==2.6.4 \
+    llvmlite==0.47.0 \
+    matplotlib==3.10.7 \
+    mod-wsgi==6.0.6 \
+    more_itertools==11.0.2 \
+    mygene==3.2.2 \
+    mysql-connector-python==9.7.0 \
+    numba==0.65.0 \
+    numpy==2.4.0 \
+    openpyxl==3.1.5 \
+    pandas==2.3.3 \
+    panel==1.9.3 \
+    Pillow==12.3.0 \
+    pika==1.3.2 \
+    pims==0.7.0 \
+    plotly==6.6.0 \
+    pybigwig==0.3.25 \
+    requests==2.33.1 \
+    rpy2==3.6.7 \
+    scanpy==1.12.1 \
+    scipy==1.17.1 \
+    seaborn==0.13.2 \
+    spatialdata==0.7.3 \
+    spatialdata_io==0.7.1 \
+    spatialpandas==0.5.0 \
+    shadows==0.1a2 \
+    tables==3.11.1 \
+    watchfiles==1.1.1 \
+    zarrs==0.2.3
+    ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
+```
+
+Do not forget to change out the old Python version in various files (i.e. systemd files, apache, etc.)
+
+
+### Apache
+
+If you update python versions, you need to update the wsgi_module path in the apache.conf to reflect the current python version.  Also restart the apache service.  Also update `WSGIPythonHome` in the apache.conf as well.
+
+## Gotchas
+
+Scanpy (or dependencies like numba) assumes it can write in several directories which the web server won't be able to write to by default, so this can be fixed with:
+
+```bash
+    cd /opt/Python-${PYTHONV}/lib/python${PYTHON_MINORV}/site-packages/
+    find ./ -name __pycache__ -exec chmod 777 {} \;
+```
+
+## Note about Flask
+
+The Flask server is set to run with debug mode as False by default, but by setting the DEBUG environment variable to "True" you can change this (since the value is read from os.environ)

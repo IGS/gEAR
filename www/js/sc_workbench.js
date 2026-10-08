@@ -1,5 +1,14 @@
 "use strict";
 
+import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js";
+import { UI } from "./classes/analysis-ui.js";
+import { Dataset } from "./classes/dataset.js";
+import { Gene, WeightedGene } from "./classes/gene.js";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
+import { DatasetTree } from "./classes/tree.js";
+import { resetStepperWithHrefs } from "./helpers/stepper-fxns.js";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
 let typedMarkerGenes = new Set();
@@ -96,7 +105,8 @@ const datasetTree = new DatasetTree({
 
         try {
             document.querySelector(UI.analysisSelect).disabled = true;
-            analysisLabels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            const labels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            setAnalysisLabels(labels);
         } catch (error) {
             createToast("Failed to access analyses for this dataset");
             logErrorInConsole(error);
@@ -130,12 +140,13 @@ const datasetTree = new DatasetTree({
  * is displayed and an error is thrown.
  *
  * @async
+ * @param {URLSearchParams} urlParams - The URLSearchParams object containing the URL parameters.
  * @param {string} paramName - The name of the URL parameter to look for.
  * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
  *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
  * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
  */
-const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
     if (!urlParams.has(paramName)) {
         return;
     }
@@ -253,11 +264,6 @@ const getDatasetInfo = async (datasetId) => {
     }
 }
 
-const getEmbeddedTsneDisplay = async (datasetId) => {
-    const {data} = await axios.post("./cgi/get_embedded_tsne_display.cgi", convertToFormData({ dataset_id: datasetId }));
-    return data;
-}
-
 /**
  * Retrieves an array of genes from a collection of cells.
  *
@@ -266,34 +272,6 @@ const getEmbeddedTsneDisplay = async (datasetId) => {
  */
 const getGenesFromCells = (cells) => {
     return [...cells].map(cell => cell.textContent.trim());
-}
-
-/**
- * Retrieves the t-SNE image data for a given gene symbol and configuration.
- *
- * @param {string} geneSymbol - The gene symbol to retrieve t-SNE image data for.
- * @param {object} config - The configuration object.
- * @returns {Promise<string>} - The t-SNE image data.
- */
-const getTsneImageData = async (geneSymbol, config) => {
-    config.colorblind_mode = CURRENT_USER.colorblind_mode;
-    config.gene_symbol = geneSymbol;
-
-    // in order to avoid circular references (since analysis is referenced in the individual step objects),
-    //  we need to create a smaller analysis object to pass to the API
-
-    const analysis = {
-        "id": currentAnalysis.id,
-        "type": currentAnalysis.type,
-    }
-
-    const data = await apiCallsMixin.fetchTsneImage(currentAnalysis.dataset.id, analysis, "tsne_static", config);
-
-    if (!data.success || data.success < 1) {
-        const message = data.message || "Unknown error";
-        throw new Error(message);
-    }
-    return data.image;
 }
 
 /**
@@ -375,18 +353,6 @@ const resetWorkbench = () => {
     document.querySelectorAll(".js-step-collapsable button").forEach((button) => {
         button.disabled = false;
     });
-
-    /*
-    for (const elt of document.querySelectorAll('.reset-on-change')) {
-        // TODO - replace
-        elt.classList.add("is-hidden");
-    }
-
-    for (const elt of document.querySelectorAll('.empty-on-change')) {
-        // TODO - replace
-        elt.replaceChildren();
-    }
-    */
 }
 
 /**
@@ -396,7 +362,7 @@ const resetWorkbench = () => {
 const saveMarkerGeneList = async () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: CURRENT_USER.session_id,
+        session_id: getCurrentUser()?.session_id,
         label: document.querySelector(UI.markerGenesListNameElt).value,
         gctype: 'unweighted-list',
         organism_id: currentAnalysis.dataset.organism_id,
@@ -441,7 +407,7 @@ const savePcaGeneList = async () => {
         const weightLabels = data.pc_data.columns;
 
         const geneList = new WeightedGeneCart({
-                session_id: CURRENT_USER.session_id,
+                session_id: getCurrentUser()?.session_id,
                 label: document.querySelector(UI.pcaGeneListNameElt).value,
                 gctype: 'weighted-list',
                 organism_id: currentAnalysis.dataset.organism_id,
@@ -521,7 +487,7 @@ const updateManualMarkerGeneEntries = (geneString) => {
  * @param {Object} geneCart - The saved marker gene list object.
  */
 const updateUiAfterMarkerGeneListSaveSuccess = (geneCart) => {
-    createToast("Saved marker gene list", "is-success");
+    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
 }
 
 /**
@@ -542,7 +508,8 @@ const updateUiAfterMarkerGeneListSaveFailure = (geneCart, message) => {
  * @param {Object} geneCart - The saved gene list object.
  */
 const updateUiAfterPcaGeneListSaveSuccess = (geneCart) => {
-    createToast("Saved weighted gene list", "is-success");
+    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+
 }
 
 /**
@@ -581,7 +548,7 @@ const validateMarkerGeneSelection = () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Single Cell Workbench";
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser()?.session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving analyses is disabled.", "is-warning");
         document.querySelector(UI.btnSaveAnalysisElt).disabled = true;
@@ -598,13 +565,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {
-            return await activateDatasetFromParam("share_id", async (shareId) =>
+            return await activateDatasetFromParam(urlParams, "share_id", async (shareId) =>
                 await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
             );
         } else if (urlParams.has("dataset_id")) {
     		// Legacy support for dataset_id
 
-            await activateDatasetFromParam("dataset_id");
+            await activateDatasetFromParam(urlParams, "dataset_id");
         }
 
         // ? This could be used to pre-select an analysis
@@ -613,8 +580,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	} catch (error) {
 		logErrorInConsole(error);
 	}
-
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 /* Event listeners for elements already loaded */
 
@@ -667,11 +637,6 @@ for (const step of document.querySelectorAll(".js-step h5")) {
 
     });
 }
-
-document.querySelector(UI.btnDeleteSavedAnalysisElt).addEventListener("click", async (event) => {
-    // Delete the current analysis
-    await currentAnalysis.delete();
-});
 
 document.querySelector(UI.btnMakePublicCopyElt).addEventListener("click", async (event) => {
     // Make a public copy of the current analysis
@@ -755,7 +720,6 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
                 arrow({ element: arrowElement }) // add an arrow pointing to the button
             ],
         }).then(({ x, y, placement, middlewareData }) => {
-            console.log('Popover position:', x, y, placement, middlewareData);
             // Position the popover
             Object.assign(popoverContent.style, {
                 left: `${x}px`,
@@ -784,7 +748,7 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
 
         document.getElementById("new-analysis-label").addEventListener("keyup", (event) => {
             // Update the new analysis label if it is not a duplicate
-            if (analysisLabels.has(event.target.value.trim())) {
+            if (getAnalysisLabels().has(event.target.value.trim())) {
                 if (event.target.value.trim() !== currentLabel) {
                     event.target.classList.add("duplicate");
                     document.getElementById("confirm-analysis-rename").disabled = true;
@@ -883,7 +847,6 @@ for (const button of deleteButtons) {
                 arrow({ element: arrowElement }) // add an arrow pointing to the button
             ],
         }).then(({ x, y, placement, middlewareData }) => {
-            console.log('Popover position:', x, y, placement, middlewareData);
             // Position the popover
             Object.assign(popoverContent.style, {
                 left: `${x}px`,
@@ -1137,7 +1100,7 @@ document.querySelector(UI.pcaGeneListNameElt).addEventListener("input", (event) 
 
 document.querySelector(UI.btnSavePcaGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         await savePcaGeneList();
     } else {
         createToast("You must be signed in to save a PCA gene list.");
@@ -1292,7 +1255,7 @@ document.querySelector(UI.markerGenesListNameElt).addEventListener("input", (eve
 
 document.querySelector(UI.btnSaveMarkerGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         await saveMarkerGeneList();
     } else {
         createToast("You must be signed in to save a marker gene list.");

@@ -15,7 +15,7 @@ with open("/tmp/dup_genes_by_dataset.tsv", 'w') as ofh:
     for f in os.listdir(DATASETS_ROOT):
         if f.endswith(".h5ad"):
             filepath = os.path.join(DATASETS_ROOT, f)
-            adata = anndata.read(filepath)
+            adata = anndata.read_h5ad(filepath)
             # keep="False"... mark all dups as true (even first instance)
             # subset="gene_symbol"... only look at this column for duplicates
             try:

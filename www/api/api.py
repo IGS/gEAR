@@ -1,7 +1,33 @@
+"""
+api.py - Flask-RESTful application that registers the gEAR API resources.
+
+Maps each resource class in www/api/resources/ to its URL route. In production
+Apache serves these routes under the /api prefix.
+"""
+
 # Include our lib directory on system path
 # so we have access to modules
+import os
+import resource
+import sys
 from pathlib import Path
-import sys, os
+
+# Prevent matplotlib backend rendering errors
+# when imporing scanpy in resource modules
+import matplotlib
+
+matplotlib.use('Agg')
+
+from flask import Flask
+from flask_restful import Api
+
+# Set the maximum memory usage for the process
+# to 95% of the system's maximum memory usage
+soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
+soft95 = int(soft * 0.95)
+resource.setrlimit(resource.RLIMIT_DATA, (soft95, hard))
+
+
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
 abs_path_lib = abs_path_gear.joinpath('lib')
@@ -9,59 +35,78 @@ abs_path_lib = abs_path_gear.joinpath('lib')
 sys.path.insert(0, str(abs_path_lib))
 
 debug = os.environ.get('DEBUG', False)
-
-# Prevent matplotlib backend rendering errors
-# when imporing scanpy in resource modules
-import matplotlib
-matplotlib.use('Agg')
-
-from flask import Flask
-from flask_restful import Api
-
-# Import resources
-from resources.plotly_data import PlotlyData
-from resources.mg_plotly_data import MGPlotlyData
-from resources.h5ad import H5ad
-from resources.svg_data import SvgData
-from resources.top_pca_genes import TopPCAGenes
-from resources.available_display_types import AvailableDisplayTypes, MGAvailableDisplayTypes
-from resources.aggregations import Aggregations
-from resources.analyses import Analyses
-from resources.orthologs import Orthologs
-from resources.dataset_display import DatasetDisplay
-from resources.gene_symbols import GeneSymbols
-from resources.tsne_data import TSNEData
-from resources.epiviz_data import EpivizData
-from resources.projectr import ProjectR, ProjectROutputFile
-from resources.spatial_scanpy_data import SpatialScanpyData
+debug = debug in ('1', 'true', 'True', 'TRUE')
 
 app = Flask(__name__)
+
+### -- Anything that relies on the app object (i.e. profilers) should go before importing api resources -- ###
+
 api = Api(app)
 # Add API endpoints to resources
 
-# Set the maximum memory usage for the process
-# to 95% of the system's maximum memory usage
-import resource
-soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
-soft95 = int(soft * 0.95)
-resource.setrlimit(resource.RLIMIT_DATA, (soft95, hard))
+from resources.aggregations import Aggregations  # noqa: E402, I001
+from resources.analyses import Analyses  # noqa: E402
+from resources.available_analysis_tools import AvailableAnalysisTools # noqa: E402
+from resources.available_display_types import (  # noqa: E402
+    AvailableDisplayTypes,
+    MGAvailableDisplayTypes,
+)
+from resources.dataset_display import DatasetDisplay  # noqa: E402
+from resources.dataset_processing import DatasetProcessingStatus # noqa: E402
+from resources.gene_symbols import GeneSymbols  # noqa: E402
+from resources.gosling_spec import GoslingSpec  # noqa: E402
+from resources.higlass import HiGlassGene
+from resources.h5ad import H5ad  # noqa: E402
+from resources.mg_plotly_data import MGPlotlyData  # noqa: E402
+from resources.orthologs import Orthologs  # noqa: E402
 
+from resources.plotly_data import PlotlyData  # noqa: E402
+from resources.projectr import (  # noqa: E402
+    ProjectR,
+    ProjectROutputFile,
+    ProjectRStatus,
+)
+from resources.spatial_scanpy_data import SpatialScanpyData  # noqa: E402
+from resources.spatialpanel import SpatialPanel  # noqa: E402
+from resources.svg_data import SvgData  # noqa: E402
+from resources.top_pca_genes import TopPCAGenes  # noqa: E402
+from resources.tsne_data import MGTSNEData, TSNEData  # noqa: E402
+from resources.track_hub import TrackHubCopy # noqa: E402
+
+# plot routs
 api.add_resource(PlotlyData, '/plot/<dataset_id>'   # Default endpoint
                  , "/plot/<dataset_id>/plotly")     # add /plotly to this endpoint for name consistency with other endpoints
 api.add_resource(MGPlotlyData,'/plot/<dataset_id>/mg_plotly')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
-api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
+api.add_resource(MGTSNEData, '/plot/<dataset_id>/mg_tsne')
+api.add_resource(GoslingSpec, '/plot/<dataset_id>/gosling')
+api.add_resource(SpatialPanel, '/plot/<dataset_id>/spatialpanel')
 api.add_resource(SpatialScanpyData, '/plot/<dataset_id>/spatial_scanpy')
+
+# HiGlass routes
+api.add_resource(HiGlassGene, '/higlass/genes/<gene_symbol>')
+
+# projectR routes
 api.add_resource(ProjectR, '/projectr/<dataset_id>')
 api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')
+api.add_resource(ProjectRStatus, '/projectr/<projection_id>/status')
+
+# routes centered on getting h5ad info
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
+api.add_resource(AvailableAnalysisTools, '/h5ad/<share_uid>/availableAnalysisTools')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
 api.add_resource(MGAvailableDisplayTypes, '/h5ad/<dataset_id>/mg_availableDisplayTypes')
 api.add_resource(Aggregations, '/h5ad/<dataset_id>/aggregations')
 api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')
 api.add_resource(Orthologs, '/h5ad/<dataset_id>/orthologs')
 api.add_resource(GeneSymbols, '/h5ad/<dataset_id>/genes')
+
+# import routes (TODO: migrate dataset import to API calls)
+api.add_resource(TrackHubCopy, '/import/trackhub/<share_uid>/copy')
+api.add_resource(DatasetProcessingStatus, '/import/dataset/<share_uid>/status')
+
+# other routes
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
 api.add_resource(DatasetDisplay, '/displays/<display_id>')
 
@@ -104,4 +149,3 @@ if __name__ == '__main__':
     # api.add_resource(H5ad, '/api/h5ad/<dataset_id>')
     # app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix='/api')
     app.run(debug=debug, threaded=True)
-

@@ -465,7 +465,7 @@ class ProfileTree extends Tree {
  * Class representing a dataset selection tree
  * @extends Tree
  */
-class DatasetTree extends Tree {
+export class DatasetTree extends Tree {
     /**
      * Initialize ProfileTree
      * @constructor

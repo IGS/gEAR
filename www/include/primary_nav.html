@@ -1,7 +1,12 @@
         <section id="primary-nav" class="column is-narrow has-background-gear-bg-secondary has-text-primary-light pb-6">
           <div id="logo-c" class="pl-2 pt-2">
-            <img id="navbar-logo-normal" src="" style="height: 50px;"/>
-            <img id="navbar-logo-small" class="is-hidden" src="" style="height: 50px;"/>
+            <!-- site logos inserted in common.js -->
+            <img id="navbar-logo-normal" class="img-fluid" src="" alt="gEAR portal logo" style="height: 100px"/>
+            <img id="navbar-logo-small" class="is-hidden" src="" alt="gEAR portal logo" style="height: 50px;"/>
+            <div id="logo-c-text" class="has-text-centered is-size-7 mt-2">
+              <span id="domain-tagline" class="is-hidden-touch"></span>
+            </div>
+            <hr class="my-2 has-background-grey-lighter" />
           </div>
           <aside class="menu mt-5 pl-3">
             <!--
@@ -12,7 +17,7 @@
               The value here needs to match the value at the top of any individual page on
               the site, found like here:
 
-              <section id="content-c" class="m-3" data-nav-link="upload_dataset">
+              <section id="content-c" role="main" class="m-3" data-nav-link="upload_dataset">
 
               Once there, a method on common will match these and set the active icon
             -->
@@ -66,10 +71,19 @@
               <span class="menu-label-text">Analyze</span>
             </p>
             <ul class="menu-list">
+              <!--
+              <li>
+                <span class="icon-text is-align-items-center is-flex">
+                  <a class="icon-link-part" tool="cell-cell" href="/dominoSignal.html">
+                    <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-bacteria"></i></span>
+                    <span class="icon-text-part">Cell-cell Interaction</span>
+                  </a>
+                </span>
+              </li>
+              -->
               <li>
                 <span class="icon-text is-align-items-center is-flex">
                   <a class="icon-link-part" tool="sc_workbench" href="/sc_workbench.html">
-                  <!--<a class="icon-link-part" tool="sc_workbench" href="./sc_workbench.html">-->
                     <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-chart-line"></i></span>
                     <span class="icon-text-part">Single Cell Workbench</span>
                   </a>
@@ -99,14 +113,6 @@
                   </a>
                 </span>
               </li>
-              <li>
-                <span class="icon-text is-align-items-center is-flex">
-                  <a class="icon-link-part" tool="epiviz" id="epiviz-panel-designer-link">
-                    <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-view-dashboard-outline"></i></span>
-                    <span class="icon-text-part">Epiviz Panel Designer</span>
-                  </a>
-                </span>
-              </li>
             </ul>
             <p class="menu-label mb-0 is-capitalized has-text-primary-light">
               <span class="menu-label-text">Manage</span>
@@ -128,16 +134,16 @@
                   </a>
                 </span>
               </li>
-              
+
               <li>
                 <span class="icon-text is-align-items-center is-flex">
-                  <a class="icon-link-part" tool="upload_dataset" href="./upload_dataset.html">
+                  <a class="icon-link-part" tool="upload_dataset" href="/upload_dataset.html">
                     <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-cloud-upload-outline"></i></span>
                     <span class="icon-text-part">Dataset Uploader</span>
                   </a>
                 </span>
               </li>
-            
+
             </ul>
             <p class="menu-label mb-0 is-capitalized has-text-primary-light">
               <span class="menu-label-text">Support</span>
@@ -153,9 +159,9 @@
               </li>
               <li>
                 <span class="icon-text is-align-items-center is-flex">
-                  <a class="icon-link-part" href="https://github.com/IGS/gEAR/issues">
+                  <a class="icon-link-part" tool="contact_form" href="/contact.html">
                     <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-face-agent"></i></span>
-                    <span class="icon-text-part">Feedback</span>
+                    <span class="icon-text-part">Contact Us</span>
                   </a>
                 </span>
               </li>
@@ -174,12 +180,7 @@
               </button>
             </header>
             <div class="card-content">
-              <div class="content">
-                gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.<br />
-                Orvis J, et al. Nat Methods. 2021 Jun 25. <br />
-                doi: 10.1038/s41592-021-01200-9<br />
-                PMID: <a href="https://pubmed.ncbi.nlm.nih.gov/34172972/" target="_blank">34172972</a>
-              </div>
+              <div id="citation-content" class="content"></div>
             </div>
           </div>
         </section> <!-- end #primary-nav-->

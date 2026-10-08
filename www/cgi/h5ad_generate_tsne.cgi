@@ -1,11 +1,21 @@
 #!/opt/bin/python3
 
 """
+h5ad_generate_tsne.cgi - Compute neighbors/tSNE/UMAP for an analysis and render the requested plots.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, n_pcs, n_neighbors, random_state, genes_to_color,
+       use_scaled, compute_neighbors, compute_tsne, compute_umap, plot_tsne, plot_umap (0/1 flags).
+Output: JSON {success, missing_gene}; writes tSNE/UMAP PNGs.
 """
 
-import cgi, json
-import os, sys, re
+import cgi
+import json
+import os
+import re
+import sys
+
+import matplotlib
+import scanpy as sc
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -13,12 +23,13 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import get_analysis
+from gear.colorblind import CONTINUOUS_CMAP, is_enabled, remove_colorblind_copies
 
 # this is needed so that we don't get TclError failures in the underlying modules
-import matplotlib
+
 matplotlib.use('Agg')
 
-import scanpy as sc
 sc.settings.verbosity = 0
 
 def normalize_genes_to_color(gene_list, chosen_genes):
@@ -29,30 +40,53 @@ def normalize_genes_to_color(gene_list, chosen_genes):
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
-    n_pcs = int(form.getvalue('n_pcs'))
-    n_neighbors = int(form.getvalue('n_neighbors'))
-    random_state = int(form.getvalue('random_state'))
-    genes_to_color = form.getvalue('genes_to_color')
-    use_scaled = form.getvalue('use_scaled')
+    n_pcs = int(form.getfirst('n_pcs'))
+    n_neighbors = int(form.getfirst('n_neighbors'))
+    random_state = int(form.getfirst('random_state'))
+    genes_to_color = form.getfirst('genes_to_color')
+    use_scaled = form.getfirst('use_scaled')
 
-    compute_neighbors = int(form.getvalue('compute_neighbors'))
-    compute_tsne = int(form.getvalue('compute_tsne'))
-    compute_umap = int(form.getvalue('compute_umap'))
+    compute_neighbors = int(form.getfirst('compute_neighbors'))
+    compute_tsne = int(form.getfirst('compute_tsne'))
+    compute_umap = int(form.getfirst('compute_umap'))
 
-    plot_tsne = int(form.getvalue('plot_tsne'))
-    plot_umap = int(form.getvalue('plot_umap'))
-    user_id = None
-    if user and user.id:
-        user_id = user.id
+    plot_tsne = int(form.getfirst('plot_tsne'))
+    plot_umap = int(form.getfirst('plot_umap'))
+    colorblind_mode = is_enabled(form.getfirst('colorblind_mode', ''))
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user_id)
+    result = {"success": 0}
+
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
+
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {
+            'id': analysis_id if analysis_id else None,
+            'type': analysis_type if analysis_type else None,
+        }
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     if genes_to_color:
         genes_to_color = genes_to_color.replace(' ', '')
@@ -69,7 +103,7 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
 
     if compute_neighbors == 1:
         sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=n_neighbors)
@@ -93,6 +127,23 @@ def main():
 
     missing_gene = None
 
+    def plot_embeddings(color_map, suffix=""):
+        """Plot the requested embeddings, saved as figures/{tsne,umap}{suffix}.png"""
+        plot_kwargs = {'color_map': color_map, 'save': "{0}.png".format(suffix)}
+        if genes_to_color:
+            plot_kwargs['color'] = genes_to_color
+            if use_scaled == 'true':
+                plot_kwargs['use_raw'] = False
+
+        if plot_tsne == 1:
+            sc.pl.tsne(adata, **plot_kwargs)
+
+        if plot_umap == 1:
+            sc.pl.umap(adata, **plot_kwargs)
+
+    # Only gene coloring uses a colormap, so that is the only case that gets a colorblind copy
+    make_colorblind_copy = colorblind_mode and bool(genes_to_color)
+
     if genes_to_color:
         # Catch the error if any gene names are passed which aren't in the dataset
         try:
@@ -109,33 +160,25 @@ def main():
 
             # This can error like: ValueError: key "RFX7" is invalid! specify valid sample annotation
             # original color map: RdBu_r
-            if use_scaled == 'true':
-                if plot_tsne == 1:
-                    sc.pl.tsne(adata, color=genes_to_color, color_map='YlOrRd', use_raw=False, save=".png")
-
-                if plot_umap == 1:
-                    sc.pl.umap(adata, color=genes_to_color, color_map='YlOrRd', use_raw=False, save=".png")
-            else:
-                if plot_tsne == 1:
-                    sc.pl.tsne(adata, color=genes_to_color, color_map='YlOrRd', save=".png")
-
-                if plot_umap == 1:
-                    sc.pl.umap(adata, color=genes_to_color, color_map='YlOrRd', save=".png")
+            plot_embeddings('YlOrRd')
+            if make_colorblind_copy:
+                plot_embeddings(CONTINUOUS_CMAP, suffix="_colorblind")
         except ValueError as err:
             # scanpy seems to change this error string every release
             #print("DEBUG: error string:{0}".format(str(err)), file=sys.stderr)
             # DEBUG: error string:Given 'color': foobar is not a valid observation or var. Valid observations are: Index(['n_genes', 'n_counts'], dtype='object')
             m = re.search("\: (.+?) is not a valid", str(err))
             if m:
-                missing_gene = m.groups(1)
+                missing_gene = m.group(1)   # group(1) is the name; groups() returned a tuple
             else:
                 missing_gene = 'Unknown'
     else:
-        if plot_tsne == 1:
-            sc.pl.tsne(adata, color_map='YlOrRd', save=".png")
+        plot_embeddings('YlOrRd')
 
-        if plot_umap == 1:
-            sc.pl.umap(adata, color_map='YlOrRd', save=".png")
+    # Drop colorblind copies left from an earlier run, so they never show an outdated plot
+    if not make_colorblind_copy:
+        replotted = [name for name, plotted in (('tsne', plot_tsne), ('umap', plot_umap)) if plotted == 1]
+        remove_colorblind_copies('figures', replotted)
 
     if missing_gene is None:
         result = {'success': 1, 'missing_gene': ''}

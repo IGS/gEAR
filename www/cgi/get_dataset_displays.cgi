@@ -1,5 +1,13 @@
 #!/opt/bin/python3
 
+"""
+get_dataset_displays.cgi - List saved displays for a dataset.
+
+Input: dataset_id, session_id (optional; enables the user's own displays).
+Output: JSON {user: [displays], owner: [displays]}; owner displays are only filled when
+        the current user is not the dataset owner.
+"""
+
 import cgi, json
 import os, sys
 
@@ -12,8 +20,8 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
 
     user = geardb.get_user_from_session_id(session_id=session_id)
 
@@ -32,7 +40,16 @@ def main():
     cursor = cnx.get_cursor()
     query = "SELECT owner_id FROM dataset WHERE id = %s"
     cursor.execute(query, (dataset_id,))
-    (dataset_owner,) = cursor.fetchone()
+    row = cursor.fetchone()
+    if row is None:
+        # Unknown dataset: this used to raise after stdout was redirected, leaving an empty response
+        cursor.close()
+        cnx.close()
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({**displays, "success": 0, "error": "Dataset not found"}))
+        return
+    (dataset_owner,) = row
 
     # If the user is not the owner of the dataset, then retrieve those displays
     if not (user and user.id == dataset_owner):

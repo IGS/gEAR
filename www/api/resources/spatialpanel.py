@@ -1,0 +1,543 @@
+"""
+spatialpanel.py - Prepare spatial data for the Holoviz Panel spatial viewer.
+
+Serves /plot/<dataset_id>/spatialpanel in www/api/api.py. Writes per-gene CSV
+and image caches that services/spatial reads, and returns the embed script.
+"""
+
+import datetime
+import json
+import os
+import sys
+import traceback
+import typing
+from pathlib import Path
+
+import colorcet as cc
+import geardb
+import numpy as np
+import pandas as pd
+import spatialdata as sd
+import zarr
+import anndata as ad
+try:
+    from anndata.io import read_elem
+except ImportError:
+    from anndata.experimental import read_elem
+from bokeh.embed import server_document
+from flask import request
+from flask_restful import Resource
+from werkzeug.utils import secure_filename
+
+from .common import create_projection_adata
+
+TWO_LEVELS_UP = 2
+ABS_PATH_WWW = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
+PANEL_CSV_CACHE_DIR = ABS_PATH_WWW / "cache" / "spatial_panel"
+
+SPATIAL_PATH = ABS_PATH_WWW.joinpath("datasets/spatial")
+PROJECTIONS_BASE_DIR = ABS_PATH_WWW.joinpath("projections")
+
+GEAR_ROOT = ABS_PATH_WWW.parent
+LIB_PATH = GEAR_ROOT.joinpath("lib")
+sys.path.append(str(LIB_PATH))
+from gear.spatialhandler import SPATIALTYPE2CLASS
+
+if typing.TYPE_CHECKING:
+    from anndata import AnnData
+    from gear.spatialhandler import SpatialHandler
+
+# These datasets were requested to be colorblind-friendly.
+# Doing it here instead of modifying the datasets directly.s
+COOL_DATASETS = [
+    "3a12451c-4a82-4d60-bd07-b07bab8b2ff7",
+    "9300a079-d843-4261-9256-511c905d7703",
+    "acb1e3b0-a1dd-4f7d-964b-3b36e47dae93",
+    "b10f8088-bffa-473f-8e85-676984d9a096",
+    "f2f24b97-f63e-40e2-8373-e80f70ebeec5",
+    "235f795b-a1ad-483c-8627-e6b6696b417c",
+    "7c665856-e47f-4ab9-b7c8-7f9be22e23df",
+    "a9ceb45a-7ec7-42ff-a108-b432417dfdf3"
+]
+
+def get_platform_for_dataset(zarr_path: Path) -> str:
+    """
+    Return just the platform string for a spatial dataset, without loading
+    the whole SpatialData store (images, points, shapes) or even the
+    table's obs/var/X -- only the small `uns` element of the table's
+    AnnData group.
+
+    Parameters
+    ----------
+    zarr_path : Path
+        Path to the dataset's .zarr store.
+
+    Returns
+    -------
+    str
+        The platform string (e.g. "xenium").
+
+    Raises
+    ------
+    ValueError
+        If no platform information is found at tables/table/uns/platform.
+    """
+    table_path = zarr_path / "tables" / "table"
+    store = zarr.open(str(table_path), mode="r")
+    try:
+        uns = read_elem(store["uns"])
+        return uns["platform"]
+    except KeyError:
+        raise ValueError("No platform information found in the dataset")
+
+
+def get_table_adata(spatial_obj: "SpatialHandler") -> "AnnData":
+    """
+    Load just the table's AnnData directly from spatial_obj.zarr_path,
+    without constructing the full SpatialData object -- images, points,
+    and shapes are never touched.
+
+    Note this still loads the table's X/obs/var fully into memory (plain
+    anndata.read_zarr has no lazy/backed mode the way read_h5ad does);
+    it only avoids the SpatialData-wrapper construction overhead, not the
+    cost of the expression matrix itself.
+
+    Requires spatial_obj.zarr_path to have been set (e.g. by prep_sdata()).
+    """
+    table_path = spatial_obj.zarr_path / "tables" / "table"
+    return ad.read_zarr(table_path)
+
+
+def initialize_spatial_handler(dataset_id: str) -> "SpatialHandler":
+    """
+    Instantiate the correct SpatialHandler subclass for a dataset, without
+    loading any of its actual data yet (images/points/shapes/table). Only
+    the platform string is read (from the table's `uns`) to pick the class.
+
+    The returned handler's `.sdata` is intentionally left unset -- callers
+    that need the real SpatialData object (e.g. to extract images) or just
+    the table (e.g. for gene/observation data) should load one of those
+    explicitly, only if and when they actually need it. `.zarr_path` is
+    set on the handler so callers can do so without recomputing the path.
+
+    Parameters
+    ----------
+    dataset_id : str
+        Identifier of the dataset (without the ".zarr" suffix). The function will
+        look for a file at SPATIAL_PATH / f"{dataset_id}.zarr".
+
+    Returns
+    -------
+    SpatialHandler
+        An instance of the handler class corresponding to the dataset platform,
+        with `.zarr_path` set and `.sdata` intentionally left unloaded.
+
+    Raises
+    ------
+    ValueError
+        - If the dataset zarr path does not exist.
+        - If the dataset does not contain platform information at
+          tables/table/uns/platform.
+        - If the platform value is not present in the SPATIALTYPE2CLASS mapping.
+        In the case of an unsupported platform, the function will print an error
+        and the set of supported types to stderr before raising.
+    """
+    zarr_path = SPATIAL_PATH / f"{dataset_id}.zarr"
+    if not zarr_path.exists():
+        raise ValueError(f"Dataset {dataset_id} not found")
+
+    platform = get_platform_for_dataset(zarr_path)
+
+    # Ensure the spatial data type is supported
+    if platform not in SPATIALTYPE2CLASS.keys():
+        print("Invalid or unsupported spatial data type", file=sys.stderr)
+        print("Supported types: {0}".format(SPATIALTYPE2CLASS.keys()), file=sys.stderr)
+        raise ValueError(
+            f"Invalid or unsupported spatial data type: {platform}"
+        )
+
+    # Use uploader class to determine correct helper functions
+    spatial_obj: "SpatialHandler" = SPATIALTYPE2CLASS[platform]()
+    spatial_obj.zarr_path = zarr_path
+    return spatial_obj
+
+def normalize_image_array(arr: np.ndarray|None) -> np.ndarray:
+    """
+    This function takes a NumPy array (which may be of any numeric type) and normalizes
+    its values to the range [0, 255], converting it to uint8 format.
+
+    Occasionally when viewing the raw image channel values, outliers can skew the color mapping.
+    To mitigate this, the function clips the values to the 1st and 99th percentiles before normalization.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        Input image array of any numeric type.
+
+    Returns
+    -------
+    np.ndarray
+        Normalized image array in uint8 format, with shape (H, W, 3) for RGB images.
+        If the input is grayscale, it will be converted to RGB by repeating the
+        single channel across the three RGB channels.
+    """
+    if arr is None:
+        raise ValueError("Image array is None")
+
+    if arr.dtype != np.uint8:
+        img = arr.astype(np.float32)
+        p_low, p_high = np.percentile(img, [1, 99])
+        img = np.clip(img, p_low, p_high)
+        arr = (255 * (img - p_low) / (p_high - p_low + 1e-8)).astype(np.uint8)
+
+    if arr is None:
+        raise ValueError("Image array is None after normalization")
+
+    if arr.ndim == 2:
+        arr = arr[..., np.newaxis]
+    if arr.shape[-1] == 1:
+        arr = np.repeat(arr, 3, axis=-1)
+    return arr
+
+def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
+    """
+    Create a pandas DataFrame for a single gene from an AnnData object, including spatial,
+    optional UMAP coordinates, and cluster annotations.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Annotated data matrix containing the observations (obs), variables (var),
+        and multidimensional annotations (obsm). Must contain a 'gene_symbol'
+        column in adata.var and 'spatial1' and 'spatial2' in adata.obs.
+    gene_symbol : str
+        The gene symbol to select. This will be normalized using the
+        normalize_searched_gene(dataset_genes, gene_symbol) helper before selection.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame indexed by the observations (cells/spots) for which the gene
+        was selected. The DataFrame contains at least the following columns:
+          - raw_value: expression values for the requested gene (single-column DataFrame)
+          - spatial1, spatial2: spatial coordinates from adata.obs
+          - clusters: cluster labels from adata.obs (as a categorical dtype)
+          - clusters_cat_codes: integer category codes for clusters (as categorical dtype)
+        If UMAP coordinates exist in adata.obsm under the key 'X_umap', the DataFrame
+        will also include:
+          - UMAP1, UMAP2: first and second UMAP dimensions
+
+    Raises
+    ------
+    ValueError
+        If the requested gene is not found in the dataset after normalization
+        or if cluster information is not present in adata.obs.
+
+    Notes
+    -----
+    - The function uses adata.var['gene_symbol'].unique() to build the searchable
+      gene set and resolve the requested gene via normalize_searched_gene.
+    - UMAP coordinates are only added if 'X_umap' exists in adata.obsm. If UMAP
+      coordinates are missing, they are not computed here (TODO in code).
+    - Observations with missing cluster values are dropped from the returned DataFrame.
+
+    Examples
+    --------
+    >>> df = create_gene_df(adata, "GeneA")
+    >>> df.columns
+    Index(['raw_value', 'spatial1', 'spatial2', 'UMAP1', 'UMAP2', 'clusters',
+           'clusters_cat_codes'], dtype='object')
+    """
+    adata = adata
+    dataset_genes = set(adata.var["gene_symbol"].unique())
+    norm_gene_symbol = normalize_searched_gene(dataset_genes, gene_symbol)
+    if norm_gene_symbol is None:
+        raise ValueError(
+            f"Gene '{gene_symbol}' not found in the dataset. Please choose a different gene."
+        )
+    norm_gene_symbol = norm_gene_symbol
+    gene_filter = adata.var.gene_symbol == norm_gene_symbol
+    selected = adata[:, gene_filter]
+    selected.var.index = pd.Index(["raw_value"])
+    dataframe = selected.to_df()
+
+    if dataframe.empty:
+        raise ValueError(
+            f"No expression values found for gene '{norm_gene_symbol}' after filtering. Please check the dataset and gene symbol."
+        )
+
+    # Add spatial coords
+    dataframe["spatial1"] = selected.obs["spatial1"]
+    dataframe["spatial2"] = selected.obs["spatial2"]
+
+    # Add n_genes_by_counts for future filtering if it exists
+    dataframe["n_genes_by_counts"] = selected.obs["n_genes_by_counts"]
+
+    # Add UMAP coords if they exist
+    if "X_umap" in selected.obsm.keys():
+        X, Y = (0, 1)
+        dataframe["UMAP1"] = selected.obsm["X_umap"].transpose()[X].tolist()
+        dataframe["UMAP2"] = selected.obsm["X_umap"].transpose()[Y].tolist()
+    else:
+        # TODO: recreate UMAP coords if they do not exist, or if the user wants to recompute them after filtering (which requires a new csv)
+        pass
+
+    # Add cluster info
+    if "clusters" not in selected.obs:
+        raise ValueError("No cluster information found in adata.obs")
+
+    # ! dtypes will not be preserved when writing to CSV and reading back later.
+    dataframe["clusters"] = selected.obs["clusters"].astype("category")
+    dataframe["clusters_cat_codes"] = dataframe["clusters"].cat.codes.astype("category")
+
+    # Drop any NA clusters
+    dataframe = dataframe.dropna(subset=["clusters"])
+
+    if dataframe.empty:
+        raise ValueError(
+            f"No observations with valid cluster information found for gene '{norm_gene_symbol}' after filtering. Please check the dataset and gene symbol."
+        )
+
+    return dataframe
+
+def map_colors(dataframe: pd.DataFrame, found_img: bool, is_cool_dataset: bool) -> pd.DataFrame:
+    """
+    Add a "colors" column mapping each cluster to a color, unless one already exists.
+
+    Args:
+        dataframe (pd.DataFrame): Dataframe with a categorical "clusters" column.
+        found_img (bool): Whether a tissue image is shown (picks a palette suited to it).
+        is_cool_dataset (bool): Use the glasbey_cool palette instead.
+
+    Returns:
+        pd.DataFrame: The dataframe with cluster colors.
+    """
+    # Assuming df is your DataFrame and it has a column "clusters"
+    unique_clusters = dataframe["clusters"].cat.categories
+    sorted_clusters = sort_clusters(unique_clusters)
+
+    if "colors" in dataframe:
+        color_map = {
+            cluster: dataframe[dataframe["clusters"] == cluster][
+                "colors"
+            ].to_numpy()[0]
+            for cluster in sorted_clusters
+        }
+    else:
+        # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
+        # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
+        swatch_color = (
+            cc.b_glasbey_bw if found_img else cc.glasbey_light
+        )
+
+        if is_cool_dataset:
+            swatch_color = cc.glasbey_cool
+
+        color_map = {
+            cluster: swatch_color[i % len(swatch_color)]
+            for i, cluster in enumerate(sorted_clusters)
+        }
+        # Map the colors to the clusters
+        dataframe["colors"] = dataframe["clusters"].map(color_map)
+    return dataframe
+
+def sort_clusters(clusters) -> list:
+    """
+    Sort clusters by number if numerical, otherwise by name.
+    """
+    try:
+        sorted_clusters = sorted(clusters, key=lambda x: int(x))
+    except Exception:
+        sorted_clusters = sorted(clusters, key=lambda x: str(x))
+    return sorted_clusters
+
+def normalize_searched_gene(gene_set, chosen_gene) -> str | None:
+    """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
+    chosen_gene_lower = chosen_gene.lower()
+    for gene in gene_set:
+        try:
+            if chosen_gene_lower == gene.lower():
+                return gene
+        except Exception:
+            print(gene, file=sys.stderr)
+            raise
+    return None
+
+def get_viewer_script(is_zoomed, config={}) -> str:
+    """Get the script tag to embed the Panel viewer app, with the appropriate server URL and arguments.
+
+    Parameters
+    ----------
+    is_zoomed : bool
+        Whether to use the zoomed-in version of the Panel app or the standard version.
+    config : dict, optional
+        A dictionary of arguments to pass to the Panel server. Default is an empty dict.
+
+    Returns
+    -------
+    str
+        A string containing the <script> tag to embed the Panel viewer app, with the appropriate server URL and arguments.
+
+    """
+
+    domain_url = geardb._read_domain_url()
+
+    if os.environ.get("ENVIRONMENT", "production").lower() == "development":
+        domain_url = "http://localhost:8080"
+
+    panel_server_last = "panel_app_expanded" if is_zoomed else "panel_app"
+    panel_server_url = f'{domain_url}/panel/ws/{panel_server_last}'
+
+    # Pass necessary URL arguments to the Panel server
+    script_tag = server_document(
+        url=panel_server_url,
+        arguments=config
+    )
+
+    # Return this string directly to your frontend framework
+    return script_tag
+
+class SpatialPanel(Resource):
+    """Resource for prepping spatial data to use in Holoviz Panel app.
+
+    Returns
+    -------
+    File name for the prepared csv file to import in the Panel app.
+    """
+    def post(self, dataset_id):
+        """
+        Cache the gene's spatial data and return a script tag that embeds the Panel viewer.
+
+        Main request body keys: gene_symbol, projection_id, is_zoomed, min_genes,
+        expression_min_clip, disable_save, and x/y range start/end.
+
+        Returns:
+            dict: "script" (embed script or None), "success", and "message".
+        """
+
+        req = request.get_json()
+        if req is None:
+            return {
+                "script": None,
+                "success": 0,
+                "message": "No JSON body provided in the request.",
+            }
+        gene_symbol = req.get('gene_symbol', None)  # gene symbol or projection pattern
+        projection_id = req.get('projection_id', None)
+        is_zoomed = req.get('is_zoomed', False)
+        min_genes = req.get('min_genes', 0)
+        min_genes = int(min_genes) if min_genes is not None else 0
+        expression_min_clip = req.get('expression_min_clip', None)
+        nosave = req.get('disable_save', True)  # Disable save button for saving displays
+        colorblind_mode = bool(req.get('colorblind_mode', False))  # Per-viewer palette; the cached CSV is unaffected
+
+        x_range_start = req.get('x_range_start', None)
+        x_range_end = req.get('x_range_end', None)
+        y_range_start = req.get('y_range_start', None)
+        y_range_end = req.get('y_range_end', None)
+
+        config = {
+            "dataset_id": dataset_id,
+            "gene_symbol": gene_symbol,
+            "projection_id": projection_id,
+            "expression_min_clip": expression_min_clip,
+            "nosave": nosave,
+            "colorblind_mode": colorblind_mode
+        }
+
+        # All 4 values must be provided to set the initial view range, otherwise ignore them
+        if x_range_start is not None \
+            and x_range_end is not None \
+            and y_range_start is not None \
+            and y_range_end is not None:
+            config["x_range_start"] = x_range_start
+            config["x_range_end"] = x_range_end
+            config["y_range_start"] = y_range_start
+            config["y_range_end"] = y_range_end
+
+
+        response = {
+            "script": None,
+            "success": 0,
+            "message": "",
+        }
+
+        DATASET_DIR = PANEL_CSV_CACHE_DIR / dataset_id
+        DATASET_DIR.mkdir(parents=True, exist_ok=True)
+
+        filename_to_check = f"{gene_symbol}.csv"
+        if projection_id:
+            filename_to_check = f"{projection_id}_{gene_symbol}.csv"
+
+        message = ""
+
+        found_img = False
+        sdata_loaded_this_request = False
+        error_log_path = DATASET_DIR / "image_extraction_error.log"
+        try:
+            spatial_obj = initialize_spatial_handler(dataset_id)
+            if spatial_obj.has_images:
+                existing = list(DATASET_DIR.glob("spatial_img*.npy"))
+                if existing:
+                    message += "Using cached spatial image. "
+                    found_img = True
+                else:
+                    # Images aren't cached yet -- this is the one case that
+                    # actually needs the full SpatialData object.
+                    try:
+                        spatial_obj.sdata = sd.read_zarr(spatial_obj.zarr_path)
+                        sdata_loaded_this_request = True
+                        channels, (orig_h, orig_w) = spatial_obj.extract_img()
+                        if len(channels) == 1:
+                            only_key = next(iter(channels))
+                            channels = {"default": channels[only_key]}
+                        for channel_name, arr in channels.items():
+                            arr = normalize_image_array(arr)
+                            np.save(DATASET_DIR / f"spatial_img_{secure_filename(channel_name)}.npy", arr)
+                        with open(DATASET_DIR / "spatial_props.json", "w") as f:
+                            json.dump({"height": orig_h, "width": orig_w}, f)
+                        found_img = True
+                        if error_log_path.is_file():
+                            error_log_path.unlink()
+                    except Exception:
+                        with open(error_log_path, "w") as f:
+                            f.write(f"Image extraction failed at {datetime.datetime.now().isoformat()}\n\n")
+                            f.write(traceback.format_exc())
+                        print(f"Image extraction failed for {dataset_id}, see {error_log_path}", file=sys.stderr)
+            else:
+                message += "Dataset spatial type does not support image generation. "
+        except Exception as e:
+            response["message"] = f"Error preparing data image: {e}"
+            return response
+
+        try:
+            # If csv is cached, return it
+            csv_path = DATASET_DIR / filename_to_check
+            if csv_path.is_file():
+                response["message"] += "Using cached file."
+            else:
+                adata = spatial_obj.sdata.tables["table"] if sdata_loaded_this_request \
+                    else get_table_adata(spatial_obj)
+
+                # Modify the adata object to use the projection ID if it exists
+                if projection_id:
+                    adata = create_projection_adata(adata, dataset_id, projection_id)
+
+                gene_df = create_gene_df(adata, gene_symbol)
+                gene_df = map_colors(gene_df, found_img, dataset_id in COOL_DATASETS)
+
+                gene_df.to_csv(csv_path, index=False)
+
+            config["filename"] = str(csv_path.name)
+        except Exception as e:
+            response["message"] = f"Error preparing data markers: {e}"
+            return response
+
+        # Generate the script to load the Panel app with the prepared data
+        try:
+            response["script"]  = get_viewer_script(is_zoomed, config)
+            response["success"] = 1
+        except Exception as e:
+            response["message"] += f" Error generating viewer script: {e}"
+
+        return response

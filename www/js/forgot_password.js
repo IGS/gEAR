@@ -1,6 +1,8 @@
 'use strict';
 
-let help_id = null;
+import { convertToFormData, getUrlParameter, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+
+let helpId = null;
 
 window.onload=function() {
     // Set the page title
@@ -23,7 +25,7 @@ window.onload=function() {
                 // Submit the form
                 const {data} = await axios.post('./cgi/update_password.cgi', convertToFormData({
                     'password': document.getElementById('password1').value,
-                    'help_id': help_id
+                    'help_id': helpId
                 }));
 
                 document.getElementById('btn-password-update-submit').classList.remove('is-loading');
@@ -59,17 +61,6 @@ window.onload=function() {
     });
 };
 
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    // Nothing to do here at the moment
-    help_id = getUrlParameter('help_id');
-
-    if (help_id) {
-        document.getElementById('reset-form').classList.remove('is-hidden');
-    } else {
-        document.getElementById('initial-form').classList.remove('is-hidden');
-    }
-}
-
 async function sendVerificationEmail(verification_uuid) {
     console.debug("Sending verification email");
 
@@ -101,7 +92,8 @@ async function sendVerificationEmail(verification_uuid) {
 const validateEmail = (emailAddress) =>  {
     // TODO: Make this part of common.js along with the create_account.js methods
     const email = emailAddress.trim();
-    const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    // see https://github.com/IGS/gEAR/security/code-scanning/201
+    const email_regex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
     if (email_regex.test(email) ) {
         document.getElementById('email').classList.remove('is-danger');
         document.getElementById('email-error-message').classList.add('is-hidden');
@@ -243,3 +235,18 @@ async function validatePasswordUpdateForm() {
     // if we made it this far, things are good
     return true;
 }
+
+const handlePageSpecificLoginUIUpdates = async (event) => {
+    // Nothing to do here at the moment
+    helpId = getUrlParameter('help_id');
+
+    if (helpId) {
+        document.getElementById('reset-form').classList.remove('is-hidden');
+    } else {
+        document.getElementById('initial-form').classList.remove('is-hidden');
+    }
+}
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();

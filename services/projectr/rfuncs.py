@@ -33,7 +33,7 @@ def convert_r_df_to_r_matrix(df: pd.DataFrame):
     """
 
     r_matrix = ro.r["as.matrix"]
-    return r_matrix(df) # type: ignore
+    return r_matrix(df, drop=False) # type: ignore
 
 def convert_r_matrix_to_r_df(mtx) -> pd.DataFrame:
     """

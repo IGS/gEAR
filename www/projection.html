@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -21,11 +21,6 @@
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
-
-        <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/projection.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -36,7 +31,7 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="projection">
+          <section id="content-c" role="main" class="m-3" data-nav-link="projection">
             <!-- This needs to be abstracted out as an include, since both this page and the dashboard use it -->
             <div id="search-bar-c" class="mt-4 mb-4 columns">
               <div class="column is-half">
@@ -51,6 +46,7 @@
                   <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
 
                   <div class="control">
+                    <label for="submit-projection-search" class="is-sr-only">Perform Projection</label>
                     <button id="submit-projection-search" class="button is-primary ml-3">
                       <span class="icon is-small">
                         <i class="mdi mdi-magnify"></i>
@@ -71,16 +67,18 @@
                   </div>
                 </div>
                 <div id="algorithm-c" class="field">
-                  <label class="label">Select algorithm</label>
+                  <label class="label">Select algorithm
+                  </label>
                   <div class="control">
                     <div class="select is-small">
-                      <select id="algorithm">
+                      <select id="algorithm" aria-label="Projection algorithm">
                         <option value="pca" selected>Principal Component Analysis (PCA)</option>
                         <option value="nmf">Least-squares optimization for NMF</option>
                         <option value="fixednmf">Fixed gene weights in NMF re-run</option>
                         <option value="binary" disabled>Binary Gene Count</option>
                       </select>
                     </div>
+                    <button id="algo-explainer" class="button is-clickable is-small is-text has-text-primary" role="button" data-target="algo-explainer-modal">Which to select?</button>
                   </div>
                 </div>
                 <div id="zscore-c" class="field">
@@ -89,7 +87,14 @@
                     Z-score normalize gene expression
                     <p class="help">If enabled, can increase noise in dataset if too many low-expression genes are present.</p>
                   </label>
-              </div>
+                </div>
+                <div id="minclip-c" class="field">
+                  <label class="checkbox">
+                    <input type="checkbox" id="minclip">
+                    Set negative coefficient weight outputs to zero
+                    <p class="help">This will be applied at the time of plotting and not saved in projection output.</p>
+                  </label>
+                </div>
               </div>
               <div class="column is-half">
                 <article class="message">
@@ -108,7 +113,7 @@
             </div>
             <div id="results-main-c" class="columns">
               <div id="pattern-result-list-c" class="column is-narrow is-fullheight p-0 is-hidden">
-                <h3 class="mt-3 ml-3 mr-6">Select pattern</h3>
+                <h3 class="m-3">Select pattern</h3>
                 <ul id="pattern-result-list" class="mt-3"></ul>
                 <template id="tmpl-pattern-result-item">
                   <li class="pattern-result-list-item is-clickable pl-4"></li>
@@ -117,7 +122,7 @@
                   <li class="pl-4">No matches found</li>
                 </template>
               </div>
-              <section id="result-panel" class="column p-3">
+              <div id="annotation-and-grid-c" class="column">
                 <div id="top-genes-c" class="is-hidden content">
                   <div class="columns">
                     <div id="top-up-genes" class="column is-3">
@@ -131,63 +136,148 @@
                   </div>
                   <button id="btn-view-weighted-genes" class="js-view-genes button is-small is-primary is-outlined">View all genes with weights</button>
                 </div>
-
                 <button id="btn-view-unweighted-genes" class="js-view-genes button is-small is-primary is-outlined is-hidden my-3">View list of genes</button>
-
-                <div id="result-panel-options">
-                  <div id="scoring-method-div">
-                    <span class="option-label pr-1">Scoring method: </span>
-                    <div class="control select is-small">
-                      <select id="svg-scoring-method">
-                        <option value="gene" selected>Pattern scope</option>
-                        <option value="tissue">Tissue scope</option>
-                        <option value="dataset">Sample scope</option>
-                      </select>
+                <section id="result-panel" class="p-3">
+                  <div id="result-panel-options">
+                    <div id="scoring-method-div" class="is-hidden">
+                      <span class="option-label pr-1">SVG expression scoring method: </span>
+                      <div class="control select is-small">
+                        <select id="svg-scoring-method" aria-label="SVG expression scoring method">
+                          <option value="gene">Gene scope</option>
+                          <option value="tissue">Tissue scope</option>
+                          <option value="dataset">Sample scope</option>
+                          <option value="user_defined" selected>Owner-defined scope</option>
+                        </select>
+                      </div>
                     </div>
+                    <!-- other panel options here -->
                   </div>
-                  <!-- other panel options here -->
-                </div>
-                <hr class="mt-3 mb-3" \>
-                <div id="result-panel-initial-notification" class="notification is-primary has-text-centered">
-                  To explore projections in various datasets, please choose a pattern and a dataset collection above and click the magnifying glass
-                </div>
-                <div id="result-panel-loader" class="box is-hidden">
-                  <p class="has-text-centered title is-3">Please wait. Dataset visualizations are loading...</p>
-                  <progress class="progress is-large is-primary" max="100"></progress>
-                </div>
-                <div id="result-panel-grid"></div>
-                <div id="zoomed-panel-grid" class="is-hidden"></div>
-                <!--#include virtual="/include/tile-grid/tile.html" -->
-              </section>
+                  <hr id="result-panel-options-divider" class="mt-3 mb-3 is-hidden" \>
+                  <div id="result-panel-initial-notification" class="notification is-primary has-text-centered">
+                    To explore projections in various datasets, please choose a pattern and a dataset collection above and click the magnifying glass
+                  </div>
+                  <div id="result-panel-loader" class="box is-hidden">
+                    <p class="has-text-centered title is-3">Please wait. Dataset visualizations are loading...</p>
+                    <progress class="progress is-large is-primary" max="100"></progress>
+                  </div>
+                  <div id="result-panel-grid"></div>
+                  <div id="zoomed-panel-grid" class="is-hidden"></div>
+                  <!--#include virtual="/include/tile-grid/tile.html" -->
+                </section>
+              </div>
+
             </div>
           </section><!-- end #content-c -->
 
         </section> <!-- end #main-c -->
       </div>
-      <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
+
+    <div class="modal" id="algo-explainer-modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Explanation of Algorithms</p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+              <div class="content mb-5">
+                  <p class="has-text-grey-dark">
+                      All of these algorithms explore the strength or expression of a known pattern/signal derived from a starting dataset in a new dataset. Depending on how that signal was calculated from the original starting dataset determines how you want to estimate its strength or expression in the new dataset. <strong>It is important not to compare levels of patterns or signals of this kind across datasets</strong> unless it is explicitly known that the measurement methods and data processing are identical across datasets.
+                  </p>
+              </div>
+
+              <div class="tabs is-boxed" id="algo-explainer-modal-tabs">
+                  <ul>
+                      <li class="is-active" data-tab="tab-pca"><a>PCA</a></li>
+                      <li data-tab="tab-nmf-ls"><a>Least-squares NMF</a></li>
+                      <li data-tab="tab-nmf-fixed"><a>Fixed Weights NMF</a></li>
+                      <li data-tab="tab-binary"><a>Binary Gene Count</a></li>
+                  </ul>
+              </div>
+
+              <div id="algo-explainer-modal-content" class="content">
+
+                  <div id="tab-pca" class="tab-pane">
+                      <p>
+                          The principle component analysis (PCA) method calculates the expression level of each pattern (PC) in each sample or cell of the new dataset using gene loadings from the existing principal component analysis that has been run previously on the original starting dataset.
+                      </p>
+                      <p>
+                          Because PCA involves both positive and negative gene loadings, this method may produce positive and/or negative values for samples in the new dataset because each sample's projected pattern value (e.g, for PC1) is the sum of all gene loadings for that pattern multiplied by all gene expression values in that sample (using dot product calculation in Python).
+                      </p>
+                  </div>
+
+                  <div id="tab-nmf-ls" class="tab-pane is-hidden">
+                      <p>
+                          The least-squares non-negative matrix factorization (NMF) method calculates the expression level of each pattern (sample dimension defined in an NMF analysis) in each sample or cell of the new dataset using gene loadings from the existing non-negative matrix factorization that has been run previously on the original starting dataset.
+                      </p>
+                      <p>
+                          Although NMF includes no negative gene loadings, this method may still produce positive and/or negative values for samples in the new dataset, which is calculated by estimating the sample values in the new dataset using their expression values along with the gene loadings from the corresponding genes in original NMF analysis. This is done using linear estimation methods in <a target="_blank" rel="noopener" href="https://pubmed.ncbi.nlm.nih.gov/32167521/">projectR</a>.
+                      </p>
+                  </div>
+
+                  <div id="tab-nmf-fixed" class="tab-pane is-hidden">
+                      <p>
+                          The fixed weights non-negative matrix factorization (NMF) method calculates the expression level of each pattern (sample dimension defined in an NMF analysis) in each sample or cell of the new dataset using gene loadings from the existing non-negative matrix factorization that has been run previously on the original starting dataset.
+                      </p>
+                      <p>
+                          As in the NMF method, although NMF includes no negative gene loadings, this method may still produce positive and/or negative values for samples in the new dataset. The difference between the "Fixed NMF" and "NMF" methods is that "Fixed NMF" re-runs the NMF procedure in order using "Fixed" gene loadings from the original analysis to estimate the sample values in the new dataset. This is done using using <a target="_blank" rel="noopener" href="https://www.biorxiv.org/content/10.1101/2022.11.07.515489v2">SJD</a>.
+                      </p>
+                  </div>
+
+                  <div id="tab-binary" class="tab-pane is-hidden">
+                      <p>
+                          Calculates the expression level of each pattern by counting the number of genes in the pattern that are expressed at non-zero levels in each new sample.
+                      </p>
+                      <p>
+                          <strong>Note:</strong> This algorithm should only be used in single-cell data. This method is simple and interpretable, but may not capture complex continuous signals.
+                      </p>
+                  </div>
+
+              </div>
+          </section>
+            <footer class="modal-card-foot">
+                <button class="button">Close</button>
+            </footer>
         </div>
-      </footer>
+    </div>
+
+      <footer>
+        <div id="funding"></div>
+</footer>
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script src="js/vendor/js.cookie.js"></script>
 
       <script src="js/vendor/snap.svg-min.js"></script>
-      <script src="https://d3js.org/d3.v5.min.js"></script>
-      <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
-
-      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-      <script>document.write('<script src="js/classes/tilegrid.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script src="https://cdn.plot.ly/plotly-3.5.0.min.js" charset="utf-8"></script>
 
 
-      <!-- Page-specific JS file here -->
-      <script>document.write('<script src="js/projection.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
+
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/projection.js', prefs.cache_version);
+
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/projection.css', prefs.cache_version);
+      </script>
+
+      <!-- WCAG accessibility widget -->
+      <script>
+      window.ACCESSIBILITY_WIDGET_CONFIG = {
+        // Position on left side
+        widgetPosition: {
+          side: 'left',
+          left: '20px',
+          bottom: '20px'
+        }
+      };
+      </script>
+      <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
     </body>
 </html>

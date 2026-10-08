@@ -1,26 +1,110 @@
 'use strict';
 
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js";
+import { availablePalettes, plotly2MatplotlibNames } from "./helpers/plot-display-config.js";
+import { FacetWidget } from "./classes/facets.js";
+import { DatasetTree } from "./classes/tree.js";
+
+let isMultigene;
+const setIsMultigene = (val) => { isMultigene = val; }
+
+let chooseGenes;
+const registerChooseGenes = (fn) => {
+    chooseGenes = fn;
+}
+
+// If a page wants to use this action, it can register a callback function
+let curatorSpecifcCreatePlot = () => {};
+const registerCuratorSpecifcCreatePlot = (fn) => {
+    curatorSpecifcCreatePlot = fn;
+}
+
+let curatorSpecifcDatasetTreeCallback = () => {};
+const registerCuratorSpecifcDatasetTreeCallback = (fn) => {
+    curatorSpecifcDatasetTreeCallback = fn;
+}
+
+let curatorSpecificNavbarUpdates = () => {};
+const registerCuratorSpecificNavbarUpdates = (fn) => {
+    curatorSpecificNavbarUpdates = fn;
+}
+
+let curatorSpecificOnLoad = () => {};
+const registerCuratorSpecificOnLoad = (fn) => {
+    curatorSpecificOnLoad = fn;
+}
+
+let curatorSpecificPlotStyle = () => {};
+const registerCuratorSpecificPlotStyle = (fn) => {
+    curatorSpecificPlotStyle = fn;
+}
+
+let curatorSpecificPlotTypeAdjustments = () => {};
+const registerCuratorSpecificPlotTypeAdjustments = (fn) => {
+    curatorSpecificPlotTypeAdjustments = fn;
+}
+
+let curatorSpecificUpdateDatasetGenes = () => {};
+const registerCuratorSpecificUpdateDatasetGenes = (fn) => {
+    curatorSpecificUpdateDatasetGenes = fn;
+}
+
+let curatorSpecificValidationChecks = () => {};
+const registerCuratorSpecificValidationChecks = (fn) => {
+    curatorSpecificValidationChecks = fn;
+}
+
 /* These are functions that are common to the "curator" pages, (i.e. single-gene, multi-gene) */
 
 let plotStyle;  // Plot style object
+const getPlotStyle = () => {
+    return plotStyle;
+}
 
 let facetWidget = null;
+const getFacetWidget = () => facetWidget;
 
 //let plotConfig = {};  // Plot config that is passed to API or stored in DB
-let allColumns = [];
 let catColumns = [];
+const getCatColumns = () => catColumns;
+const setCatColumns = (catCols) => { catColumns = catCols; }
+
 let levels = {};    // categorical columns as keys + groups as values
+const getLevels = () => levels;
+const setLevels = (newLevels) => { levels = newLevels; }
 
-let datasetId = null;
-let chosenDisplayId = null;
+let colorLevels = {};   // categorical columns as keys + color swatches as values
+const getColorLevels = () => colorLevels;
+const setColorLevels = (newColorLevels) => { colorLevels = newColorLevels; }
+
+let truncatedLevels = {};   // categorical columns too high-cardinality to have levels tracked: col name -> category count
+const getTruncatedLevels = () => truncatedLevels;
+const setTruncatedLevels = (newTruncatedLevels) => { truncatedLevels = newTruncatedLevels; }
+
+// Appends a suffix when colName is categorical but too high-cardinality to customize (color/order/filter)
+const decorateTruncatedCatLabel = (colName, label = colName) => {
+    const truncated = getTruncatedLevels();
+    if (Object.prototype.hasOwnProperty.call(truncated, colName)) {
+        return `${label} (${truncated[colName].length} categories, not customizable)`;
+    }
+    return label;
+}
+
 let organismId = null;
-let analysisObj = null;
+const getOrganismId = () => organismId;
 
-let analysisSelect = null;
 let plotTypeSelect = null;
+const getPlotTypeSelect = () => plotTypeSelect;
 
 // Relates to https://github.com/IGS/gEAR/issues/923
 let sortOrderChanged = false; // Flag to indicate if the sort order has changed
+const getSortOrderChanged = () => sortOrderChanged;
+
+// Not exported to dataset/multigene_curator
+let datasetId = null;
+let chosenDisplayId = null;
+let analysisSelect = null;
+let analysisObj = null;
 
 /*
 ! Quick note -
@@ -323,8 +407,8 @@ const curatorApiCallsMixin = {
      */
     async fetchH5adInfo(datasetId, analysisId) {
         try {
-            const {obs_columns, obs_levels} = await super.fetchH5adInfo(datasetId, analysisId);
-            return { obs_columns, obs_levels };
+            const {obs_columns, obs_levels, obs_levels_truncated} = await super.fetchH5adInfo(datasetId, analysisId);
+            return { obs_columns, obs_levels, obs_levels_truncated };
         } catch (error) {
             logErrorInConsole(error);
             const msg = "Could not fetch H5AD observation data for this dataset. Please contact the gEAR team."
@@ -401,6 +485,45 @@ const curatorApiCallsMixin = {
 
 }
 Object.setPrototypeOf(curatorApiCallsMixin, apiCallsMixin);
+
+/**
+ * Fetches h5ad obs columns/levels for a dataset+analysis and classifies them into
+ * categorical vs. continuous columns, updating the shared levels/colorLevels/
+ * truncatedLevels/catColumns module state.
+ *
+ * Note: errors from fetchH5adInfo are intentionally not caught here -- callers keep
+ * their own try/catch since error-handling UI differs slightly per caller.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} analysisId - The ID of the analysis.
+ * @returns {Promise<{allColumns: string[], catColumns: string[]}>} All non-color obs
+ *   columns, and the subset of those that are categorical.
+ */
+const classifyH5adColumns = async (datasetId, analysisId) => {
+    let { obs_columns: allColumns, obs_levels: newLevels, obs_levels_truncated: newTruncatedLevels = {} } = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId);
+
+    // Filter out values we don't want of "levels", like "colors"
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    const colorLevels = {};
+    for (const key in newLevels) {
+        if (key.includes("_colors")) {
+            colorLevels[key] = newLevels[key];
+            delete newLevels[key];
+        }
+    }
+    for (const key in newTruncatedLevels) {
+        if (key.includes("_colors")) {
+            colorLevels[key] = newTruncatedLevels[key];
+            delete newTruncatedLevels[key];
+        }
+    }
+    setLevels(newLevels);
+    setColorLevels(colorLevels);
+    setTruncatedLevels(newTruncatedLevels);
+    setCatColumns([...Object.keys(newLevels), ...Object.keys(newTruncatedLevels)]);
+
+    return { allColumns, catColumns: getCatColumns() };
+};
 
 
 /**
@@ -490,12 +613,13 @@ const datasetTree = new DatasetTree({
  * is displayed and an error is thrown.
  *
  * @async
+ * @param {URLSearchParams} urlParams - The URLSearchParams object containing the URL parameters.
  * @param {string} paramName - The name of the URL parameter to look for.
  * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
  *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
  * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
  */
-const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
     if (!urlParams.has(paramName)) {
         return;
     }
@@ -725,6 +849,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
         const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, analysisObj?.id, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
+
             setPlotTypeDisabledState(plotType, isAllowed);
         }
 
@@ -733,6 +858,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
         await choosePlotType();
         // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
     } catch (error) {
+        console.error(error);
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
@@ -744,21 +870,10 @@ const cloneDisplay = async (event, display, scope="owner") => {
         cloneElt.classList.remove("is-loading");
     }
 
+    const geneInput = isMultigene ? config.gene_symbols : config.gene_symbol;
+
     // Choose gene from config
-    if (isMultigene) {
-        manuallyEnteredGenes = new Set(config.gene_symbols);
-        selected_genes = manuallyEnteredGenes;
-        const geneSymbolString = config.gene_symbols.join(" ");
-        document.getElementById('genes-manually-entered').value = geneSymbolString;
-        // Mostly need this to populate the current gene(s) in the display contaainer
-        chooseGenes();
-    } else {
-        selectedGene = config.gene_symbol;
-        // Mostly need this to populate the current gene(s) in the display contaainer
-        chooseGene();
-    }
-
-
+    chooseGenes(geneInput)
 
     try {
         plotStyle.cloneDisplay(config);
@@ -831,7 +946,7 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
     let totalCount = 0;
 
     try {
-        ({aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
+        ({aggregations, total_count: totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
 
     } catch (error) {
         logErrorInConsole(error);
@@ -868,6 +983,9 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
                 // Revert levels to original state
                 for (const filter of facetWidget.aggregations) {
                     const name = filter.name;
+                    // High-cardinality columns are tracked in truncatedLevels, not levels, so the sort-order
+                    //  and color pickers skip them; don't add them back here
+                    if (truncatedLevels.hasOwnProperty(name)) continue;
                     const items = filter.items;
                     const itemCats = items.map(item => item.name);
                     levels[name] = itemCats;
@@ -879,7 +997,11 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
             // Sortable lists need to reflect groups filtered out or unfiltered
             updateOrderSortable();
 
-            curatorSpecifcFacetItemSelectCallback(seriesName);
+            // Update the color picker in case some elements of the color series were filtered out
+            if(plotStyle.plotConfig?.color_name) {
+                renderColorPicker(plotStyle.plotConfig.color_name);
+            }
+
         }
     });
     document.getElementById("selected-facets-loader").classList.add("is-hidden")
@@ -901,7 +1023,7 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
 
     // Initialize fixed plot types
     return NiceSelect.bind(document.getElementById(idSelector), {
-        placeholder: 'Choose how to plot',
+        placeholder: 'Select plot type',
         minimumResultsForSearch: -1
     });
 }
@@ -915,8 +1037,6 @@ const createPlot = async (event) => {
 
     const plotType = getSelect2Value(plotTypeSelect);
 
-    const plotBtns = document.getElementsByClassName("js-plot-btn");
-
     // Set loading
     for (const plotBtn of plotBtns) {
         plotBtn.classList.add("is-loading");
@@ -924,20 +1044,16 @@ const createPlot = async (event) => {
 
     plotStyle.populatePlotConfig();
 
-    // Add gene or genes to plot config
-    if (isMultigene) {
-        plotStyle.plotConfig["gene_symbols"] = Array.from(selected_genes);
-    } else {
-        plotStyle.plotConfig["gene_symbol"] = selectedGene
+    try {
+        await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
+
+    } finally {
+        // Stop loader
+        for (const plotBtn of plotBtns) {
+            plotBtn.classList.remove("is-loading");
+        }
     }
 
-    await curatorSpecifcCreatePlot(plotType);
-
-
-    // Stop loader
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.remove("is-loading");
-    }
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
@@ -970,11 +1086,12 @@ const disableCheckboxLabel = (checkboxElt, state) => {
  */
 const getAnalysisId = () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    if (analysisValue === "-1") return null;  // Primary analysis
     return analysisValue || null;
 }
 
 /**
- * Retrieves updates and additions to the plot from the plot_display_config JS object.
+ * Retrieves updates and additions to the plot from the plot-display-config JS object.
  *
  * @param {Object[]} plotConfObj - The plot configuration object.
  * @param {string} plotType - The type of plot.
@@ -1071,7 +1188,6 @@ const includePlotParamOptions = async () => {
     }
     document.getElementById("plot-type-s-failed").classList.add("is-hidden");
 
-
     // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
     await plotStyle.loadPlotHtml();
 
@@ -1084,7 +1200,7 @@ const includePlotParamOptions = async () => {
     }
     plotStyle.setupParamValueCopyEvent();   // handle some copy events that could not be handled in the loop above
     setupValidationEvents();        // Set up validation events required to plot at a minimum
-    await plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
+    await plotStyle.setupPlotSpecificEvents(datasetId)       // Set up plot-specific events
 
 }
 
@@ -1129,7 +1245,7 @@ const loadColorscaleSelect = (isContinuous=false, isScanpy=false) => {
         defaultColor = "purp";
         if (isMultigene) {
             // I personally don't like purp for multigene plots
-            defaultColor = "bluered";
+            defaultColor = "reds";
         }
     }
     if (isScanpy) {
@@ -1213,9 +1329,12 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
             setPlotTypeDisabledState(plotType, isAllowed);
         }
 
+        document.getElementById("plot-type-select").disabled = false;
+
         // set plot type to first option
         setSelectBoxByValue("plot-type-select", "nope");
     } catch (error) {
+        logErrorInConsole(error);
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
@@ -1224,6 +1343,75 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
     } finally {
         plotTypeSelect.update();
     }
+}
+
+/**
+ * Renders the color picker for a given series name.
+ *
+ * @param {string} seriesName - The name of the series.
+ */
+const renderColorPicker = (seriesName) => {
+    const colorsContainer = document.getElementById("colors-container");
+    const colorsSection = document.getElementById("colors-section");
+
+    colorsSection.classList.add("is-hidden");
+    colorsContainer.replaceChildren();
+    if (!seriesName) {
+        return;
+    }
+
+    if (!(catColumns.includes(seriesName))) {
+        // ? Continuous series colorbar picker
+        return;
+    }
+
+    if (!levels[seriesName]) {
+        // Categorical but too many unique values to build a color picker for
+        const msg = document.createElement("p");
+        msg.classList.add("has-text-grey");
+        msg.textContent = "This series has too many categories to customize colors.";
+        colorsContainer.append(msg);
+        colorsSection.classList.remove("is-hidden");
+        return;
+    }
+
+    const seriesNameElt = document.createElement("p");
+    seriesNameElt.classList.add("has-text-weight-bold", "is-underlined");
+    seriesNameElt.textContent = seriesName;
+    colorsContainer.append(seriesNameElt);
+
+    // Otherwise d3 category10 colors
+    const defaultSwatch = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+    const swatchColors = colorLevels.hasOwnProperty(`${seriesName}_colors`) ? colorLevels[`${seriesName}_colors`] : defaultSwatch;
+
+    let counter = 0;
+    for (const group of levels[seriesName]) {
+        const darkerLevel = Math.floor(counter / 10);
+        const baseColor = swatchColors[counter%10];
+        const groupColor = darkerLevel > 0
+            ? d3.color(baseColor).darker(darkerLevel).formatHex()
+            : baseColor;    // Cycle through swatch but make darker if exceeding 10 groups
+        counter++;
+
+        const groupElt = document.createElement("p");
+        groupElt.classList.add("is-flex", "is-justify-content-space-between", "pr-3");
+
+        const groupText = document.createElement("span");
+        groupText.classList.add("has-text-weight-medium");
+        groupText.textContent = group;
+
+        const colorInput = document.createElement("input");
+        colorInput.classList.add("js-plot-color");
+        colorInput.id = `${group}-color`;
+        colorInput.type = "color";
+        colorInput.value = groupColor;
+        colorInput.setAttribute("aria-label", `Select color for ${group}`);
+
+        groupElt.append(groupText, colorInput);
+        colorsContainer.append(groupElt);
+    }
+
+    colorsSection.classList.remove("is-hidden");
 }
 
 /**
@@ -1279,6 +1467,9 @@ const renderOrderSortableSeries = (series) => {
     // If continouous series, cannot sort.
     if (!catColumns.includes(series)) return;
 
+    // Categorical but too many unique values to have a level list to sort
+    if (!levels[series]) return;
+
     // Start with a fresh template
     const orderElt = document.getElementById(`${series}-order`);
     if (orderElt) {
@@ -1319,7 +1510,7 @@ const renderOrderSortableSeries = (series) => {
     });
 
     // Make note if user changes the order
-    const list = document.getElementById(`${CSS.escape(series)}-order-list`);
+    const list = document.getElementById(`${series}-order-list`);
     list.addEventListener('sortupdate', (event) => {
         // e.detail contains {origin, destination, item, oldIndex, newIndex}
         sortOrderChanged = true;
@@ -1466,7 +1657,7 @@ const setPlotTypeDisabledState = (plotType, isAllowed) => {
         document.getElementById("tsne-dyna-opt").disabled = !isAllowed;
     } else {
         // replace _ with - for id
-        const fixedPlotType = plotType.replace("_", "-");
+        const fixedPlotType = plotType.replaceAll("_", "-");
         document.getElementById(`${fixedPlotType}-opt`).disabled = !isAllowed;
     }
 }
@@ -1482,7 +1673,9 @@ const setSelectBoxByValue = (eid, val) => {
     const elt = document.getElementById(eid);
 
     // Clear selected attribute from the selected value (if multiple, only the first value)
-    elt.options[elt.selectedIndex].removeAttribute("selected");
+    if (elt?.selectedIndex > -1) {
+        elt.options[elt.selectedIndex].removeAttribute("selected");
+    }
 
     for (const i in elt.options) {
         if (elt.options[i].value === val) {
@@ -1597,7 +1790,6 @@ const updateDatasetGenes = async (analysisId=null) => {
  * Updates the sortable order of plot param series based on the current selection.
  */
 const updateOrderSortable = () => {
-
     // This function will reset the sortables.
     sortOrderChanged = false;
 
@@ -1637,7 +1829,7 @@ const updateOrderSortable = () => {
         }
 
         // Remove sortupdate event listener if it exists
-        const list = document.getElementById(`${CSS.escape(series)}-order-list`);
+        const list = document.getElementById(`${series}-order-list`);
         if (list) {
             list.removeEventListener('sortupdate', (event) => {
                 // e.detail contains {origin, destination, item, oldIndex, newIndex}
@@ -1714,7 +1906,10 @@ document.getElementById("plot-type-select").addEventListener("change", async (ev
 
 const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {
-    plotBtn.addEventListener("click", createPlot);
+    plotBtn.addEventListener("click", async (event) => {
+        await createPlot(event);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    });
 }
 
 document.getElementById("save-json-config").addEventListener("click", () => {
@@ -1807,7 +2002,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     curatorSpecificNavbarUpdates();
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser()?.session_id || null;
     if (! sessionId ) {
         createToast("Not logged in so saving displays is disabled.", "is-warning");
         document.getElementById("save-display-btn").disabled = true;
@@ -1822,13 +2017,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {
-            return await activateDatasetFromParam("share_id", async (shareId) =>
+            return await activateDatasetFromParam(urlParams, "share_id", async (shareId) =>
                 await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
             );
         } else if (urlParams.has("dataset_id")) {
     		// Legacy support for dataset_id
 
-            await activateDatasetFromParam("dataset_id");
+            await activateDatasetFromParam(urlParams, "dataset_id");
         }
 	} catch (error) {
 		logErrorInConsole(error);
@@ -1838,3 +2033,49 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     curatorSpecificOnLoad();
 
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Barrel export: group all exports under a single object for easier import
+const curatorCommon = {
+    classifyH5adColumns,
+    curatorApiCallsMixin,
+    decorateTruncatedCatLabel,
+    disableCheckboxLabel,
+    getAnalysisId,
+    getCatColumns,
+    getFacetWidget,
+    getLevels,
+    getOrganismId,
+    getTruncatedLevels,
+    getPlotConfigValueFromClassName,
+    getPlotOrderFromSortable,
+    getPlotStyle,
+    getPlotTypeSelect,
+    getPlotlyDisplayUpdates,
+    getSelect2Value,
+    getSortOrderChanged,
+    includeHtml,
+    loadColorscaleSelect,
+    PlotHandler,
+    registerCuratorSpecifcCreatePlot,
+    registerCuratorSpecifcDatasetTreeCallback,
+    registerCuratorSpecificNavbarUpdates,
+    registerCuratorSpecificOnLoad,
+    registerCuratorSpecificPlotStyle,
+    registerCuratorSpecificPlotTypeAdjustments,
+    registerCuratorSpecificUpdateDatasetGenes,
+    registerCuratorSpecificValidationChecks,
+    renderColorPicker,
+    renderOrderSortableSeries,
+    setCatColumns,
+    setLevels,
+    setColorLevels,
+    setTruncatedLevels,
+    registerChooseGenes,
+    setIsMultigene,
+    setPlotEltValueFromConfig,
+    setSelectBoxByValue,
+    setupParamValueCopyEvent,
+    updateOrderSortable
+};
+export { curatorCommon };

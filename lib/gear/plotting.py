@@ -1,5 +1,12 @@
+"""
+plotting.py - Plotly figure generation for single-gene expression displays.
+
+Builds bar, box, violin, scatter, line and related Plotly Express plots from expression
+dataframes and applies common layout, trace and color settings.
+"""
+
 import sys
-from itertools import cycle
+from itertools import cycle, product
 
 import pandas as pd
 import plotly.express as px
@@ -27,7 +34,6 @@ class PlotError(Exception):
     def __init__(self, message="") -> None:
         self.message = message
         super().__init__(self.message)
-
 
 def _add_kwargs_info_to_annotations(fig: go.Figure, annotation_info: dict) -> None:
     """Add various annotation info.  Updates 'fig' inplace."""
@@ -134,15 +140,15 @@ def _adjust_colorscale(
 
                 # Hex codes are based on Matplotlib values -> https://i.stack.imgur.com/nCk6u.jpg
                 plotting_args["color_continuous_scale"] = [
-                    [0.0, "#9a0eea"],
-                    [0.12, "#0343df"],
-                    [0.25, "#380282"],
-                    [0.38, "#00035b"],
-                    [0.5, "#000000"],
-                    [0.62, "#840000"],
-                    [0.75, "#e50000)"],
-                    [0.88, "#f97306"],
-                    [1.0, "#ffff14"],
+                    [0.0, "rgb(154, 14, 234)"],
+                    [0.12, "rgb(3, 67, 223)"],
+                    [0.25, "rgb(56, 2, 130)"],
+                    [0.38, "rgb(0, 3, 91)"],
+                    [0.5, "rgb(0, 0, 0)"],
+                    [0.62, "rgb(132, 0, 0)"],
+                    [0.75, "rgb(229, 0, 0)"],
+                    [0.88, "rgb(249, 115, 6)"],
+                    [1.0, "rgb(255, 255, 20)"],
                 ]
 
             elif palette == "bublrd":
@@ -257,22 +263,37 @@ def _translate_and_scale(series: pd.Series, x: str) -> float:
     ) + NEW_MIN
 
 
-def _truncate_ticktext(group_list: list[str]) -> list[str] | None:
+def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[str, str]]:
     """Truncate a group of axis ticks to a specified length."""
     TRUNCATION_LEN = 7  # How much of the original text to use (followed by ellipses)
     MAX_LEN_ALLOWED = 10  # Any text over this limit will be truncated
 
     # If only 0 or 1 datapoints in group, categoryarray was not present
     if not group_list:
-        return None
+        return None, {}
 
     new_ticktext = []
+    full_name_mapping = {}
+    truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
+
     for val in group_list:
         if len(val) > MAX_LEN_ALLOWED:
-            new_ticktext.append("{}...".format(val[0:TRUNCATION_LEN]))
+            base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
+
+            if base_truncated in truncated_counts:
+                # Collision: append a counter to disambiguate
+                truncated_counts[base_truncated] += 1
+                truncated = "{}~{}".format(base_truncated, truncated_counts[base_truncated])
+            else:
+                truncated_counts[base_truncated] = 0
+                truncated = base_truncated
+
+            new_ticktext.append(truncated)
+            full_name_mapping[truncated] = val
         else:
             new_ticktext.append(val)
-    return new_ticktext
+
+    return new_ticktext, full_name_mapping
 
 
 def _update_axis_titles(
@@ -355,7 +376,7 @@ def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
     elif plot_type == "bar":
         fig.update_layout(barmode="group")
         if force_overlay:
-            fig.update_layout(barmode="overlay")
+            fig.update_layout(barmode="overlay", bargap=0.4)
     elif plot_type in ["box", "strip"]:
         fig.update_layout(boxmode="group")
         if force_overlay:
@@ -386,12 +407,17 @@ def generate_plot(
     x_title: str | None = None,
     y_title: str | None = None,
     is_projection: bool = False,
+    non_interactive: bool = False,  # If True, will skip certain formatting that causes issues for static images (e.g. truncated axis labels)
     **kwargs: dict,
 ) -> go.Figure:
     """Generates and returns figure for facet grid."""
 
     # If replicates are present, use mean and stdev of expression data as datapoints
     if "replicate" in df.columns and plot_type not in ["violin", "contour"]:
+        df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)  # noqa: PD901
+    elif plot_type == "bar":
+        # Later datasets do not have a replicate column. Bars need to be run through groupby,
+        # otherwise in the "group" barmode the bars will be stacked instead of side-by-side giving wrong visualizations.
         df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)  # noqa: PD901
 
     # Little bit of safeguarding with kwargs
@@ -401,15 +427,21 @@ def generate_plot(
     kwargs["traces"].setdefault("marker", {})  # If markers does not exist within
     kwargs["traces"]["marker"].setdefault("size", 3)  # If size does not exist within
 
-    # Round y values to 2 decimal places for hover data
-    try:
-        df["y_rounded"] = df[y].astype(float).round(2)
-    except Exception:
-        # If y is not a number, try x.  If that is not a number, use y as is
-        try:
-            df["y_rounded"] = df[x].astype(float).round(2)
-        except Exception:
-            df["y_rounded"] = df[y]
+    hover_name = text_name
+    if non_interactive:
+        hover_name = None
+    else:
+        if not text_name:
+            # Round y values to 2 decimal places for hover data
+            try:
+                df["y_rounded"] = df[y].astype(float).round(2)
+            except Exception:
+                # If y is not a number, try x.  If that is not a number, use y as is
+                try:
+                    df["y_rounded"] = df[x].astype(float).round(2)
+                except Exception:
+                    df["y_rounded"] = df[y]
+            hover_name = "y_rounded"
 
     # These labels allows use to override these labels used for axis titles, etc.
     labels_dict = {x: x_title, y: y_title, "color_name": ""}
@@ -423,16 +455,15 @@ def generate_plot(
         "color": color_name,
         "category_orders": category_orders,
         "labels": labels_dict,
-        "hover_name": text_name if text_name else "y_rounded",
+        "hover_name": hover_name
     }
 
-    # Ensure label is one of the labels that is not lost from "gropuby"
+    # Ensure label is one of the labels that is not lost from "groupby"
     # TODO: Fix to only work when the df has been 'groupby' transformed
     # if plotting_args["hover_name"] not in [x, y, facet_row, facet_col, color_name]:
     #    raise PlotError("Selected label {} is not the same as one of the 'x', 'y', 'facet', or 'color' conditions".format(plotting_args["hover_name"]))
 
     plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
-    plotting_args["hover_data"] = {col: False for col in df.columns.tolist()}
 
     # If jitter is needed for scatter plot, convert to a strip plot
     if plot_type == "scatter" and jitter:
@@ -447,6 +478,11 @@ def generate_plot(
     if plot_type == "line":
         plotting_args["render_mode"] = "svg"
         plotting_args["line_shape"] = "spline"
+
+        # If x axis is continuous, sort dataframe by this column.
+        # Issue found in https://github.com/IGS/gEAR/issues/1285 where 0.0 was last entry causing line to loop back.
+        if x in df.columns and df[x].dtype in ["float64", "int64"]:
+            df = df.sort_values(x)
 
     # Scatter plots are the only types that let you set marker size by group
     # TODO: SAdkins - this is ugly... come up with better way to handle 'integer size' vs 'size by group'
@@ -487,7 +523,8 @@ def generate_plot(
                 plotting_args["error_y_minus"] = "std_minus"
 
             # Add standard deviation to hover data
-            plotting_args["hover_data"] = {x: False, y: False, "std": ":.2f"}
+            if not non_interactive:
+                plotting_args["hover_data"] = {x: False, y: False, "std": ":.2f"}
 
     if plot_type == "contour":
         plotting_args["z"] = z
@@ -567,27 +604,43 @@ def generate_plot(
         if special_func is None:
             raise PlotError("Plot type {} is invalid!".format(plot_type))
 
-        # TODO clean this up in a function
-        new_plotting_args = {
-            "x": df[x],
-            "y": df[y],
-            "text": df[text_name] if text_name else y,
-        }
-        new_plotting_args["line"] = dict(color="#401362")
-        new_plotting_args["showlegend"] = (
-            False  # Only add legend with color group present
-        )
-
         priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
         if priority_groups:
+            if x == facet_row:
+                raise PlotError("ERROR: 'x' and 'facet_row' cannot be the same column for violin plots. They must be different to avoid rendering issues.")
+
+            # Use .cat.categories for categorical columns, else .unique()
+            def get_categories(df, col):
+                if col and col in df.columns and _is_categorical(df[col]):
+                    return df[col].cat.categories.tolist()
+                elif col and col in df.columns:
+                    return sorted(df[col].unique().tolist())
+                return []
+
+            # Generate all possible combinations based on the priority groups
+            # Violin plots will only add traces for groups with data, which centers inside facet rows
+            # so later we need to add empty traces to ensure each x-value has a trace
+            all_combos = list(product(*[get_categories(df, grp) for grp in priority_groups]))
+
             # Groupby will not include combinations with missing data.  This can result in missing traces for a group
             grouped = df.groupby(priority_groups, observed=False)
             names_in_legend = {}
-            # Name is a tuple of groupings, as priority_groups was passed in as a
-            # Group is the 'groupby' dataframe
-            for name, group in grouped:
-                for k, v in {"x": x, "y": y, "text": text_name}.items():
-                    new_plotting_args[k] = group[v] if v else group[y]
+
+            # Track which combos have data
+            combos_with_data = set(grouped.groups.keys())
+
+            # Now loop through all combinations to ensure each gets a trace
+            for combo in all_combos:
+                new_plotting_args = {
+                    "x": df[x],
+                    "y": df[y],
+                    "text": df[text_name] if text_name else y,
+                    "opacity": 0.6
+                }
+                new_plotting_args["line"] = dict(color="#401362")
+                new_plotting_args["showlegend"] = (
+                    False  # Only add legend with color group present
+                )
 
                 # Quick plot-specific check
                 if plot_type in ["violin"]:
@@ -596,10 +649,33 @@ def generate_plot(
                             "ERROR: Tried to call continuous colorscale on violin plot."
                         )
 
+                # If only one grouping, combo is not a tuple
+                if len(priority_groups) == 1:
+                    combo = (combo[0],)
+                    # Name will be a string
+                    name = combo[0]
+                else:
+                    # Name will be a tuple
+                    name = combo
+
+                if name in combos_with_data:
+                    group = grouped.get_group(combo)
+                else:
+                    # Create empty group with correct columns
+                    group = df.iloc[0:0].copy()
+                    # Set x and facet_row to correct category for empty trace
+                    for idx, grp in enumerate(priority_groups):
+                        group[grp] = [combo[idx]]
+                    group[y] = [0]  # Set y to 0 for empty trace (this is hacky)
+                    new_plotting_args["opacity"] = 0.0  # Make trace invisible
+                    new_plotting_args["hoverinfo"] = None
+
+                # Build plotting args as before
+                for k, v in {"x": x, "y": y, "text": text_name}.items():
+                    new_plotting_args[k] = group[v] if v else group[y]
+
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
-                new_plotting_args["scalegroup"] = name
-                if isinstance(name, tuple):
-                    new_plotting_args["scalegroup"] = "_".join(name)
+                new_plotting_args["scalegroup"] = "_".join([str(n) for n in name]) # protect against numbers
 
                 # If color dataseries is present, add some special configurations
                 if color_name:
@@ -610,17 +686,18 @@ def generate_plot(
                     new_plotting_args["name"] = curr_color
 
                     # If facets are present, a legend group trace can appear multiple times.
-                    # Ensure it only shows once.
-                    new_plotting_args["showlegend"] = True
-                    if curr_color in names_in_legend:
-                        new_plotting_args["showlegend"] = False
-                    names_in_legend[curr_color] = True
+                    # Ensure it only shows once and only for valid traces
+                    if new_plotting_args["opacity"] > 0.0:
+                        new_plotting_args["showlegend"] = True
+                        if curr_color in names_in_legend:
+                            new_plotting_args["showlegend"] = False
+                        names_in_legend[curr_color] = True
 
-                    new_plotting_args["line"] = dict(color="#000000")
-                    new_plotting_args["legendgroup"] = curr_color
-                    new_plotting_args["offsetgroup"] = (
-                        curr_color  # Cleans up some weird grouping stuff, making plots thicker
-                    )
+                        new_plotting_args["line"] = dict(color="#000000")
+                        new_plotting_args["legendgroup"] = curr_color
+                        new_plotting_args["offsetgroup"] = (
+                            curr_color  # Cleans up some weird grouping stuff, making plots thicker
+                        )
 
                     if colormap and isinstance(colormap, dict):
                         # Use black outlines with colormap fillcolor. Pertains mostly to violin plots
@@ -653,10 +730,29 @@ def generate_plot(
 
                 special_func(**new_plotting_args, row=row_idx, col=col_idx)
 
+                # For each facet row title, offset the x-axis for every even-positionsed annotation
+                # TODO: Remove when #1154 is worked on
+                if facet_row:
+                    title = name if not isinstance(name, tuple) else name[0]
+                    fig.update_annotations(
+                        selector={ "text": title},
+                        patch={
+                            "x": 0.98 if (facet_row_indexes[title] % 2 == 0) else 1.00,
+                            "font":{"size":12},
+                            },
+                    )
+
         else:
+            new_plotting_args = {
+                "x": df[x],
+                "y": df[y],
+                "text": df[text_name] if text_name else y,
+                "opacity": 0.6
+            }
             # Safeguard against grouping by an empty list
             # use dataframe instead
             special_func(**new_plotting_args, row=1, col=1)
+
 
         # TODO: Since graph_object plots don't need 'category_orders' decide if we can drop passing that to the px functions
         # Only tick labels from the first axis should be shown
@@ -699,13 +795,17 @@ def generate_plot(
     )
 
     # Truncate faceted column axis labels so annotation can fit
-    if facet_col and _is_categorical(df[x]):
-        fig.for_each_xaxis(
-            lambda a: a.update(
-                ticktext=_truncate_ticktext(a.categoryarray),
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive and _is_categorical(df[x]):
+        def truncate_and_collect(a):
+            ticktext, mapping = _truncate_ticktext(a.categoryarray)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
                 tickvals=a.categoryarray,
             )
-        )
+        fig.for_each_xaxis(truncate_and_collect)
+
 
     fig.update_yaxes(
         dict(
@@ -718,13 +818,14 @@ def generate_plot(
     )
 
     # More general trace updates
-    fig.update_traces(
-        dict(
-            opacity=None
-            if plot_type in ["contour"] or "color_continuous_scale" in plotting_args
-            else 0.6,
+    if plot_type not in ["violin"]:
+        fig.update_traces(
+            dict(
+                opacity=None
+                if plot_type in ["contour"] or "color_continuous_scale" in plotting_args
+                else 0.6,
+            )
         )
-    )
 
     # If 'facet_col' and 'color_name' dataseries are equal treat as if color series is not present (for plot grouping)
     # Originally included 'x' and 'color_name' but a plotly update fixed this
@@ -751,7 +852,7 @@ def generate_plot(
     # More general layout updates
     fig.update_layout(
         autosize=True,
-        hovermode="closest",
+        hovermode="closest" if not non_interactive else False,
         legend=dict(itemsizing="constant"),
         showlegend=False
         if hide_legend
@@ -768,6 +869,27 @@ def generate_plot(
 
     if reverse_palette:
         kwargs["coloraxes"]["reversescale"] = reverse_palette
+
+    # Store the axis label mapping in the figure metadata for use on the JS side
+    if axis_label_mapping:
+        existing_meta = fig.layout.meta or {}
+        if isinstance(existing_meta, dict):
+            existing_meta["axis_label_mapping"] = axis_label_mapping
+        else:
+            existing_meta = {"axis_label_mapping": axis_label_mapping}
+        fig.update_layout(meta=existing_meta)
+
+        if not non_interactive:
+            # axis_label_mapping is truncated -> full; we need full -> truncated to find what changed
+            # But trace.x contains the original full values, so we just pass them directly as customdata
+            def patch_hover(trace):
+                if trace.x is None:
+                    return
+                trace.update(
+                    customdata=[[str(xval)] for xval in trace.x],
+                    hovertemplate="<b>%{customdata[0]}</b><br>Value: %{y:.2f}<extra></extra>",
+                )
+            fig.for_each_trace(patch_hover)
 
     # Update this particular entity with kwargs information.  This is generally custom things the user wants
     # that is not avaiable in the general plotly configuration we want nor in dataset_curator options
@@ -829,5 +951,8 @@ def plotly_color_map(names: list[str]) -> dict:
 
 
 def rgb_to_hex(r: str, g: str, b: str) -> str:
+    """
+    Convert red, green and blue components (0-255) to a "#rrggbb" hex color string.
+    """
     hex = "#{:02x}{:02x}{:02x}".format(int(r), int(g), int(b))
     return hex

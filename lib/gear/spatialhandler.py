@@ -1,102 +1,434 @@
+"""
+spatialhandler.py - Platform-specific handlers for spatial transcriptomics uploads.
 
+Defines the SpatialHandler base class and subclasses (CosMx, Curio, GeoMx, Visium,
+Visium HD, Xenium) that read uploaded files into SpatialData objects.
+"""
+
+import gzip
 import os
+import shutil
+import subprocess
 import tarfile
+import typing
 from abc import ABC, abstractmethod
-from typing import Literal, TypeVar
+from pathlib import Path
 
 import anndata as ad
+import numpy as np
 import pandas as pd
 import spatialdata as sd
 import spatialdata_io as sdio
 import xarray
-from gear.utils import update_adata_with_ensembl_ids
+from gear.utils.gene_mapping import update_var_with_ensembl_ids
+from gear.utils.job_coordination import raise_if_upload_deleted
+from spatialdata.transformations import (
+    Scale,
+    Translation,
+    set_transformation,
+)
+from spatialdata_io._constants._constants import (
+    CosmxKeys,
+    CurioKeys,
+    VisiumHDKeys,
+    XeniumKeys,
+)
 from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 
-# Self is a typing type starting in Python 3.11
-Self = TypeVar("Self", bound="SpatialHandler")
+if typing.TYPE_CHECKING:
+    from anndata import AnnData
+    from spatialdata import SpatialData
+
+# The dataset_id we pass into every spatialdata-io reader call that accepts one
+# (and the matching prefix tarball-extraction renames files to beforehand) - a
+# single source of truth so the two can never drift out of sync with each other
+# (they must match exactly, since the reader looks for files named with this prefix).
+STANDARD_DATASET_ID = "spatialdata"
+
+def _remove_dir(dir_to_remove: str) -> None:
+    """Remove a directory safely using subprocess (no shell)."""
+    if os.path.isdir(dir_to_remove):
+        subprocess.run(["rm", "-rf", dir_to_remove], check=True)
+
+def _gunzip_member(tf: tarfile.TarFile, entry: tarfile.TarInfo, extract_dir: str) -> None:
+    """Decompress a gzipped tar member into extract_dir under entry.name (already stripped of .gz)."""
+    root = os.path.realpath(extract_dir)
+    target = os.path.realpath(os.path.join(root, entry.name))
+    if os.path.commonpath([root, target]) != root:
+        raise Exception(f"Refusing to extract {entry.name} outside the upload directory.")
+    entry_io = tf.extractfile(entry)
+    if entry_io is None:
+        raise Exception(f"Error occurred while extracting file: {entry.name}")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with entry_io, gzip.open(entry_io) as gz_in, open(target, "wb") as out_f:
+        shutil.copyfileobj(gz_in, out_f)
+
+def _select_pyramid_level(img, max_dim: int = 4000):
+    """
+    Picks the smallest available pyramid level whose largest dimension is
+    still >= max_dim, avoiding loading higher resolution than needed.
+    Falls back to the smallest level available if all are below max_dim.
+
+    Useful for downsampling large images to a manageable size for processing, while still retaining sufficient detail.
+    """
+    levels = list(sd.get_pyramid_levels(img))
+    if not levels:
+        raise ValueError("No pyramid levels found for this image.")
+
+    best = levels[0]
+    for level in levels:
+        if max(level.sizes.get('y', 0), level.sizes.get('x', 0)) < max_dim:
+            break
+        best = level
+    return best
 
 class SpatialHandler(ABC):
+    """
+    Abstract base class for handling spatial transcriptomics data, providing a unified interface for managing and processing spatial and annotated data objects.
+
+    This class defines properties and methods for:
+    - Managing normalized table names.
+    - Accessing and setting AnnData and SpatialData objects.
+    - Querying metadata such as image presence, coordinate system, platform, and image names.
+    - Reading spatial data files.
+    - Filtering spatial data to image boundaries.
+    - Converting spatial data to AnnData format.
+    - Writing spatial data to Zarr and AnnData (H5AD) file formats.
+
+    Subclasses must implement abstract properties and methods to specify platform-specific details and file reading logic.
+
+    Attributes:
+        NORMALIZED_TABLE_NAME (str): Default name for the normalized table.
+
+    Properties:
+        normalized_table_name (str): Name of the normalized table.
+        adata (AnnData): The AnnData object associated with this handler.
+        sdata (SpatialData): The SpatialData object associated with this handler.
+        has_images (bool): Whether the handler has associated images (abstract).
+        coordinate_system (str): The coordinate system used (abstract).
+        platform (str): The name of the platform (abstract).
+        img_name (str | None): The name of the associated image (abstract).
+
+    Methods:
+        process_file(filepath: str) -> "SpatialHandler": Reads and processes a spatial data file (abstract).
+        merge_centroids_with_obs() -> pd.DataFrame: Converts spot data to a pandas DataFrame.
+        convert_sdata_to_adata(include_images: bool | None = None, table_name=None) -> "SpatialHandler": Converts SpatialData to AnnData.
+        extract_img() -> np.ndarray: Extracts an image as a NumPy array.
+        scale_and_translate_sdata(set_to_zero=True, apply_scale=True) -> "SpatialHandler": Scales and translates spatial data.
+        write_to_zarr(filepath: str | None =None, overwrite: bool = False) -> "SpatialHandler": Writes SpatialData to a Zarr file.
+        write_to_h5ad(filepath: str | None=None) -> "SpatialHandler": Writes AnnData to an H5AD file.
+    """
 
     NORMALIZED_TABLE_NAME = "table"
 
+    def __init__(self):
+        self._adata = None
+        self._sdata = None
+        self._zarr_path = None
+
     @property
     def normalized_table_name(self):
+        """
+        Returns the name of the normalized table associated with this instance.
+
+        Returns:
+            str: The normalized table name.
+        """
         return self.NORMALIZED_TABLE_NAME
 
     @property
-    def adata(self):
+    def adata(self) -> "AnnData":
+        """
+        Returns the AnnData object associated with this instance.
+
+        Returns:
+            AnnData: The underlying AnnData object.
+        """
+        if self._adata is None:
+            raise Exception("No AnnData object present for this instance.")
         return self._adata
 
     @adata.setter
-    def adata(self, adata=ad.AnnData()):
+    def adata(self, adata: "AnnData") -> None:
+        """
+        Sets the AnnData object for the instance.
+
+        Parameters:
+            adata (AnnData): The annotated data matrix to be assigned to the instance.
+        """
         self._adata = adata
 
     @property
-    def sdata(self):
+    def sdata(self) -> "SpatialData":
+        """
+        Returns the associated SpatialData object.
+
+        Returns:
+            SpatialData: The spatial data instance associated with this handler.
+        """
+        if self._sdata is None:
+            raise Exception("No spatial data object present for this instance.")
         return self._sdata
 
     @sdata.setter
-    def sdata(self, sdata=sd.SpatialData()):
+    def sdata(self, sdata: "SpatialData") -> None:
+        """
+        Sets the SpatialData object for the handler.
+
+        Parameters:
+            sdata (SpatialData): The SpatialData instance to assign to the handler.
+        """
         self._sdata = sdata
 
     @property
+    def zarr_path(self) -> Path:
+        """
+        Returns the path to the Zarr file associated with this instance.
+
+        Returns:
+            Path: The path to the Zarr file.
+        """
+        if self._zarr_path is None:
+            raise Exception("No Zarr path set for this instance.")
+        return self._zarr_path
+
+    @zarr_path.setter
+    def zarr_path(self, zarr_path: Path) -> None:
+        """
+        Sets the path to the Zarr file for the instance.
+
+        Parameters:
+            zarr_path (Path): The path to the Zarr file to be assigned to the instance.
+        """
+        self._zarr_path = zarr_path
+
+    def _resolve_coordinate_system(self, candidates: list[str]) -> str:
+        """
+        Given coordinate system names in order of preference, return the first one
+        that actually exists on self.sdata.
+
+        spatialdata-io has changed, across releases, how it names the coordinate
+        system produced for a given dataset_id: older versions used a fixed name
+        (e.g. "global", "downscaled_hires"), while newer versions prefix that name
+        with the dataset_id (e.g. "spatialdata_global", "spatialdata_downscaled_hires").
+        Resolving dynamically here -- instead of hardcoding a single name -- lets a
+        single handler read both older, already-written Zarr stores and newly
+        processed uploads without caring which spatialdata-io version produced them.
+
+        Args:
+            candidates: Coordinate system names to try, in priority order.
+
+        Returns:
+            str: The first candidate name found in self.sdata.coordinate_systems.
+
+        Raises:
+            KeyError: If none of the candidates are present, listing what actually
+                is, so the mismatch is easy to diagnose against a fresh spatialdata-io
+                release.
+        """
+        available = set(self.sdata.coordinate_systems)
+        for candidate in candidates:
+            if candidate in available:
+                return candidate
+        raise KeyError(
+            f"None of the candidate coordinate systems {candidates} were found. "
+            f"Available coordinate systems: {sorted(available)}"
+        )
+
+    @property
     @abstractmethod
-    def has_images(self):
+    def has_images(self) -> bool:
+        """
+        Checks if the spatial handler has associated images.
+
+        Returns:
+            bool: True if images are present, False otherwise.
+        """
         pass
 
     @property
     @abstractmethod
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
+        """
+        Returns the coordinate system used by the spatial handler.
+
+        Returns:
+            str: A string representing the name or type of the coordinate system (e.g., 'WGS84', 'UTM', etc.).
+        """
         pass
 
     @property
     @abstractmethod
-    def platform(self):
+    def region_id(self) -> str:
+        """
+        Returns the region ID used for spot data.
+
+        This id should be found in your table, and serve as the index for the shape under "region_name".
+
+        Returns:
+            str: The region ID.
+        """
         pass
 
     @property
     @abstractmethod
-    def img_name(self):
+    def region_name(self) -> str:
+        """
+        Returns the name of the region used for spot data.
+
+        A couple of ways to find this when viewing the SpatialData object:
+        1. Look within the self.coordinate_system elements, and it is the name for the Shapes one. The 2nd dimension of .shape should be 2
+        2. Within sdata.tables["table"].obs, the "region" column should have only 1 unique value that should match the Shape element name.
+
+        Returns:
+            str: The name of the region.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def platform(self) -> str:
+        """
+        Returns the name of the platform as a string.
+
+        Returns:
+            str: The name of the platform.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def img_name(self) -> str | None:
+        """
+        Returns the name of the image associated with the current instance.
+
+        Returns:
+            str | None: The image name if available, otherwise None.
+        """
         pass
 
     @abstractmethod
-    def _read_file(self, filepath):
+    def process_file(self, filepath: str) -> "SpatialHandler":
+        """
+        Reads and processes a spatial data file from the given filepath, building
+        the raw platform-specific SpatialData object and assigning it to self.sdata.
+
+        This does NOT run standardization (subsetting, coordinate scaling,
+        centroid merging, QC/embeddings) — call self.standardize_sdata() (or the
+        underlying methods individually) afterward if a standardized object is needed.
+
+        Args:
+            filepath (str): The path to the spatial data file to be read.
+
+        Returns:
+            SpatialHandler: An instance of SpatialHandler containing the loaded spatial data.
+
+        Raises:
+            FileNotFoundError: If the specified file does not exist.
+            IOError: If there is an error reading the file.
+            ValueError: If the file format is invalid or unsupported.
+        """
         pass
 
-    def filter_sdata_by_coords(self):
-        # Filter to only the hires image boundaries
-        if not self.img_name:
-            return self
+    def close_spatialdata(self) -> None:
+        """
+        Close and clean up resources associated with the object's spatial data (self.sdata).
 
-        # Image can be DataArray or DataTree depending on if multiple scales are present for the image
-        img = self.sdata[self.img_name]
-        if isinstance(img, xarray.DataTree):
-            coords = sd.get_pyramid_levels(img, n=0)
-        elif isinstance(img, xarray.DataArray):
-            coords = img
-        else:
-            coords = self.sdata.images[self.img_name]  # Fallback to preserve original behavior
+        This method performs a best-effort teardown of common file-backed and on-disk
+        data structures used for spatial AnnData objects and Zarr stores. It is
+        intended to release file handles and other resources so that files can be
+        moved/removed or the process can exit cleanly.
 
-        # Get the coordinates of the image
-        x = len(coords.x)
-        y = len(coords.y)
-        sdata = sd.bounding_box_query(self.sdata,
-                axes=("x", "y"),
-                min_coordinate=[0, 0],
-                max_coordinate=[x, y],
-                target_coordinate_system=self.coordinate_system,
-                filter_table=True,
-                )
+        Behavior:
+        - Iterates over any tables in self.sdata.tables (if present). For each table,
+            if it appears to be an AnnData object with .isbacked truthy, attempts to
+            close its underlying file handle via adata.file.close().
+        - Attempts to close any attributes on self.sdata named 'store', 'zarr_store',
+            'zarr_group', or 'zarr_root' by calling a .close() method if present and
+            callable.
+        - Deletes the self.sdata attribute (best-effort) and runs garbage collection
+            via gc.collect() to help free memory and release operating-system resources.
 
-        self.sdata = sdata
-        return self
+        Notes and guarantees:
+        - This method swallows exceptions raised while closing individual resources.
+            It is intentionally tolerant to partial failures so that other resources may
+            still be released.
+        - It does not remove or modify on-disk data; it only attempts to close open
+            handles and drop in-memory references.
+        - The caller should drop any other references to the same AnnData / store
+            objects (e.g., local variables) to allow them to be fully freed.
+        - The operation is idempotent in intent (calling it multiple times should not
+            raise), but thread-safety is not guaranteed. Avoid concurrent calls from
+            multiple threads.
 
-    def _convert_sdata_to_adata(self, include_images=None, table_name=None):
-        if self.sdata is None:
-            raise Exception("No spatial data object present to convert to AnnData object.")
+        Parameters:
+        - None
 
+        Returns:
+        - None
+
+        NOTE: Copilot-generated function
+
+        Example:
+                # Best practice: drop other references to sdata and then call:
+                handler.close_spatialdata()
+                # If needed, reopen the data later by re-reading from disk/storage.
+        """
+        import gc
+
+        # Close backed AnnData tables (matches pattern used in your code)
+        for tbl in getattr(self.sdata, "tables", {}).values():
+            try:
+                adata = tbl
+                if getattr(adata, "isbacked", False):
+                    try:
+                        adata.file.close()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        # Try to close zarr/store objects if present
+        for name in ("store", "zarr_store", "zarr_group", "zarr_root"):
+            store = getattr(self.sdata, name, None)
+            if store is not None:
+                close_fn = getattr(store, "close", None)
+                if callable(close_fn):
+                    try:
+                        close_fn()
+                    except Exception:
+                        pass
+
+        # Drop references and collect
+        try:
+            # caller should also drop their reference to sdata
+            self._sdata = None
+        except Exception:
+            pass
+        gc.collect()
+
+    def convert_sdata_to_adata(self, include_images: bool | None = None, table_name=None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object (`sdata`) to an AnnData object and assigns it to `self.adata`.
+
+        Parameters:
+            include_images (bool | None, optional): Whether to include image data in the conversion. If None, defaults to `self.has_images`.
+            table_name (str, optional): The name of the table to use for conversion. If None, defaults to `self.NORMALIZED_TABLE_NAME`.
+
+        Returns:
+            SpatialHandler: The current instance with the `adata` attribute set.
+
+        Raises:
+            Exception: If `self.sdata` is None or if an error occurs during conversion.
+
+        NOTE: This is a slow process that can be slower if include_images=True. It is better to read either an h5ad directly
+        or read AnnData from SpatialData.tables["table"]
+        """
         if include_images is None:
             include_images = self.has_images
+
+            # TODO: If sdata.image has a transformation applied, we need to undo it, as to_legacy_anndata will apply it again.
+
 
         # Generally everything should already be converted to the normalized table name
         if table_name is None:
@@ -111,9 +443,271 @@ class SpatialHandler(ABC):
         self.adata = adata
         return self
 
-    def _write_to_zarr(self, filepath=None):
-        if self.sdata is None:
-            raise Exception("No spatial data object present to write to file.")
+    def extract_img(self) -> tuple[dict[str, np.ndarray], tuple]:
+        """
+        Extracts an image from the spatial data object and returns it as a NumPy array in (y, x, c) format.
+
+        The method retrieves the image specified by `self.img_name` from `self.sdata.images`. If the image is a
+        `xarray.DataTree`, it extracts the base pyramid level. The image is then converted from an xarray DataArray
+        to a NumPy array and its axes are rearranged from (c, y, x) to (y, x, c).
+
+        Returns:
+            tuple: A tuple containing:
+                dict[str, np.ndarray]: The extracted image as a NumPy array in (y, x, c) format.
+                tuple: The original height and width of the image.
+
+        Raises:
+            Exception: If `self.img_name` is not specified.
+        """
+        if not self.img_name:
+            raise Exception("No image name specified for conversion to 2D array.")
+
+        img = self.sdata.images[self.img_name]
+        orig_height, orig_width = None, None
+        if isinstance(img, xarray.DataTree):
+            full_res = sd.get_pyramid_levels(img, n=0)
+            orig_height, orig_width = full_res.sizes.get('y'), full_res.sizes.get('x')
+            img = _select_pyramid_level(img, max_dim=4000)
+        else:
+            orig_height, orig_width = img.sizes.get('y'), img.sizes.get('x')
+
+        img = img.to_numpy()
+        # change dims from (c, y, x) to (y, x, c)
+        return {"composite": np.moveaxis(img, 0, -1)}, (orig_height, orig_width)
+
+
+    def merge_centroids_with_obs(self) -> "SpatialHandler":
+        """
+        Merges spatial centroid coordinates with the observation table of the spatial dataset.
+
+        This method retrieves centroid coordinates for the specified region and coordinate system,
+        renames the coordinate columns to 'spatial1' and 'spatial2', and merges them with the
+        observation DataFrame (`obs`) of the main data table. The merge is performed as an inner join
+        on the region identifier to ensure only matching observations are retained. Handles both
+        pandas and Dask DataFrames by computing them if necessary.
+
+        Raises:
+            ValueError: If centroid extraction fails.
+
+        Returns:
+            SpatialHandler: The current instance with updated observation data including centroid coordinates.
+        """
+
+        centroids_df =  sd.get_centroids(self.sdata[self.region_name], coordinate_system=self.coordinate_system)
+
+        if centroids_df is None:
+            raise ValueError("Could not extract spatial observation locations")
+
+        # Add spatial coords. Not all locations may be present in adata after filtering
+        centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
+        dataframe = self.sdata.tables["table"].obs
+
+        # Compute the dataframe if it's a Dask dataframe (since we cannot merge into a Dask dataframe)
+        if hasattr(dataframe, "compute"):
+            dataframe = dataframe.compute()
+        if hasattr(centroids_df, "compute"):
+            centroids_df = centroids_df.compute()
+
+        # Add the centroid info to the AnnData table. Inner join in case location ID does not exist in observation
+        self.sdata.tables["table"].obs = dataframe.merge(centroids_df, on=self.region_id, how="inner")
+        return self
+
+    def scale_and_translate_sdata(self, set_to_zero=True, apply_scale=True) -> "SpatialHandler":
+        """
+        Filters the spatial data (`sdata`) to fit within the boundaries of the high-resolution image,
+        optionally translating the coordinates to start at zero and scaling the data so that the longest
+        dimension does not exceed 2000 pixels.
+
+        Args:
+            set_to_zero (bool, optional): If True, translates the data so that both x and y coordinates start at 0.
+                Defaults to True.
+            apply_scale (bool, optional): If True, scales the data so that the longest dimension is no more than 2000 pixels.
+                Defaults to True.
+
+        Returns:
+            SpatialHandler: The updated SpatialHandler instance with filtered spatial data.
+        """
+        # Filter to only the hires image boundaries
+        if not self.img_name:
+            return self
+
+        if self.platform in ["visium", "visium_hd", "xenium"]:
+            # Visium data is already in image space, so no need to scale or translate
+            # SAdkins - honestly, not sure how to fix these yet as the shapes seem to translate wildly off of the image
+            return self
+
+        # Extent should be based on the image data, in case the observation data bleeds past the image
+        img_extent = sd.get_extent(self.sdata[self.img_name], coordinate_system=self.coordinate_system)
+
+        MAX_X = 2000
+        # SAFETY CHECK: If img_extent width is less than or equal to MAX_X, just return.
+        # Would rather retain extra data and manually process than lose it.
+        img_x_width = img_extent["x"][1] - img_extent["x"][0]
+        if img_x_width <= MAX_X:
+            return self
+
+        sdata: "SpatialData" = sd.bounding_box_query(self.sdata,
+                axes=("x", "y"),
+                min_coordinate=[img_extent["x"][0], img_extent["y"][0]],
+                max_coordinate=[img_extent["x"][1], img_extent["y"][1]],
+                target_coordinate_system=self.coordinate_system,
+                filter_table=True,
+                ) # type: ignore
+
+        # Get the region extent based on the filtered data
+        region_extent = sd.get_extent(sdata[self.region_name], coordinate_system=self.coordinate_system)
+
+        # NOTE: The "set_transformation" only modifies metadata about a transformation that is used in other spatialdata functions.
+        # To actually apply the transformation run "spatialdata.transform()" or a related function
+
+        # Perform a translation to the coordinate system so that both x and y start at 0
+        # While it is possible to save a "transform" (and time) by combining the two in a Sequence transformation,
+        # this is necessary to ensure the scaling is done correctly based on the updated coordinates.
+        if set_to_zero:
+            translation = Translation([-region_extent["x"][0], -region_extent["y"][0]], axes=("x", "y"))
+            set_transformation(sdata[self.region_name], translation, to_coordinate_system=self.coordinate_system)
+            sdata.transform_element_to_coordinate_system(self.region_name, target_coordinate_system=self.coordinate_system)
+
+            # Recalculate the region extent after translation, so that scaling is correct
+            region_extent = sd.get_extent(sdata[self.region_name], coordinate_system=self.coordinate_system)
+
+        # Ensure the longest dimension is no more than 2000 pixels. This is the "legacy_to_anndata" hires pixel limit.
+        if apply_scale:
+            region_x_width = region_extent["x"][1] - region_extent["x"][0]
+
+            if region_x_width > MAX_X:
+                scale_factor_x = MAX_X / region_x_width
+
+                scale = Scale([scale_factor_x, scale_factor_x], axes=("x", "y"))
+                set_transformation(sdata[self.region_name], scale, to_coordinate_system=self.coordinate_system)
+                sdata.transform_element_to_coordinate_system(self.region_name, target_coordinate_system=self.coordinate_system)
+
+            # Rasterize the image if it exceeds the max width
+            img_x_width = img_extent["x"][1] - img_extent["x"][0]
+            if img_x_width > MAX_X:
+                rasterized = sd.rasterize(
+                        sdata[self.img_name],
+                        axes=("x", "y"),
+                        min_coordinate=[img_extent[ax][0] for ax in ("x", "y")],
+                        max_coordinate=[img_extent[ax][1] for ax in ("x", "y")],
+                        target_coordinate_system=self.coordinate_system,
+                        target_unit_to_pixels=None,
+                        target_width=MAX_X,
+                        target_height=None,
+                        target_depth=None,
+                        return_regions_as_labels=True,
+                    )
+                sdata[self.img_name] = rasterized
+
+        self.sdata = sdata
+        return self
+
+    def standardize_sdata(self) -> "SpatialHandler":
+        """
+        Normalize and preprocess the spatial dataset in self.sdata.tables["table"].
+
+        Convenience wrapper that runs the full standardization pipeline in order:
+        subset the SpatialData (self.subset_sdata()), scale/translate coordinates
+        (self.scale_and_translate_sdata()), merge polygon centroids into observations
+        (self.merge_centroids_with_obs()), then compute QC metrics and embeddings
+        (self.compute_qc_and_embeddings()). Each step is skipped if its output is
+        already present (see compute_qc_and_embeddings and the guard below).
+
+        Callers that want individual progress reporting between these steps (e.g.
+        job status updates during an upload) should call the underlying methods
+        directly instead of this wrapper.
+
+        Returns:
+            SpatialHandler: Returns self to allow method chaining.
+        """
+        obs = self.sdata.tables["table"].obs
+
+        if not ("spatial1" in obs.columns and "spatial2" in obs.columns):
+            self.subset_sdata()
+            self.scale_and_translate_sdata()
+
+            # The SpatialData object table should have coordinates, but they are not translated into the image space
+            # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
+            self.merge_centroids_with_obs()
+
+        self.compute_qc_and_embeddings()
+        return self
+
+    def compute_qc_and_embeddings(self) -> "SpatialHandler":
+        """
+        Run single-cell QC and embedding steps on self.sdata.tables["table"] (AnnData object).
+
+        Runs a Scanpy workflow: normalize_total, log1p, var_names_make_unique,
+        calculate_qc_metrics, highly_variable_genes (top 2000), PCA, neighbors, UMAP.
+        The processed AnnData replaces the original in self.sdata.tables["table"].
+
+        No-ops if "X_umap" is already present in obsm, so it's safe to call more
+        than once (e.g. when re-processing an already-standardized dataset).
+
+        Returns:
+            SpatialHandler: Returns self to allow method chaining.
+        """
+        adata = self.sdata.tables["table"]
+
+        # Ensure Ensembl IDs are not duplicated, which will throw errors downstream
+        adata.var_names_make_unique()
+
+        if "X_umap" in adata.obsm.keys():
+            return self
+
+        import scanpy as sc
+
+        sc.pp.normalize_total(adata, inplace=True)
+        sc.pp.log1p(adata)
+
+        # Add qc-metrics (so we can filter on them later if desired)
+        sc.pp.calculate_qc_metrics(adata, log1p=False, percent_top=None, inplace=True)
+
+        sc.pp.highly_variable_genes(adata, n_top_genes=2000)
+        sc.pp.pca(adata)
+        sc.pp.neighbors(adata)
+        sc.tl.umap(adata)
+        self.sdata.tables["table"] = adata
+        return self
+
+    def subset_sdata(self) -> "SpatialHandler":
+        """
+        Subsets the spatial data (`sdata`) to include only specific elements and updates the instance's `sdata` attribute.
+
+        The subset includes the normalized table, region name, and image name. The method also filters tables within the data.
+
+        Returns:
+            SpatialHandler: The instance with the updated, subsetted `sdata`.
+        """
+        subset_elements = [self.NORMALIZED_TABLE_NAME, self.region_name]
+        if self.has_images:
+            subset_elements.append(self.img_name)
+
+        self.sdata = self.sdata.subset(subset_elements, filter_tables=True)
+        return self
+
+    def write_to_zarr(self, filepath: str | None =None, overwrite: bool = False) -> "SpatialHandler":
+        """
+        Writes the spatial data object to a Zarr file at the specified file path.
+
+        This method performs the following steps:
+        - Checks that a spatial data object (`self.sdata`) is present.
+        - Ensures a destination file path is provided.
+        - Adds the platform type as metadata to the normalized table.
+        - Converts the data matrix to float type for compatibility.
+        - Attempts to write the spatial data to the specified file path.
+        - If an error occurs during writing, removes any partially created directory.
+
+        Args:
+            filepath (str | None): The destination file path where the Zarr file will be written.
+            overwrite (bool): Whether to overwrite the file if it already exists. Defaults to False.
+
+        Returns:
+            SpatialHandler: The current instance of the SpatialHandler.
+
+        Raises:
+            Exception: If no spatial data object is present, no file path is provided, or an error occurs during writing.
+        """
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
@@ -124,22 +718,34 @@ class SpatialHandler(ABC):
             self.sdata.tables[self.NORMALIZED_TABLE_NAME].X = self.sdata.tables[self.NORMALIZED_TABLE_NAME].X.astype("float")
 
             # Will fail if file already exists
-            self.sdata.write(file_path=filepath)
+            self.sdata.write(file_path=filepath, overwrite=overwrite)
         except Exception as err:
             # remove the directory if it was created
             if os.path.exists(filepath):
                 import shutil
                 shutil.rmtree(filepath)
-            raise Exception("Error occurred while writing to file: ", err)
+            raise Exception("Error occurred while writing to file: " + str(err))
         return self
 
-    def _write_to_h5ad(self, filepath=None):
-        if self.adata is None:
-            raise Exception("No AnnData object present to write to file.")
+    def write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
+        """
+        Writes the current AnnData object (`self.adata`) to an H5AD file at the specified file path.
+
+        Parameters:
+            filepath (str | None): The destination file path where the AnnData object should be written.
+                If None, an exception is raised.
+
+        Returns:
+            SpatialHandler: Returns self after successfully writing the file.
+
+        Raises:
+            Exception: If no AnnData object is present, if no file path is provided, or if an error occurs during writing.
+                In case of a write error, any partially written file at the destination path is removed.
+        """
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
-            self.adata.write(filename=filepath)
+            self.adata.write(filename=Path(filepath))
         except Exception as err:
             # remove the file if it was created
             if os.path.exists(filepath):
@@ -147,58 +753,351 @@ class SpatialHandler(ABC):
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
-class CoxMxHandler(SpatialHandler):
+class CosMxHandler(SpatialHandler):
     """
-    Factory class for CoxMx dataset uploads and conversions.
+    Factory class for CosMx dataset uploads and conversions.
 
     Standardized names for different files:
-    * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
-    * <dataset_id>_`'cluster_assignment.txt'`: Cluster assignment file.
-    * <dataset_id>_`'Metrics.csv'`: Metrics file.
-    * <dataset_id>_`'variable_features_clusters.txt'`: Variable features clusters file.
-    * <dataset_id>_`'variable_features_spatial_moransi.txt'`: Variable features Moran’s I file.
+    * 'exprMat_file.csv': Counts matrix.
+    * 'metadata_file.csv': Metadata file.
+    * 'fov_positions_file.csv': Field of view file.
+    * (Optional) 'tx_file.csv': Transcripts file
+    * 'CellComposite': Directory containing the images.
+    * 'CellLabels': Directory containing the labels.
+
+    For the files, a dataset id prefix is optional and will be stripped.
     """
 
     @property
-    def has_images(self) -> Literal[False]:
-        return False
+    def has_images(self) -> bool:
+        """Whether this handler has associated images."""
+        return True
 
     @property
-    def coordinate_system(self) -> Literal['global']:
-        return "global"
+    def coordinate_system(self) -> str:
+        """
+        Returns the coordinate system used by CosMx datasets.
+
+        We pass dataset_id=STANDARD_DATASET_ID into read_cosmx() (our chunked fork
+        of spatialdata_io's cosmx() reader), which some spatialdata-io releases use
+        to prefix the default coordinate system name (e.g. "spatialdata" instead of
+        "global"). We try the prefixed name first and fall back to "global" so both
+        naming conventions are supported.
+        """
+        return self._resolve_coordinate_system([STANDARD_DATASET_ID, "global"])  # may also be "spatial"
 
     @property
-    def platform(self) -> Literal['coxmx']:
-        return "coxmx"
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return CosmxKeys.INSTANCE_KEY  # per-FOV instance key; not globally unique alone (see obs index)
 
     @property
-    def img_name(self) -> None:
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return CosmxKeys.REGION_KEY  # this is the region_key COLUMN, not an element name -- don't index sdata[self.region_name]
+
+    @property
+    def platform(self) -> str:
+        """Returns the platform name for this handler."""
+        return "cosmx"
+
+    @property
+    def img_name(self) -> str | None:
+        """Returns the image name associated with this handler."""
+        # No single image element for CosMx (lots of per-FOV tiles).
+        # Kept as None so base scale_and_translate_sdata() no-ops for this platform;
+        # subset_sdata() and extract_img() are overridden below to handle the
+        # per-FOV image collection directly.
         return None
 
-    def _read_file(self, filepath, **kwargs):
-        pass
+    def subset_sdata(self) -> "SpatialHandler":
+        """
+        Subsets the spatial data (`sdata`) to include only the normalized table, region name
+        and all available images and labels, updating the instance's `sdata` attribute.
+        """
+        keep = [self.NORMALIZED_TABLE_NAME, *self.sdata.images.keys(), *self.sdata.labels.keys()]
+        self.sdata = self.sdata.subset(keep, filter_tables=True)
+        return self
 
-    def convert_sdata_to_adata(self, include_images=None):
-        return super()._convert_sdata_to_adata(include_images)
+    def extract_img(self) -> tuple[dict[str, np.ndarray], tuple]:
+        """
+        Extracts the composite image from the spatial data object and returns it as a NumPy array in (y, x, c) format.
 
-    def write_to_zarr(self, filepath=None):
-        return super()._write_to_zarr(filepath)
+        The method retrieves all available images from `self.sdata.images`, rasterizes them to a common coordinate system,
+        and combines them into a single composite image. The resulting image is converted from an xarray
+        DataArray to a NumPy array and its axes are rearranged from (c, y, x) to (y, x, c).
+        """
+        image_names = list(self.sdata.images.keys())
+        if not image_names:
+            raise Exception("No FOV images found for conversion to 2D array.")
 
-    def write_to_h5ad(self, filepath=None):
-        return super()._write_to_h5ad(filepath)
+        extent, scale = self._get_global_extent_and_scale()
+        orig_width = int(extent["x"][1] - extent["x"][0])
+        orig_height = int(extent["y"][1] - extent["y"][0])
+        target_width = round(orig_width * scale)
+        target_height = round(orig_height * scale)
 
+        composite = None  # allocated lazily once we know channel count
+        for name in image_names:
+            tile_extent = sd.get_extent(self.sdata[name], coordinate_system=self.coordinate_system)
 
+            # Rasterize local tile to the same scale as the full canvas, so we can composite them together
+            # Trying to rasterize to the full canvas size is way too slow
+            tile = sd.rasterize(
+                self.sdata[name],
+                axes=("x", "y"),
+                min_coordinate=[tile_extent["x"][0], tile_extent["y"][0]],
+                max_coordinate=[tile_extent["x"][1], tile_extent["y"][1]],
+                target_coordinate_system=self.coordinate_system,
+                target_unit_to_pixels=scale,   # same scale as the full canvas, per-tile-sized output
+                target_height=None,
+                target_depth=None,
+            ).to_numpy()  # (c, h_tile, w_tile)
+
+            if composite is None:
+                composite = np.zeros((tile.shape[0], target_height, target_width), dtype=tile.dtype)
+
+            # Add the tile into the correct position in the composite canvas, based on its extent
+            x0 = round((tile_extent["x"][0] - extent["x"][0]) * scale)
+            y0 = round((extent["y"][1] - tile_extent["y"][1]) * scale)  # y needs to flip to match the Datashader rendering in Panel
+            h, w = tile.shape[1], tile.shape[2]
+            # clip in case rounding pushes a tile's far edge past the canvas boundary
+            h = min(h, composite.shape[1] - y0)
+            w = min(w, composite.shape[2] - x0)
+            composite[:, y0:y0 + h, x0:x0 + w] = tile[:, :h, :w]
+        return {"composite": np.moveaxis(composite, 0, -1)}, (target_height, target_width)
+
+    def convert_sdata_to_adata(self, table_name=None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object (`sdata`) to an AnnData object and assigns it to `self.adata`.
+
+        This explicitly passes `include_images=False` to avoid including the potentially many FOV images in the AnnData conversion,
+        which can be unnecessary, slow and memory-intensive.
+        """
+        return super().convert_sdata_to_adata(include_images=False, table_name=table_name)
+
+    def _get_global_extent_and_scale(self, MAX_DIM: int = 4000):
+        """
+        Get both the global extent coordinates as well as the scaling factor needed
+        based on a dimension size
+
+        Args:
+            MAX_DIM (int, optional): Dimension length. Defaults to 4000.
+
+        Returns:
+            tuple: A tuple containing the global extent coordinates and the scaling factor.
+        """
+        img_sdata = self.sdata.subset(list(self.sdata.images.keys()))
+        extent = sd.get_extent(img_sdata, coordinate_system=self.coordinate_system)
+        orig_width = extent["x"][1] - extent["x"][0]
+        scale = min(MAX_DIM / orig_width, 1)
+        return extent, scale
+
+    def merge_centroids_with_obs(self) -> "SpatialHandler":
+        """
+        Merges per-FOV label centroids into the observation table.
+
+        CosMx has one Labels element per FOV (e.g. "1_labels", "2_labels", ...) rather
+        than a single region element, and region_id ("cell_ID") is only unique within
+        a FOV, not globally. The base class implementation assumes a single region
+        element and a single global merge on region_id, so it doesn't apply here -
+        `self.sdata[self.region_name]` would fail since "fov_labels" is the region_key
+        COLUMN name (its values are the per-FOV element names), not an element itself.
+
+        Instead, extract centroids per-FOV label element, merge each against just that
+        FOV's rows (where region_id is actually unique), then concatenate.
+
+        Obs rows are matched to each FOV's label element by FOV *number*, normalized
+        the same way fovs_counts is in cosmx_reader.py (str(int(x))), rather than by
+        exact string equality against the derived "fov_labels" region_key column -
+        that column's exact text depends on how the raw "fov" metadata CSV column
+        happened to get parsed (e.g. int vs. float vs. string), which is a fragile
+        thing to rely on for matching against label element names.
+        """
+        table_obs = self.sdata.tables[self.NORMALIZED_TABLE_NAME].obs
+        if hasattr(table_obs, "compute"):
+            table_obs = table_obs.compute()
+
+        fov_numeric = table_obs["fov"].astype(float).astype(int).astype(str)
+        extent, scale = self._get_global_extent_and_scale()
+
+        merged_frames = []
+        unmatched_labels = []
+        label_names = list(self.sdata.labels.keys())
+        for label_name in label_names:
+            fov_str = label_name.rsplit("_labels", 1)[0]
+            fov_obs = table_obs[fov_numeric == fov_str]
+            if fov_obs.empty:
+                unmatched_labels.append(label_name)
+                continue
+
+            centroids_df = sd.get_centroids(self.sdata[label_name], coordinate_system=self.coordinate_system)
+            if centroids_df is None:
+                continue
+            if hasattr(centroids_df, "compute"):
+                centroids_df = centroids_df.compute()
+            centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
+
+            # The y-axis needs to be adjusted by a tile offset so the spatial2 coords are added based on tile position order on the canvas
+            tile_extent = sd.get_extent(self.sdata[label_name], coordinate_system=self.coordinate_system)
+            tile_y0 = (extent["y"][1] - tile_extent["y"][1]) * scale  # same block offset as extract_img's y0
+
+            centroids_df["spatial1"] = (centroids_df["spatial1"] - extent["x"][0]) * scale
+            centroids_df["spatial2"] = tile_y0 + (centroids_df["spatial2"] - tile_extent["y"][0]) * scale
+
+            # sd.get_centroids() on a Labels element returns the raw per-label centroid
+            # coordinates with an *unnamed* index - it has no concept of "cell_ID". For
+            # CosMx those label values ARE the per-FOV cell_ID (that's how the label
+            # raster was constructed), so name the index to make it joinable below.
+            centroids_df.index = centroids_df.index.astype(np.int64)
+            centroids_df.index.name = self.region_id
+
+            merged_frames.append(fov_obs.merge(centroids_df, on=self.region_id, how="inner"))
+
+        if not merged_frames:
+            raise ValueError(
+                f"Could not extract spatial observation locations for any FOV. "
+                f"{len(label_names)} label element(s) found in sdata.labels; "
+                f"{len(unmatched_labels)} had no matching obs rows by FOV number "
+                f"(e.g. {unmatched_labels[:5]}). Obs FOV values (normalized): "
+                f"{sorted(fov_numeric.unique().tolist())[:10]}."
+            )
+
+        self.sdata.tables[self.NORMALIZED_TABLE_NAME].obs = pd.concat(merged_frames)
+        return self
+
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Xenium spatial data tarball from the given filepath.
+        Extracts required files, loads clustering and spatial data, updates gene IDs, and loads into a SpatialData object.
+        """
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
+
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
+            raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
+
+        _remove_dir(extract_dir)
+
+        transcripts_present = False
+
+        with tarfile.open(filepath, mode) as tf:
+            for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
+                # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
+                if ".DS_Store" in entry.name or "._" in entry.name:
+                    continue
+
+                # Gzipped members (e.g. exprMat_file.csv.gz) are decompressed below, under the name without .gz
+                is_gzipped = entry.isfile() and entry.name.endswith(".gz")
+                if is_gzipped:
+                    entry.name = entry.name[:-3]
+
+                # ? We could include this to use the "points" for future additions, but not including it saves space in the output Zarr
+                if entry.name.endswith(CosmxKeys.TRANSCRIPTS_SUFFIX):
+                    transcripts_present = True
+
+                # For the exprMat_file.csv, fov_positions_file.csv, and metadata_file.csv files, replace the dataset_id prefix
+                # with STANDARD_DATASET_ID to standardize downstream usage (must match the dataset_id passed to read_cosmx() below)
+                for suffix in [CosmxKeys.COUNTS_SUFFIX, CosmxKeys.FOV_SUFFIX, CosmxKeys.METADATA_SUFFIX, CosmxKeys.TRANSCRIPTS_SUFFIX]:
+                    if entry.name.endswith(suffix):
+                        entry.name = f"{STANDARD_DATASET_ID}_{suffix}"
+                        break
+
+                # For files inside a CellComposite or CellLabels directory,
+                # ensure file is still inside that directory post-extraction
+                path_parts = entry.name.split("/", 1)
+                if len(path_parts) == 2:
+                    dirname, rest = path_parts
+                    for standard_name in ["CellComposite", "CellLabels"]:
+                        if standard_name in dirname:
+                            entry.name = f"{standard_name}/{rest}"
+                            break
+
+                if is_gzipped:
+                    _gunzip_member(tf, entry, extract_dir)
+                    continue
+
+                # Extract file into tmp dir
+                tf.extract(entry, path=extract_dir)
+
+        # Try to get organism id directly or through dataset metadata
+        organism_id = kwargs.get("organism_id", None)
+        if organism_id is None and "dataset_id" in kwargs:
+            from geardb import get_dataset_by_id
+            dataset = get_dataset_by_id(kwargs.get("dataset_id"))   # assumes the metadata is already present
+            if dataset:
+                organism_id = dataset.organism_id
+        if organism_id is None:
+            raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
+
+        # In the metadata_file.csv file, rename the "cell_id" column if it exists, as it is redundant with the "cell_ID" column
+        # NOTE: the extraction loop above renames this file to "{STANDARD_DATASET_ID}_metadata_file.csv" - must match that name here.
+        metadata_csv_path = "{}/{}_{}".format(extract_dir, STANDARD_DATASET_ID, CosmxKeys.METADATA_SUFFIX)
+        if os.path.exists(metadata_csv_path):
+            metadata_df = pd.read_csv(metadata_csv_path)
+            if "RNA_Analysis_Neighborhood.Analysis.1_1_assignments" not in metadata_df.columns:
+                raise Exception("RNA_Analysis_Neighborhood.Analysis.1_1_assignments column not found in metadata_file.csv file in tarball.")
+            if "cell_id" in metadata_df.columns:
+                metadata_df = metadata_df.rename(columns={"cell_id": "orig_cell_id"})
+                metadata_df.to_csv(metadata_csv_path, index=False)
+
+        from gear.cosmx_reader import read_cosmx
+
+        try:
+            # The upstream spatialdata_io cosmx() reader loads the whole counts matrix as a
+            # dense DataFrame before sparsifying it, which reliably OOMs on real CosMx datasets.
+            # read_cosmx() is our chunked fork of that reader (see gear/cosmx_reader.py) - same
+            # interface, but bounds peak memory to one chunk of the counts file at a time.
+            sdata = read_cosmx(extract_dir
+                                    , dataset_id=STANDARD_DATASET_ID   # Must match the rename prefix used during extraction above
+                                    , transcripts=transcripts_present
+                                    )
+        except Exception:
+            raise
+
+        tbl = sdata.tables[self.NORMALIZED_TABLE_NAME]
+
+        # add clustering information to the sdata.table.obs dataframe
+        tbl.obs['clusters'] = tbl.obs['RNA_Analysis_Neighborhood.Analysis.1_1_assignments'].astype('category')
+        # If all clusters are missing, raise an exception
+        if tbl.obs['clusters'].isna().all():
+            raise Exception("All cluster values are missing in clusters.csv file in tarball.")
+
+        # Sanity check that read_cosmx() still produces obsm["global"] (relied on
+        # elsewhere for per-FOV transforms).
+        if "global" not in tbl.obsm:
+            raise Exception("Expected obsm['global'] from read_cosmx() output; check gear/cosmx_reader.py against the spatialdata-io version it was forked from.")
+
+        # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
+        tbl.var_names_make_unique()
+
+        # currently gene symbols are the index, need to move them to a column
+        tbl.var["gene_symbol"] = tbl.var.index
+
+        # Add ensemble IDs to the adata.var
+        tbl.var = update_var_with_ensembl_ids(tbl.var, organism_id, "UNMAPPED_")
+
+        sdata.tables[self.NORMALIZED_TABLE_NAME] = tbl
+
+        self.sdata = sdata
+        return self
 
 class CurioHandler(SpatialHandler):
     """
     Factory class for Curio Seeker dataset uploads and conversions.
 
     Standardized names for different files:
-    * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
-    * <dataset_id>_`'cluster_assignment.txt'`: Cluster assignment file.
-    * <dataset_id>_`'Metrics.csv'`: Metrics file.
-    * <dataset_id>_`'variable_features_clusters.txt'`: Variable features clusters file.
-    * <dataset_id>_`'variable_features_spatial_moransi.txt'`: Variable features Moran’s I file.
+    * 'spatialdata_anndata.h5ad': Counts and metadata file.
+    * 'spatialdata_cluster_assignment.txt': Cluster assignment file.
+    * 'spatialdata_Metrics.csv': Metrics file.
+    * 'spatialdata_variable_features_clusters.txt': Variable features clusters file.
+    * 'spatialdata_variable_features_spatial_moransi.txt': Variable features Moran’s I file.
 
     It seems Curio Seeker only provides gene IDs (as indexes to an empty dataframe),
     so you need to modify the included h5ad file to include ensembl IDs in adata.var.
@@ -206,41 +1105,65 @@ class CurioHandler(SpatialHandler):
     """
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
+        """Whether this handler has associated images (always False for Curio)."""
         return False
 
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
+        """Returns the coordinate system used by Curio datasets."""
         return "global"
 
     @property
-    def platform(self):
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return CurioKeys.INSTANCE_KEY
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return CurioKeys.REGION
+
+    @property
+    def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "curio"
 
     @property
-    def img_name(self):
+    def img_name(self) -> str | None:
+        """Returns the image name associated with this handler (always None for Curio)."""
         return None
 
-    def _read_file(self, filepath, **kwargs):
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Curio Seeker spatial data tarball from the given filepath.
+        Extracts and processes the h5ad and Moran's I-score files, updates gene IDs, and loads into a SpatialData object.
+        """
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
         h5ad_file = None
         spatial_moransi_file = None
 
-        if os.path.isdir(tmp_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
+            raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
 
-        with tarfile.open(filepath) as tf:
+        _remove_dir(extract_dir)
+
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
                 if entry.name.endswith("anndata.h5ad"):
                     h5ad_file = filepath
@@ -255,21 +1178,21 @@ class CurioHandler(SpatialHandler):
         if h5ad_file is None:
             raise Exception("h5ad file not found in tarball.")
 
-        from geardb import get_dataset_by_id
-        organism_id = None
-        if not kwargs.get("organism_id"):
-            dataset = get_dataset_by_id(kwargs.get("dataset_id"))
+        # Try to get organism id directly or through dataset metadata
+        organism_id = kwargs.get("organism_id", None)
+        if organism_id is None and "dataset_id" in kwargs:
+            from geardb import get_dataset_by_id
+            dataset = get_dataset_by_id(kwargs.get("dataset_id"))   # assumes the metadata is already present
             if dataset:
                 organism_id = dataset.organism_id
-
-        if not organism_id:
+        if organism_id is None:
             raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
 
         # Read in the h5ad file
         adata = ad.read_h5ad(h5ad_file)
 
         # Add ensemble IDs to the adata.var
-        adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
+        adata.var = update_var_with_ensembl_ids(adata.var, organism_id, "UNMAPPED_")
 
         # Create mapping dict.
         # Original index name (ensembl_id) was created in add_ensembl_id_to_h5ad_missing_release.py
@@ -284,7 +1207,10 @@ class CurioHandler(SpatialHandler):
         var_features_moransi.to_csv(spatial_moransi_file, sep="\t", header=True, index=True, index_label=False)
 
         # Now are ready to read in to a SpatialData object
-        sdata = sdio.curio(tmp_dir)
+        try:
+            sdata = sdio.curio(extract_dir)
+        except Exception:
+            raise
 
         # To get the adata equivalent, look at sdata.tables["table"]
 
@@ -298,22 +1224,14 @@ class CurioHandler(SpatialHandler):
 
         # table name should already be "table" for Visium
 
-        self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images=None):
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath=None):
-        return super()._write_to_zarr(filepath)
-
-    def write_to_h5ad(self, filepath=None):
-        return super()._write_to_h5ad(filepath)
 
 class GeoMxHandler(SpatialHandler):
     """
     Code is mostly inspired by https://github.com/LiHongCSBLab/SOAPy/blob/153095a44200a07a73a6a72c9978adfa1581c853/SOAPy_st/pp/all2adata.py#L229
     I wanted to install SOAPy but ran into pip requirement compatibility issues.  For example, we use a later version of AnnData in gEAR than SOAPy does.
+
+    Description of output can be found at https://brukerspatialbiology.com/resources/readme_mu_brain-docx/ (DOCX file)
 
     Factory class for GeoMx dataset uploads and conversions.
 
@@ -321,6 +1239,8 @@ class GeoMxHandler(SpatialHandler):
     * "xlsx" file with information.
       * This Excel file must contain a sheet named "SegmentProperties" with a column named "SegmentDisplayName" which will be used as the cell ID.
       * This Excel file must contain a sheet named "TargetCountMatrix" or "BioProbeCountMatrix" with the counts matrix.
+        * "BioProbeCountMatrix" would be found from the "Export1_InitialDataset" or "Export2_TechnicalQC" file.
+        * "TargetCountMatrix" would be found from the "Export3_BiologicalProbeQC" or "Export4_NormalizationQ3" file.
 
     NOT IMPLEMENTED - Polygon data from XML files
 
@@ -331,40 +1251,64 @@ class GeoMxHandler(SpatialHandler):
     """
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
+        """Whether this handler has associated images (always False for GeoMx)."""
         return False
 
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
+        """Returns the coordinate system used by GeoMx datasets."""
         return "global"
 
     @property
-    def platform(self):
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return "instance_id"
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return "locations"
+
+    @property
+    def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "geomx"
 
     @property
-    def img_name(self):
+    def img_name(self) -> str | None:
+        """Returns the image name associated with this handler (always None for GeoMx)."""
         return None
 
-    def _read_file(self, filepath, **kwargs):
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a GeoMx spatial data tarball from the given filepath.
+        Extracts the Excel file, validates required sheets, loads counts and metadata, updates gene IDs, and loads into a SpatialData object.
+        """
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
-        if os.path.isdir(tmp_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
+            raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
+
+        _remove_dir(extract_dir)
 
         information_file = None
 
-        with tarfile.open(filepath) as tf:
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
                 if entry.name.endswith(".xlsx"):
                     information_file = filepath
@@ -385,15 +1329,15 @@ class GeoMxHandler(SpatialHandler):
         else:
             raise Exception("Excel file must contain a sheet named 'TargetCountMatrix' or 'BioProbeCountMatrix' with the counts matrix.")
 
-        from geardb import get_dataset_by_id
+        # Try to get organism id directly or through dataset metadata
         organism_id = kwargs.get("organism_id", None)
-        if not organism_id:
-            dataset = get_dataset_by_id(kwargs.get("dataset_id"))
+        if organism_id is None and "dataset_id" in kwargs:
+            from geardb import get_dataset_by_id
+            dataset = get_dataset_by_id(kwargs.get("dataset_id"))   # assumes the metadata is already present
             if dataset:
                 organism_id = dataset.organism_id
-
-        if not organism_id:
-            raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
+        if organism_id is None:
+            raise Exception("Organism ID not found in dataset metadata, sample taxon id, or provided as an argument.")
 
         # Get observation table data
         roi_obs_df = pd.read_excel(
@@ -431,7 +1375,7 @@ class GeoMxHandler(SpatialHandler):
         adata.obs.columns = adata.obs.columns.str.replace(r' ', '_')
 
         # Add ensemble IDs to the adata.var
-        adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
+        adata.var = update_var_with_ensembl_ids(adata.var, organism_id, "UNMAPPED_")
 
         # Convert to SpatialData object
         sdata = from_legacy_anndata(adata)
@@ -439,27 +1383,19 @@ class GeoMxHandler(SpatialHandler):
         # GeoMx is focused more on spatial bulk rather than spatial single-cell, so we will set the clusters to the index
         sdata.tables[self.NORMALIZED_TABLE_NAME].obs["clusters"] = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.index
 
+        # Have the shapes "locations" df index match the obs index
+        sdata.shapes["locations"].index = sdata.tables[self.NORMALIZED_TABLE_NAME].obs[self.region_id]
+
         self.sdata = sdata
-        self.originalFile = filepath
         return self
 
-    def convert_sdata_to_adata(self, include_images=None):
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath=None):
-        return super()._write_to_zarr(filepath)
-
-    def write_to_h5ad(self, filepath=None):
-        return super()._write_to_h5ad(filepath)
-
 class VisiumHandler(SpatialHandler):
-    # NOTE: Uploads work but it cannot be used in a spatial panel yet because clusters have not been provided.
     """
     Factory class for Visium dataset uploads and conversions.
 
     Standardized names for different files:
-    * (<dataset_id>_)`'filtered_feature_bc_matrix.h5'`: Counts and metadata file.
-    * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
+    * 'spatialdata_filtered_feature_bc_matrix.h5': Counts and metadata file.
+    * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
     * 'spatial/tissue_hires_image.png': High resolution image.
     * 'spatial/tissue_lowres_image.png': Low resolution image.
     * 'spatial/scalefactors_json.json': Scalefactors file.
@@ -467,46 +1403,96 @@ class VisiumHandler(SpatialHandler):
     * fullres_image_file: (NOT USED) large microscopy image used as input for space ranger.
 
     Recommended tar command to create tarball:
-    `tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 spatial analysis`
+    `tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 clusters.csv spatial`
     """
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
+        """Whether this handler has associated images (always True for Visium)."""
         return True
 
     @property
-    def coordinate_system(self):
-        return "downscaled_hires"
+    def coordinate_system(self) -> str:
+        """
+        Returns the coordinate system used by Visium datasets.
+
+        Newer spatialdata-io releases prefix this coordinate system with the
+        dataset_id ("spatialdata_downscaled_hires") instead of the older, fixed
+        name ("downscaled_hires"). We try the new name first and fall back to the
+        old one so both existing and newly written Zarr stores can be read.
+        """
+        return self._resolve_coordinate_system([f"{STANDARD_DATASET_ID}_downscaled_hires", "downscaled_hires"])
+
 
     @property
-    def platform(self):
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        # "spot_id" is an internal literal in spatialdata_io's visium() reader
+        # (visium.py, TableModel.parse(..., instance_key="spot_id")) - not exposed
+        # via VisiumKeys, so there's no importable constant for this one.
+        return "spot_id"
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return STANDARD_DATASET_ID
+
+    @property
+    def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "visium"
 
     @property
-    def img_name(self):
-        return "spatialdata_hires_image"
+    def img_name(self) -> str | None:
+        """Returns the image name associated with this handler."""
+        return f"{STANDARD_DATASET_ID}_hires_image"
 
-    def _read_file(self, filepath, **kwargs):
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Visium spatial data tarball from the given filepath.
+        Extracts the files, loads the Space Ranger output and clusters.csv, sets Ensembl IDs as the var index, and loads into a SpatialData object.
 
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+        Args:
+            filepath (str): Path to a .tar or .tar.gz file.
+            **kwargs: Optional "extract_dir" base directory for extraction (default "/tmp/").
 
-        if os.path.isdir(tmp_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+        Returns:
+            SpatialHandler: This handler, with self.sdata populated.
 
-        with tarfile.open(filepath) as tf:
+        Raises:
+            Exception: If the file is not a tarball or clusters.csv is missing or lacks "Barcode"/"Cluster" columns.
+        """
+
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
+
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
+            raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
+
+        _remove_dir(extract_dir)
+
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
+
+                # Move clusters.csv to the root of the extract_dir if it is in a subdirectory
+                if entry.name.endswith("clusters.csv"):
+                    entry.name = "clusters.csv"
+
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
 
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(tmp_dir)
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         # If clustering file does not exist, raise an exception
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
@@ -517,11 +1503,12 @@ class VisiumHandler(SpatialHandler):
             if "Barcode" not in first_line or "Cluster" not in first_line:
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
+        try:
+            sdata = sdio.visium(path=extract_dir, dataset_id=STANDARD_DATASET_ID)
+        except Exception:
+            raise
 
-
-        sdata = sdio.visium(path=tmp_dir, dataset_id="spatialdata")    # Provide a name to standarize downstream usage
-
-        # add clustering information to the vis_sdata.table.obs dataframe
+        # add clustering information to the sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')
@@ -537,17 +1524,7 @@ class VisiumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
-        self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images=None):
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath=None):
-        return super()._write_to_zarr(filepath)
-
-    def write_to_h5ad(self, filepath=None):
-        return super()._write_to_h5ad(filepath)
 
 class VisiumHDHandler(SpatialHandler):
     """
@@ -556,72 +1533,106 @@ class VisiumHDHandler(SpatialHandler):
     Explanation of Space Ranger v3 output here -> https://www.10xgenomics.com/support/software/space-ranger/latest/analysis/outputs/output-overview#hd-outputs
 
     Required files that will break the upload if not present:
-    /binned_outputs/square_008um/filtered_feature_bc_matrix.h5
-    /binned_outputs/square_008um/analysis/clustering/gene_expression_graphclust/clusters.csv
-    /binned_outputs/feature_slice.h5
-    /binned_outputs/square_008um/spatial/scalefactors_json.json
-    /binned_outputs/square_008um/spatial/tissue_hires_image.png
-    /binned_outputs/square_008um/spatial/tissue_lowres_image.png
+    * /binned_outputs/square_008um/filtered_feature_bc_matrix.h5
+    * clusters.csv
+    * /binned_outputs/feature_slice.h5
+    * /binned_outputs/square_008um/spatial/scalefactors_json.json
+    * /binned_outputs/square_008um/spatial/tissue_hires_image.png
+    * /binned_outputs/square_008um/spatial/tissue_lowres_image.png
+    * /binned_outputs/square_008um/spatial/tissue_positions.parquet
 
     Recommended tar command to create tarball:
-    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um`
+    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 clusters.csv binned_outputs/square_008um`
 
     Special note: We have observed that bin sizes finer than 8 microns per pixel will generally have more cells, which can lead to longer analysis times.
     For now, we will attempt to use the "square_008um" binned output.
 
     """
 
-    table_name = "square_008um"
+    table_name = VisiumHDKeys.DEFAULT_BIN  # "square_008um"
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
+        """Whether this handler has associated images (always True for Visium HD)."""
         return True
 
     @property
-    def coordinate_system(self):
-        return "downscaled_hires"
+    def coordinate_system(self) -> str:
+        """
+        Returns the coordinate system used by Visium HD datasets.
+
+        Newer spatialdata-io releases prefix this coordinate system with the
+        dataset_id ("spatialdata_downscaled_hires") instead of the older, fixed
+        name ("downscaled_hires"). We try the new name first and fall back to the
+        old one so both existing and newly written Zarr stores can be read.
+        """
+        return self._resolve_coordinate_system([f"{STANDARD_DATASET_ID}_downscaled_hires", "downscaled_hires"])
 
     @property
-    def platform(self):
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return VisiumHDKeys.INSTANCE_KEY
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return f"{STANDARD_DATASET_ID}_{VisiumHDKeys.DEFAULT_BIN}"
+
+    @property
+    def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "visium_hd"
 
     @property
-    def img_name(self):
-        return "spatialdata_hires_image"
+    def img_name(self) -> str | None:
+        """Returns the image name associated with this handler."""
+        return f"{STANDARD_DATASET_ID}_hires_image"
 
-    def _read_file(self, filepath, **kwargs):
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Xenium spatial data tarball from the given filepath.
+        Extracts required files, loads clustering and spatial data, updates gene IDs, and loads into a SpatialData object.
+        """
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
-        binned_outputs_dir = "{}/binned_outputs".format(tmp_dir)
-        bin_008_dataset_path = "{}/{}/".format(binned_outputs_dir, self.table_name)
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(bin_008_dataset_path)
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
+            raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
 
-        absolute_path = os.path.abspath(binned_outputs_dir)
+        _remove_dir(extract_dir)
 
-        if os.path.isdir(tmp_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
-
-        with tarfile.open(filepath) as tf:
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
 
-                # IF directory has "square_" but not "square_008um", skip
-                if "square_" in entry.name and "square_008um" not in entry.name:
+                # IF directory has "square_" but not our target bin size, skip
+                if VisiumHDKeys.BIN_PREFIX in entry.name and self.table_name not in entry.name:
                     continue
 
-                # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                # Move clusters.csv to the root of the extract_dir if it is in a subdirectory
+                if entry.name.endswith("clusters.csv"):
+                    entry.name = "clusters.csv"
 
-        if not os.path.exists("{}/feature_slice.h5".format(binned_outputs_dir)):
-            raise Exception("feature_slice.h5 file not found in /binned_outputs directory in tarball.")
+                # Extract file into tmp dir
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
+
+
+        binned_outputs_dir = "{}/{}".format(extract_dir, VisiumHDKeys.BINNED_OUTPUTS)
+
+        if not os.path.exists("{}/{}".format(binned_outputs_dir, VisiumHDKeys.FEATURE_SLICE_FILE)):
+            raise Exception(f"{VisiumHDKeys.FEATURE_SLICE_FILE} file not found in /{VisiumHDKeys.BINNED_OUTPUTS} directory in tarball.")
 
         # If clustering file does not exist, raise an exception
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
 
@@ -633,26 +1644,33 @@ class VisiumHDHandler(SpatialHandler):
 
         # https://github.com/scverse/spatialdata-io/issues/212
 
-        # Create a symlink for feature_slice.h5 within "visium_dataset_path" to include a "spatialdata_" prefix
+        # Create a symlink for feature_slice.h5 within "visium_dataset_path" to include the STANDARD_DATASET_ID prefix
         # This is a workaround for the current implementation of the visium_hd function
+        feature_slice_path = "{}/{}".format(binned_outputs_dir, VisiumHDKeys.FEATURE_SLICE_FILE)
+        prefixed_feature_slice_path = "{}/{}_{}".format(binned_outputs_dir, STANDARD_DATASET_ID, VisiumHDKeys.FEATURE_SLICE_FILE)
 
-        if not os.path.exists("{}/spatialdata_feature_slice.h5".format(binned_outputs_dir)):
-            os.symlink("{}/feature_slice.h5".format(absolute_path), "{}/spatialdata_feature_slice.h5".format(binned_outputs_dir))
+        if not os.path.exists(prefixed_feature_slice_path):
+            os.symlink(os.path.abspath(feature_slice_path), prefixed_feature_slice_path)
 
-        sdata = sdio.visium_hd(binned_outputs_dir
-                                , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
+        try:
+            sdata = sdio.visium_hd(binned_outputs_dir
+                                , dataset_id=STANDARD_DATASET_ID
                                 , bin_size=8
                                 , filtered_counts_file=True
                                 , load_all_images=False  # CytAssist image is not helpful for us.
                                 , fullres_image_file=None
                                 , bins_as_squares=True
                                 )
+        except Exception:
+            raise
 
-        # add clustering information to the vis_sdata.table.obs dataframe
+        # add clustering information to the sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')
         sdata.tables[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
+        if sdata.tables[self.table_name].obs['clusters'].isna().all():
+            raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
         # To get the adata equivalent, look at sdata.tables["table"]
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
@@ -668,17 +1686,7 @@ class VisiumHDHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME] = sdata.tables[self.table_name]
 
         self.sdata = sdata
-        self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images=None):
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath=None):
-        return super()._write_to_zarr(filepath)
-
-    def write_to_h5ad(self, filepath=None):
-        return super()._write_to_h5ad(filepath)
 
 class XeniumHandler(SpatialHandler):
     """
@@ -693,7 +1701,7 @@ class XeniumHandler(SpatialHandler):
     * 'cell_boundaries.parquet': Polygons of cell boundaries.
     * 'transcripts.parquet': File containing transcripts.
     * 'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)
-    * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
+    * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
 
     Currently we are not using the cells.zarr.zip file because of memory issues when converting the resulting cell labels as part of the AnnData conversion process.
 
@@ -701,29 +1709,80 @@ class XeniumHandler(SpatialHandler):
     """
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
+        """Whether this handler has associated images (always True for Xenium)."""
         return True
 
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
+        """Returns the coordinate system used by Xenium datasets."""
         return "global"
 
     @property
-    def platform(self):
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return XeniumKeys.CELL_ID
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        # xenium.py sets specs["region"] = "cell_circles" if cells_as_circles else
+        # "cell_labels" - not exposed as a constant, and tied to the
+        # cells_as_circles=True we pass in process_file() below.
+        return "cell_circles"
+
+    @property
+    def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "xenium"
 
     @property
-    def img_name(self):
+    def img_name(self) -> str | None:
+        """Returns the image name associated with this handler."""
         return "morphology_focus"
 
-    def _read_file(self, filepath, **kwargs):
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+    def extract_img(self) -> tuple[dict[str, np.ndarray], tuple]:
+        """
+        Xenium images carry multiple independently-meaningful stain channels
+        (e.g. DAPI, PolyT) -- split them apart rather than keep them as one
+        composite, since (unlike RGB) they don't need to be combined to be
+        individually useful.
+        """
+        if not self.img_name:
+            raise Exception("No image name specified for conversion to 2D array.")
 
-        if os.path.isdir(tmp_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+        orig_height, orig_width = None, None
+        img = self.sdata.images[self.img_name]
+        if isinstance(img, xarray.DataTree):
+            full_res = sd.get_pyramid_levels(img, n=0)
+            orig_height, orig_width = full_res.sizes.get('y'), full_res.sizes.get('x')
+            # Get a downsized version of the image for processing
+            img = _select_pyramid_level(img, max_dim=4000)
+        else:
+            orig_height, orig_width = img.sizes.get('y'), img.sizes.get('x')
+
+        channel_dim = img.dims[0]
+        # Extract names of the various staining channels.  Can also just be "0" if no channel names are present.
+        channel_names = [str(c) for c in img.coords[channel_dim].to_numpy()]
+
+        arr = img.to_numpy()  # (c, y, x)
+        return {name: arr[i] for i, name in enumerate(channel_names)}, (orig_height, orig_width)  # each already (y, x)
+
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Xenium spatial data tarball from the given filepath.
+        Extracts required files, loads clustering and spatial data, updates gene IDs, and loads into a SpatialData object.
+        """
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
+
+        if not (filepath.endswith(".tar.gz") or filepath.endswith(".tar")):
+            raise Exception("File must be a .tar or .tar.gz file.")
+        # "r:*" detects compression from the file contents, so a plain tar named .tar.gz
+        #  (or a gzipped one named .tar) still opens
+        mode = "r:*"
+
+        _remove_dir(extract_dir)
 
         # settings to enable or disable based on if a file is present in the uploaded tarball
         include_raster_labels = False
@@ -731,14 +1790,14 @@ class XeniumHandler(SpatialHandler):
         nucleus_boundaries_present = False
         transcripts_present = False
 
-        with tarfile.open(filepath) as tf:
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
+                # Extraction recreates missing directories, so stop if the upload
+                #  (the parent of extract_dir) was deleted mid-processing
+                raise_if_upload_deleted(os.path.dirname(extract_dir))
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
-                # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
 
                 if entry.name == "cells.zarr.zip":
                     include_raster_labels = True
@@ -749,8 +1808,16 @@ class XeniumHandler(SpatialHandler):
                 if entry.name == "transcripts.parquet":
                     transcripts_present = True
 
+                # Move clusters.csv to the root of the extract_dir if it is in a subdirectory
+                if entry.name.endswith("clusters.csv"):
+                    entry.name = "clusters.csv"
+
+                # Extract file into tmp dir
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
+
         # If clustering file does not exist, raise an exception
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(tmp_dir)
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
 
@@ -760,7 +1827,8 @@ class XeniumHandler(SpatialHandler):
             if "Barcode" not in first_line or "Cluster" not in first_line:
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
-        sdata = sdio.xenium(tmp_dir
+        try:
+            sdata = sdio.xenium(extract_dir
                             , cells_labels=False # Avoid adding polygons to SpatialData object (for now due to out-of-memory issues)
                             , nucleus_labels=False
                             , cell_boundaries=cell_boundaries_present
@@ -769,6 +1837,8 @@ class XeniumHandler(SpatialHandler):
                             , cells_as_circles=True  # Table is associated with the cells instead of the nuclei (faster performance)
                             , morphology_mip=False   # Using the morphology_focus image instead
                             )
+        except Exception:
+            raise
 
         # In code, it seems that the Xenium reader is supposed to set the index to the "barcodes" column
         # But this column is not found, so we need to manually replace with "cell_id"
@@ -781,11 +1851,14 @@ class XeniumHandler(SpatialHandler):
         #    table_name="table", region="cell_labels", region_key="region", instance_key="cell_labels"
         #)
 
-        # add clustering information to the vis_sdata.table.obs dataframe
+        # add clustering information to the sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')
         sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
+        # If all clusters are missing, raise an exception
+        if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
+            raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
         sdata.tables[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
@@ -797,26 +1870,19 @@ class XeniumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
-        self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images=None):
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath=None):
-        return super()._write_to_zarr(filepath)
-
-    def write_to_h5ad(self, filepath=None):
-        return super()._write_to_h5ad(filepath)
 
 
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    #"cosmx": CoxMxHandler,
+    "cosmx": CosMxHandler,
     "curio": CurioHandler,
     "geomx": GeoMxHandler,
     "visium": VisiumHandler,
     "visium_hd": VisiumHDHandler,
+    "visiumhd": VisiumHDHandler,    # allow both with and without underscore
     "xenium": XeniumHandler
 }
+
+ORG_ID_REQ_TYPES = ["cosmx", "curio", "geomx"]

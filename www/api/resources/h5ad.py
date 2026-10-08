@@ -1,9 +1,17 @@
+"""
+h5ad.py - Describe the observation metadata of a dataset.
+
+Serves /h5ad/<dataset_id> in www/api/api.py.
+"""
+
+import traceback
+
+import geardb
 from flask import request
 from flask_restful import Resource
-import os
-import geardb
 
-from .common import get_adata_shadow
+from .common import get_adata_shadow, get_spatial_adata
+
 
 class H5ad(Resource):
     """H5ad Container
@@ -15,19 +23,40 @@ class H5ad(Resource):
         TODO: Return all relevant h5ad data
     """
     def get(self, dataset_id):
+        """
+        Return obs column names, category levels, observation count, and a replicate flag.
+
+        Query params: analysis_id (optional). Columns with more than 50 categories are
+        returned under "obs_levels_truncated" instead of "obs_levels".
+        """
         args = request.args
         analysis_id = args.get('analysis_id')
         session_id = request.cookies.get('gear_session_id')
 
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
+        is_spatial = ds.dtype == "spatial"
+
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+            if is_spatial:
+                adata = get_spatial_adata(analysis_id, dataset_id, session_id)
+            else:
+                adata = get_adata_shadow(analysis_id, dataset_id, session_id)
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "success": -1,
+                'message': "Encountered an issue with loading the AnnData object"
             }
 
         columns = adata.obs.columns.tolist()
@@ -56,20 +85,27 @@ class H5ad(Resource):
         # get a map of all levels for each column
 
         levels = {}
+        truncated_levels = {}  # categorical col -> full category list, when the column
+                                # has more than 50 unique values. Still categorical and
+                                # still usable (e.g. to populate a plain select), just
+                                # not "levels-manageable" (no color/order/filter UI)
         for col in columns:
             try:
-                levels[col] = adata.obs[col].cat.categories.tolist()
+                categories = adata.obs[col].cat.categories.tolist()
 
                 # if there is missing data, add that as a level
-                if adata.obs[col].isnull().sum() > 0 and "NA" not in levels[col]:
-                    levels[col].append("NA")
+                if adata.obs[col].isnull().sum() > 0 and "NA" not in categories:
+                    categories.append("NA")
 
-                # Drop level if it has more than 50 unique values (i.e. barcodes)
-                # Most likely people won't want to filter/sort/plot with them
-                if len(levels[col]) > 50:
-                    del levels[col]
+                # Move level list to "truncated" if it has more than 50 unique values
+                # (i.e. barcodes). Most likely people won't want to filter/sort/plot
+                # with them, but the column is still categorical
+                if len(categories) > 50:
+                    truncated_levels[col] = categories
+                else:
+                    levels[col] = categories
 
-            except:
+            except Exception as e:
                 pass
                 # If levels are not categorical I don't believe
                 # we need to return levels
@@ -79,5 +115,6 @@ class H5ad(Resource):
             "num_obs": adata.n_obs,
             "obs_columns": columns,
             "obs_levels": levels,
+            "obs_levels_truncated": truncated_levels,
             "has_replicates": has_replicates
         }

@@ -1,11 +1,20 @@
 #!/opt/bin/python3
 
 """
+h5ad_identify_variable_genes.cgi - Normalize, log-transform and flag highly variable genes for an analysis.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, norm_counts_per_cell, flavor, n_top_genes, min_mean,
+       max_mean, min_dispersion, regress_out, scale_unit_variance, save_dataset (0/1).
+Output: JSON {success, n_obs, n_genes, top_genes}; writes highly-variable-genes PNG.
 """
 
-import cgi, json
-import os, sys
+import cgi
+import json
+import os
+import sys
+
+import matplotlib
+import scanpy as sc
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -13,37 +22,58 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import get_analysis
 
 # this is needed so that we don't get TclError failures in the underlying modules
-import matplotlib
 matplotlib.use('Agg')
 
-import scanpy as sc
 sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
-    user_id = None
-    if user and user.id:
-        user_id = user.id
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user_id)
+    result = {"success": 0, "top_genes":""}
 
-    norm_counts_per_cell = float(form.getvalue('norm_counts_per_cell'))
-    flavor = form.getvalue('flavor')
-    n_top_genes = form.getvalue('n_top_genes', None)
-    min_mean = float(form.getvalue('min_mean'))
-    max_mean = float(form.getvalue('max_mean'))
-    min_dispersion = float(form.getvalue('min_dispersion'))
-    regress_out = form.getvalue('regress_out')
-    scale_unit_variance = form.getvalue('scale_unit_variance')
-    save_dataset = int(form.getvalue('save_dataset'))
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
+
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {
+            'id': analysis_id if analysis_id else None,
+            'type': analysis_type if analysis_type else None,
+        }
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    norm_counts_per_cell = float(form.getfirst('norm_counts_per_cell'))
+    flavor = form.getfirst('flavor')
+    n_top_genes = form.getfirst('n_top_genes', None)
+    min_mean = float(form.getfirst('min_mean'))
+    max_mean = float(form.getfirst('max_mean'))
+    min_dispersion = float(form.getfirst('min_dispersion'))
+    regress_out = form.getfirst('regress_out')
+    scale_unit_variance = form.getfirst('scale_unit_variance')
+    save_dataset = int(form.getfirst('save_dataset'))
 
     adata = ana.get_adata()
 
@@ -55,7 +85,7 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
     dest_directory = os.path.dirname(dest_datafile_path)
 
     if not os.path.exists(dest_directory):
@@ -102,7 +132,10 @@ def main():
 
     top_genes = ", ".join(highly_variable_genes)
 
-    result = {"success": 1, 'n_obs': n_obs, 'n_genes': n_genes, 'top_genes': top_genes}
+    result["success"] = 1
+    result["n_obs"] = n_obs
+    result["n_genes"] = n_genes
+    result["top_genes"] = top_genes
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

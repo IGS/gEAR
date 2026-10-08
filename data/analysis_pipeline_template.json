@@ -1,16 +1,22 @@
 {
   "id": null,
-  "user_session_id": null,
-  "dataset_id": null,
+  "analysis_session_id": null,
   "type": "public",
   "label": null,
   "dataset_is_raw": true,
-  "louvain": {
+  "clustering": {
     "calculated": false,
-    "n_neighbors": null,
-    "resolution": null,
+    "resolution": 0.5,
     "plot_umap": 0,
-    "plot_tsne": 0
+    "plot_tsne": 0,
+    "mode": "initial"
+  },
+  "clustering_edit": {
+    "calculated": false,
+    "resolution": 0.5,
+    "plot_umap": 0,
+    "plot_tsne": 0,
+    "mode": "edit"
   },
   "marker_genes": {
     "calculated": false,

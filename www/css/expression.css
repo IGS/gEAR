@@ -25,6 +25,11 @@ div#functional-annotation-c h3 {
 }
 div#gene-result-list-c {
     border-right: 1px solid #e9eef1;
+    position: sticky;
+    top: 0;
+    align-self: flex-start; /* doesn't seem to do anything */
+    height:100vh;
+    overflow-y: auto;   /* scroll if too long */
 }
 div#gene-result-list-c h3 {
     font-weight: bold;
@@ -32,7 +37,6 @@ div#gene-result-list-c h3 {
 }
 div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
-    margin-top: 50px;
 }
 div#share-entrance-notification h2 {
     font-size: 120%;
@@ -54,6 +58,28 @@ section#annotation-panel h4 {
     font-weight: bold;
     font-size: 90%;
 }
+/* The "Gene annotation" header controls the whole panel, so make it stand out from the section headers below it.
+   The divider sits on the body so it disappears when the panel is collapsed. */
+section#annotation-panel > h3 {
+    font-size: 115%;
+}
+div#annotation-panel-body {
+    border-top: 1px solid lightgrey;
+    padding-top: 0.75rem;
+}
+/* Collapse/expand toggles are real buttons (keyboard accessible), styled to look like the heading text */
+button.panel-toggle {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+button.panel-toggle:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
 span.option-label {
     font-weight: bold;
     font-size: 90%;
@@ -70,8 +96,7 @@ ul#gene-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
 ul#gene-result-list li.is-selected {
-    /* TODO: Make this a variable */
-    background-color: #483285;
+    background-color: var(--gear-bg-primary);
     color: white;
 }
 ul#go-terms {
@@ -82,13 +107,6 @@ ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
 }
 
-/* tSNE plots */
-.js-tile .card-image img {
-    width: fit-content;
-    height: 100%;
-    margin: auto;
-}
-
 #results-main-c, #annotation-and-grid-c {
     width: 100%; /* ensure full width for the main layout and content */
     box-sizing: border-box; /* include padding and border in element's total width */
@@ -96,21 +114,52 @@ ul#go-terms li {
 }
 
 #result-panel {
-    overflow-x: auto; /* allow horizontal scrolling if needed */
     width: 100%;
 }
 
-/* spatial embeds */
-#result-panel-grid .js-tile .card-image iframe {
-    width: 100%;
-    height: 100%;
-    margin: auto;
+#result-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    /* Using 400px to account for the card header */
+    /* But allow it to grow so that aspect ratio can be maintained for ultrawide screens */
+    grid-auto-rows: minmax(400px, auto);
+    gap: 8px;
 }
 
-#zoomed-panel-grid .js-tile .card-image iframe {
-    width: 100%;
-    height: 1750px;  /* Enough room for the Panel app to be fully displayed without scrolling */
+.js-tile {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    min-width: 0; /* allow flex items to shrink below the content's natural width */
+}
+
+#result-panel-grid .js-tile {
+    height: 100%; /* Forces the tile to stay within the 400px row */
+    max-height: 80vh;
+}
+
+#zoomed-panel-grid .js-tile {
+    height: fit-content;
+}
+
+.js-tile .card-image {
+    align-content: center;
+
+    /* Useful for spatial plots that use a min_width to ensure they do not bleed out of the container */
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+/* tSNE plots */
+
+.js-tile .card-image img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
     margin: auto;
+    display: block; /* Removes the baseline gap at the bottom */
+    object-fit: contain;
 }
 
 /* This is the main svg image */
@@ -158,11 +207,16 @@ ul#go-terms li {
     width: 70%; /* make wider, which makes preview images larger */
 }
 
-#gene-result-list-c {
-    position: sticky;
-    top: 0;
-    align-self: flex-start;
-    height:100vh;
-    overflow-y: auto;   /* scroll if too long */
+/* prevent Gosling from overflowing the card image - Copilot generated */
+.gosling-component {
+    box-sizing: border-box;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: hidden;
 }
 
+/* ensure internal canvases/svgs fill the container - Copilot generated */
+.gosling-component > * {
+    max-width: 100% !important;
+    width: 100% !important;
+}

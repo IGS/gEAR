@@ -14,17 +14,22 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from werkzeug.utils import secure_filename
 
 def main():
     print('Content-Type: application/json\n\n')
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_uid = form.getvalue('share_uid')
+    session_id = form.getfirst('session_id')
+    share_uid = form.getfirst('share_uid')
 
-    # make sure session_id is alphanumeric
-    mod_session_id = session_id.replace('-', '')
-    if not mod_session_id.isalnum():
+    session_id = secure_filename(session_id or '')
+    if not session_id:
         print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
+        return
+
+    share_uid = secure_filename(share_uid or '')
+    if not share_uid:
+        print(json.dumps({'success': 0, 'error': 'Invalid share_uid'}))
         return
 
     user_upload_file_base = "../uploads/files/{0}".format(session_id)
@@ -40,36 +45,45 @@ def main():
         os.makedirs(user_upload_file_base)
 
     user = geardb.get_user_from_session_id(session_id)
+    if not user:
+        print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
+        return
+
     result = {'success': 0, 'error': None}
 
     # names are changed here so the files are compatible with the legacy ones
     formdata = {
             'owner_id': user.id,
-            'dataset_uid': form.getvalue('dataset_uid'),
-            'share_uid': form.getvalue('share_uid'),
-            'title': form.getvalue('title'),
-            'summary': form.getvalue('summary'),
-            'dataset_type': form.getvalue('dataset_type'),
-            'annotation_source': form.getvalue('annotation_source'),
-            'annotation_release_number': form.getvalue('annotation_version'),
-            'geo_accession': form.getvalue('geo_id'),
-            'contact_name': form.getvalue('contact_name'),
-            'contact_email': form.getvalue('contact_email'),
-            'contact_institute': form.getvalue('contact_institute'),
-            'sample_taxid': form.getvalue('taxon_id'),
-            'sample_organism': form.getvalue('organism'),
-            'platform_id': form.getvalue('platform_id'),
-            'instrument_model': form.getvalue('instrument'),
-            'library_selection': form.getvalue('library_selection'),
-            'library_source': form.getvalue('library_source'),
-            'library_strategy': form.getvalue('library_strategy'),
-            'pubmed_id': form.getvalue('pubmed_id'),
+            'dataset_uid': form.getfirst('dataset_uid'),
+            'share_uid': form.getfirst('share_uid'),
+            'title': form.getfirst('title'),
+            'summary': form.getfirst('summary'),
+            'dataset_type': form.getfirst('dataset_type'),
+            'annotation_source': form.getfirst('annotation_source'),
+            'annotation_release_number': form.getfirst('annotation_version'),
+            'geo_accession': form.getfirst('geo_id'),
+            'contact_name': form.getfirst('contact_name'),
+            'contact_email': form.getfirst('contact_email'),
+            'contact_institute': form.getfirst('contact_institute'),
+            'sample_taxid': form.getfirst('taxon_id'),
+            'sample_organism': form.getfirst('organism'),
+            'platform_id': form.getfirst('platform_id'),
+            'instrument_model': form.getfirst('instrument'),
+            'library_selection': form.getfirst('library_selection'),
+            'library_source': form.getfirst('library_source'),
+            'library_strategy': form.getfirst('library_strategy'),
+            'pubmed_id': form.getfirst('pubmed_id'),
+            'user_pii_affirmed': form.getfirst('user_pii_affirmed'),
             # These needed to be added/supported for real
             'expression_unit': 'normalized log count',
             'tags': None,
             'default_plot_type': None,
             'schematic_image': None
     }
+
+    # Add some extra parameters that we can access in the future in the UI
+    formdata["perform_primary_analysis"] = False
+    formdata["dataset_format"] = ""
 
     # Save the metadata to a file
     metadata_filename = os.path.join(user_upload_file_base, 'metadata.json')

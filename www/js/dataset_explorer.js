@@ -1,12 +1,13 @@
 "use strict";
 
-/* Imported variables
-let dataset_collection_data; // from dataset-collection-selector
-let selected_dc_share_id; // from dataset-collection-selector
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 
+/* Imported variables
+let datasetCollectionState.data; // from dataset-collection-selector
+let datasetCollectionState.selectedShareId; // from dataset-collection-selector
 */
 
-let firstSearch = true;
 let searchByCollection = false;
 let includePublicMembership = false;
 const resultsPerPage = 20;
@@ -29,6 +30,58 @@ const arrow = window.FloatingUIDOM.arrow;
 
 let singleArrangement;
 let multiArrangement;
+
+const getAnalysisTools = dtype => {
+    const dict =  {
+        "dataset-curator": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "svg-expression",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "multigene-viewer": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "compare-tool": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "sc-workbench": [
+            "single-cell-rnaseq",
+            "atac-seq",
+            "spatial",
+            "sc-rna-seq"
+        ]
+    };
+
+    const tools = { };
+    for (const [tool, dtypes] of Object.entries(dict)) {
+        tools[tool] = dtypes.includes(dtype);
+    }
+
+    return tools;
+};
 
 class ResultItem {
     constructor(data) {
@@ -63,7 +116,13 @@ class ResultItem {
         this.pubmedId = data.pubmed_id || null;
         this.geoId = data.geo_id || null;
 
-        this.previewImageUrl = data.preview_image_url || "/img/dataset_previews/missing.png";
+        if (data?.preview_image_url) {
+            this.previewImageUrl = data.preview_image_url;
+        } else if (this.datasetType == "gosling") {
+            this.previewImageUrl = "/img/dataset_previews/gosling.png";
+        } else {
+            this.previewImageUrl = "/img/dataset_previews/missing.png";
+        }
 
     }
 
@@ -81,7 +140,7 @@ class ResultItem {
         const datasetId = this.datasetId;
 
         // Clone the template
-        const listItemView = this.listTemplate.content.cloneNode(true)
+        const listItemView = this.listTemplate.content.cloneNode(true);
 
         // Adding dataset attrubute to be able to key in doing a querySelector action
         setElementProperties(listItemView, ".js-dataset-list-element", { dataset: { datasetId } });
@@ -156,6 +215,53 @@ class ResultItem {
         setElementProperties(listItemView, ".js-edit-dataset-save", { value: datasetId });
         setElementProperties(listItemView, ".js-edit-dataset-cancel", { value: datasetId });
 
+        { // analysis links section
+            const analysisDropdown = listItemView.querySelector(`.js-analysis-dropdown`);
+            analysisDropdown.classList.add("is-disabled", "is-loading");
+
+            const tools = [ "dataset-curator", "multigene-viewer", "compare-tool", "sc-workbench" ];
+            for (const tool of tools) {
+                listItemView.querySelector(`.js-${tool}`).classList.add("is-disabled");
+            }
+
+            const updateAvailableTools = (availableTools) => {
+                const domElement = document.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+                if (!domElement) {
+                    return;
+                }
+
+                let any = false;
+                for (const tool of tools) {
+                    if (availableTools[tool]) {
+                        const toolElement = domElement.querySelector(`.js-${tool}`);
+                        if (toolElement) {
+                            toolElement.classList.remove("is-disabled");
+                            any = true;
+                        }
+                    }
+                }
+
+                const domAnalysisDropdown = domElement.querySelector(`.js-analysis-dropdown`);
+                domAnalysisDropdown.classList.remove("is-loading");
+                if (any) {
+                    domAnalysisDropdown.classList.remove("is-disabled");
+                } else {
+                    domAnalysisDropdown.setAttribute("data-tooltip-content", "No analysis tools available");
+                    applyTooltip(domAnalysisDropdown, createActionTooltips(domAnalysisDropdown));
+                }
+            };
+
+            if ("datasetType" in this) {
+                const availableTools = getAnalysisTools(this.datasetType);
+                updateAvailableTools(availableTools);
+            } else {
+                apiCallsMixin.fetchAvailableAnalysisTools(this.shareId).then((data) => {
+                    const availableTools = data.available_analysis_tools;
+                    updateAvailableTools(availableTools);
+                });
+            }
+        }
+
         setElementProperties(listItemView, ".js-dataset-curator", { href: `./dataset_curator.html?share_id=${this.shareId}`});
         setElementProperties(listItemView, ".js-multigene-viewer", { href: `./multigene_curator.html?share_id=${this.shareId}`});
         setElementProperties(listItemView, ".js-compare-tool", { href: `./compare_datasets.html?share_id=${this.shareId}`});
@@ -168,8 +274,7 @@ class ResultItem {
         // long description section
         setElementProperties(listItemView, ".js-editable-ldesc textarea", { value: this.longDesc });
 
-        return listItemView
-
+        return listItemView;
     }
 
     createListViewItem() {
@@ -359,7 +464,9 @@ class ResultItem {
     addDescriptionInfo(parentElt) {
         // Add ldesc if it exists
         const ldescText = parentElt.querySelector(".js-display-ldesc-text");
-        ldescText.textContent = this.longDesc || "No description entered";
+        const span = document.createElement("span");
+        span.innerHTML = this.longDesc || "No description entered";
+        ldescText.replaceChildren(span);
     }
 
     addListItemEventListeners(parentElt) {
@@ -394,8 +501,8 @@ class ResultItem {
                 e.currentTarget.classList.add("is-loading");
                 try {
                     // download the h5ad
-                    const datasetId = this.datasetId;
-                    const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${this.shareId}`;
+                    const safeShareId = encodeURIComponent(String(this.shareId || ""));
+	                const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${safeShareId}`;
                     const a = document.createElement('a');
                     a.href = url;
                     a.click();
@@ -464,6 +571,14 @@ class ResultItem {
 
             try {
                 const data = await apiCallsMixin.saveDatasetInfoChanges(this.datasetId, intNewVisibility, intIsDownloadable, newTitle, newPubmedId, newGeoId, newLdesc);
+                if (!data?.success) {
+                    let msg = data?.error || "Failed to save dataset changes";
+                    if (data?.error_detail) {
+                        msg += `\nDetails: ${data.error_detail}`;
+                    }
+                    createToast(msg, "is-danger", true, { isHTML: true });
+                    return;
+                }
                 createToast("Dataset changes saved", "is-success");
 
             } catch (error) {
@@ -516,7 +631,9 @@ class ResultItem {
 
                 selector.querySelector(`.js-display-title p`).textContent = newTitle;
 
-                selector.querySelector(`.js-display-ldesc-text`).textContent = newLdesc || "No description entered";
+                const ldescSpan = document.createElement("span");
+                ldescSpan.innerHTML = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).replaceChildren(ldescSpan);
 
                 // pubmed and geo display are links if they exist
                 selector.querySelector(`.js-editable-pubmed-id input`).value = newPubmedId;
@@ -580,7 +697,7 @@ class ResultItem {
 
         // Redirect to gene expression search
         parentElt.querySelector(".js-view-dataset").addEventListener("click", (e) => {
-            window.open(`./p?s=${this.shareId}`, '_blank');
+            window.open(`./p?s=${this.shareId}&gsem=1`, '_blank');
         });
 
         // Redirect to gene expression search
@@ -781,9 +898,10 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.dataset}' value='${escapeHtml(this.shareId)}'>
                         </div>
                     </div>
+                    <p id='dataset-link-name-help' class='help has-text-danger-dark'></p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
                             <button id='confirm-dataset-link-rename' class='button is-primary' disabled>Update</button>
@@ -837,15 +955,14 @@ class ResultItem {
                 });
             });
 
-            document.getElementById("dataset-link-name").addEventListener("keyup", () => {
-                const newLinkName = document.getElementById("dataset-link-name");
-                const confirmRenameLink = document.getElementById("confirm-dataset-link-rename");
+            // "input" also catches pasted text; explain an invalid permalink instead of sending it
+            document.getElementById("dataset-link-name").addEventListener("input", () => {
+                const newLinkName = document.getElementById("dataset-link-name").value;
+                const unchanged = newLinkName === this.shareId;
+                const problem = unchanged ? "" : validateShareId(newLinkName, "dataset");
 
-                if (newLinkName.value.length === 0 || newLinkName.value === this.shareId) {
-                    confirmRenameLink.disabled = true;
-                    return;
-                }
-                confirmRenameLink.disabled = false;
+                document.getElementById("dataset-link-name-help").textContent = problem;
+                document.getElementById("confirm-dataset-link-rename").disabled = unchanged || Boolean(problem);
             });
 
             // Add event listener to cancel button
@@ -1201,7 +1318,7 @@ const addModalEventListeners = () => {
             const displayId = parseInt(displayElement.dataset.displayId);
 
             try {
-                const data = await apiCallsMixin.addDisplayToCollection(selected_dc_share_id, displayId);
+                const data = await apiCallsMixin.addDisplayToCollection(datasetCollectionState.selectedShareId, displayId);
                 if (!data.success) {
                     throw new Error(data.error);
                 }
@@ -1234,7 +1351,7 @@ const addModalEventListeners = () => {
             const displayId = parseInt(displayElement.dataset.displayId);
 
             try {
-                const data = await apiCallsMixin.deleteDisplayFromCollection(selected_dc_share_id, displayId);
+                const data = await apiCallsMixin.deleteDisplayFromCollection(datasetCollectionState.selectedShareId, displayId);
                 if (!data.success) {
                     throw new Error(data.error);
                 }
@@ -1315,10 +1432,8 @@ const applyTooltip = (referenceElement, tooltip, position="top") => {
         ['focus', showTooltip],
         ['blur', hideTooltip],
     ].forEach(([event, listener]) => {
-
         referenceElement.addEventListener(event, listener);
     });
-
 }
 
 /**
@@ -1482,10 +1597,10 @@ const createDeleteCollectionConfirmationPopover = () => {
         document.getElementById('confirm-collection-delete').addEventListener('click', async (event) => {
             event.target.classList.add("is-loading");
             try {
-                const data = await apiCallsMixin.deleteDatasetCollection(selected_dc_share_id);
+                const data = await apiCallsMixin.deleteDatasetCollection(datasetCollectionState.selectedShareId);
 
                 if (data['success'] === 1) {
-                    selected_dc_share_id = CURRENT_USER.layout_share_id;
+                    datasetCollectionState.selectedShareId = getCurrentUser()?.layout_share_id;
 
                     // This will trigger
                     // a) selectDatasetCollection
@@ -1542,7 +1657,7 @@ const createNewCollectionPopover = () => {
                 <p>Please provide a name for the new dataset collection</p>
                 <div class='field'>
                     <div class='control'>
-                        <input id='collection-name' class='input' type='text' placeholder='Collection name'>
+                        <input id='collection-name' class='input' maxlength='110' type='text' placeholder='Collection name'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1623,7 +1738,7 @@ const createNewCollectionPopover = () => {
                 const data = await apiCallsMixin.createDatasetCollection(newName);
 
                 if (data['layout_share_id']) {
-                    selected_dc_share_id = data['layout_share_id'];
+                    datasetCollectionState.selectedShareId = data['layout_share_id'];
                     // This will trigger
                     // a) selectDatasetCollection
                     // b) datasetCollectionSelectorCallback
@@ -1637,7 +1752,7 @@ const createNewCollectionPopover = () => {
                 }
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to create new collection");
+                createToast(error.message || "Failed to create new collection");
             } finally {
                 event.target.classList.remove("is-loading");
                 popoverContent.remove();
@@ -1672,7 +1787,7 @@ const createRenameCollectionPopover = () => {
                 <p>Please provide a new name for the dataset collection</p>
                 <div class='field'>
                     <div class='control'>
-                        <input id='collection-name' class='input' type='text' placeholder='Collection name'>
+                        <input id='collection-name' class='input' maxlength='110' type='text' placeholder='Collection name'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1732,7 +1847,7 @@ const createRenameCollectionPopover = () => {
             const newCollectionName = document.getElementById("collection-name");
             const confirmRenameCollection = document.getElementById("confirm-collection-rename");
 
-            if (newCollectionName.value.length === 0 || newCollectionName.value === selected_dc_label) {
+            if (newCollectionName.value.length === 0 || newCollectionName.value === datasetCollectionState.selectedLabel) {
                 confirmRenameCollection.disabled = true;
                 return;
             }
@@ -1750,10 +1865,10 @@ const createRenameCollectionPopover = () => {
             const newName = document.getElementById("collection-name").value;
 
             try {
-                const data = await apiCallsMixin.renameDatasetCollection(selected_dc_share_id, newName);
+                const data = await apiCallsMixin.renameDatasetCollection(datasetCollectionState.selectedShareId, newName);
 
                 if (data['layout_label']) {
-                    selected_dc_share_id = data['layout_share_id'];
+                    datasetCollectionState.selectedShareId = data['layout_share_id'];
                     // This will trigger
                     // a) selectDatasetCollection
                     // b) datasetCollectionSelectorCallback
@@ -1766,7 +1881,7 @@ const createRenameCollectionPopover = () => {
                 }
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to rename collection");
+                createToast(error.message || "Failed to rename collection");
             } finally {
                 event.target.classList.remove("is-loading");
                 popoverContent.remove();
@@ -1807,9 +1922,10 @@ const createRenameCollectionPermalinkPopover = () => {
                         </a>
                     </div>
                     <div class='control'>
-                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${selected_dc_share_id}>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.layout}'>
                     </div>
                 </div>
+                <p id='collection-link-name-help' class='help has-text-danger-dark'></p>
                 <div class='field is-grouped' style='width:250px'>
                     <p class="control">
                         <button id='confirm-collection-link-rename' class='button is-primary' disabled>Update</button>
@@ -1824,6 +1940,11 @@ const createRenameCollectionPermalinkPopover = () => {
 
         // append element to DOM to get its dimensions
         document.body.appendChild(popoverContent);
+
+        const collectionLinkNameInput = document.getElementById('collection-link-name');
+        if (collectionLinkNameInput) {
+            collectionLinkNameInput.value = datasetCollectionState.selectedShareId || "";
+        }
 
         const arrowElement = document.getElementById('arrow');
 
@@ -1863,15 +1984,15 @@ const createRenameCollectionPermalinkPopover = () => {
             });
         });
 
-        document.getElementById("collection-link-name").addEventListener("keyup", () => {
-            const newLinkName = document.getElementById("collection-link-name");
-            const confirmRenameLink = document.getElementById("confirm-collection-link-rename");
+        // "input" also catches pasted text; explain an invalid permalink instead of sending it
+        //  (layout.share_id holds at most 24 characters)
+        document.getElementById("collection-link-name").addEventListener("input", () => {
+            const newLinkName = document.getElementById("collection-link-name").value;
+            const unchanged = newLinkName === datasetCollectionState.selectedShareId;
+            const problem = unchanged ? "" : validateShareId(newLinkName, "layout");
 
-            if (newLinkName.value.length === 0 || newLinkName.value === selected_dc_share_id) {
-                confirmRenameLink.disabled = true;
-                return;
-            }
-            confirmRenameLink.disabled = false;
+            document.getElementById("collection-link-name-help").textContent = problem;
+            document.getElementById("confirm-collection-link-rename").disabled = unchanged || Boolean(problem);
         });
 
         // Add event listener to cancel button
@@ -1885,7 +2006,7 @@ const createRenameCollectionPermalinkPopover = () => {
             const newShareId = document.getElementById("collection-link-name").value;
 
             try {
-                const data = await apiCallsMixin.updateShareId(selected_dc_share_id, newShareId, "layout");
+                const data = await apiCallsMixin.updateShareId(datasetCollectionState.selectedShareId, newShareId, "layout");
 
                 if ((!data.success) || (data.success < 1)) {
                     const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1922,9 +2043,11 @@ const createPaginationButton = (page, icon = null, clickHandler) => {
     const button = document.createElement("button");
     button.className = "button is-small is-outlined is-dark pagination-link";
     if (icon) {
-        button.innerHTML = `<i class="mdi mdi-chevron-${icon}"></i>`;
+        button.innerHTML = `<i class="mdi mdi-chevron-${icon}" aria-hidden="true"></i>`;
+        button.setAttribute("aria-label", icon === "left" ? "Previous page" : "Next page");
     } else {
         button.textContent = page;
+        button.setAttribute("aria-label", `Page ${page}`);
     }
     button.addEventListener("click", clickHandler);
     li.appendChild(button);
@@ -1965,7 +2088,7 @@ const datasetCollectionSelectionCallback = async () => {
     arrangementViewMulti.innerHTML = "";
 
     // Get collection with displays
-    const data = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+    const data = await apiCallsMixin.fetchDatasetCollectionMembers(datasetCollectionState.selectedShareId);
     document.getElementById("btn-arrangement-view").classList.add("is-hidden");
     // If user owns collection, show layout arranger
     if (data.is_owner) {
@@ -1994,7 +2117,7 @@ const datasetCollectionSelectionCallback = async () => {
     // If the selected dataset collection is the current collection, make it look like the primary collection
     // ! Currently the selector will auto-make that collection the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    if (selected_dc_share_id === CURRENT_USER.layout_share_id) {
+    if (datasetCollectionState.selectedShareId === getCurrentUser()?.layout_share_id) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
     }
 }
@@ -2029,8 +2152,8 @@ const initializeDatasetCollectionSelection = () => {
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
     // Trigger the default dataset collection to be selected at the start
-    if (CURRENT_USER.layout_share_id) {
-        selectDatasetCollection(CURRENT_USER.layout_share_id);
+    if (getCurrentUser()?.layout_share_id) {
+        selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 
     // Show action buttons
@@ -2136,7 +2259,7 @@ const processSearchResults = (data) => {
     // to ensure the table-view button is shown/hid when filters are applied
     let collection = null;
     try {
-        collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+        collection = flatDatasetCollectionData.find((collection) => collection.share_id === datasetCollectionState.selectedShareId);
     } catch (error) {
         // pass
     }
@@ -2200,9 +2323,9 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
     ownerDisplaysElt.replaceChildren();
 
-    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === datasetCollectionState.selectedShareId);
     if (collection) {
-        const layoutMemberData = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+        const layoutMemberData = await apiCallsMixin.fetchDatasetCollectionMembers(datasetCollectionState.selectedShareId);
         collection.members = layoutMemberData.layout_members.single.concat(layoutMemberData.layout_members.multi);
     }
 
@@ -2313,18 +2436,22 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
             logErrorInConsole(error);
             // Realistically we should try to plot, but I assume most saved displays will have an image present.
             displayUrl = "/img/dataset_previews/missing.png";
-            if (display.plot_type === "epiviz") {
-                displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+            if (display.plot_type == "epiviz") {
+                // epiviz is no longer supported.  Continue
+                continue
+            } else if (display.plot_type == "gosling") {
+                displayUrl = "/img/dataset_previews/gosling.png";
             }
         }
 
         const displayImage = displayElement.querySelector('figure > img');
         displayImage.src = displayUrl;
+        displayImage.alt = `Preview of ${display.label || display.plot_type} display`;
 
         // Add tag indicating plot type
         const displayType = displayElement.querySelector('.js-modal-display-type');
 
-        const multiGeneDisplay = ["heatmap", "dotplot", "mg_violin", "volcano", "quadrant"];
+        const multiGeneDisplay = ["heatmap", "dotplot", "mg_violin", "volcano", "quadrant", "mg_tsne_static", "mg_umap_static", "mg_pca_static"];
 
         // Add color tags to displayType depending on plot type
         if (multiGeneDisplay.includes(display.plot_type)) {
@@ -2363,7 +2490,7 @@ const renderLayoutArranger = async (collection) => {
     document.getElementById("dataset-arrangement-loading-notification").classList.remove("is-hidden");
 
     // The share_id should be updated in the component when a new dataset collection is selected
-    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
+    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: datasetCollectionState.selectedShareId, sort_by: "date_added"})
 
     // Get the titles of the datasets
     const titles = {};
@@ -2603,20 +2730,14 @@ const submitSearch = async (page=1) => {
 
     const searchTerms = document.getElementById("search-terms").value;
 
-    // If this is the first time searching with terms, set the sort by to relevance
-    if (searchTerms && firstSearch) {
-        document.getElementById("sort-by").value = 'relevance';
-        firstSearch = false;
-    }
-
     const searchCriteria = {
-        'session_id': CURRENT_USER.session_id,
+        'session_id': getCurrentUser()?.session_id,
         'search_terms': searchTerms,
         'sort_by': document.getElementById("sort-by").value
     };
 
     if (searchByCollection) {
-        searchCriteria.layout_share_id = selected_dc_share_id;
+        searchCriteria.layout_share_id = datasetCollectionState.selectedShareId;
     }
 
     if (includePublicMembership) {
@@ -2635,6 +2756,12 @@ const submitSearch = async (page=1) => {
         const data = await apiCallsMixin.fetchDatasets(searchCriteria)
         // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
         clearResultsViews();
+
+        // The CGI reports bad input or a failed query as success 0 with a "problem" message
+        if (!data.success) {
+            createToast(data.problem || "Failed to search datasets");
+            return;
+        }
 
         processSearchResults(data);
         setupPagination(data.pagination);
@@ -2717,13 +2844,19 @@ const updateDatasetCollectionButtons = (collection=null) => {
 
     // Add event to update the collection visibility on the server
     collectionVisibilityInput.addEventListener("change", async (event) => {
-        const visibility = event.target.checked;
+        let visibility = event.target.checked;
         try {
-            await apiCallsMixin.updateDatasetCollectionVisibility(selected_dc_share_id, visibility);
+            const data = await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
+            if (!data?.success) {
+                throw new Error(data?.error || "Failed to update collection visibility");
+            }
             createToast("Collection visibility updated", "is-success");
         } catch (error) {
             logErrorInConsole(error);
-            createToast("Failed to update collection visibility");
+            createToast(error.message || "Failed to update collection visibility");
+            // Revert the checkbox so it matches what is stored on the server
+            visibility = !visibility;
+            event.target.checked = visibility;
         }
         // update label
         event.target.closest(".field").querySelector("label").textContent = visibility ? "Public collection" : "Private collection";
@@ -2739,10 +2872,10 @@ const updateDatasetCollectionButtons = (collection=null) => {
 const updateDatasetCollections = async () => {
 
     // Fetch the dataset collections, which will update the dataset collection selector
-    await fetchDatasetCollections()
+    await fetchDatasetCollections();
 
     // Uses dataset-collection-selector.js variable
-    const datasetCollectionData = dataset_collection_data;
+    const datasetCollectionData = datasetCollectionState.data;
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
     flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts];
 
@@ -2822,7 +2955,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Dataset Explorer";
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser()?.session_id;
 	if (! sessionId ) {
         // ? Technically we can show profiles, but I would need to build in "logged out controls".
         document.getElementById("collection-management").classList.add("is-hidden");
@@ -2848,13 +2981,15 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Prep filters
     await loadOrganismList();
 
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
+
     // Select the user's last remembered filter options
     const defaultOwnershipView = Cookies.get("default_collection_ownership_view");
     const defaultOrganismView = Cookies.get("default_collection_organism_view");
     const defaultDateAddedView = Cookies.get("default_collection_date_added_view");
     const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
 
-    if (defaultOwnershipView && CURRENT_USER.session_id) {
+    if (defaultOwnershipView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -2862,17 +2997,19 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView && CURRENT_USER.session_id) {
+    if (defaultOrganismView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView && CURRENT_USER.session_id) {
-        document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
+    if (defaultDateAddedView && getCurrentUser()?.session_id) {
+        // deselect All and select the cookie saved view
+        document.querySelector("#controls-date-added li.js-all-selector").classList.remove("js-selected");
+        document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
-    if (defaultDatasetTypeView && CURRENT_USER.session_id) {
+    if (defaultDatasetTypeView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
         for (const dtype of defaultDatasetTypeView.split(",")) {
@@ -2881,9 +3018,40 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // If they passed search_string URL parameter, set that
-    let search_string = getUrlParameter("search_string");
-    if (search_string) {
-        document.getElementById("search-terms").value = search_string;
+    let searchString = getUrlParameter("search_string");
+    if (searchString) {
+        document.getElementById("search-terms").value = searchString;
+    }
+
+    let organismIDPassed = getUrlParameter("organism_id");
+    if (organismIDPassed) {
+        // deselect All
+        document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
+        const organismElt = document.querySelector(`#controls-organism li[data-dbval='${organismIDPassed}']`);
+        if (organismElt) {
+            organismElt.classList.add("js-selected");
+        }
+    }
+
+    let dtypePassed = getUrlParameter("dataset_type");
+    if (dtypePassed) {
+        // deselect All
+        document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
+        const dtypeElt = document.querySelector(`#controls-dataset-type li[data-dbval='${dtypePassed}']`);
+        if (dtypeElt) {
+            dtypeElt.classList.add("js-selected");
+        }
+    }
+
+    let sortByPassed = getUrlParameter("sort_by");
+    if (sortByPassed) {
+        const sortByElt = document.getElementById("sort-by");
+        for (const option of sortByElt.options) {
+            if (option.value === sortByPassed) {
+                sortByElt.value = sortByPassed;
+                break;
+            }
+        }
     }
 
     await submitSearch();
@@ -2933,6 +3101,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
+
 
 document.getElementById("search-clear").addEventListener("click", async () => {
     document.getElementById("search-terms").value = "";
@@ -3168,7 +3341,7 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
     }
 
 
-    const data = await apiCallsMixin.saveDatasetCollectionArrangement(selected_dc_share_id, layoutArrangement)
+    const data = await apiCallsMixin.saveDatasetCollectionArrangement(datasetCollectionState.selectedShareId, layoutArrangement)
     if (data.success) {
         createToast("Layout arrangement saved successfully", "is-success");
     } else {
@@ -3178,11 +3351,11 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
 
 document.getElementById("btn-set-primary-collection").addEventListener("click", async () => {
     try {
-        const data = await apiCallsMixin.setUserPrimaryDatasetCollection(selected_dc_share_id)
+        const data = await apiCallsMixin.setUserPrimaryDatasetCollection(datasetCollectionState.selectedShareId)
         if (data.success) {
             createToast("Primary collection set successfully", "is-success");
 
-            Cookies.set('gear_default_domain', selected_dc_share_id);
+            Cookies.set('gear_default_domain', datasetCollectionState.selectedShareId);
 
             // Make button outlined to look "official"
             document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
@@ -3196,11 +3369,10 @@ document.getElementById("btn-set-primary-collection").addEventListener("click", 
 });
 
 document.getElementById("btn-share-collection").addEventListener("click", (e) => {
-    let currentPage = new URL(`${getRootUrl()}/p`);
-    let params = new URLSearchParams(currentPage.search);
-    params.set("l", selected_dc_share_id);
+    const currentPage = new URL(`${getRootUrl()}/p`);
+    const params = new URLSearchParams(currentPage.search);
+    params.set("l", datasetCollectionState.selectedShareId);
     currentPage.search = params.toString();
     const shareUrl = currentPage.toString();
     copyPermalink(shareUrl);
 });
-

@@ -41,7 +41,7 @@ def format_orthomap_file_base(first_org_id: str, second_org_id: str, annotation_
     """
     return "orthomap.{0}.{2}__{1}.{2}.hdf5".format(first_org_id, second_org_id, annotation_source)
 
-def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotation_source: str="ensembl") -> Path:
+def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotation_source: str="ensembl") -> Path | None:
     """
     Get the ortholog file for a given gene organism ID, dataset organism ID, and annotation source.
 
@@ -60,7 +60,8 @@ def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotatio
     orthomap_file = ORTHOLOG_BASE_DIR / orthomap_file_base
 
     if not orthomap_file.is_file():
-        raise FileNotFoundError(f"Orthologous mapping file not found: {orthomap_file}")
+        print(f"Orthologous mapping file not found: {orthomap_file}", file=sys.stderr)
+        return None
     return orthomap_file
 
 def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source: str="ensembl"):
@@ -85,7 +86,8 @@ def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source:
 
     if not orthomap_files:
         dataset_organism_name = get_organism_name_by_id(dataset_organism_id)
-        raise FileNotFoundError(f"Orthologous mapping files not found for dataset organism {dataset_organism_name}")
+        print(f"Orthologous mapping files not found for dataset organism {dataset_organism_name}", file=sys.stderr)
+        raise FileNotFoundError("Could not find any orthologous mapping files for the organism associated with this dataset")
 
     return list(orthomap_files)
 
@@ -190,13 +192,15 @@ def map_single_gene(gene_symbol: str, orthomap_file: Path) -> list:
 
     # Create lowercase gs1 and gs2 columns
     orthology_df["lc_gs1"] = orthology_df["gs1"].str.lower()
-    orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
+    #orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
 
-    # Check if case-insensitive gene symbol is in dictionary
+    # Find all matches for this gene symbol (case-insensitive)
     lc_gene_symbol = gene_symbol.lower()
+    matching_rows = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
 
-    # Return the list of all orthologous gene symbols
-    orthologous_genes = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
+    # Split comma-separated gene symbols into individual entries
+    orthologous_genes = split_comma_separated_genes(matching_rows)
+
     return orthologous_genes
 
 def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
@@ -215,13 +219,30 @@ def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
 
     # Create lowercase gs1 and gs2 columns
     orthology_df["lc_gs1"] = orthology_df["gs1"].str.lower()
-    orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
+    #orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
 
-    # Create a dictionary of gene symbol to orthologous gene symbols
-    # This checks if case-insensitive gene symbols are in orthology df.
-    gene_symbol_dict = {
-        gene_symbol: orthology_df[orthology_df["lc_gs1"] == gene_symbol.lower()]["gs2"].tolist()
-        for gene_symbol in gene_symbols
-    }
+
+    # Map each gene symbol to its orthologous genes
+    gene_symbol_dict = {}
+    for gene_symbol in gene_symbols:
+        lc_gene_symbol = gene_symbol.lower()
+        matching_rows = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
+        gene_symbol_dict[gene_symbol] = split_comma_separated_genes(matching_rows)
 
     return gene_symbol_dict
+
+def split_comma_separated_genes(gene_symbols: list[str]) -> list[str]:
+    """
+    Split comma-separated gene symbols into individual symbols.
+
+    Args:
+        gene_symbols (list[str]): List of gene symbols that may contain comma-separated values.
+
+    Returns:
+        list[str]: Flattened list of individual gene symbols.
+    """
+    split_genes = []
+    for gene_symbol in gene_symbols:
+        if isinstance(gene_symbol, str):
+            split_genes.extend(gene_symbol.split(","))
+    return split_genes

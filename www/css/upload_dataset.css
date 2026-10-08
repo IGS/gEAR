@@ -4,7 +4,7 @@ button.format-selector {
 div.format-selection-box {
 	display: flex;
 	flex-direction: column;
-	justify-content: space-between; 
+	justify-content: space-between;
 }
 div#logged-in-c {
 	padding-bottom: 500px;
@@ -68,4 +68,31 @@ ul#errored-field-list {
 	margin-top: 1em;
 	list-style-type: circle;
 	padding-left: 0;
+}
+
+/* Trackhub content */
+.collapsible-header .icon, .track-item {
+	cursor: pointer;
+}
+.track-item.dragging {
+	opacity: 0.5;
+}
+.collapsible-content {
+	display: none;
+	overflow: hidden;
+}
+.collapsible-header {
+	cursor: pointer;
+	cursor: grab;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background-color: #f5f5f5;
+	padding: 10px;
+	border: 1px solid #ddd;
+	border-radius: 5px;
+	max-width:40%
+}
+.collapsible-header:hover {
+	background-color: #e8e8e8;
 }

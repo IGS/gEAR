@@ -1,11 +1,20 @@
 #!/opt/bin/python3
 
 """
+h5ad_generate_clusters.cgi - Run Leiden (fallback Louvain) clustering and optionally rename/merge/drop clusters.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, resolution, compute_clusters ('true'),
+       cluster_info (JSON list of {old_label, new_label, keep}), plot_tsne, plot_umap (0/1).
+Output: JSON {success, group_labels: [{group_label, num_cells, genes}]}; writes clustering PNGs.
 """
 
-import cgi, json
-import os, sys
+import cgi
+import json
+import os
+import sys
+
+import matplotlib
+import scanpy as sc
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -13,36 +22,56 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-
-import pandas as pd
+from gear.analysis import get_analysis
+from gear.colorblind import categorical_colors, is_enabled, remove_colorblind_copies
 
 # this is needed so that we don't get TclError failures in the underlying modules
-import matplotlib
 matplotlib.use('Agg')
 
-import scanpy as sc
 sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
-    plot_tsne = int(form.getvalue('plot_tsne'))
-    plot_umap = int(form.getvalue('plot_umap'))
-    user_id = None
-    if user and user.id:
-        user_id = user.id
+    plot_tsne = int(form.getfirst('plot_tsne'))
+    plot_umap = int(form.getfirst('plot_umap'))
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user_id)
+    result = {"success": 0, "group_labels":""}
 
-    resolution = float(form.getvalue('resolution'))
-    compute_clusters = form.getvalue('compute_clusters')
-    cluster_info = json.loads(form.getvalue("cluster_info"))    # "old_label", "new_label", "keep"
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
+
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {
+            'id': analysis_id if analysis_id else None,
+            'type': analysis_type if analysis_type else None,
+        }
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    resolution = float(form.getfirst('resolution'))
+    compute_clusters = form.getfirst('compute_clusters')
+    cluster_info = json.loads(form.getfirst("cluster_info"))    # "old_label", "new_label", "keep"
+    colorblind_mode = is_enabled(form.getfirst('colorblind_mode', ''))
 
     adata = ana.get_adata()
 
@@ -51,7 +80,7 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
 
     # Compute tSNE and plot
     if compute_clusters == 'true':
@@ -59,7 +88,8 @@ def main():
         adata.obs.drop(columns=["louvain", "orig_louvain"], errors="ignore", inplace=True)
 
         try:
-            sc.tl.leiden(adata, resolution=resolution)
+            # Added flavor and n_iterations to address warnings about future defaults
+            sc.tl.leiden(adata, resolution=resolution, flavor="igraph", n_iterations=2)
 
             # rename the leiden column to louvain to not break things elsewhere
             # ? perhaps we should rename as "clustering" or something more generic
@@ -71,9 +101,6 @@ def main():
 
         adata.obs["orig_louvain"] = adata.obs["louvain"].astype(int)   # Copy cluster ID so it's easier to rename categories
         adata.write(dest_datafile_path)
-    else:
-        # Get from the dest_datafile_path
-        adata = ana.get_adata()
 
     ## I don't see how to get the save options to specify a directory
     # sc.settings.figdir = 'whateverpathyoulike' # scanpy issue #73
@@ -85,7 +112,7 @@ def main():
     if len(cluster_info) > 0:
 
         # If this is an older louvain analysis, make this mapping column if it does not exist
-        if not "orig_louvain" in adata.obs:
+        if "orig_louvain" not in adata.obs:
             old_label2index = dict()
             for idx, cluster in enumerate(cluster_info):
                 old_label2index[cluster["old_label"]] = idx
@@ -97,7 +124,9 @@ def main():
 
         # Filter only the clusters we want to use
         kept_indexes = list(filter(lambda i: cluster_info[i]["keep"], range(len(cluster_info))))
-        adata = adata[adata.obs["louvain"].isin(kept_indexes), :]
+        # Use a 1-D boolean mask for indexing to satisfy type checkers and AnnData's indexing
+        mask = adata.obs["louvain"].isin(kept_indexes).to_numpy(dtype=bool)
+        adata = adata[mask]
 
         # Create mapping of original cluster IDs and new labels. Clusters will merge on duplicated labels
         idx2new_label = dict()
@@ -113,7 +142,7 @@ def main():
             num_cells = adata.obs[adata.obs["louvain"] == label]["louvain"].count()
             if not num_cells:
                 continue
-            group_labels.append({'group_label':idx, 'num_cells':num_cells, 'genes': label})
+            group_labels.append({'group_label':str(idx), 'num_cells':num_cells, 'genes': label})
             label2idx[label] = idx
 
         # Ensure orig_louvain is parallel to the group_labels, so relabeling uses the correct cluster numbers
@@ -129,22 +158,41 @@ def main():
         # Rename "louvain" to a generic "clustering" for consistency
         adata.obs.rename(columns={"louvain":"clustering"}, inplace=True)
 
-        if plot_tsne == 1:
-            ax = sc.pl.tsne(adata, color='clustering', legend_loc='on data', save="_clustering.png")
-        if plot_umap == 1:
-            ax = sc.pl.umap(adata, color='clustering', legend_loc='on data', save="_clustering.png")
+        plot_clusters(adata, plot_tsne, plot_umap, colorblind_mode, legend_loc='on data')
     else:
         adata.obs.rename(columns={"louvain":"clustering"}, inplace=True)
-        if plot_tsne == 1:
-            ax = sc.pl.tsne(adata, color='clustering', save="_clustering.png")
-        if plot_umap == 1:
-            ax = sc.pl.umap(adata, color='clustering', save="_clustering.png")
+        plot_clusters(adata, plot_tsne, plot_umap, colorblind_mode)
 
-    result = {'success': 1, "group_labels":group_labels}
+    result["success"] = 1
+    result["group_labels"] = group_labels
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
+
+
+def plot_clusters(adata, plot_tsne, plot_umap, colorblind_mode, **plot_kwargs):
+    """
+    Plot the clustering on the requested embeddings as figures/{tsne,umap}_clustering.png.
+    In colorblind mode also save a {tsne,umap}_clustering_colorblind.png copy; otherwise remove any old copy.
+    """
+    plotters = []
+    if plot_tsne == 1:
+        plotters.append(('tsne', sc.pl.tsne))
+    if plot_umap == 1:
+        plotters.append(('umap', sc.pl.umap))
+
+    for _, plotter in plotters:
+        plotter(adata, color='clustering', save="_clustering.png", **plot_kwargs)
+
+    if colorblind_mode:
+        # Passing a palette makes scanpy color the categories with it (the h5ad was already written)
+        num_clusters = len(adata.obs['clustering'].astype('category').cat.categories)
+        for _, plotter in plotters:
+            plotter(adata, color='clustering', palette=categorical_colors(num_clusters),
+                    save="_clustering_colorblind.png", **plot_kwargs)
+    else:
+        remove_colorblind_copies('figures', ["{0}_clustering".format(name) for name, _ in plotters])
 
 
 if __name__ == '__main__':

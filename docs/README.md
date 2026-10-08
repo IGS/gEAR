@@ -1,0 +1,168 @@
+# gEAR Documentation Index
+
+Welcome to the gEAR documentation. This index will help you find the right documentation for your needs.
+
+## For End Users
+
+**gEAR User Documentation** → [GitHub Wiki](https://github.com/IGS/gEAR/wiki) (source in [`wiki/`](wiki/gEARWiki.md)). Video guides are on each portal's home page (My Workspace).
+
+Topics covered:
+
+- Getting started with gEAR
+- Searching for genes and datasets
+- Creating and managing dataset collections
+- Using analysis tools
+- Uploading and curating data
+- Video tutorials and presentations
+
+## For Analysts
+
+**Main Analyst Guide** → [`analyst/README.md`](analyst/README.md)
+
+This is a work in progress
+
+## For Developers
+
+**Main Developer Guide** → [`developer/README.md`](developer/README.md)
+
+Comprehensive guide covering:
+
+- Architecture overview
+- Development workflow
+- Code style guidelines
+- Testing procedures
+- Common development tasks
+
+### Quick Links for Developers
+
+- **[Setup Guides](developer/setup/README.md)** - Server installation and configuration
+  - New server setup
+  - MySQL, Apache, Python, R, RabbitMQ
+  - Docker development environment
+  - Systemd services
+
+- **Reference**
+  - [API Reference](developer/api_reference.md) - Flask API endpoints and CGI catalog
+  - [OpenAPI spec](developer/openapi.yaml) - machine-readable description of the REST API and CGI scripts
+  - [Configuration](developer/configuration.md) - `gear.ini` sections and keys
+  - [Testing](developer/testing.md) - Test suites and how to run them
+  - [Upload Pipeline](developer/upload_pipeline.md) - Dataset upload flow
+  - [Code Map](developer/code_map.md) - Where things live in the codebase
+  - [Database Schema](developer/database_schema.md) - MySQL tables
+
+- **[Developer Misc](developer/misc/)** - [Cache busting](developer/misc/cache_busting_guide.md), [release test plan](developer/misc/release_test_plan.md), HiGlass file uploads, VM cloning, webpage load-order notes
+
+- **[Utility Scripts](misc/scripts/README.md)** - Documentation for the 121 scripts in `/bin`
+  - Data conversion and format scripts
+  - H5AD manipulation tools
+  - Database loading utilities
+  - Validation and testing scripts
+  - Dataset management tools
+  - TODO: Prune out obsolete scripts
+
+- **[Microservices](developer/services/README.md)** - Service documentation
+  - ProjectR service (matrix projection)
+  - Spatial panel service (spatial transcriptomics)
+  - RabbitMQ consumers (background workers)
+  - Plugins
+
+## Documentation Organization
+
+```
+docs/
+├── README.md (this file)          # Documentation index
+├── analyst/                       # Analyst documentation
+│   └── README.md                  # Main analyst guide
+├── developer/                     # Developer documentation
+│   ├── README.md                  # Main developer guide
+│   ├── api_reference.md           # Reference docs (API, config, testing,
+│   ├── configuration.md           #   upload pipeline, code map, DB schema)
+│   ├── testing.md
+│   ├── upload_pipeline.md
+│   ├── code_map.md
+│   ├── database_schema.md
+│   ├── misc/                      # Cache busting, release test plan, HiGlass, etc.
+│   ├── setup/                     # Server setup guides
+│   └── services/                  # Microservices and plugins documentation
+├── misc/                          # Miscellaneous documentation
+│   ├── scripts/                   # Bin scripts documentation
+│   └── README.md                  # Main guide
+├── wiki/                          # End-user wiki
+├── posters/                       # Historical presentations (DO NOT MODIFY)
+├── ui-v2-design/                  # UI v2 prototypes (DO NOT MODIFY)
+├── DEPRECATED.md                  # Where moved/removed docs went
+└── *.pdf, *.png, *.docx           # Design system, overview images, H5AD format spec
+```
+
+## Moved and Removed Documentation
+
+Docs that used to live directly in `docs/` (and component READMEs such as `docker/docker_notes.md`, `systemd/README.md`, `services/projectr/README.md`) have been moved into the structure above or removed. See [`DEPRECATED.md`](DEPRECATED.md) for the mapping.
+
+## Finding What You Need
+
+### "I want to set up my own gEAR instance"
+
+→ Start with [`developer/setup/README.md`](developer/setup/README.md)
+
+### "I want to understand how gEAR works"
+
+→ Read [`developer/README.md`](developer/README.md) - Architecture Overview section
+
+### "I need to run a specific script from /bin"
+
+→ Check [`misc/scripts/README.md`](misc/scripts/README.md) for documentation
+
+### "I'm having issues with ProjectR/Spatial/RabbitMQ services"
+
+→ See [`developer/services/README.md`](developer/services/README.md)
+
+### "I want to contribute to gEAR"
+
+→ Start with [`developer/README.md`](developer/README.md) - Development Workflow section
+
+### "I'm a gEAR user looking for help"
+
+→ Visit the [GitHub Wiki](https://github.com/IGS/gEAR/wiki) or the video guides on the [UMgEAR home page](https://umgear.org)
+
+## Contributing to Documentation
+
+If you find missing, outdated, or incorrect documentation:
+
+1. **For developer docs**: Update files in `docs/developer/` and submit a PR
+2. **For end-user docs**: Update the [GitHub Wiki](https://github.com/IGS/gEAR/wiki)
+3. **For questions**: Create an issue on GitHub or ask in team channels
+
+### Documentation Standards
+
+When adding or updating documentation:
+
+- Use clear, descriptive headings
+- Include code examples where appropriate
+- Link to related documentation
+- Keep information current (note last update date for time-sensitive content)
+- Follow existing formatting and style
+
+## Additional Resources
+
+- **GitHub Repository**: <https://github.com/IGS/gEAR>
+- **Issue Tracker**: <https://github.com/IGS/gEAR/issues>
+- **Production Instances**:
+  - [UMgEAR](https://umgear.org) - Portal for hearing research
+  - [NeMO Analytics](https://nemoanalytics.org) - Portal for brain research
+  - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
+  - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
+  - [Inflammation gEAR](https://inflammation.umgear.org) - Portal for inflammation research
+
+
+## Getting Help
+
+1. Check the appropriate documentation section above
+2. Search the [GitHub Wiki](https://github.com/IGS/gEAR/wiki) for end-user questions
+3. Review existing [GitHub Issues](https://github.com/IGS/gEAR/issues)
+4. Ask in team channels (for team members)
+5. Create a new GitHub issue with appropriate labels
+
+---
+
+**Last Updated**: September 2026
+**Maintainer**: @adkinsrs maintains infrastructure documentation

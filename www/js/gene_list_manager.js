@@ -1,5 +1,8 @@
 "use strict";
 
+import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
+import { GeneCart } from "./classes/genecart.v2.js";
+
 let firstSearch = true;
 let isAddFormOpen = false;
 const resultsPerPage = 20;
@@ -72,7 +75,7 @@ class ResultItem {
         const geneListId = this.geneListId;
 
         // Clone the template
-        const listItemView = this.listTemplate.content.cloneNode(true)
+        const listItemView = this.listTemplate.content.cloneNode(true);
 
         // Set properties for multiple elements
         setElementProperties(listItemView, ".js-gc-list-element", { dataset: { geneListId } });
@@ -94,6 +97,7 @@ class ResultItem {
         setElementProperties(listItemView, ".js-editable-date-added input", { value: this.dateAdded });
         // action buttons section
         setElementProperties(listItemView, ".js-view-gc", { value: this.shareId });
+        setElementProperties(listItemView, ".js-view-projection-gc", { value: this.shareId });
         setElementProperties(listItemView, ".js-delete-gc", { value: geneListId });
         setElementProperties(listItemView, ".js-edit-gc", { value: geneListId });
         setElementProperties(listItemView, ".js-edit-gc-save", { value: geneListId });
@@ -221,7 +225,9 @@ class ResultItem {
     addDescriptionInfo(parentElt) {
         // Add ldesc if it exists
         const ldescText = parentElt.querySelector(".js-display-ldesc-text");
-        ldescText.textContent = this.longDesc || "No description entered";
+        const span = document.createElement("span");
+        span.innerHTML = this.longDesc || "No description entered";
+        ldescText.replaceChildren(span);
     }
 
     addListItemEventListeners(parentElt) {
@@ -309,6 +315,7 @@ class ResultItem {
             // if genecart is weighted, can only link to projection.html
             if (this.gctypeLabel === "Weighted") {
                 params.set('p', 'p');
+                createToast("Weighted gene lists can only be viewed in the projection tool, linking to projection view", "is-info");
             }
             currentPage.search = params.toString();
             const shareUrl = currentPage.toString();
@@ -331,9 +338,11 @@ class ResultItem {
             parentElt.querySelector(`.js-editable-ldesc textarea`).value = this.longDesc;
             parentElt.querySelector(`.js-editable-organism select`).value = this.organismId;
             parentElt.querySelector(`.js-action-links`).classList.remove("is-hidden");
+
+            // No need to undo genes as they are not displayed in the normal view outside of the preview (which does its own fetch)
         });
 
-        // Save button for editing a gene list
+        // Save button for editing metadata from a gene list
         parentElt.querySelector(".js-edit-gc-save").addEventListener("click", async (e) => {
             const newVisibility = parentElt.querySelector(`.js-editable-visibility input`).checked;
             // convert "true/false" visibility to 1/0
@@ -344,9 +353,26 @@ class ResultItem {
             const newOrgId = parentElt.querySelector(`.js-editable-organism select`).value;
             const newOrgText = parentElt.querySelector(`.js-editable-organism select option[value='${newOrgId}']`).textContent;
 
+            // Split on commas and whitespace, and remove duplicate symbols (Set keeps insertion order)
+            const newGenes = this.gctype === "unweighted-list"
+                ? [...new Set(parentElt.querySelector(`.js-editable-genes textarea`).value.split(/[\s,]+/).filter(gene => gene.length > 0))]
+                : [];
+
+            if (this.gctype === "unweighted-list" && newGenes.length === 0) {
+                createToast("A gene list must have at least one gene");
+                return;
+            }
+
+            const changes = {
+                visibility: intNewVisibility,
+                title: newTitle,
+                organismId: newOrgId,
+                ldesc: newLdesc,
+                genes: newGenes.join(" ")
+            }
 
             try {
-                const data = await apiCallsMixin.saveGeneListInfoChanges(this.geneListId, intNewVisibility, newTitle, newOrgId, newLdesc);
+                const data = await apiCallsMixin.saveGeneListInfoChanges(this.geneListId, changes);
                 createToast("Gene list changes saved", "is-success");
 
             } catch (error) {
@@ -376,7 +402,9 @@ class ResultItem {
                 }
 
                 selector.querySelector(`.js-display-title p`).textContent = newTitle;
-                selector.querySelector(`.js-display-ldesc-text`).textContent = newLdesc || "No description entered";
+                const ldescSpan = document.createElement("span");
+                ldescSpan.innerHTML = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).replaceChildren(ldescSpan);
 
                 selector.querySelector(`.js-display-organism span:last-of-type`).textContent = newOrgText;
             }
@@ -395,9 +423,17 @@ class ResultItem {
             this.rowItem.querySelector(`.js-display-title`).textContent = newTitle;
             this.rowItem.querySelector(`.js-display-organism`).textContent = this.expandedRowItem.querySelector(`.js-display-organism span:last-of-type`).textContent;
 
+            // Update the unweighted-genes count and clear the cached previews so they are fetched again
+            if (this.gctype === "unweighted-list") {
+                this.geneCount = newGenes.length;
+                this.rowItem.querySelector(`.js-display-num-genes`).textContent = this.geneCount;
+                for (const viewElt of [this.expandedRowItem, this.resultListItem]) {
+                    this.resetPreviewGenes(viewElt);
+                }
+            }
+
             // Put interface back to view mode.
             toggleEditableMode(true, parentElt);
-
         });
 
         // Toggle editable mode when edit button is clicked for a gene list
@@ -419,6 +455,16 @@ class ResultItem {
                 // set the current value as selected
                 editableOrganismIdElt.value = this.organismId;
 
+                // Hide gene textarea box if gctypeLabel is not "Unweighted"
+                if (this.gctype === "unweighted-list") {
+                    const geneSymbols = await fetchGeneCartMembers(this.shareId);
+                    const geneString = geneSymbols.map(gene => gene.label).join(" ");
+                    parentElt.querySelector(`.js-editable-genes textarea`).value = geneString
+                    parentElt.querySelector(`.js-editable-genes`).classList.remove("is-hidden");
+                } else {
+                    parentElt.querySelector(`.js-editable-genes`).classList.add("is-hidden");
+                }
+
                 // Show editable versions where there are some and hide the display versions
                 toggleEditableMode(false, parentElt);
 
@@ -433,14 +479,17 @@ class ResultItem {
 
         // Redirect to gene expression search
         parentElt.querySelector(".js-view-gc").addEventListener("click", (e) => {
-            let currentPage = `${getRootUrl()}/p?`;
-
             // if genecart is weighted, can only link to projection.html
             if (this.gctypeLabel === "Weighted") {
-                currentPage += "p=p&";
+                createToast("Weighted gene lists can only be viewed in the projection tool", "is-warning");
+                return;
             }
+            window.open(`./p?c=${this.shareId}`, '_blank');
+        });
 
-            window.open(`${currentPage}c=${this.shareId}`, '_blank');
+        // Redirect to gene expression search
+        parentElt.querySelector(".js-view-projection-gc").addEventListener("click", (e) => {
+            window.open(`./p?p=p&c=${this.shareId}`, '_blank');
         });
     }
 
@@ -455,7 +504,6 @@ class ResultItem {
             buttonLabel.textContent = `Info`;
         } else if (this.gctype === "unweighted-list") {
             buttonElt.classList.add("js-gc-unweighted-gene-list-toggle");
-
             buttonLabel.textContent = `${this.geneCount} genes`;
         } else if (this.gctype === "labeled-list") {
             // Not implemented yet
@@ -467,6 +515,21 @@ class ResultItem {
 
     }
 
+
+    // Clears the cached gene preview and returns the preview button to its closed state
+    resetPreviewGenes(parentElt) {
+        const previewGenesContainer = parentElt.querySelector(".js-preview-genes-container");
+        previewGenesContainer.replaceChildren();
+        previewGenesContainer.classList.add("is-hidden");
+
+        const buttonElt = parentElt.querySelector(`.js-preview-genes-button-container button`);
+        buttonElt.classList.add("is-outlined");
+        buttonElt.querySelector("i").classList.remove("mdi-eye-off");
+        buttonElt.querySelector("i").classList.add("mdi-format-list-bulleted");
+
+        // Resets the label and its "off" state to the current gene count
+        this.fixPreviewGenesButton(parentElt);
+    }
 
     //Sets up the gene list toggle functionality.
     setupGeneListToggle(parentElt, className, ajaxUrl, handleData) {
@@ -510,6 +573,7 @@ class ResultItem {
 
                     const infoContainer = document.createElement("div");
                     infoContainer.classList.add("js-info-container");
+                    previewGenesContainer.replaceChildren();    // clear any existing content
                     previewGenesContainer.appendChild(infoContainer);
 
                     // ? Should we re-add the preview table for weighted gene lists?
@@ -722,9 +786,10 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.genecart}' value='${escapeHtml(this.shareId)}'>
                         </div>
                     </div>
+                    <p id='gc-link-name-help' class='help has-text-danger-dark'></p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
                             <button id='confirm-gc-link-rename' class='button is-primary' disabled>Update</button>
@@ -778,15 +843,14 @@ class ResultItem {
                 });
             });
 
-            document.getElementById("gc-link-name").addEventListener("keyup", () => {
-                const newLinkName = document.getElementById("gc-link-name");
-                const confirmRenameLink = document.getElementById("confirm-gc-link-rename");
+            // "input" also catches pasted text; explain an invalid permalink instead of sending it
+            document.getElementById("gc-link-name").addEventListener("input", () => {
+                const newLinkName = document.getElementById("gc-link-name").value;
+                const unchanged = newLinkName === this.shareId;
+                const problem = unchanged ? "" : validateShareId(newLinkName, "genecart");
 
-                if (newLinkName.value.length === 0 || newLinkName.value === this.shareId) {
-                    confirmRenameLink.disabled = true;
-                    return;
-                }
-                confirmRenameLink.disabled = false;
+                document.getElementById("gc-link-name-help").textContent = problem;
+                document.getElementById("confirm-gc-link-rename").disabled = unchanged || Boolean(problem);
             });
 
             // Add event listener to cancel button
@@ -959,9 +1023,11 @@ const createPaginationButton = (page, icon = null, clickHandler) => {
     const button = document.createElement("button");
     button.className = "button is-small is-outlined is-dark pagination-link";
     if (icon) {
-        button.innerHTML = `<i class="mdi mdi-chevron-${icon}"></i>`;
+        button.innerHTML = `<i class="mdi mdi-chevron-${icon}" aria-hidden="true"></i>`;
+        button.setAttribute("aria-label", icon === "left" ? "Previous page" : "Next page");
     } else {
         button.textContent = page;
+        button.setAttribute("aria-label", `Page ${page}`);
     }
     button.addEventListener("click", clickHandler);
     li.appendChild(button);
@@ -1092,7 +1158,7 @@ const fetchGeneCartMembers = async (geneCartShareId) => {
 // Callbacks after attempting to save a gene list
 const geneListFailure = (gc, message) => {
     logErrorInConsole(message);
-    createToast("Failed to save gene list");
+    createToast(message);
 }
 
 const geneListSaved = async (gc) => {
@@ -1417,7 +1483,7 @@ const submitSearch = async (page) => {
     }
 
     const searchCriteria = {
-        'session_id': CURRENT_USER.session_id,
+        'session_id': getCurrentUser()?.session_id,
         'search_terms': searchTerms,
         'sort_by': document.getElementById("sort-by").value
     };
@@ -1429,11 +1495,28 @@ const submitSearch = async (page) => {
     searchCriteria.limit = resultsPerPage;
     searchCriteria.page = page || 1;
 
+    const searchParams = Object.fromEntries(new URLSearchParams(window.location.search));
+    if (searchParams['sort_by']) {
+        searchCriteria.sort_by = searchParams['sort_by'];
+
+        // remove sort_by from URL to keep it in sync with the form
+        delete searchParams['sort_by'];
+        const newSearchParams = new URLSearchParams(searchParams).toString();
+        const newUrl = `${window.location.pathname}${newSearchParams ? `?${newSearchParams}` : ''}`;
+        window.history.replaceState({}, '', newUrl);
+    }
+
     try {
         const data = await apiCallsMixin.fetchGeneLists(searchCriteria)
 
         // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
         clearResultsViews();
+
+        // The CGI reports bad input or a failed query as success 0 with a "problem" message
+        if (!data.success) {
+            createToast(data.problem || "Failed to search gene lists");
+            return;
+        }
 
         processSearchResults(data);
         setupPagination(data.pagination);
@@ -1476,11 +1559,10 @@ const toggleEditableMode = (hideEditable, target="") => {
 
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {
-
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Gene List Manager";
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser()?.session_id;
 
 	if (! sessionId ) {
         document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
@@ -1500,7 +1582,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultOrganismView = Cookies.get("default_gene_list_organism_view");
     const defaultDateAddedView = Cookies.get("default_gene_list_date_added_view");
 
-    if (defaultOwnershipView && CURRENT_USER.session_id) {
+    if (defaultOwnershipView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -1508,7 +1590,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView && CURRENT_USER.session_id) {
+    if (defaultOrganismView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
 
@@ -1516,8 +1598,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView && CURRENT_USER.session_id) {
-        document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
+    if (defaultDateAddedView && getCurrentUser()?.session_id) {
+        document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
 
     await submitSearch();
@@ -1560,8 +1642,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             await submitSearch();
         });
     }
-
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 // validate that #new-list-label input has a value
 document.getElementById("new-list-label").addEventListener("blur", (e) => {
@@ -1791,7 +1876,7 @@ btnNewCartSave.addEventListener("click", (e) => {
             , 'new_cart_organism_id': newCartOrganism.value
             , 'new_cart_ldesc': document.getElementById("new-list-ldesc").value
             , 'is_public': isPublic
-            , 'session_id': CURRENT_USER.session_id
+            , 'session_id': getCurrentUser()?.session_id
             , 'new_cart_upload_type': document.getElementById("new-list-upload-type").value
             , "new_cart_pasted_genes": document.getElementById("new-list-pasted-genes").value
             , "new_cart_file": document.getElementById("new-list-file").files[0]

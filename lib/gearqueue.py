@@ -1,3 +1,10 @@
+"""
+gearqueue.py - RabbitMQ connection helpers for publishing and consuming gEAR jobs.
+
+Wraps pika blocking and asynchronous (SelectConnection) connections used by the
+dataset loading and other job queues.
+"""
+
 import functools
 import json
 import os
@@ -52,6 +59,9 @@ class Connection:
     ### Channel publish/consume functions
 
     def open_channel(self):
+        """
+        Open a new channel on the blocking connection and store it on self.channel.
+        """
         self.channel = self.connection.channel()
 
     def publish(self, queue_name=None, message=None, **kwargs):
@@ -85,7 +95,7 @@ class Connection:
         self.channel.queue_declare(queue=queue_name)
 
         # Enabled delivery confirmations. This is REQUIRED.
-        self.channel.confirm_delivery()
+        self.channel.confirm_delivery() # type: ignore[call-arg]
 
         # Send message (dataset ids) to job queue
         try:
@@ -98,10 +108,12 @@ class Connection:
                                     , **kwargs
                                 ))
         except UnroutableError:
-            print('Message was returned')
+            print('Message was returned as unroutable', file=sys.stderr)
             raise
 
-        self.connection.process_data_events(time_limit=0)  # Process events to ensure the message is sent
+        # Process events only for BlockingConnection
+        if isinstance(self.connection, pika.BlockingConnection):
+            self.connection.process_data_events(time_limit=0)  # Ensure message is sent
 
     def consume(self, queue_name=None, on_message_callback=None, num_messages=1, auto_ack=False, skip_queue_declare=False):
         '''
@@ -144,6 +156,15 @@ class Connection:
         return self
 
     def replyto_consume(self, on_message_callback):
+        """
+        Consume replies via RabbitMQ direct reply-to for RPC-style requests.
+
+        Args:
+            on_message_callback (callable): Called for each reply message received.
+
+        Returns:
+            Connection: This connection instance.
+        """
         # Sets up a direct RPC (request/reply) consumer
         # See https://www.rabbitmq.com/direct-reply-to.html
         # See https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example
@@ -193,7 +214,19 @@ class Connection:
 
 class AsyncConnection(Connection):
     """Class to implement a callback-style SelectConnection.
-    This is more performant and can handle situations such as unexpected failures."""
+    This is more performant and can handle situations such as unexpected failures.
+
+    Most of the callback-driven methods below (open_channel, close_connection,
+    reconnect, setup_exchange, setup_queue, on_bindok, set_qos, start_consuming,
+    stop_consuming, on_cancelok, run, stop) are adapted from the official Pika
+    asynchronous consumer example:
+    https://github.com/pika/pika/blob/main/examples/asynchronous_consumer_example.py
+
+    Deviations from the original example are noted inline where they exist,
+    primarily to guard against operating on a channel/connection that RabbitMQ
+    or the network has already closed out from under us (e.g. during an
+    unexpected disconnect mid-reconnect).
+    """
 
     connection: pika.SelectConnection
 
@@ -210,9 +243,6 @@ class AsyncConnection(Connection):
 
         self.purge_queue = purge_queue
 
-        # Callback code snippets are from https://github.com/pika/pika/blob/main/examples/asynchronous_consumer_example.py
-        # The example code makes a callback out of each individual step, which I think is a bit overkill (and does not mesh well
-        # with our abstracted codebase), so I tried to eliminate some callbacks
         self.should_reconnect = False
         self.was_consuming = False
         self.exchange = 'message'
@@ -287,6 +317,9 @@ class AsyncConnection(Connection):
         self.connection.channel(on_open_callback=self._on_channel_open)
 
     def close_connection(self):
+        """
+        Close the connection unless it is already closing or closed.
+        """
         if self.connection.is_closing or self.connection.is_closed:
             print("{} - Connection is closing or already closed".format(self.pid), flush=True, file=self.log_fh)
         else:
@@ -397,12 +430,26 @@ class AsyncConnection(Connection):
     def stop_consuming(self):
         """Tell RabbitMQ that you would like to stop consuming by sending the
         Basic.Cancel RPC command.
+
+        NOTE: Unlike the upstream Pika example this is adapted from, this
+        guards against being called when the channel has already closed
+        (e.g. broker-side disconnect during reconnect), which otherwise
+        raises pika.exceptions.ChannelWrongStateError.
         """
-        if self.channel:
-            print("{} - Sending a Basic.Cancel RPC command to RabbitMQ".format(self.pid), flush=True, file=self.log_fh)
-            cb = functools.partial(
-                self.on_cancelok, userdata=self._consumer_tag)
-            self.channel.basic_cancel(self._consumer_tag, cb)
+        if self.channel is None or not self.channel.is_open:
+            self._consuming = False
+            return
+
+        print(f"{self.pid} - Sending a Basic.Cancel RPC command to RabbitMQ", flush=True, file=self.log_fh)
+
+        def cb(_unused_frame):
+            self.on_cancelok(_unused_frame, self._consumer_tag)
+
+        try:
+            self._consumer_tag and self.channel.basic_cancel(self._consumer_tag, cb)
+        except Exception as e:
+            print(f"{self.pid} - Error while cancelling consumer: {e}", flush=True, file=self.log_fh)
+            self._consuming = False
 
     def on_cancelok(self, _unused_frame, userdata):
         """This method is invoked by pika when RabbitMQ acknowledges the
@@ -415,33 +462,55 @@ class AsyncConnection(Connection):
         self._consuming = False
         print("{} - RabbitMQ acknowledged the cancellation of the consumer: {}".format(self.pid, userdata), flush=True, file=self.log_fh)
         print("{} - Closing channel".format(self.pid), flush=True, file=self.log_fh)
-        self._channel.close()
+        self.channel.close()
 
     def run(self):
         """Run the example consumer by connecting to RabbitMQ and then
         starting the IOLoop to block and allow the SelectConnection to operate.
         """
-        #self._connection = self.connect()
         # Information on why this is necessary at https://pika.readthedocs.io/en/stable/examples/connecting_async.html
         # Basically, this line allows the consumer to block consuming data to trigger callback actions
         self.connection.ioloop.start()
 
     def stop(self):
-        """Cleanly shutdown the connection to RabbitMQ by stopping the consumer
-        with RabbitMQ. When RabbitMQ confirms the cancellation, on_cancelok
-        will be invoked by pika, which will then closing the channel and
-        connection. The IOLoop is started again because this method is invoked
-        when CTRL-C is pressed raising a KeyboardInterrupt exception. This
-        exception stops the IOLoop which needs to be running for pika to
-        communicate with RabbitMQ. All of the commands issued prior to starting
-        the IOLoop will be buffered but not processed.
+        """Cleanly shutdown the connection.
+
+        NOTE: Unlike the upstream Pika example this is adapted from, all
+        teardown steps are wrapped in try/except so a connection/channel
+        that RabbitMQ already closed (unexpectedly) doesn't raise out of
+        this method and crash the consumer's reconnect loop.
         """
         if not self._closing:
             self._closing = True
-            print("{} - Stopping".format(self.pid), flush=True, file=self.log_fh)
+            print(f"{self.pid} - Stopping", flush=True, file=self.log_fh)
+
+            channel_was_open = bool(self.channel is not None and self.channel.is_open)
+
             if self._consuming:
-                self.stop_consuming()
-                self._connection.ioloop.start()
+                try:
+                    self.stop_consuming()
+                except Exception as e:
+                    print(f"{self.pid} - Error during stop_consuming: {e}", flush=True, file=self.log_fh)
+                    self._consuming = False
+
+                if channel_was_open:
+                    # Channel was open when we asked it to cancel, so we expect
+                    # an async on_cancelok -> channel.close() -> connection close
+                    # chain to eventually stop the ioloop for us.
+                    try:
+                        self.connection.ioloop.start()
+                    except Exception as e:
+                        print(f"{self.pid} - Error restarting ioloop during stop: {e}", flush=True, file=self.log_fh)
+                else:
+                    # Channel/connection was already gone; nothing will call
+                    # back to stop the ioloop, so stop it directly.
+                    try:
+                        self.connection.ioloop.stop()
+                    except Exception as e:
+                        print(f"{self.pid} - Error stopping ioloop after already-closed channel: {e}", flush=True, file=self.log_fh)
             else:
-                self._connection.ioloop.stop()
-            print("{} - Stopped".format(self.pid), flush=True, file=self.log_fh)
+                try:
+                    self.connection.ioloop.stop()
+                except Exception as e:
+                    print(f"{self.pid} - Error stopping ioloop: {e}", flush=True, file=self.log_fh)
+            print(f"{self.pid} - Stopped", flush=True, file=self.log_fh)

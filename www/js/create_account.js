@@ -1,8 +1,10 @@
 'use strict';
 
+import { convertToFormData, doLogin, initCommonUI } from "./common.v2.js";
+
 let verification_uuid = null;
 
-window.onload=function() {
+const initializePageUI = () => {
     // Set the page title
     document.getElementById('page-header-label').textContent = 'Create an account';
 
@@ -22,7 +24,7 @@ window.onload=function() {
             }
 
             // generate a UUID for the user
-            verification_uuid = uuid();
+            verification_uuid = crypto.randomUUID();
             const email_sent = await sendVerificationEmail(verification_uuid);
 
             if (email_sent == false) {
@@ -64,10 +66,6 @@ window.onload=function() {
         validatePassword2();
     });
 };
-
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    // Nothing to do here at the moment
-}
 
 async function createAccount(verification_uuid) {
     // disable the button so it's not clicked again
@@ -123,7 +121,8 @@ async function sendVerificationEmail(verification_uuid) {
 
 async function validateEmail() {
     const email = document.getElementById('email').value;
-    const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    // see https://github.com/IGS/gEAR/security/code-scanning/201
+    const email_regex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
     if (email_regex.test(email) ) {
         document.getElementById('email').classList.remove('is-danger');
         document.getElementById('email-error-message').classList.add('is-hidden');
@@ -302,3 +301,7 @@ async function validateAccountCreationForm() {
     // if we made it this far, things are good
     return true;
 }
+
+// Initialize common UI first, then initialize page-specific UI
+await initCommonUI();
+initializePageUI();
