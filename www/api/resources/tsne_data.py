@@ -9,6 +9,7 @@ import base64
 import io
 import os
 import re
+from copy import copy
 from math import ceil
 from pathlib import Path
 
@@ -21,6 +22,7 @@ mpl.use("Agg")  # Prevents the need for a display when plotting, also thread-saf
 import typing
 
 import matplotlib.colors as mcolors
+from matplotlib.collections import PathCollection
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
@@ -60,6 +62,11 @@ PLOT_TYPE_TO_BASIS = {
     "mg_pca_static": "pca",
 }
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
+
+# Colormap for a continuous colorize_by panel, so it does not look like gene expression (issue #1091).
+# Viridis is colorblind-safe and distinct from the colorblind expression scale (cividis_r).
+ANNOTATION_CMAP = "viridis"
+ANNOTATION_CMAP_FALLBACK = "plasma"  # used when the expression palette is already viridis
 
 # Max number of legend items per column allowed in vertical legend
 NUM_LEGENDS_PER_COL = 16
@@ -116,6 +123,46 @@ single_gene_parser.add_argument(
 
 multi_gene_parser = parser.copy()
 multi_gene_parser.add_argument("gene_symbols", type=str, action="append", default=[], location="json")
+
+
+def annotation_colormap(expression_palette: str) -> str:
+    """
+    Choose the colormap for a continuous colorize_by panel, making sure it differs from the expression palette.
+
+    Args:
+        expression_palette (str): Name of the colormap used for the gene expression panels.
+
+    Returns:
+        str: Name of the colormap to use for the colorize_by panel.
+    """
+    if expression_palette.startswith(ANNOTATION_CMAP):
+        return ANNOTATION_CMAP_FALLBACK
+    return ANNOTATION_CMAP
+
+
+def apply_annotation_colormap(axes: list["Axes"], cmap_name: str, na_color: str) -> None:
+    """
+    Recolor the continuous colorize_by panel (the last plot panel) with its own colormap.
+
+    scanpy's embedding plot applies one colormap to every continuous panel, so the colormap is swapped
+    on the panel's scatter afterwards. The panel's colorbar follows the scatter and updates automatically.
+
+    Args:
+        axes (list[Axes]): All axes of the figure, including colorbar axes.
+        cmap_name (str): Name of the colormap to apply.
+        na_color (str): Color for missing values, as passed to scanpy.
+
+    Returns:
+        None
+    """
+    plot_axes = [a for a in axes if a.get_label() != "<colorbar>"]
+    if not plot_axes:
+        return
+    cmap = copy(mpl.colormaps[cmap_name])
+    cmap.set_bad(na_color)  # scanpy does the same for its colormap
+    for collection in plot_axes[-1].collections:
+        if isinstance(collection, PathCollection):
+            collection.set_cmap(cmap)
 
 
 def calculate_num_legend_cols(group_len: int) -> int:
@@ -763,17 +810,18 @@ def generate_tsne_figure(
     marker_size : int or None
         Size of the markers in the plot.
     colorize_by : str or None
-        Name of the categorical variable to colorize by.
+        Name of the observation column to colorize by. A continuous column gets its own colormap
+        (see annotation_colormap) and is not affected by vmin, vmax, or center_around_median.
     colors : dict or None
         Dictionary mapping category names to colors.
     colorblind_mode : bool
         Whether to use a colorblind-friendly palette.
     center_around_median : bool
         Whether to center the color scale around the median expression.
-    vmax: bool or None
-        Maximum expression value for color scaling.
-    vmin: bool or None
-        Minimum expression value for color scaling.
+    vmax: float or None
+        Maximum expression value for color scaling. Applies to expression panels only.
+    vmin: float or None
+        Minimum expression value for color scaling. Applies to expression panels only.
     expression_palette : str
         Name of the color palette for gene expression.
     reverse_palette : bool
@@ -903,6 +951,7 @@ def generate_tsne_figure(
         }
 
     # Colorize logic (shared, but with some differences for single/multi)
+    color_category = False
     if colorize_by:
         num_plots += 1
         color_category = is_categorical(selected.obs[colorize_by])
@@ -990,20 +1039,33 @@ def generate_tsne_figure(
         titles.extend(gene_symbols)
         kwargs_ncols = max_columns or num_plots
 
+    # A continuous colorize_by column is a different measurement than expression,
+    # so it gets its own colormap and data range (issue #1091)
+    continuous_colorize = bool(colorize_by) and not color_category
+    plot_vmin, plot_vmax, plot_vcenters = vmin, vmax, plot_vcenter
+    if continuous_colorize:
+        # colorize_by is always the last panel; scanpy takes one value per panel
+        num_expression_panels = len(columns) - 1
+        plot_vmin = [vmin] * num_expression_panels + [None]
+        plot_vmax = [vmax] * num_expression_panels + [None]
+        plot_vcenters = [plot_vcenter] * num_expression_panels + [None]
+
+    na_color = "none" if hide_group_nonmembers else "lightgray"  # "none" is shorthand for completely transparent
+
     # --- Plotting ---
     kwargs = {
         "basis": basis,
         "color": columns,
         "color_map": expression_color,
-        "na_color": "none" if hide_group_nonmembers else "lightgray",  # "none" is shorthand for completely transparent
+        "na_color": na_color,
         "show": False,
         "use_raw": False,
         "title": titles,
         "size": marker_size,
         "sort_order": plot_sort_order,
-        "vcenter": plot_vcenter,
-        "vmax": vmax,
-        "vmin": vmin,
+        "vcenter": plot_vcenters,
+        "vmax": plot_vmax,
+        "vmin": plot_vmin,
         "return_fig": True,
         "ncols": kwargs_ncols,
         "edges": False
@@ -1058,6 +1120,11 @@ def generate_tsne_figure(
 
     #io_fig.set_layout_engine("compressed")
     ax = io_fig.get_axes()
+
+    # Override continuous "colorize" panel to have independent cmap from expression panel
+    if continuous_colorize:
+        shown_palette = CONTINUOUS_CMAP if colorblind_mode else expression_palette
+        apply_annotation_colormap(ax, annotation_colormap(shown_palette), na_color)
 
     # Axes/legend logic (shared)
     if isinstance(ax, list):

@@ -26,12 +26,13 @@
 </p>
 <p class="help">Make the axes square, ensuring equal scaling on both axes for all subplots.</p>
 
-<p class="is-flex is-justify-content-space-between pr-3">
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Colorize samples by</span>
     <span class="select is-small">
         <select class="js-tsne-colorize-legend-by" id="colorize-legend-by-post" aria-label="Colorize samples by"></select>
     </span>
 </p>
+<p class="help">Numeric fields use their own colorscale, separate from the expression colorscale. Expression color settings below do not apply to it.</p>
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Plot per category group</span>
@@ -73,13 +74,18 @@
     <span class="has-text-weight-medium">Choose marker size</span>
     <input class="js-tsne-marker-size" id="marker-size-post" type="range" min="1" max="100" value="25" disabled aria-label="Marker size"/>
 </p>
+<label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <span class="has-text-weight-medium">Bring highest and lowest values to front of plot</span>
+    <input class="js-tsne-two-way-palette" id="two-way-palette-post" type="checkbox">
+</label>
 
-<p class="is-flex is-justify-content-space-between pr-3">
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Expression color palette</span>
     <span class="select is-small">
         <select class="js-tsne-color-palette" id="color-palette-post" aria-label="Expression color palette"></select>
     </span>
 </p>
+<p class="help">This and the color settings below apply only to gene expression subplots.</p>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
     <span class="has-text-weight-medium">Reverse palette</span>
     <input class="js-tsne-reverse-palette" id="reverse-palette-post" type="checkbox">
@@ -89,10 +95,6 @@
     <input class="js-tsne-make-zero-gray" id="make-zero-gray-post" type="checkbox" checked>
 </label>
 <p class="help">Expression values that have a value of zero will be gray instead of the minimum colorscale color.</p>
-<label class="content is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Bring highest and lowest values to front of plot</span>
-    <input class="js-tsne-two-way-palette" id="two-way-palette-post" type="checkbox">
-</label>
 <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
     <span class="has-text-weight-medium">Center colorscale around median expression value</span>
     <input class="js-tsne-center-around-median" id="center-around-median-post" type="checkbox">
