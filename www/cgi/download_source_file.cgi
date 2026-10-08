@@ -20,6 +20,9 @@ import geardb
 from gear.analysis import Analysis
 from werkzeug.utils import secure_filename
 
+class MetadataNotFoundError(Exception):
+    """The dataset has no metadata in the database (served as 404)."""
+
 def download_file(file_path, file_name):
     """
     Stream a file to stdout as an attachment download in 8KB chunks.
@@ -91,7 +94,7 @@ def main():
             finally:
                 os.remove(temp_file_path)
         else:
-            raise ValueError("Metadata not found for this dataset.")
+            raise MetadataNotFoundError("Metadata not found for this dataset.")
     else:
         # if share ID is passed, retrieve the dataset by share ID
         if share_id:
@@ -145,7 +148,7 @@ if __name__ == '__main__':
         main()
     except PermissionError as e:
         print_error("403 Forbidden", str(e))
-    except FileNotFoundError as e:
+    except (FileNotFoundError, MetadataNotFoundError) as e:
         print_error("404 Not Found", str(e))
     except ValueError as e:
         print_error("400 Bad Request", str(e))
