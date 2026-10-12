@@ -9,9 +9,12 @@ Spec keys (all optional):
     sessions        {session_id: user_id}
     users           {user_id: {email, user_name, ...}}
     datasets        [{id, share_id, owner_id, is_downloadable, is_public, dtype, title, ...,
-                      archive_path, h5ad_path}]
-    layouts         [{id, share_id, user_id, label, is_public}]
+                      archive_path, h5ad_path, owner_display: {plotly_config}, shared_with: [user_id]}]
+                    DatasetCollection.get_public/get_owned_by_user/get_shared_with_user select from these
+                    (is_public defaults to 1; has_h5ad=1 means "not spatial", types filters on dtype)
+    layouts         [{id, share_id, user_id, label, is_public, members: [{dataset_id, ...}]}]
     gene_carts      [{id, share_id, user_id, gctype, label}]
+    genes           [{gene_symbol, organism_id, ...}]   returned by GeneCollection.get_by_gene_symbol()
     metadata        {share_id: csv text}
     displays        [{id, plot_type, ...}]   returned (as a dict) by get_display_by_id()
     verification_short   value returned by get_verification_code_short_form()
@@ -93,6 +96,10 @@ def get_user_id_from_session_id(session_id=None):
     return user.id if user else None
 
 
+def get_user_by_id(user_id=None):
+    return _User(user_id) if user_id is not None else None
+
+
 # ---------------------------------------------------------------- layouts (collections)
 
 class _Layout:
@@ -102,7 +109,7 @@ class _Layout:
         self.user_id = spec.get("user_id")
         self.label = spec.get("label", "A collection")
         self.is_public = spec.get("is_public", 0)
-        self.members = []
+        self.members = [types.SimpleNamespace(**m) for m in spec.get("members", [])]
 
     def load(self):
         pass
@@ -171,6 +178,10 @@ class Dataset(types.SimpleNamespace):
     def save_change(self, attribute, value):
         _log("dataset.save_change", dataset=self.id, attribute=attribute, value=value)
 
+    def get_owner_display(self, is_multigene=False):
+        display = getattr(self, "owner_display", None)
+        return types.SimpleNamespace(**display) if display else None
+
     def _serialize_json(self):
         return dict(vars(self))
 
@@ -191,13 +202,32 @@ def get_dataset_by_share_id(share_id, *args, **kwargs):
 
 
 class DatasetCollection:
-    """Returns no datasets; tests of search CGIs assert on the logged SQL instead."""
+    """get_by_dataset_ids() returns no datasets; tests of search CGIs assert on the logged SQL instead."""
 
     def __init__(self, *args, **kwargs):
         self.datasets = []
 
     def get_by_dataset_ids(self, ids=None, **kwargs):
+        _log("dataset_collection.get_by_dataset_ids", ids=list(ids or []))
         return self.datasets
+
+    def _select(self, keep, dtypes):
+        for spec in _SPEC.get("datasets", []):
+            dtype = spec.get("dtype", "single-cell-rnaseq")
+            if ((dtype in dtypes) if dtypes else dtype != "spatial") and keep(spec):
+                self.datasets.append(Dataset(**spec))
+
+    def get_public(self, has_h5ad=None, types=None, **kwargs):
+        self._select(lambda d: d.get("is_public", 1) == 1, types)
+
+    def get_owned_by_user(self, has_h5ad=None, user=None, types=None, **kwargs):
+        self._select(lambda d: user is not None and d.get("owner_id") == user.id, types)
+
+    def get_shared_with_user(self, has_h5ad=None, user=None, types=None, **kwargs):
+        self._select(lambda d: user is not None and user.id in d.get("shared_with", []), types)
+
+    def _serialize_json(self):
+        return {"datasets": self.datasets}
 
 
 def get_metadata_by_share_id(share_id):
@@ -225,11 +255,43 @@ def get_verification_code_short_form(long_form):
 
 # ---------------------------------------------------------------- gene carts (lists)
 
+class _GeneCart(types.SimpleNamespace):
+    def save_change(self, attribute, value):
+        _log("gene_cart.save_change", gene_cart=self.share_id, attribute=attribute, value=value)
+
+
 def get_gene_cart_by_share_id(share_id, *args, **kwargs):
     for spec in _SPEC.get("gene_carts", []):
         if spec.get("share_id") == share_id:
-            return types.SimpleNamespace(**spec)
+            return _GeneCart(**spec)
     return None
+
+
+# ---------------------------------------------------------------- genes
+
+class _Gene(types.SimpleNamespace):
+    def load_go_terms(self):
+        pass
+
+    def load_dbxref_links(self):
+        pass
+
+    def load_aliases(self):
+        pass
+
+    def _serialize_json(self):
+        return dict(vars(self))
+
+
+class GeneCollection:
+    """get_by_gene_symbol() returns the spec's "genes" (unfiltered) and logs the search."""
+
+    def __init__(self, *args, **kwargs):
+        self.genes = []
+
+    def get_by_gene_symbol(self, gene_symbol=None, exact=None, organism_id=None):
+        _log("gene_collection.get_by_gene_symbol", gene_symbol=gene_symbol, exact=exact)
+        self.genes = [_Gene(**g) for g in _SPEC.get("genes", [])]
 
 
 # ---------------------------------------------------------------- database connection

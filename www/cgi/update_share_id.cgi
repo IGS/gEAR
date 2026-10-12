@@ -175,26 +175,27 @@ def main():
         if gene_cart.gctype == "weighted-list":
             os.chdir(str(CARTS_BASE_DIR))
 
-            for filename in os.listdir("."):
-                if share_id not in filename:
+            for ext in (".h5ad", ".tab"):
+                # Only this cart's own files: another cart's name may contain share_id
+                #  (e.g. cart.<share_id>99.tab), and must not be renamed with it
+                filename = f"cart.{share_id}{ext}"
+                if not os.path.exists(filename):
                     continue
-                if filename.endswith(".h5ad") or filename.endswith(".tab"):
-                    # Replace old_id with new_id in the filename
-                    new_filename = filename.replace(share_id, new_share_id)
+                new_filename = f"cart.{new_share_id}{ext}"
 
-                    # Defense in depth: new_share_id was already validated by is_safe_id(),
-                    # but confirm the resulting path still resolves inside CARTS_BASE_DIR
-                    # before renaming.
-                    resolved_new_filename = (CARTS_BASE_DIR / new_filename).resolve()
-                    if not resolved_new_filename.is_relative_to(CARTS_BASE_DIR.resolve()):
-                        print("Refusing to rename " + filename + " to " + new_filename + ": resolves outside carts directory", file=sys.stderr)
-                        continue
+                # Defense in depth: new_share_id was already validated by is_safe_id(),
+                # but confirm the resulting path still resolves inside CARTS_BASE_DIR
+                # before renaming.
+                resolved_new_filename = (CARTS_BASE_DIR / new_filename).resolve()
+                if not resolved_new_filename.is_relative_to(CARTS_BASE_DIR.resolve()):
+                    print("Refusing to rename " + filename + " to " + new_filename + ": resolves outside carts directory", file=sys.stderr)
+                    continue
 
-                    #! This will not work if not owner or if permissions are not set correctly
-                    os.rename(filename, resolved_new_filename)
-                    # if the old file still exists, log it
-                    if os.path.exists(filename):
-                        print("Could not rename " + filename + " to " + new_filename + " for some reason... skipping", file=sys.stderr)
+                #! This will not work if not owner or if permissions are not set correctly
+                os.rename(filename, resolved_new_filename)
+                # if the old file still exists, log it
+                if os.path.exists(filename):
+                    print("Could not rename " + filename + " to " + new_filename + " for some reason... skipping", file=sys.stderr)
 
         # rename projections
         # the "by_dataset" directory only needs projections.json files updated

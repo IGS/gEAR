@@ -336,12 +336,15 @@ class MGPlotlyData(Resource):
                     if field not in selected.obs:
                         raise PlotError(f"Filter series {field} not found in observation metadata for dataset. Please update curation")
 
-                    # if there is an "NA" value in the filters but no "NA" in the dataframe
-                    # check if it is a missing value, and if so, impute it
-                    if "NA" in values and "NA" not in selected.obs[field].cat.categories:
-                        values.remove("NA")
-                        selected.obs[field].cat.add_categories("NA")
-                        selected.obs[field] = selected.obs[field].fillna("NA")
+                    # The curator lists missing values as an "NA" level (see h5ad.py), so fill them with "NA"
+                    # to let the filter select them
+                    col = selected.obs[field]
+                    if "NA" in values and col.isna().any():
+                        if isinstance(col.dtype, pd.CategoricalDtype) and "NA" not in col.cat.categories:
+                            col = col.cat.add_categories("NA")
+                        obs = selected.obs.copy()
+                        obs[field] = col.fillna("NA")
+                        selected.obs = obs
 
                     mask = selected.obs[field].isin(values)
                     selected = selected[mask, :]
@@ -362,6 +365,11 @@ class MGPlotlyData(Resource):
                 # Filtering the dataset may unsort the original sort we did.
                 # This is in case the filter key has less categories than the provided sort key
                 for key in sort_fields:
+                    # Only filtered columns need re-sorting; the UI only sends filters for the columns the user filtered on.
+                    # Unfiltered sort columns keep the order set above.
+                    if key not in filters:
+                        continue
+
                     col = selected.obs[key]
 
                     # If every filter key is not in the col categories, raise an error

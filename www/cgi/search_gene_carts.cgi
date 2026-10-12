@@ -111,6 +111,11 @@ def main():
                         ")
                 qry_params.append(user.id)
 
+            # Nothing to match (e.g. only "shared", which isn't implemented yet): an empty "()"
+            #  would make the query fail, so match no gene lists instead
+            if not ownership_bits:
+                ownership_bits.append("0 = 1")
+
             wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
 
         # otherwise, give the usual self and public.

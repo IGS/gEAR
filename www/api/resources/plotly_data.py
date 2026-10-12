@@ -224,7 +224,7 @@ class PlotlyData(Resource):
 
         if facet_row and facet_row not in adata.obs.columns:
             return_dict["success"] = -1
-            return_dict["message"] = f"Facet row arg '{facet_row}' not found in observation metadata for dataset. Please adupdatejust curation."
+            return_dict["message"] = f"Facet row arg '{facet_row}' not found in observation metadata for dataset. Please update curation."
             return return_dict
 
         if facet_col and facet_col not in adata.obs.columns:

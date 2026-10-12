@@ -494,7 +494,7 @@ def generate_plot(
 
         # If x axis is continuous, sort dataframe by this column.
         # Issue found in https://github.com/IGS/gEAR/issues/1285 where 0.0 was last entry causing line to loop back.
-        if x in df.columns and df[x].dtype in ["float64", "int64"]:
+        if x in df.columns and pd.api.types.is_numeric_dtype(df[x]) and not pd.api.types.is_bool_dtype(df[x]):
             df = df.sort_values(x)
 
     # Scatter plots are the only types that let you set marker size by group
@@ -688,7 +688,9 @@ def generate_plot(
                     new_plotting_args[k] = group[v] if v else group[y]
 
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
-                new_plotting_args["scalegroup"] = "_".join([str(n) for n in name]) # protect against numbers
+                # name is a bare category (not a tuple) when there is only one grouping
+                name_parts = name if isinstance(name, tuple) else (name,)
+                new_plotting_args["scalegroup"] = "_".join([str(n) for n in name_parts]) # protect against numbers
 
                 # If color dataseries is present, add some special configurations
                 if color_name:

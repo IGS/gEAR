@@ -334,12 +334,12 @@ class Metadata:
         if organism_id is None:
             raise Exception("No organism found with taxon_id: {0}. Please add the organism to gEAR before uploading this dataset.".format(organism_taxid))
 
+        # Store a missing GEO ID as NULL, not as "" or "None" (#1106)
         geo_id = get_value_from_df(df, 'geo_accession')
-        if 'geo_id' == 'None':
-            geo_id = None
-
         if isinstance(geo_id, str):
             geo_id = geo_id.strip()
+            if geo_id in ('', 'None'):
+                geo_id = None
 
         ldesc = get_value_from_df(df, 'summary')
         dtype = get_value_from_df(df, 'dataset_type')
@@ -352,7 +352,7 @@ class Metadata:
             has_h5ad = 0
 
         pubmed_id = get_value_from_df(df, 'pubmed_id')
-        if 'pubmed_id' == 'None':
+        if isinstance(pubmed_id, str) and pubmed_id.strip() in ('', 'None'):
             pubmed_id = None
 
         if isinstance(pubmed_id, str):
@@ -365,7 +365,7 @@ class Metadata:
             pubmed_ids = [i for i in pubmed_ids if len(i) > 4]
 
             if len(pubmed_ids):
-                pubmed_id = pubmed_ids.pop()
+                pubmed_id = pubmed_ids.pop(0)
             else:
                 pubmed_id = None
 
