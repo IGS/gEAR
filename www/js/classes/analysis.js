@@ -787,9 +787,11 @@ export class Analysis {
      * Toggles the visibility of analysis buttons based on the analysis type.
      */
     showHideAnalysisButtons() {
-        // Unhide delete buttons, which were hidden for new analyses
-        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
-        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.remove("is-hidden");
+        // Unhide delete buttons, which were hidden for new analyses.
+        // Public analyses can't be deleted, since saved display curations may still use them.
+        const canDelete = ['user_saved', 'user_unsaved'].includes(this.type);
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.toggle("is-hidden", !canDelete);
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.toggle("is-hidden", !canDelete);
 
         if (this.type === 'user_unsaved') {
             document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");

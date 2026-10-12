@@ -127,14 +127,23 @@ def test_missing_filter_or_sort_column_gives_clear_error(mg_client, body, expect
     assert expected in result["message"]
 
 
-def test_stale_sort_level_gives_clear_error(mg_client):
-    """Regression for #919: a saved order naming a level the dataset no longer has gives a clear error, not pandas' "new_categories" error."""
+def test_stale_filter_level_gives_clear_error(mg_client):
+    """Regression for #919: a saved filter naming a level the dataset no longer has gives a clear error, not pandas' "new_categories" error."""
     result = mg_plot(
-        mg_client, sort_order={"cluster": ["b", "a", "renamed"]}, obs_filters={"cluster": ["a", "b"]}
+        mg_client, sort_order={"cluster": ["b", "a", "renamed"]}, obs_filters={"cluster": ["a", "renamed"]}
     )
     assert result["success"] == -1
     assert "At least one value for filter series cluster" in result["message"]
     assert "new_categories" not in result["message"]
+
+
+def test_stale_level_only_in_sort_order_still_plots(mg_client):
+    """Regression for #919: a stale level in the saved sort order that the filter does not choose does not block the plot."""
+    result = mg_plot(
+        mg_client, matrixplot=False, sort_order={"cluster": ["b", "a", "renamed"]}, obs_filters={"cluster": ["a", "b"]}
+    )
+    assert result["success"] == 1, result["message"]
+    assert list(heatmap_z(result)[0]) == pytest.approx(np.log2([5 + 1, 7 + 1, 1 + 1, 3 + 1]))
 
 
 @pytest.mark.parametrize("plot_type", ["heatmap", "dotplot"])
@@ -167,18 +176,49 @@ def test_filter_on_na_level_selects_cells_with_missing_values(mg_client, mg_plot
     assert heatmap_z(result).shape == (2, 4)
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "mg_plotly_data checks the saved order against the categories left after all filters, so a level "
-    "emptied by another filter is reported as missing from the dataset ('Please update curation')"
-))
-def test_level_emptied_by_another_filter_is_not_reported_as_stale(mg_client, mg_plotly_data, monkeypatch):
-    """Regression for #919: only levels missing from the dataset are a stale curation; a level another filter empties is not."""
+@pytest.mark.parametrize("filters, expected", [
+    ({"cluster": ["a"]}, [1 + 1, 3 + 1]),
+    ({"cluster": ["a"], "condition": ["x"]}, [1 + 1]),
+    ({"cluster": ["a", "b"], "condition": ["y"]}, [7 + 1, 3 + 1]),
+])
+def test_filtering_a_sorted_column_to_some_levels_still_plots(mg_client, filters, expected):
+    """Regression for #919: with a saved sort order, filtering that column to some of its levels plots them in the
+    saved order (the saved order used to replace the chosen levels, so this was reported as a stale curation)."""
+    result = mg_plot(mg_client, matrixplot=False, sort_order={"cluster": ["b", "a"]}, obs_filters=filters)
+    assert result["success"] == 1, result["message"]
+    assert list(heatmap_z(result)[0]) == pytest.approx(np.log2(expected))
+
+
+def test_level_emptied_by_another_filter_says_no_data(mg_client, mg_plotly_data, monkeypatch):
+    """Regression for #919: a chosen level that the other filters leave with no data is reported as such, not as a stale curation."""
     adata = build_mg_adata()
     adata.obs["condition"] = pd.Categorical(["x", "x", "y", "y"])     # cluster "b" has no "x" cells
     monkeypatch.setattr(mg_plotly_data, "get_adata_from_analysis", lambda *a, **k: adata)
     result = mg_plot(
         mg_client, sort_order={"cluster": ["b", "a"]}, obs_filters={"cluster": ["b", "a"], "condition": ["x"]}
     )
+    assert result["success"] == -1
+    assert result["message"].startswith("No data found for the selected filters (cluster: b)")
+    assert "update curation" not in result["message"]
+
+
+# ---------------------------------------------------------------- numeric options (mg_plotly_data)
+
+@pytest.mark.parametrize("value", ["abc", [1], {"a": 1}])
+@pytest.mark.parametrize("option", [
+    "fold_change_cutoff", "fdr_cutoff", "pvalue_threshold", "lower_logfc_threshold", "upper_logfc_threshold",
+])
+def test_non_numeric_option_gives_clear_error(mg_client, option, value):
+    """A threshold that is not a number returns a clear error instead of a 500."""
+    result = mg_plot(mg_client, **{option: value})
+    assert result["success"] == -1
+    assert result["message"].startswith(f"Option '{option}' must be a number")
+
+
+@pytest.mark.parametrize("value", ["", None, "1.5", 3])
+def test_blank_or_numeric_option_plots(mg_client, value):
+    """The curator sends "" for a blank threshold field (and null for one that is not a number), which uses the default."""
+    result = mg_plot(mg_client, fold_change_cutoff=value)
     assert result["success"] == 1, result["message"]
 
 
@@ -210,6 +250,51 @@ def test_gene_named_like_an_obs_column_still_plots(monkeypatch, name):
     )
     expected_x = obs[name].tolist()
     assert points == sorted(zip(expected_x, [10.0, 20.0, 30.0, 40.0]))
+
+
+def embedding_plot(monkeypatch, adata, x_axis, y_axis, **body):
+    monkeypatch.setattr(plotly_data.geardb, "get_dataset_by_id", lambda *a, **k: SINGLE_CELL)
+    monkeypatch.setattr(plotly_data, "get_adata_from_analysis", lambda *a, **k: adata)
+    client = make_client(plotly_data.PlotlyData, "/plot/<dataset_id>")
+    return ok_json(client.post("/plot/DS1", json={
+        "gene_symbol": "G1", "plot_type": "scatter", "x_axis": x_axis, "y_axis": y_axis, **body,
+    }))
+
+
+def analysis_adata():
+    """4 cells with tSNE and UMAP embeddings in obsm (as a workbench analysis stores them), and no embedding obs columns."""
+    obs = pd.DataFrame({"cluster": pd.Categorical(["a", "a", "b", "b"])}, index=[f"cell{i}" for i in range(4)])
+    var = pd.DataFrame({"gene_symbol": ["G1"]}, index=["E1"])
+    adata = anndata.AnnData(X=np.array([[10], [20], [30], [40]], dtype=np.float32), obs=obs, var=var)
+    adata.obsm["X_tsne"] = np.array([[1.0, -1.0], [2.0, -2.0], [3.0, -3.0], [4.0, -4.0]])
+    adata.obsm["X_umap"] = np.array([[5.0, 50.0], [6.0, 60.0], [7.0, 70.0], [8.0, 80.0]])
+    return adata
+
+
+def plotted_points(result):
+    return sorted(
+        (float(x), float(y))
+        for trace in result["plot_json"]["data"]
+        for x, y in zip(decode(trace["x"]), decode(trace["y"]))
+    )
+
+
+@pytest.mark.parametrize("x_axis, y_axis, expected", [
+    ("X_tsne_1", "X_tsne_2", [(1, -1), (2, -2), (3, -3), (4, -4)]),
+    ("X_umap_1", "X_umap_2", [(5, 50), (6, 60), (7, 70), (8, 80)]),       # UMAP even though tSNE is present too
+    ("X_umap_2", "raw_value", [(50, 10), (60, 20), (70, 30), (80, 40)]),
+])
+def test_analysis_embedding_axes_come_from_obsm(monkeypatch, x_axis, y_axis, expected):
+    """X_<embedding>_<n> axes come from an analysis and are read from adata.obsm, not adata.obs."""
+    result = embedding_plot(monkeypatch, analysis_adata(), x_axis, y_axis, color_name="cluster")
+    assert result["success"] == 1, result["message"]
+    assert plotted_points(result) == [tuple(map(float, point)) for point in expected]
+
+
+def test_analysis_embedding_axis_missing_from_obsm_gives_clear_error(monkeypatch):
+    result = embedding_plot(monkeypatch, analysis_adata(), "X_pca_1", "X_pca_2")
+    assert result["success"] == -1
+    assert "X-axis arg 'X_pca_1' not found" in result["message"]
 
 
 # ---------------------------------------------------------------- available display types

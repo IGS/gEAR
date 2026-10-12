@@ -129,6 +129,11 @@ def main():
                                         ")
                 qry_params.append(user.id)
 
+            # Nothing to match (e.g. an ownership value that isn't recognized): an empty "()"
+            #  would make the query fail, so match no datasets instead
+            if not ownership_bits:
+                ownership_bits.append("0 = 1")
+
         else:
             # When no ownership filter is specified, show only public datasets and user's own datasets
             # Shared and group datasets should only appear when explicitly requested via ownership filter

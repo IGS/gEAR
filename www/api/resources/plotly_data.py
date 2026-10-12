@@ -35,6 +35,21 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 # Color for the "NA" (missing value) group. Lightgray matches the na_color of the static tSNE plots (tsne_data.py)
 NA_COLOR = "#D3D3D3"
 
+# Axis names for analysis embeddings (offered by api/resources/h5ad.py), which live in adata.obsm,
+# not adata.obs: name -> (obsm key, column)
+ANALYSIS_EMBEDDING_AXES = {
+    f"{obsm_key}_{n}": (obsm_key, n - 1)
+    for obsm_key in ("X_tsne", "X_umap", "X_pca")
+    for n in (1, 2)
+}
+
+
+def embedding_axis(adata, axis: str) -> tuple[str, int] | None:
+    """The (obsm key, column) holding an analysis embedding axis, or None if the axis is not one in adata.obsm."""
+    if axis in ANALYSIS_EMBEDDING_AXES and ANALYSIS_EMBEDDING_AXES[axis][0] in adata.obsm:
+        return ANALYSIS_EMBEDDING_AXES[axis]
+    return None
+
 
 def fill_missing_obs(obs: pd.DataFrame) -> pd.DataFrame:
     """
@@ -204,13 +219,14 @@ class PlotlyData(Resource):
             }
 
         # quick check to ensure x, y, color, facet columns are in the adata.obs
-        if x_axis not in adata.obs.columns:
+        # (or, for analysis embeddings like X_tsne_1, in adata.obsm)
+        if x_axis not in adata.obs.columns and not embedding_axis(adata, x_axis):
             if not x_axis == "raw_value":
                 return_dict["success"] = -1
                 return_dict["message"] = f"X-axis arg '{x_axis}' not found in observation metadata for dataset. Please update curation."
                 return return_dict
 
-        if y_axis not in adata.obs.columns:
+        if y_axis not in adata.obs.columns and not embedding_axis(adata, y_axis):
             if not y_axis == "raw_value":
                 return_dict["success"] = -1
                 return_dict["message"] = f"Y-axis arg '{y_axis}' not found in observation metadata for dataset. Please update curation."
@@ -358,28 +374,14 @@ class PlotlyData(Resource):
         dataframe = selected.to_df()
         dataframe = pd.concat([dataframe,selected.obs], axis=1)
 
-        # Valid analysis column names from api/resources/h5ad.py
-        analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']
-        analysis_umap_columns = ['X_umap_1', 'X_umap_2']
-        analysis_pca_columns = ['X_pca_1', 'X_pca_2']
-        X, Y = (0, 1)
-
-        # If analysis was performed on dataset, attempt to get coordinates from the obsm table
-        if hasattr(selected, 'obsm'):
-            if 'X_tsne' in selected.obsm:
-                if x_axis in analysis_tsne_columns and y_axis in analysis_tsne_columns:
-                    # A filtered AnnData object is an 'ArrayView' object and must
-                    # be accessed as selected.obsm["X_tsne"] rather than selected.obsm.X_tsne
-                    dataframe[x_axis] = selected.obsm["X_tsne"].transpose()[X]
-                    dataframe[y_axis] = selected.obsm["X_tsne"].transpose()[Y]
-            elif 'X_umap' in selected.obsm:
-                if x_axis in analysis_umap_columns and y_axis in analysis_umap_columns:
-                    dataframe[x_axis] = selected.obsm["X_umap"].transpose()[X]
-                    dataframe[y_axis] = selected.obsm["X_umap"].transpose()[Y]
-            elif 'X_pca' in selected.obsm:
-                if x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
-                    dataframe[x_axis] = selected.obsm["X_pca"].transpose()[X]
-                    dataframe[y_axis] = selected.obsm["X_pca"].transpose()[Y]
+        # If analysis was performed on dataset, get embedding coordinates from the obsm table
+        for axis in dict.fromkeys([x_axis, y_axis]):
+            obsm_axis = embedding_axis(selected, axis)
+            if obsm_axis:
+                obsm_key, column = obsm_axis
+                # A filtered AnnData object is an 'ArrayView' object and must
+                # be accessed as selected.obsm["X_tsne"] rather than selected.obsm.X_tsne
+                dataframe[axis] = np.asarray(selected.obsm[obsm_key])[:, column]
 
         # Close adata so that we do not have a stale opened object
         if selected.isbacked:

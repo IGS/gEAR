@@ -1,5 +1,6 @@
 """Regression tests for closed GitHub issues in CGI scripts (one class per issue or area)."""
 
+import json
 import re
 import shutil
 import uuid
@@ -161,6 +162,50 @@ class TestUpdateGeneCartShareId:
         assert not result.logged("gene_cart.save_change")
         assert result.writes() == []
         assert self.cart_files(www) == [f"cart.{self.OLD}.h5ad", f"cart.{self.OLD}.tab"]
+
+
+    def test_projection_keys_are_renamed_without_touching_other_ids(self, www):
+        """Renaming a gene list updates only its own key in each dataset's projections.json; other lists' keys and
+        projection IDs that contain its ID as a substring are left alone (this used to be a find-and-replace)."""
+        by_dataset = www / "projections" / "by_dataset"
+        configs = {
+            self.OLD: [{"uuid": "u1", "algorithm": "nmf", "zscore": False}],
+            f"cart.{self.OLD}": [{"uuid": "u0", "algorithm": "pca", "zscore": False}],
+            f"{self.OLD}99": [{"uuid": f"{self.OLD}-not-mine", "algorithm": "nmf", "zscore": False}],
+        }
+        (by_dataset / "DS1").mkdir()
+        (by_dataset / "DS1" / "projections.json").write_text(json.dumps(configs))
+        (by_dataset / "DS2").mkdir()
+        untouched = json.dumps({"other": [{"uuid": f"x{self.OLD}"}]})
+        (by_dataset / "DS2" / "projections.json").write_text(untouched)
+
+        assert self.run(www, gctype="unweighted-list").json()["success"] == 1
+
+        renamed = json.loads((by_dataset / "DS1" / "projections.json").read_text())
+        assert renamed == {
+            f"{self.OLD}99": configs[f"{self.OLD}99"],
+            self.NEW: configs[self.OLD] + configs[f"cart.{self.OLD}"],
+        }
+        assert (by_dataset / "DS2" / "projections.json").read_text() == untouched
+
+    def test_genecart_projection_dir_is_renamed(self, www):
+        """Only this gene list's own projections/by_genecart directory is renamed."""
+        by_genecart = www / "projections" / "by_genecart"
+        for name in (self.OLD, f"{self.OLD}99"):
+            (by_genecart / name).mkdir()
+            (by_genecart / name / "projections.json").write_text("{}")
+
+        assert self.run(www, gctype="unweighted-list").json()["success"] == 1
+        assert sorted(p.name for p in by_genecart.iterdir()) == sorted([self.NEW, f"{self.OLD}99"])
+        assert (by_genecart / self.NEW / "projections.json").read_text() == "{}"
+
+    def test_missing_projection_dirs_do_not_fail_the_rename(self, www):
+        """A site with no projections yet (no projections/ directory) still renames the list cleanly."""
+        shutil.rmtree(www / "projections")
+        result = self.run(www)
+        assert_clean_exit(result)
+        assert result.json() == {"error": "", "success": 1}
+        assert self.cart_files(www) == [f"cart.{self.NEW}.h5ad", f"cart.{self.NEW}.tab"]
 
 
 # ---------------------------------------------------------------- remove_dataset.cgi
@@ -349,6 +394,13 @@ class TestSearchOwnership:
     def test_shared_only_ownership_is_empty_not_an_error(self, script, table, key):
         """Regression for #787: ownership=shared alone (nothing shared) returns no results instead of an SQL error."""
         result = self.run(script, session_id="owner", ownership="shared")
+        body = result.json()
+        assert body["success"] == 1 and body[key] == []
+        assert not EMPTY_PARENS.search(main_query(result, table)["query"])
+
+    def test_unrecognized_ownership_is_empty_not_an_error(self, script, table, key):
+        """An ownership value with no matching filter returns no results instead of an SQL error from "AND ()"."""
+        result = self.run(script, session_id="owner", ownership="nonsense")
         body = result.json()
         assert body["success"] == 1 and body[key] == []
         assert not EMPTY_PARENS.search(main_query(result, table)["query"])
