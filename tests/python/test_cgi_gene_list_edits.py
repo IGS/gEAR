@@ -58,6 +58,7 @@ def run_json_cgi(script, payload, **kwargs):
 
 # ---------------------------------------------------------------- save_new_genecart_form.cgi
 
+@pytest.mark.slow   # weighted lists are converted with scanpy in the CGI subprocess
 class TestSaveNewGeneCartForm:
     DB = {"sessions": SESSIONS, "lastrowid": 7}
     FIELDS = {"new_cart_label": "Hair cells", "new_cart_organism_id": "1", "new_cart_ldesc": "Markers",
@@ -153,9 +154,16 @@ class TestSaveNewGeneCartForm:
     def test_unsupported_upload_type(self, www, upload_type, message):
         self.assert_refused(self.run(www, new_cart_upload_type=upload_type), www, message)
 
+    def test_is_domain_is_not_read_from_the_form(self, www):
+        # Only admins may make site-wide "domain" lists; this form has no such field and must not honor one
+        result = self.run(www, new_cart_upload_type="pasted_genes", new_cart_pasted_genes="Sox2", is_domain="1")
+        assert result.json() == {"id": 7}
+        assert not self.saved(result)["is_domain"]
+
 
 # ---------------------------------------------------------------- save_new_genecart_json.cgi
 
+@pytest.mark.slow   # weighted lists are converted with scanpy in the CGI subprocess
 class TestSaveNewGeneCartJson:
     DB = {"sessions": SESSIONS, "lastrowid": 9}
     UNWEIGHTED = {"label": "Hair cells", "organism_id": 1, "is_public": 0, "gctype": "unweighted-list",
@@ -202,6 +210,23 @@ class TestSaveNewGeneCartJson:
         assert not result.logged("gene_cart.save")
         assert result.writes() == []
         assert cart_files(www) == []
+
+    @pytest.mark.parametrize("session, requested, saved", [
+        ("owner", 1, 0), ("owner", "1", 0), ("owner", True, 0),   # anyone else's request is ignored
+        ("admin", 1, 1), ("admin", "1", 1), ("admin", True, 1),
+        ("admin", 0, 0), ("admin", None, 0), ("admin", "x", 0),
+    ])
+    def test_only_admins_create_domain_lists(self, www, session, requested, saved):
+        """Domain lists are shown to everyone on the site; update_from_json() copies is_domain from the request."""
+        payload = {"session_id": session, **self.UNWEIGHTED}
+        if requested is not None:
+            payload["is_domain"] = requested
+        result = run_json_cgi(copy_cgi(www, "save_new_genecart_json.cgi"), payload,
+                              db={**self.DB, "sessions": {**SESSIONS, "admin": 3}, "users": {"3": {"is_admin": 1}}})
+        assert_clean_exit(result)
+        assert result.json() == {"id": 9}
+        (save,) = result.logged("gene_cart.save")
+        assert save["is_domain"] == saved
 
     def test_labeled_list_is_not_implemented(self, www):
         result = self.run(www, {"session_id": "owner", **self.UNWEIGHTED, "gctype": "labeled-list"})
@@ -336,6 +361,7 @@ class TestGetUserGeneCarts:
 
 # ---------------------------------------------------------------- get_weighted_gene_cart_preview.cgi
 
+@pytest.mark.slow   # weighted lists are converted with scanpy in the CGI subprocess
 class TestGetWeightedGeneCartPreview:
     def run(self, www, share_id):
         query = {} if share_id is None else {"share_id": share_id}

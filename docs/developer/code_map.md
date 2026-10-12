@@ -103,7 +103,7 @@ Full endpoint documentation is in the [API reference](./api_reference.md).
 
 ### `www/cgi/` conventions
 
-`www/cgi/` contains **102 `.cgi` scripts**, including a `test.cgi` stub. It also holds a few non-CGI files: `process_contact.py`, three `.R` helpers (`plotCode1gene.R`, `plot_r_analysis.R`, `run_projectR.R`), `test.php` and `test.pl`. Most are Python 3 scripts that start with `#!/opt/bin/python3`. The catalog of endpoints is in the [API reference, CGI endpoints section](./api_reference.md#cgi-endpoints).
+`www/cgi/` contains **97 `.cgi` scripts**, including a `test.cgi` stub. It also holds a few non-CGI files: `process_contact.py`, three `.R` helpers (`plotCode1gene.R`, `plot_r_analysis.R`, `run_projectR.R`), `test.php` and `test.pl`. Most are Python 3 scripts that start with `#!/opt/bin/python3`. The catalog of endpoints is in the [API reference, CGI endpoints section](./api_reference.md#cgi-endpoints).
 
 Three representative scripts:
 - `www/cgi/get_organism_list.cgi` is read-only and takes no parameters. It uses `geardb.OrganismCollection().get_all()` and serialises with `json.dumps(result, default=lambda o: o.__dict__)`.
@@ -227,7 +227,7 @@ The v2 UI uses Bulma CSS and ES modules. Each page is assembled with Apache serv
 | `forgot_password.html` | `js/forgot_password.js` | `common.v2.js` | Password recovery |
 | `dominoSignal.html` | inline module only | `common.v2.js`, `classes/tree.js`, pattern-collection selector | Early prototype of a cell-cell communication page (linked from `primary_nav.html`). Not committed to git; the cell-cell communication feature is being developed separately |
 | `new_page_template.html` | `js/index.js` (placeholder) | `common.v2.js` | Boilerplate for starting a new v2 page |
-| `contact.html` | `js/contact.js` (not yet loaded) | `common.v2.js` | Contact form, mid-migration to v2: markup is Bulma, but `js/contact.js` is still v1 jQuery code and is not wired up yet. Submits through `cgi/create_github_issue.cgi` (and uses `get_tag_list.cgi`). `cgi/process_contact.py` is not referenced |
+| `contact.html` | `js/contact.js` | `common.v2.js` | Contact form. Submits a GitHub issue through `cgi/create_github_issue.cgi`, fills the tag picker (Tom Select) from `get_tag_list.cgi`, and uploads screenshots to `contact_screenshots/`. `cgi/process_contact.py` is not referenced |
 
 Other HTML lives under `www/landing/<name>/index.html` (per-project landing pages with their own `index.js`), `www/workshop/index.html` and `www/plugins/`.
 
@@ -270,7 +270,7 @@ Other HTML lives under `www/landing/<name>/index.html` (per-project landing page
 | `trackhub.js` | `Hub`, `HubContainer`, `Track` and `TrackContainer` for the track hub upload UI |
 | `tree.js` | `Tree` base class with `ProjectionSourceTree`, `GeneCartTree`, `ProfileTree` and `DatasetTree` (built on wunderbaum) |
 | `user.v2.js` | `User` model used by `common.v2.js` |
-| `user.js` | **Legacy v1** `User`. Loaded only by `contact.html` |
+| `user.js` | **Legacy v1** `User`. Loaded only by the unlinked `workshop/registration_old.html` |
 
 ### `www/js/helpers/`
 
@@ -290,7 +290,7 @@ Other HTML lives under `www/landing/<name>/index.html` (per-project landing page
 | `curator_common.html` | SSI (dataset_curator.html, multigene_curator.html) | Shared curator layout |
 | `plot_config/pre_plot/*.html`, `plot_config/post_plot/*.html` | Runtime `includeHtml()` in the curator JS | Per-plot-type option forms |
 | `trackhub/hub.html`, `trackhub/track.html` | Runtime `includeHtml()` in `upload_dataset.js` | Track hub form templates |
-| `by_domain/<domain>/` (`funding.html`, `footer.html`, `site_label_bar.html`, `page_title_root.html`, `index_highlighted_dataset.html`) | `loadDomainFunding()` (v2). jQuery `.load()` in `common.js` (v1) | Per-site branding for the gear, nemo, sengear, gcid, inflammation, cancergear and node-cmtrf domains |
+| `by_domain/<domain>/` (`funding.html`, `footer.html`, `site_label_bar.html`, `page_title_root.html`, `index_highlighted_dataset.html`) | `loadDomainFunding()` (v2). jQuery `.load()` in legacy `common.js` | Per-site branding for the gear, nemo, sengear, gcid, inflammation, cancergear and node-cmtrf domains |
 | `navigation_bar.html` | jQuery `.load()` in legacy `common.js` | **Legacy v1** navbar |
 | `create_account.html` | No current references found | Probably a legacy v1 fragment |
 
@@ -316,15 +316,14 @@ See [webpage dependencies](./misc/webpage_dependencies.md) for more.
 
 | File | Status |
 |------|--------|
-| `www/js/common.js` | v1 shared script (jQuery). Loaded by `contact.html` only. Its User Guide link opens the GitHub wiki |
-| `www/js/classes/user.js`, `www/js/classes/genecart.js` | v1 classes. `user.js` is used only by `contact.html`. `genecart.js` is unused |
-| `www/js/contact.js` | v1 comment/contact form logic (renamed from `comment.js`) for `contact.html`; not yet migrated to v2 |
-| `www/contact.html` | v1 page, but **still linked from v2** (`include/header_bar.html`, `create_account.html` and the `include/by_domain/*/footer.html` files) |
-| `www/js/demo_timecourse.js`, `www/js/workshop.js` | Not referenced by any page (unused) |
+| `www/js/common.js` | v1 shared script (jQuery). Loaded only by `www/workshop/registration_old.html`, which no page links to. Its User Guide link opens the GitHub wiki |
+| `www/js/classes/user.js`, `www/js/classes/genecart.js` | v1 classes. `user.js` is used only by `workshop/registration_old.html`. `genecart.js` is unused |
+| `www/js/demo_timecourse.js` | Not referenced by any page (unused) |
+| `www/workshop/registration_old.html`, `www/js/workshop.js` | Old workshop registration page (jQuery, Bootstrap 4) and its script, the only callers of `get_event_registration_list.cgi` and `set_user_event_registration.cgi`. No page links to it, and the handler for the registration list returns early because events are closed |
 | `www/include/navigation_bar.html`, `www/include/create_account.html` | v1 partials (see the partials table) |
 
-No v2 page loads `common.js`, `user.js` or `genecart.js`.
+No v2 page loads `common.js`, `user.js` or `genecart.js`. `contact.html` and `contact.js` have been migrated to v2.
 
 ---
 
-Last updated: September 2026
+Last updated: October 2026

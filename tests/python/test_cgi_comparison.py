@@ -7,6 +7,9 @@ import pytest
 
 from helpers.cgi_harness import run_cgi
 
+# Each test runs get_dataset_comparison.cgi, which imports scanpy in a subprocess
+pytestmark = pytest.mark.slow
+
 FAKES = Path(__file__).resolve().parent / "fakes"
 DB = {"datasets": [{"id": "DS1", "share_id": "S1", "owner_id": 1, "dtype": "single-cell-rnaseq"}]}
 FAKE_MODULES = {"gear.analysis": FAKES / "comparison_analysis.py"}

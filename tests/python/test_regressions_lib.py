@@ -35,8 +35,9 @@ def test_analysis_json_group_labels_list_is_unchanged(pipeline_json):
     """Regression for #1339: group_labels already stored as a list is returned as is (it used to raise, breaking "retrieve stored analysis")."""
     data = pipeline_json({"group_labels": ["hair cells", "support cells"], "user_session_id": "abc"})
     assert data["group_labels"] == ["hair cells", "support cells"]
-    assert data["analysis_session_id"] == "abc"
-    assert "user_session_id" not in data
+    # The saving user's session ID is never sent back (it would let anyone viewing a public analysis log in as them)
+    assert "analysis_session_id" not in data and "user_session_id" not in data
+    assert "abc" not in json.dumps(data)
 
 
 def test_analysis_json_without_group_labels(pipeline_json):

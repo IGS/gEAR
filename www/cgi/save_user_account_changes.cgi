@@ -10,11 +10,15 @@ import cgi, json
 import sys
 import os
 import hashlib
+import re
 import uuid
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+
+# Same pattern as the email check in www/js/create_account.js
+EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 
 def main():
     cnx = geardb.Connection()
@@ -83,6 +87,21 @@ def main():
         print(json.dumps(result))
 
     elif scope == 'settings_change':
+        if email:
+            email = email.strip()
+            # The profile page always sends the email, so the user's current one (which might predate
+            #  these checks) is accepted as is
+            email_changed = email.lower() != (user.email or '').strip().lower()
+            email_error = check_new_email(cursor, email, user_id) if email_changed else None
+            if email_error:
+                result = { 'error': email_error, 'success': 0 }
+
+                cursor.close()
+                cnx.close()
+
+                print(json.dumps(result))
+                return
+
         begin_query = "UPDATE guser "
         end_query = " WHERE id = %s"
         mid_query = "SET"
@@ -149,6 +168,24 @@ def main():
 
         print(json.dumps(result))
 
+
+def check_new_email(cursor, email, user_id):
+    """
+    Return an error message if the user can't change their email to this address, else None.
+
+    The address must look like an email address (the same pattern the account creation page uses)
+    and must not belong to another account (compared case-insensitively, as create_account.cgi's
+    lookup is under MySQL's default collation).
+    """
+    if not EMAIL_PATTERN.fullmatch(email):
+        return "Please enter a valid email address."
+
+    qry = "SELECT id FROM guser WHERE LOWER(email) = LOWER(%s) AND id != %s"
+    cursor.execute(qry, (email, user_id,))
+    if cursor.fetchone() is not None:
+        return "Another account already uses this email address."
+
+    return None
 
 def save_new_password(cursor, help_id, encoded_pass):
     """

@@ -117,6 +117,14 @@ class TestCitation:
         assert (result.status, result.json()) == (400, {"error": "No pubmed_id provided"})
         assert calls == []
 
+    @pytest.mark.parametrize("pubmed_id", ["123&format=xml", "123&id=456", "123#x", "../123", "PMID:123", "12 34",
+                                           "12a", "-123", "１２３"])
+    def test_non_numeric_id_is_refused(self, tmp_path, pubmed_id):
+        # Used to be pasted into the upstream URL as-is, so it could add or override query parameters
+        result, calls = self.run(tmp_path, pubmed_id=pubmed_id)
+        assert (result.status, result.json()) == (400, {"error": "Invalid pubmed_id"})
+        assert calls == []
+
 
 # ---------------------------------------------------------------- workshop event registration
 
@@ -154,35 +162,81 @@ class TestEventRegistrationList:
 
 
 class TestSetEventRegistration:
-    DB = {"sessions": {"owner": 1}, "sql": [{"match": "FROM event WHERE id", "rows": [["Intro", 2, 1]]},
-                                            {"match": "COUNT(er.id)", "rows": [[3]]}]}
+    """Event 1 has 2 seats and a waitlist of 1, as in TestEventRegistrationList."""
+
     EVENT = {"attendees": 0, "user_attending": 0, "user_waitlisted": 0, "max_attendees": 2, "waitlist_size": 1}
 
-    def run(self, status, session_id="owner"):
-        return run_cgi("set_user_event_registration.cgi", db=self.DB,
-                       form={"session_id": session_id, "event_id": "1", "registration_status": status})
+    def run(self, status, session_id="owner", event_id="1", count=1, registered=False, event_exists=True):
+        sql = [{"match": "COUNT(er.id)", "rows": [[count]]}]
+        if event_exists:
+            sql.append({"match": "FROM event WHERE id", "rows": [["Intro", 2, 1]]})
+        if registered:
+            sql.append({"match": "SELECT id FROM event_registration", "rows": [[5]]})
+        form = {"session_id": session_id, "event_id": event_id}
+        if status is not None:
+            form["registration_status"] = status
+        return run_cgi("set_user_event_registration.cgi", db={"sessions": {"owner": 1}, "sql": sql}, form=form)
+
+    @staticmethod
+    def assert_refused(result, msg):
+        assert result.json() == {"success": 0, "msg": msg}
+        assert result.writes() == []
+        assert not result.logged("commit")
 
     def test_register(self):
-        result = self.run("1")
-        assert result.json() == {"success": 1, "current_count": 3, "event": self.EVENT,
+        result = self.run("1", count=1)
+        assert result.json() == {"success": 1, "current_count": 2, "event": self.EVENT,
                                  "msg": "You have successfully registered"}
         assert [(w["query"], w["params"]) for w in result.writes()] == [
-            ("INSERT INTO event_registration (event_id, user_id) VALUES (%s, %s)", ["1", 1])]
+            ("INSERT INTO event_registration (event_id, user_id) VALUES (%s, %s)", [1, 1])]
         assert result.logged("commit")
+        # The event row is locked while the registrations are counted
+        assert result.logged("sql", "FROM event WHERE id = %s FOR UPDATE")
+
+    def test_register_when_seats_are_taken_joins_the_waitlist(self):
+        # Like get_event_registration_list.cgi: registrations past max_attendees are waitlisted
+        result = self.run("1", count=2)
+        body = result.json()
+        assert (body["success"], body["current_count"]) == (1, 3)
+        assert "waitlist" in body["msg"]
+        assert len(result.writes()) == 1 and result.logged("commit")
+
+    def test_register_when_waitlist_is_full_is_refused(self):
+        self.assert_refused(self.run("1", count=3), "This event is full")
+
+    def test_register_twice_adds_no_second_registration(self):
+        result = self.run("1", count=2, registered=True)
+        assert result.json() == {"success": 1, "current_count": 2, "event": self.EVENT,
+                                 "msg": "You are already registered"}
+        assert result.writes() == []
 
     def test_unregister(self):
         result = self.run("0")
         assert result.json()["msg"] == "You have successfully unregistered"
         assert [(w["query"], w["params"]) for w in result.writes()] == [
-            ("DELETE FROM event_registration WHERE event_id = %s AND user_id = %s", ["1", 1])]
+            ("DELETE FROM event_registration WHERE event_id = %s AND user_id = %s", [1, 1])]
 
-    def test_unknown_status(self):
-        result = self.run("7")
-        assert result.json() == {"success": 0, "msg": "Unrecognized registration status"}
-        assert result.writes() == []
+    @pytest.mark.parametrize("status", ["7", "", "yes", None])
+    def test_unknown_status(self, status):
+        # A missing or non-numeric status used to raise before any output (a 500)
+        result = self.run(status)
+        assert result.returncode == 0, result.stderr
+        self.assert_refused(result, "Unrecognized registration status")
 
-    def test_must_be_logged_in(self):
-        result = self.run("1", session_id="nobody")
+    @pytest.mark.parametrize("status", ["1", "0"])
+    def test_unknown_event_is_refused(self, status):
+        self.assert_refused(self.run(status, event_exists=False), "Unknown event")
+
+    @pytest.mark.parametrize("event_id", ["", "abc", "1; DROP TABLE event"])
+    def test_invalid_event_id_is_refused(self, event_id):
+        result = self.run("1", event_id=event_id)
+        self.assert_refused(result, "Unknown event")
+        assert not result.logged("sql", "event_registration")
+
+    @pytest.mark.parametrize("status", ["1", None])
+    def test_must_be_logged_in(self, status):
+        # Checked before the status is parsed, so a missing status doesn't hide the login message
+        result = self.run(status, session_id="nobody")
         assert result.json() == {"success": 0, "msg": "You must be logged in to register or unregister"}
         assert result.writes() == []
 

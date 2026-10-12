@@ -75,7 +75,7 @@ export class Analysis {
      */
     async checkDependenciesAndRun(callback, opts) {
         if (this.type === 'public') {
-            this.copyToUserUnsaved(callback, opts);
+            await this.copyToUserUnsaved(callback, opts);
         } else {
             await callback(opts);
         }
@@ -105,14 +105,15 @@ export class Analysis {
     /**
      * Copies the dataset analysis to a new analysis of the specified type.
      * @param {string} destType - The type of the destination analysis.
+     * @param {string} [destId=this.id] - The ID of the destination analysis.
      * @returns {Promise<any>} - A promise that resolves with the copied analysis data.
      */
-    async copyDatasetAnalysis(destType) {
+    async copyDatasetAnalysis(destType, destId = this.id) {
         const params = {
             session_id: this.analysisSessionId,
             dataset_id: this.dataset.id,
             source_analysis_id: this.id,
-            dest_analysis_id: this.id,
+            dest_analysis_id: destId,
             source_analysis_type: this.type,
             dest_analysis_type: destType
         }
@@ -132,7 +133,9 @@ export class Analysis {
         const newAnalysisId = crypto.randomUUID();
 
         try {
-            const data = await this.copyDatasetAnalysis('user_unsaved');
+            // The copy goes in the current user's unsaved area, under the new ID
+            this.analysisSessionId = getCurrentUser()?.session_id;
+            const data = await this.copyDatasetAnalysis('user_unsaved', newAnalysisId);
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -141,10 +144,8 @@ export class Analysis {
 
             this.type = 'user_unsaved';
             this.id = newAnalysisId;
-            this.analysisSessionId = getCurrentUser()?.session_id;
 
-            document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
-            document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
+            this.showHideAnalysisButtons();
 
             await this.getSavedAnalysesList(this.dataset.id, newAnalysisId);
 
@@ -395,6 +396,14 @@ export class Analysis {
             const ana = await Analysis.loadFromJson(data, datasetObj);
             Object.assign(this, ana);
 
+            // The steps were created for "ana". Point them at this instance, so that changes made here
+            // (copying a public analysis to a new ID, renaming) are used when a step runs and saves.
+            for (const step of Object.values(this)) {
+                if (step?.analysis === ana) {
+                    step.analysis = this;
+                }
+            }
+
             // If tSNE was calculatee, show the labeled tSNE section
             // Mainly for primary analyses
             // ? verify claim
@@ -576,13 +585,10 @@ export class Analysis {
                 throw new Error(error);
             }
 
-            this.type = 'user_saved';
-            document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
+            // The saved analysis is moved (not copied) to the public area
+            this.type = 'public';
             createToast("Changes made to this public analysis will create a local copy within your profile.", "is-info", true);
-            document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
-            document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-            document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
-            document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
+            this.showHideAnalysisButtons();
 
             await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {
@@ -787,11 +793,18 @@ export class Analysis {
      * Toggles the visibility of analysis buttons based on the analysis type.
      */
     showHideAnalysisButtons() {
-        // Unhide delete buttons, which were hidden for new analyses.
-        // Public analyses can't be deleted, since saved display curations may still use them.
-        const canDelete = ['user_saved', 'user_unsaved'].includes(this.type);
-        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.toggle("is-hidden", !canDelete);
-        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.toggle("is-hidden", !canDelete);
+        // Unhide delete and rename buttons, which were hidden for new analyses.
+        // Public analyses can't be deleted, since saved display curations may still use them, or renamed,
+        // since only the user's own analyses can be saved. Changing one makes a private copy first.
+        const isUsersOwn = ['user_saved', 'user_unsaved'].includes(this.type);
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.toggle("is-hidden", !isUsersOwn);
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.toggle("is-hidden", !isUsersOwn);
+        for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
+            button.classList.toggle("is-hidden", !isUsersOwn);
+        }
+
+        // Only a saved analysis can be made public (a public one already is)
+        document.querySelector(UI.btnMakePublicCopyElt).classList.toggle("is-hidden", this.type !== 'user_saved');
 
         if (this.type === 'user_unsaved') {
             document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
@@ -799,6 +812,10 @@ export class Analysis {
         } else if (this.type === 'user_saved') {
             document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
+        } else {
+            // primary or public
+            document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
+            document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         }
     }
 
@@ -972,6 +989,8 @@ class AnalysisStepPrimaryFilter {
             createToast("Data filters applied", "is-success");
 
         } catch (error) {
+            // Back to the analysis being filtered (e.g. a user_unsaved copy of a public analysis)
+            this.analysis.type = originalAnalysisType;
             createToast(`Error applying primary filters: ${error.message}`);
             logErrorInConsole(error);
             failStepWithHref("#primary-filter-s")

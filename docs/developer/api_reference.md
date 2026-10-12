@@ -147,7 +147,7 @@ These render static matplotlib/scanpy embedding plots and return them as base64 
 - `TSNEData` only: `gene_symbol`, `plot_by_group`, `hide_group_nonmembers`, `skip_gene_plot`, `two_way_palette`.
 - `MGTSNEData` only: `gene_symbols` (list).
 
-Response: `{success, message, image, image_format}`. The format is `webp`, or `png` if the figure exceeds the 16383 px WebP limit, or `pdf` when `high_dpi` is true. Validation failures return `success: -1`, for example a missing gene, an unavailable analysis, a missing `gene_symbol` column, or inconsistent `vmin`/`vmax`/median-centering settings.
+Response: `{success, message, image, image_format}`. The format is `webp`, or `png` if the figure exceeds the 16383 px WebP limit, or `pdf` when `high_dpi` is true. Validation failures return `success: -1`, for example a missing gene, an unavailable analysis, a missing `gene_symbol` column, or inconsistent `vmin`/`vmax`/median-centering settings. A saved `order` or `obs_filters` key that no longer fits the dataset (the column is gone from `adata.obs`, or the order's categories differ from the column's) also returns `success: -1`, with a message ending in "Please update curation."
 
 ### SvgData: `GET /plot/<dataset_id>/svg`
 
@@ -232,7 +232,7 @@ These back the dataset curator, the multigene viewer and the expression pages. M
 |---|---|---|
 | `H5ad` `GET /h5ad/<dataset_id>` | query `analysis_id` | `success`, `num_obs`, `obs_columns` (includes `X_tsne_1/2`, `X_umap_1/2`, `X_pca_1/2` when present in `obsm`; excludes replicate columns and `time_point_order`), `obs_levels` (categorical columns with at most 50 levels, including `NA` if nulls exist), `obs_levels_truncated` (categorical columns with more than 50 levels), `has_replicates` |
 | `GeneSymbols` `GET /h5ad/<dataset_id>/genes` | query `analysis` | `success`, `gene_symbols` |
-| `Analyses` `GET /h5ad/<dataset_id>/analyses` | cookie session | `success`, `public`, `private`: analyses (from `AnalysisCollection.get_all_by_dataset_id`) with tSNE or UMAP computed. `private` is empty for anonymous users. |
+| `Analyses` `GET /h5ad/<dataset_id>/analyses` | cookie session | `success`, `public`, `private`: analyses (from `AnalysisCollection.get_all_by_dataset_id`) with tSNE or UMAP computed, serialized without `session_id`. `private` is empty for anonymous users. |
 | `Aggregations` `POST /h5ad/<dataset_id>/aggregations` | reqparse `analysis_id`, `filters` (dict of column to values) | `success`, `aggregations` (list of `{name, count, items: [{name, count}]}` per categorical obs column, with zero-count categories kept and `nan` renamed `Data not available`), `total_count` |
 | `AvailableDisplayTypes` `POST /h5ad/<dataset_id>/availableDisplayTypes` | JSON `dataset_id`, `session_id`, `analysis_id` | Flat dict of booleans: `scatter`, `tsne_static`, `umap_static`, `pca_static`, `tsne/umap_dynamic`, `bar`, `violin`, `line`, `svg` |
 | `MGAvailableDisplayTypes` `POST /h5ad/<dataset_id>/mg_availableDisplayTypes` | JSON `dataset_id`, `session_id`, `analysis_id` | Flat dict of booleans: `dotplot`, `heatmap`, `mg_violin`, `volcano` (needs 2 or more categorical columns), `quadrant` (needs 3 or more), `mg_pca_static`, `mg_tsne_static`, `mg_umap_static` |
@@ -287,7 +287,7 @@ Returns the display record from `geardb.get_display_by_id` with HTTP 200, or `{"
 
 ## CGI endpoints
 
-Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most read form or JSON parameters, look up the user from `session_id`, and print a JSON body. Each script's module docstring lists its inputs and output in more detail. 101 entries, grouped by area.
+Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most read form or JSON parameters, look up the user from `session_id`, and print a JSON body. Each script's module docstring lists its inputs and output in more detail. 100 entries, grouped by area. The v1 `login.cgi` and `get_session_info.cgi` have been removed; use `login.v2.cgi` and `get_session_info.v2.cgi`.
 
 ### Account/auth
 
@@ -296,12 +296,10 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `add_to_user_history.cgi` | Record an entry in the user's activity history | session_id, entry_category, label (+ any extra form fields) |
 | `check_existing_email.cgi` | Check whether an email address already has an account | email |
 | `create_account.cgi` | Create a new user account and return a session ID | first-last, email, institution, password, email_updates, colorblind_mode, verification_code_long, verification_code_short |
-| `get_session_info.cgi` | Return basic user info (email, name) for a session | session_id |
 | `get_session_info.v2.cgi` | Return full user record for a session | session_id |
 | `get_user_history_entries.cgi` | Return the user's most recent history entries | session_id, num_entries |
-| `login.cgi` | Log in with email/password and return a session_id (0/-1 on failure) | user_email, user_pass |
 | `login.v2.cgi` | Log in (v2 form field names) and return a session_id (-1 for both an unknown email and a wrong password) | user-email, user-password |
-| `save_user_account_changes.cgi` | Change password (via help_id) or account settings | scope, help_id, session_id, new_password, email, institution, colorblind_mode, want_updates |
+| `save_user_account_changes.cgi` | Change password (via help_id) or account settings. A changed email must look like an email address and not belong to another account (case-insensitive); a password change in `settings_change` also replaces the help_id, so earlier reset links stop working | scope, help_id, session_id, new_password, email, institution, colorblind_mode, want_updates |
 | `save_user_default_organism.cgi` | Save the user's default organism | session_id, default_org_id |
 | `send_email.cgi` | Send forgot-password or user-verification email | email, scope, destination_page, verification_code_long |
 | `update_password.cgi` | Reset a user's password from a reset link; the help_id is then replaced, so each link works once | help_id, password |
@@ -340,7 +338,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 
 | Script | Purpose | Key parameters |
 |---|---|---|
-| `add_display_to_layout.cgi` | Add a dataset display as a member of a layout | session_id, layout_share_id, display_id |
+| `add_display_to_layout.cgi` | Add a dataset display to a layout the user owns. The display must be the user's own or the dataset owner's, on a dataset the user can see. It keeps the default size and goes after the last tile in the last row if it fits in the 12 columns, else at the start of a new row below every tile | session_id, layout_share_id, display_id |
 | `add_layout.cgi` | Create a new, empty layout for the user | session_id, layout_name |
 | `get_user_layouts.cgi` | Return layouts visible to the user, grouped by category with folders | session_id, layout_share_id, no_domain, include_members |
 | `get_users_layout_members.cgi` | Return the display members of a layout | session_id, layout_share_id |
@@ -349,7 +347,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `remove_layout.cgi` | Delete an owned layout (not the site default) | session_id, layout_share_id |
 | `rename_layout.cgi` | Rename a layout | session_id, layout_share_id, layout_name |
 | `save_layout_arrangement.cgi` | Save grid positions/sizes of displays in a layout | session_id, layout_share_id, layout_arrangement |
-| `save_user_chosen_layout.cgi` | Save the user's selected layout (guser.layout_share_id) | session_id, layout_share_id |
+| `save_user_chosen_layout.cgi` | Save the user's selected layout (`guser.layout_id`). Only the user's own, public, domain or group-shared layouts; an unknown share ID clears the choice | session_id, layout_share_id |
 | `update_layout_visibility.cgi` | Toggle a layout between public and private | layout_share_id, visibility |
 
 ### Gene lists (carts)
@@ -364,7 +362,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `remove_gene_cart.cgi` | Delete an owned gene cart | session_id, share_id |
 | `save_genecart_changes.cgi` | Edit metadata of an owned gene cart | session_id, gc_id, visibility, organism_id, title, ldesc |
 | `save_new_genecart_form.cgi` | Create a new gene cart from form data (pasted or uploaded genes) | session_id, new_cart_label, new_cart_organism_id, new_cart_ldesc, is_public, new_cart_upload_type, new_cart_pasted_genes |
-| `save_new_genecart_json.cgi` | Create a new gene cart from JSON on stdin (requires a logged-in session_id; weighted carts saved to file) | JSON body: GeneCart fields (session_id, label, genes, gctype, weight_labels, ...) |
+| `save_new_genecart_json.cgi` | Create a new gene cart from JSON on stdin (requires a logged-in session_id; `is_domain` is kept only for admins; weighted carts saved to file) | JSON body: GeneCart fields (session_id, label, genes, gctype, weight_labels, ...) |
 
 ### Search
 
@@ -384,8 +382,8 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `get_analysis_image.cgi` | Stream a plot image generated by an analysis step; with colorblind_mode, serves `<analysis_name>_colorblind.png` when the step saved one | session_id, dataset_id, analysis_id, analysis_type, analysis_name, colorblind_mode |
 | `get_dataset_comparison.cgi` | Compare expression between two conditions (fold change, p-values, filters) | dataset_id, compare_key, condition_x, condition_y, obs_filters, fold_change_cutoff, std_dev_num_cutoff, log_transformation, statistical_test |
 | `get_h5ad_dataset_list.cgi` | List H5AD datasets viewable by the user (public/user/shared) for the workbench | session_id, share_id |
-| `get_stored_analysis.cgi` | Return the JSON for one stored analysis | session_id, dataset_id, analysis_id, analysis_type |
-| `get_stored_analysis_list.cgi` | List stored analyses for a dataset (primary/public/user_saved/user_unsaved) | session_id, dataset_id |
+| `get_stored_analysis.cgi` | Return the JSON for one stored analysis (without its session ID) | session_id, dataset_id, analysis_id, analysis_type |
+| `get_stored_analysis_list.cgi` | List stored analyses for a dataset (primary/public/user_saved/user_unsaved), without session IDs. For a logged-in user each gets a vetting: `gear` (primary, or the owner is a curator), `owner` (the owner is the current user) or `community` | session_id, dataset_id |
 | `h5ad_apply_primary_filter.cgi` | Apply cell/gene count filters to an H5AD (copies primary into user space first) | analysis_id, analysis_type, dataset_id, session_id, filter_cells_lt_n_genes, filter_cells_gt_n_genes, filter_genes_lt_n_cells, filter_genes_gt_n_cells, colorblind_mode |
 | `h5ad_compare_genes.cgi` | Compare marker genes between a query cluster and a reference cluster (or all others) | analysis_id, analysis_type, dataset_id, session_id, query_cluster, reference_cluster, n_genes, method, corr_method, group_labels |
 | `h5ad_find_marker_genes.cgi` | Rank marker genes per cluster and return the top-gene table | analysis_id, analysis_type, dataset_id, session_id, n_genes, compute_marker_genes |
@@ -427,13 +425,13 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | Script | Purpose | Key parameters |
 |---|---|---|
 | `create_github_issue.cgi` | Create a GitHub issue from a site comment/feedback form | comment_title, comment, comment_tag, submitter_firstname, submitter_lastname, submitter_email, private_check, screenshot |
-| `get_citation_from_pubmed_id.cgi` | Fetch a formatted citation for a PubMed ID (cached, throttled) | pubmed_id |
+| `get_citation_from_pubmed_id.cgi` | Fetch a formatted citation for a PubMed ID (cached, throttled); HTTP 400 for a missing or non-numeric ID | pubmed_id |
 | `get_event_registration_list.cgi` | Report event attendance and the user's registration/waitlist status | session_id, min_event_id, max_event_id |
 | `get_organism_list.cgi` | List organisms in the database | (none) |
 | `get_tag_list.cgi` | Return tags for comment-form autocomplete | (none) |
 | `load_comment.cgi` | Store a user question/comment and tags in the database | submitter_firstname, submitter_lastname, submitter_email, comment_title, comment, comment_tag, super_impressive_security_check |
 | `process_contact.py` | Save a contact-form submission to a file | submitterName, InputEmail, keep_updated, super_impressive_security_check, comments |
-| `set_user_event_registration.cgi` | Register or unregister a user for an event | session_id, event_id, registration_status |
+| `set_user_event_registration.cgi` | Register or unregister a user for an event. Past max_attendees the user is waitlisted; past the waitlist, "This event is full". Registering twice adds no row; an unknown event or a status other than 0/1 returns success 0 | session_id, event_id, registration_status |
 | `stats.cgi` | Report site usage statistics from Google Analytics 4 | query string: days, top_n, realtime |
 | `test.cgi` | Test stub (prints a hello message) | none |
 | `test.php` | Test stub (non-Python) | none |

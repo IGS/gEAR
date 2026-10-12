@@ -103,17 +103,18 @@ def test_sort_legend_returns_legend_unchanged_when_sort_order_is_longer():
     assert labels == ["a", "b"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="sort_legend ignores the names in sort_order and keeps the first len(sort_order) entries. "
-    "Honoring the names would reorder the endpoint's legend to order of appearance (it passes "
-    "obs[colorize_by].unique()), so the intended order is unclear.",
-)
-def test_sort_legend_follows_names_in_sort_order():
+def test_sort_legend_ignores_names_in_sort_order():
+    """
+    Names in sort_order are intentionally not used: sort_legend keeps the first len(sort_order) legend
+    entries in category order. The endpoint passes obs[colorize_by].unique() (order of appearance),
+    and category order is what users get until someone asks for something else.
+    """
     fig, ax = legend_axes(["a", "b", "c"])
-    _, labels = tsne_data.sort_legend(ax, ["c", "a", "b"], 3)
+    _, labels = tsne_data.sort_legend(ax, ["x", "y", "z"], 3)     # names not in the legend at all
+    _, shorter = tsne_data.sort_legend(ax, ["c", "b"], 3)
     plt.close(fig)
-    assert labels == ["c", "a", "b"]
+    assert labels == ["a", "b", "c"]
+    assert shorter == ["a", "b"]
 
 
 @pytest.mark.parametrize("n_items, num_cols", [(5, 2), (12, 12), (14, 12), (25, 12), (26, 12)])
@@ -324,6 +325,19 @@ def test_prepare_adata_applies_every_filter():
     assert adata.obs_names.tolist() == ["cell0", "cell4"]
 
 
+@pytest.mark.parametrize("kwargs, message", [
+    ({"order": {"cluster": ["c", "a"]}}, "Sort order for series cluster does not match the categories"),
+    ({"order": {"cluster": ["c", "a", "b", "d"]}}, "Sort order for series cluster does not match the categories"),
+    ({"order": {"celltype": ["a"]}}, "Sort order series celltype not found in observation metadata"),
+    ({"filters": {"celltype": ["a"]}}, "Filter series celltype not found in observation metadata"),
+])
+def test_prepare_adata_reports_curation_that_no_longer_fits_the_dataset(kwargs, message):
+    # These were a ValueError from reorder_categories or a KeyError from obs, so the endpoint gave a 500
+    with pytest.raises(PlotError, match=message) as excinfo:
+        tsne_data.prepare_adata(build_adata(), **kwargs)
+    assert str(excinfo.value).endswith("Please update curation.")
+
+
 # ---------------------------------------------------------------- modify_genes_found_as_obs_columns
 
 
@@ -407,6 +421,15 @@ def post(client, route, **body):
         ("tsne", {"gene_symbol": "G1", "vmax": 0.2, "vmin": 0.5}, "Maximum cap value must be greater"),
         ("tsne", {"gene_symbol": "G1", "center_around_median": True, "vmax": 0.0001}, "Median expression value"),
         ("tsne", {"gene_symbol": "G1", "center_around_median": True, "vmin": 0.9999}, "Median expression value"),
+        # Saved curations that no longer fit the dataset (these were 500s)
+        ("tsne", {"gene_symbol": "G1", "order": {"cluster": ["c", "a"]}},
+         "Sort order for series cluster does not match the categories in the dataset. Please update curation."),
+        ("mg_tsne", {"gene_symbols": ["G1", "G2"], "order": {"celltype": ["a"]}},
+         "Sort order series celltype not found in observation metadata for dataset. Please update curation."),
+        ("tsne", {"gene_symbol": "G1", "obs_filters": {"celltype": ["a"]}},
+         "Filter series celltype not found in observation metadata for dataset. Please update curation."),
+        ("mg_tsne", {"gene_symbols": ["G1", "G2"], "obs_filters": {"celltype": ["a"]}},
+         "Filter series celltype not found in observation metadata for dataset. Please update curation."),
     ],
 )
 def test_endpoint_errors(client, route, body, message):

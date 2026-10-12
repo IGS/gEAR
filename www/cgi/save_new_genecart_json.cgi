@@ -40,6 +40,13 @@ def main():
 
     gc.update_from_json(data)
 
+    # Domain lists are shown to every user of the site, so only admins may create one
+    #  (update_from_json copies is_domain from the request as-is)
+    if user_logged_in.is_admin and data.get("is_domain") in (1, True, "1", "true"):
+        gc.is_domain = 1
+    else:
+        gc.is_domain = 0
+
     # Weighted carts also get saved to file
     if gc.gctype == 'weighted-list':
         import scanpy as sc

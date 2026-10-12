@@ -65,11 +65,12 @@ document.getElementById("submit-preferences").addEventListener("click", async (e
             var msg = "Settings have been saved!";
             createToast(msg, "is-success");
         } else {
-            var msg = "An error occurred while updating preferences.  Please try again.";
-            throw new Error(msg);
+            // Show the server's reason (e.g. an invalid or already-used email address)
+            throw new Error(data?.error || "An error occurred while updating preferences.  Please try again.");
         }
     } catch (error) {
-        const msg = "Unable to update preferences. Please try again.";
+        // A failed request's message (e.g. "Network Error") isn't meant for the user
+        const msg = (!error.isAxiosError && error.message) || "Unable to update preferences. Please try again.";
         logErrorInConsole(msg);
         createToast(msg);
     } finally {

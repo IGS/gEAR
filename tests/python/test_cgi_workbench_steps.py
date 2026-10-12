@@ -16,6 +16,9 @@ from pathlib import Path
 import pytest
 from helpers.cgi_harness import CGI_DIR, run_cgi
 
+# Every workbench step CGI imports scanpy in its subprocess
+pytestmark = pytest.mark.slow
+
 FAKES = Path(__file__).resolve().parent / "fakes"
 STEP_ANALYSIS = {"gear.analysis": FAKES / "cgi_wb_analysis.py"}
 REAL_ANALYSIS = {"gear.analysis": FAKES / "cgi_wb_real_analysis.py"}
@@ -357,7 +360,16 @@ class TestCompareGenes:
 
 # ---------------------------------------------------------------- stored analyses (real gear.analysis)
 
-U1, U2, U3, P1 = (str(uuid.UUID(int=i)) for i in range(1, 5))
+U1, U2, U3, P1, P2 = (str(uuid.UUID(int=i)) for i in range(1, 6))
+
+# The fake geardb's users have no is_curator flag; this module (written next to the analysis tree and
+#  loaded with fake_modules) reads one from the spec: "users": {"3": {"is_curator": 1}}
+CURATOR_PATCH = """
+import sys
+_geardb = sys.modules["geardb"]
+_geardb._User.is_curator = property(
+    lambda self: _geardb._SPEC.get("users", {}).get(str(self.id), {}).get("is_curator", 0))
+"""
 
 
 class StoredAnalyses:
@@ -372,7 +384,8 @@ class StoredAnalyses:
 
     @staticmethod
     def db(root):
-        return {**DB, "datasets": [{"id": "DS1", "owner_id": 1, "h5ad_path": str(root / "www/datasets/DS1.h5ad")}]}
+        return {**DB, "sessions": {**DB["sessions"], "curator": 3}, "users": {"3": {"is_curator": 1}},
+                "datasets": [{"id": "DS1", "owner_id": 1, "h5ad_path": str(root / "www/datasets/DS1.h5ad")}]}
 
     @staticmethod
     def area(root, analysis_type, analysis_id, owner=None):
@@ -396,7 +409,9 @@ class StoredAnalyses:
         return path
 
     def run(self, root, script, **query):
-        return run_cgi(script, db=self.db(root), query=query, fake_modules=REAL_ANALYSIS,
+        patch = root / "fake_curators.py"
+        patch.write_text(CURATOR_PATCH)
+        return run_cgi(script, db=self.db(root), query=query, fake_modules={"fake_curators": patch, **REAL_ANALYSIS},
                        env={"GEAR_TEST_ANALYSIS_ROOT": str(root)})
 
 
@@ -408,7 +423,14 @@ class TestGetStoredAnalysis(StoredAnalyses):
         self.store(root, "user_unsaved", U1, owner="owner", group_labels={"0": "a", "1": "b"})
         body = self.get(root, analysis_id=U1, analysis_type="user_unsaved").json()
         assert body == {"id": U1, "label": f"user_unsaved {U1}", "type": "user_unsaved", "dataset_id": "DS1",
-                        "analysis_session_id": "owner", "group_labels": ["a", "b"], "success": 1}
+                        "group_labels": ["a", "b"], "success": 1}
+
+    def test_public_analysis_does_not_reveal_the_publishers_session(self, root):
+        # Anyone can load a public analysis; its pipeline file holds the publishing user's login session
+        self.store(root, "public", P1, analysis_session_id="owner")
+        body = self.get(root, session_id="other", analysis_id=P1, analysis_type="public").json()
+        assert body["success"] == 1
+        assert "analysis_session_id" not in body and "user_session_id" not in body
 
     def test_primary_analysis(self, root):
         self.store(root, "primary", "DS1", h5ad=False)
@@ -452,17 +474,36 @@ class TestGetStoredAnalysisList(StoredAnalyses):
         return {atype: [(a["id"], a.get("vetting")) for a in analyses] for atype, analyses in body.items()}
 
     def test_owner_sees_own_analyses(self, tree):
+        # The owner comes from the session that wrote each pipeline file, or from the area it is in
         assert self.listing(tree, session_id="owner") == {
-            "primary": [("DS1", "gear")], "public": [(P1, None)],
-            "user_saved": [(U1, None)], "user_unsaved": [(U3, None)]}
+            "primary": [("DS1", "gear")], "public": [(P1, "owner")],
+            "user_saved": [(U1, "owner")], "user_unsaved": [(U3, "owner")]}
 
     def test_other_user_sees_only_their_own(self, tree):
+        # U2's pipeline was written under user 1's session, but it is in user 2's saved area
         assert self.listing(tree, session_id="other") == {
-            "primary": [("DS1", "gear")], "public": [(P1, None)], "user_saved": [(U2, None)], "user_unsaved": []}
+            "primary": [("DS1", "gear")], "public": [(P1, "community")], "user_saved": [(U2, "owner")],
+            "user_unsaved": []}
+
+    @pytest.mark.parametrize("session_id", ["owner", "other", "curator"])
+    def test_public_analysis_by_a_curator_is_gear_vetted(self, tree, session_id):
+        self.store(tree, "public", P2, user_session_id="curator")
+        public = dict(self.listing(tree, session_id=session_id)["public"])
+        assert public[P2] == "gear"
+
+    def test_curator_viewing_another_users_analysis_does_not_make_it_gear_vetted(self, tree):
+        # discover_vetting() used to check whether the viewer, not the owner, was a curator
+        assert self.listing(tree, session_id="curator")["public"] == [(P1, "community")]
 
     def test_anonymous_sees_primary_and_public(self, tree):
         assert self.listing(tree) == {"primary": [("DS1", None)], "public": [(P1, None)],
                                       "user_saved": [], "user_unsaved": []}
+
+    @pytest.mark.parametrize("session_id", [None, "other"])
+    def test_publishers_session_is_not_listed(self, tree, session_id):
+        query = {"session_id": session_id} if session_id else {}
+        body = self.run(tree, "get_stored_analysis_list.cgi", dataset_id="DS1", **query).json()
+        assert all("session_id" not in ana for analyses in body.values() for ana in analyses)
 
     def test_unknown_dataset(self, root):
         result = self.run(root, "get_stored_analysis_list.cgi", dataset_id="NOPE", session_id="owner")

@@ -13,30 +13,14 @@ USERHISTORY = {"gear.userhistory": FAKES / "cgi_acct_userhistory.py"}
 # Session "owner" is user 1; "other" is user 2.
 SESSIONS = {"owner": 1, "other": 2}
 
-# email, user_name, is_admin, id, institution, colorblind_mode, updates_wanted (+ default_org_id, layout share_id in v2)
+# email, user_name, is_admin, id, institution, colorblind_mode, updates_wanted (TestGetSessionInfoV2 adds
+#  default_org_id and the layout share_id)
 GUSER_ROW = ["sally@example.org", "Sally", 0, 1, "UMB", 1, 0]
 
 
 def assert_clean_exit(result):
     assert result.returncode == 0, result.stderr[-2000:]
     assert "Traceback" not in result.stderr, result.stderr[-2000:]
-
-
-# ---------------------------------------------------------------- get_session_info.cgi (legacy common.js only)
-
-class TestGetSessionInfo:
-    def test_known_session(self):
-        result = run_cgi("get_session_info.cgi", query={"session_id": "owner"},
-                         db={"sql": [{"match": "FROM guser u", "rows": [GUSER_ROW]}]})
-        assert result.json() == {"email": "sally@example.org", "name": "Sally", "is_admin": 0, "institution": "UMB",
-                                 "colorblind_mode": 1, "updates_wanted": 0, "success": 1}
-        (query,) = result.logged("sql", "FROM guser u")
-        assert query["params"] == ["owner"]
-        assert result.writes() == []
-
-    def test_unknown_session(self):
-        result = run_cgi("get_session_info.cgi", query={"session_id": "expired"})
-        assert result.json() == {"email": None, "name": None, "success": 0}
 
 
 # ---------------------------------------------------------------- get_session_info.v2.cgi
@@ -129,6 +113,47 @@ class TestSaveUserAccountChanges:
         assert "pass = %s" in update["query"] and "help_id = %s" in update["query"]
         new_help_id = update["params"][-2]
         assert str(uuid.UUID(new_help_id)) == new_help_id
+
+    def test_email_change_checks_other_accounts(self):
+        """The new email address is looked up case-insensitively among the other accounts, and stored trimmed."""
+        result = self.run(session_id="owner", scope="settings_change", email="  New@Example.org ")
+        assert result.json() == {"success": 1}
+        (lookup,) = result.logged("sql", "FROM guser WHERE")
+        assert lookup["query"] == "SELECT id FROM guser WHERE LOWER(email) = LOWER(%s) AND id != %s"
+        assert lookup["params"] == ["New@Example.org", 1]
+        (update,) = result.writes()
+        assert update["params"][0] == "New@Example.org"
+
+    def test_email_used_by_another_account_is_refused(self):
+        result = run_cgi("save_user_account_changes.cgi", form={
+            "session_id": "owner", "scope": "settings_change", "email": "TAKEN@example.org", "institution": "JHU",
+            "new_password": "hunter22"}, db={**self.DB, "sql": [{"match": "FROM guser WHERE LOWER(email)",
+                                                                  "rows": [[2]]}]})
+        body = result.json()
+        assert body["success"] == 0 and "already uses this email" in body["error"]
+        assert result.writes() == []
+        assert not result.logged("commit")
+
+    @pytest.mark.parametrize("email", ["not-an-email", "sally@", "@example.org", "sally@example", "sal ly@example.org",
+                                       "sally@example.org, x@example.org", "sally@exa_mple.org"])
+    def test_invalid_email_is_refused(self, email):
+        result = self.run(session_id="owner", scope="settings_change", email=email, colorblind_mode="true")
+        body = result.json()
+        assert body["success"] == 0 and "valid email" in body["error"]
+        assert result.writes() == []
+        assert not result.logged("sql", "FROM guser WHERE")
+
+    def test_current_email_is_not_rechecked(self):
+        """The profile page always sends the email, so an unchanged one (even one that predates the format
+        check) doesn't block saving other settings."""
+        db = {**self.DB, "users": {"1": {"email": "Sally@Lab"}}}
+        result = run_cgi("save_user_account_changes.cgi", db=db,
+                         form={"session_id": "owner", "scope": "settings_change", "email": "sally@lab ",
+                               "institution": "JHU"})
+        assert result.json() == {"success": 1}
+        assert not result.logged("sql", "FROM guser WHERE")
+        (update,) = result.writes()
+        assert update["params"][:2] == ["sally@lab", "JHU"]
 
     @pytest.mark.parametrize("scope", [None, "email"])
     def test_unknown_scope(self, scope):

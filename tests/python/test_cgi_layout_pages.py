@@ -147,10 +147,19 @@ def member(id, display_id, start_col, start_row=1, grid_width=4, grid_height=1, 
 
 
 class TestAddDisplayToLayout:
-    DISPLAYS = [{"id": 101, "user_id": 1, "plot_type": "bar"}, {"id": 201, "user_id": 1, "plot_type": "heatmap"}]
+    # DS1 is user 1's private dataset; DS9 is user 9's public one; DSP is user 9's private one
+    DATASETS = [{"id": "DS1", "owner_id": 1, "is_public": 0}, {"id": "DS9", "owner_id": 9, "is_public": 1},
+                {"id": "DSP", "owner_id": 9, "is_public": 0}]
+    DISPLAYS = [{"id": 101, "user_id": 1, "dataset_id": "DS1", "plot_type": "bar"},
+                {"id": 201, "user_id": 1, "dataset_id": "DS1", "plot_type": "heatmap"},
+                {"id": 301, "user_id": 9, "dataset_id": "DS9", "plot_type": "bar"},       # dataset owner's
+                {"id": 302, "user_id": 3, "dataset_id": "DS9", "plot_type": "bar"},       # another user's
+                {"id": 303, "user_id": 2, "dataset_id": "DS9", "plot_type": "bar"},       # user 2's own
+                {"id": 401, "user_id": 9, "dataset_id": "DSP", "plot_type": "bar"},       # owner's, private dataset
+                {"id": 402, "user_id": 1, "dataset_id": "DSP", "plot_type": "bar"}]       # user 1's, private dataset
 
-    def run(self, members=(), session_id="owner", display_id="101", share_id="L1"):
-        db = {"sessions": SESSIONS, "displays": self.DISPLAYS,
+    def run(self, members=(), session_id="owner", display_id="101", share_id="L1", sql=()):
+        db = {"sessions": SESSIONS, "displays": self.DISPLAYS, "datasets": self.DATASETS, "sql": list(sql),
               "layouts": [{"id": 10, "share_id": "L1", "user_id": 1, "members": list(members)}]}
         query = {"layout_share_id": share_id, "display_id": display_id}
         if session_id:
@@ -185,6 +194,43 @@ class TestAddDisplayToLayout:
         assert self.added(result) == {"display_id": "101", "grid_position": 4, "start_col": 1, "start_row": 3,
                                       "grid_width": 4, "grid_height": 1}
 
+    @pytest.mark.parametrize("tall_col", [5, 9])
+    def test_full_row_starts_below_a_taller_display_in_any_column(self, tall_col):
+        """The new row starts below the tallest display of the last row, not only the first column's."""
+        members = [member(i, 4 + i, start_col=col, grid_height=3 if col == tall_col else 1)
+                   for i, col in enumerate((1, 5, 9), start=1)]
+        result = self.run(members=members)
+        assert result.json()["success"] == 1
+        assert self.added(result) == {"display_id": "101", "grid_position": 4, "start_col": 1, "start_row": 4,
+                                      "grid_width": 4, "grid_height": 1}
+
+    def test_full_row_without_a_first_column_display(self):
+        """With no display in column 1 of the last row, the new row still starts below that row (it used to be
+        placed on the last row itself, over its displays)."""
+        members = [member(1, 5, start_col=1, grid_height=2), member(2, 6, start_col=5, start_row=2, grid_width=8)]
+        result = self.run(members=members)
+        assert self.added(result)["start_col"] == 1 and self.added(result)["start_row"] == 3
+
+    def test_new_row_starts_below_a_display_from_an_earlier_row(self):
+        """A display from an earlier row can reach below the last row."""
+        members = [member(1, 5, start_col=1, grid_height=4), member(2, 6, start_col=5, grid_width=8),
+                   member(3, 7, start_col=5, start_row=2, grid_width=8)]
+        result = self.run(members=members)
+        assert self.added(result)["start_col"] == 1 and self.added(result)["start_row"] == 5
+
+    def test_space_in_last_row_covered_by_an_earlier_display(self):
+        """The free columns at the end of the last row are used only if no earlier tall display covers them."""
+        members = [member(1, 5, start_col=1), member(2, 6, start_col=5), member(3, 7, start_col=9, grid_height=3),
+                   member(4, 8, start_col=1, start_row=2, grid_width=8)]
+        result = self.run(members=members)
+        assert self.added(result)["start_col"] == 1 and self.added(result)["start_row"] == 4
+
+    def test_display_that_would_overflow_the_row_starts_a_new_row(self):
+        """A display that doesn't fit in the columns left in the last row goes on a new row (it used to be
+        placed past column 12)."""
+        result = self.run(members=[member(1, 5, start_col=1, grid_width=9)])
+        assert self.added(result)["start_col"] == 1 and self.added(result)["start_row"] == 2
+
     def test_multigene_members_are_placed_separately(self):
         result = self.run(members=[member(1, 5, start_col=1), member(2, 6, start_col=5)], display_id="201")
         assert self.added(result) == {"display_id": "201", "grid_position": 1, "start_col": 1, "start_row": 1,
@@ -211,6 +257,41 @@ class TestAddDisplayToLayout:
         assert not result.logged("layout_member.save")      # the legacy rebuild doesn't run either
         assert result.writes() == []
 
+    @pytest.mark.parametrize("session, display_id", [("owner", "301"), ("other", "303")])
+    def test_dataset_owners_or_own_display_on_public_dataset(self, session, display_id):
+        """A display saved by the dataset's owner can be added to anyone's layout, as can the user's own."""
+        layout_owner = {"owner": 1, "other": 2}[session]
+        db = {"sessions": SESSIONS, "displays": self.DISPLAYS, "datasets": self.DATASETS,
+              "layouts": [{"id": 10, "share_id": "L1", "user_id": layout_owner}]}
+        result = run_cgi("add_display_to_layout.cgi", db=db,
+                         query={"session_id": session, "layout_share_id": "L1", "display_id": display_id})
+        assert result.json() == {"success": 1, "error": ""}
+        assert self.added(result)["display_id"] == display_id
+
+    def test_dataset_owners_display_on_dataset_shared_with_user(self):
+        result = self.run(display_id="401", sql=[{"match": "FROM dataset_shares", "rows": [[1]]}])
+        assert result.json() == {"success": 1, "error": ""}
+        (share_check,) = result.logged("sql", "FROM dataset_shares")
+        assert share_check["params"] == ["DSP", 1]
+        assert "is_allowed = 1" in share_check["query"]
+
+    @pytest.mark.parametrize("display_id, error", [
+        ("302", "belongs to another user"),            # not the user's own nor the dataset owner's
+        ("401", "don't have access to its dataset"),   # the dataset owner's, but the dataset is private
+        ("402", "don't have access to its dataset"),   # the user's own, but the dataset is no longer shared
+        ("999", "Display not found"),
+        ("", "Display not found"),
+    ])
+    def test_display_the_user_may_not_use_is_refused(self, display_id, error):
+        legacy = [member(1, 5, start_col=1), member(2, 6, start_col=1)]
+        result = self.run(members=legacy, display_id=display_id)
+        assert_clean_exit(result)
+        body = result.json()
+        assert body["success"] == 0 and error in body["error"]
+        assert not result.logged("layout.add_member")
+        assert not result.logged("layout_member.save")      # the legacy rebuild doesn't run either
+        assert result.writes() == []
+
     def test_unknown_layout(self):
         result = self.run(share_id="NOPE")
         assert result.json() == {"success": 0, "error": "Layout not found"}
@@ -220,23 +301,54 @@ class TestAddDisplayToLayout:
 # ---------------------------------------------------------------- save_user_chosen_layout.cgi
 
 class TestSaveUserChosenLayout:
-    DB = {"sessions": SESSIONS, "sql": [{"match": "FROM layout WHERE share_id", "rows": [[10]]}]}
+    LOOKUP = "FROM layout WHERE share_id"
+    GROUPS = "FROM layout_group_membership"
+
+    def run(self, layout_row=(10, 1, 0, 0), in_group=False, **query):
+        """layout_row: (id, user_id, is_public, is_domain) of the looked-up layout, or None if unknown."""
+        sql = [{"match": self.LOOKUP, "rows": [list(layout_row)] if layout_row else []}]
+        if in_group:
+            sql.append({"match": self.GROUPS, "rows": [[1]]})
+        return run_cgi("save_user_chosen_layout.cgi", db={"sessions": SESSIONS, "sql": sql}, query=query)
 
     def test_logged_in_user_saves_choice(self):
-        result = run_cgi("save_user_chosen_layout.cgi", db=self.DB, query={"session_id": "owner",
-                                                                         "layout_share_id": "L1"})
+        result = self.run(session_id="owner", layout_share_id="L1")
         assert result.json() == {"success": 1, "message": ""}
-        (lookup,) = result.logged("sql", "FROM layout WHERE share_id")
+        (lookup,) = result.logged("sql", self.LOOKUP)
         assert lookup["params"] == ["L1"]
         (update,) = result.writes()
         assert update["query"] == "UPDATE guser SET layout_id = %s WHERE id = %s"
         assert update["params"] == [10, 1]
         assert result.logged("commit")
 
+    @pytest.mark.parametrize("layout_row", [(20, 9, 1, 0), (21, 9, 0, 1), (22, 9, 1, 1)])
+    def test_public_or_site_layout_of_another_user(self, layout_row):
+        """The collection selectors list public and site (domain) collections, so they can be chosen."""
+        result = self.run(layout_row=layout_row, session_id="owner", layout_share_id="PUB")
+        assert result.json() == {"success": 1, "message": ""}
+        (update,) = result.writes()
+        assert update["params"] == [layout_row[0], 1]
+
+    def test_private_layout_in_users_group(self):
+        """The collection selectors list collections shared with the user's groups, so they can be chosen."""
+        result = self.run(layout_row=(30, 3, 0, 0), in_group=True, session_id="owner", layout_share_id="GRP")
+        assert result.json() == {"success": 1, "message": ""}
+        (group_check,) = result.logged("sql", self.GROUPS)
+        assert group_check["params"] == [30, 1]
+        (update,) = result.writes()
+        assert update["params"] == [30, 1]
+
+    def test_another_users_private_layout_is_refused(self):
+        """Another user's private collection can't be made the user's chosen one, even with its share ID."""
+        result = self.run(layout_row=(40, 3, 0, 0), session_id="owner", layout_share_id="PRIV")
+        body = result.json()
+        assert body["success"] == 0 and "belongs to another user" in body["message"]
+        assert result.writes() == []
+        assert not result.logged("commit")
+
     def test_unknown_layout_clears_the_choice(self):
         """An unknown share ID stores no layout, so get_session_info.v2.cgi falls back to the site default."""
-        result = run_cgi("save_user_chosen_layout.cgi", db={"sessions": SESSIONS},
-                         query={"session_id": "owner", "layout_share_id": "NOPE"})
+        result = self.run(layout_row=None, session_id="owner", layout_share_id="NOPE")
         assert result.json()["success"] == 1
         (update,) = result.writes()
         assert update["params"] == [None, 1]
@@ -246,7 +358,7 @@ class TestSaveUserChosenLayout:
         query = {"layout_share_id": "L1"}
         if session:
             query["session_id"] = session
-        result = run_cgi("save_user_chosen_layout.cgi", db=self.DB, query=query)
+        result = self.run(**query)
         assert result.json() == {"success": 0, "message": "Invalid session_id"}
         assert result.writes() == []
 

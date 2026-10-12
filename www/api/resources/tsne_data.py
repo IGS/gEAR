@@ -640,6 +640,9 @@ def prepare_adata(
         filters (dict, optional): Dictionary mapping observation column names to a list of values to retain. Only observations matching these values are kept. Defaults to None.
     Returns:
         AnnData: The modified AnnData object with updated embeddings, reordered categories, and/or filtered observations.
+    Raises:
+        PlotError: If a saved order or filter names a column that isn't in adata.obs, or a saved order no longer
+            matches a column's categories (the dataset changed after the display was curated).
     """
     # Flip x or y axis if requested
     for key in ["X_tsne", "X_umap", "X_pca"]:
@@ -652,9 +655,9 @@ def prepare_adata(
     # Reorder the categorical values in the observation dataframe
     # Currently in UI only "plot_by_group" has reordering capabilities
     if order:
-        order = order
-        obs_keys = order.keys()
-        for key in obs_keys:
+        for key in order.keys():
+            if key not in adata.obs:
+                raise PlotError(f"Sort order series {key} not found in observation metadata for dataset. Please update curation.")
             col = adata.obs[key]
             try:
                 # Some columns might be numeric, therefore
@@ -663,10 +666,15 @@ def prepare_adata(
                 adata.obs[key] = reordered_col
             except AttributeError:
                 pass
+            except ValueError:
+                # The saved order lists different categories than the dataset now has
+                raise PlotError(f"Sort order for series {key} does not match the categories in the dataset. Please update curation.")
 
     # Filter by obs filters
     if filters:
         for col, values in filters.items():
+            if col not in adata.obs:
+                raise PlotError(f"Filter series {col} not found in observation metadata for dataset. Please update curation.")
             selected_filter = adata.obs[col].isin(values)
             adata = adata[selected_filter, :]
 
@@ -870,9 +878,12 @@ def generate_tsne_figure(
     if expression_min_clip is not None:
         selected = clip_expression_values(selected, min_clip=expression_min_clip)
 
-    selected = prepare_adata(
-        selected, flip_x=flip_x, flip_y=flip_y, order=order, filters=filters
-    )
+    try:
+        selected = prepare_adata(
+            selected, flip_x=flip_x, flip_y=flip_y, order=order, filters=filters
+        )
+    except PlotError as pe:
+        return {"success": -1, "message": str(pe)}
     selected = modify_genes_found_as_obs_columns(selected, list(gene_symbols))
 
     dedup = dedup_genes(selected, ana)
