@@ -28,6 +28,16 @@ def main():
     # NOTE: Not going to add weighted gene and cart info, but may add subclasses in the future
     gc = geardb.GeneCart()
     data = json.load(sys.stdin)
+
+    # Only logged-in users can create gene lists (checked before any cart file is written)
+    user_logged_in = geardb.get_user_from_session_id(data.get("session_id"))
+    if not user_logged_in:
+        print("Status: 500 Internal Server Error")
+        print("Content-Type: application/json\n")
+        print(json.dumps({"message": "No logged-in user detected"}))
+        sys.exit(1)
+    gc.user_id = user_logged_in.id
+
     gc.update_from_json(data)
 
     # Weighted carts also get saved to file

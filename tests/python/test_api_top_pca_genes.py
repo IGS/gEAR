@@ -51,3 +51,47 @@ def test_loadings_saved_to_unsaved_analysis(client, tmp_path, analysis_type):
         "dataset_id": "DS1", "analysis_id": "A1", "analysis_type": analysis_type, "session_id": "owner", "pcs": "1,2"})
     assert response.get_json()["success"] == 1
     assert [Path(p) for p in saved_to] == [tmp_path / "user_unsaved" / "figures"]
+
+
+@pytest.mark.parametrize("pcs", [None, "", "1,x", "1.5,2"])
+def test_missing_or_non_integer_pcs_is_an_error(client, pcs):
+    test_client, saved_to = client
+    form = {"dataset_id": "DS1", "analysis_id": "A1", "analysis_type": "primary", "session_id": "owner"}
+    if pcs is not None:
+        form["pcs"] = pcs
+    response = test_client.post("/analysis/plotTopGenesPCA", data=form)
+    assert response.status_code == 200, response.get_data(as_text=True)
+    assert response.get_json() == {"success": 0, "message": "PCs must be a comma-separated list of integers"}
+    assert saved_to == []
+
+
+@pytest.mark.parametrize("pcs", ["1", "1,2,3,4,5,6"])
+def test_pcs_count_outside_2_to_5_is_an_error(client, pcs):
+    test_client, saved_to = client
+    response = test_client.post("/analysis/plotTopGenesPCA", data={"dataset_id": "DS1", "pcs": pcs})
+    assert response.get_json() == {"success": 0, "message": "Number of PCs must between 2 and 5"}
+    assert saved_to == []
+
+
+def test_missing_or_unknown_dataset(client, monkeypatch):
+    test_client, _saved_to = client
+    response = test_client.post("/analysis/plotTopGenesPCA", data={"pcs": "1,2"})
+    assert response.get_json() == {"success": 0, "message": "Missing dataset_id"}
+    top_pca_genes = sys.modules["resources.top_pca_genes"]
+    monkeypatch.setattr(top_pca_genes.geardb, "get_dataset_by_id", lambda dataset_id: None)
+    response = test_client.post("/analysis/plotTopGenesPCA", data={"dataset_id": "NOPE", "pcs": "1,2"})
+    assert response.get_json() == {"success": 0, "message": "Invalid dataset_id"}
+
+
+def test_unreadable_analysis_is_reported(client, monkeypatch):
+    test_client, saved_to = client
+
+    def broken_analysis(*args, **kwargs):
+        def fail(**kwargs):
+            raise OSError("analysis h5ad is unreadable")
+        return types.SimpleNamespace(get_adata=fail)
+
+    monkeypatch.setattr(sys.modules["resources.top_pca_genes"], "get_analysis", broken_analysis)
+    response = test_client.post("/analysis/plotTopGenesPCA", data={"dataset_id": "DS1", "pcs": "1,2"})
+    assert response.get_json() == {"success": -1, "message": "analysis h5ad is unreadable"}
+    assert saved_to == []

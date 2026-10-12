@@ -1690,7 +1690,8 @@ class AnalysisStepPCA {
             }));
 
             if (!data.success || data.success < 1) {
-                const error = data.error || "Unknown error. Please contact gEAR support.";
+                // The API reports errors in "message"
+                const error = data.message || data.error || "Unknown error. Please contact gEAR support.";
                 throw new Error(error);
             }
 

@@ -53,7 +53,7 @@ Related pages: [API reference](./api_reference.md), [upload pipeline](./upload_p
 
 | Module | Purpose / main contents | Main users |
 |--------|------------------------|------------|
-| `analysis.py` | `Analysis` and `SpatialAnalysis` (path conventions for primary/public/user analyses), `AnalysisCollection`, `H5adAdapter` / `ZarrAdapter` (one interface over `.h5ad` and `.zarr`), and factories `get_analysis()` and `get_primary_analysis()` | many analysis CGIs (`h5ad_generate_*`, `get_stored_analysis.cgi`, `save_dataset_analysis.cgi`, ...), API resources |
+| `analysis.py` | `Analysis` and `SpatialAnalysis` (path conventions for primary/public/user analyses; `base_path` raises `ValueError` for a dataset, analysis or session ID that isn't a plain path component), `AnalysisCollection`, `H5adAdapter` / `ZarrAdapter` (one interface over `.h5ad` and `.zarr`), and factories `get_analysis()` and `get_primary_analysis()` | many analysis CGIs (`h5ad_generate_*`, `get_stored_analysis.cgi`, `save_dataset_analysis.cgi`, ...), API resources |
 | `anndata_processor.py` | `AnndataProcessor` converts uploads (H5AD, 3-tab, Excel, MEX, Seurat RDS) to H5AD. `process_anndata_synchronously()` and `write_status()` | `process_uploaded_expression_dataset.cgi`, `listeners/anndata_upload_consumer.py`, `spatial_processor.py` |
 | `cosmx_reader.py` | `read_cosmx()` reads CosMx data in chunks, adapted from `spatialdata_io` so large expression matrices do not run out of memory | `spatialhandler.py` (`CosMxHandler`) |
 | `db.py` | `MySQLDB.connect()` builds a `mysql.connector` connection from the `[database]` section of `gear.ini` | `geardb.Connection`, a few `bin/` scripts |

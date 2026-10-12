@@ -717,12 +717,9 @@ def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
     # Rename to end the confusion
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-    if isinstance(ana, SpatialAnalysis):
-        dedup_copy = str(ana.dataset_path).replace(".zarr", ".dups_removed.h5ad")
-    else:
-        dedup_copy = str(ana.dataset_path).replace(".h5ad", ".dups_removed.h5ad")
-
-    dedup_copy = Path(dedup_copy)
+    # Swap the suffix rather than replacing ".zarr"/".h5ad": a non-primary SpatialAnalysis is an .h5ad,
+    #  and a copy path equal to the dataset path would delete the dataset during cleanup
+    dedup_copy = Path(ana.dataset_path).with_suffix(".dups_removed.h5ad")
 
     success = 1
     message = ""

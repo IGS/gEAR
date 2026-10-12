@@ -14,8 +14,10 @@ This page covers the automated tests in the repository: the server-side pytest s
 The suite covers:
 
 - **CGI scripts**, run against a fake database.
-- **Flask API resources**, through Flask's test client.
+- **Flask API resources**, through Flask's test client, plus the helper functions inside them.
 - **Upload processors** (`gear.anndata_processor`, `gear.spatial_processor`, `gear.spatialhandler`), using the real example files in `www/user_templates/`.
+- **Library helpers** in `lib/gear/` (plotting, metadata validation, track hubs, job coordination, obs handling, full-text search).
+- **Regressions:** tests for closed GitHub issues, one class per issue or area, so a fixed bug stays fixed.
 - **Guards:** every server-side Python file parses, `openapi.yaml` validates, and relative Markdown links resolve.
 
 ### Layout
@@ -26,13 +28,15 @@ The suite covers:
 | `helpers/cgi_harness.py` | `run_cgi(...)` runs a CGI in a subprocess and returns a `CGIResult` |
 | `helpers/run_cgi.py` | Runner used by `run_cgi`: installs the fake `geardb`, then runs the script as `__main__` |
 | `helpers/fake_geardb.py` | Spec-driven stand-in for `lib/geardb.py` that logs every SQL statement, commit and save |
-| `fakes/` | Small fake modules for individual tests, such as a `gear.analysis` that returns a synthetic AnnData |
-| `test_cgi_*.py` | CGI tests, grouped by area (uploads, collections, datasets, accounts, downloads, gene lists and search, comparison) |
-| `test_api_*.py` | Flask resources (`Aggregations`, `TrackHubCopy`) and static tSNE/UMAP category colors |
-| `test_anndata_processor.py`, `test_spatial.py` | Upload processing, including cancellation when an upload is deleted mid-job |
+| `fakes/` | Small modules swapped in with `fake_modules=`, named after the tests that use them (`accounts_*`, `cgi_acct_*`, `cgi_wb_*` for the workbench, `guards_*`, `regress_*`, ...). Most are fakes, such as a `gear.analysis` that returns a synthetic AnnData or a `requests` that never touches the network. `cgi_wb_real_analysis.py` and `regress_analysis.py` instead load the real `gear.analysis` with its root directory moved into a temporary tree, so path handling is tested against the real code. |
+| `test_cgi_*.py` | CGI tests, grouped by area: uploads and upload path guards (`uploads`, `upload_guards`), collections and displays (`collections`, `layout_pages`), datasets and downloads, accounts and login (`accounts`, `account_pages`, `auth`), gene lists and search (`gene_lists_search`, `gene_list_edits`), the workbench (`analysis_info`, `workbench_steps`), comparison, small lookups (`misc_lookups`, `misc_guards`) and `regressions` |
+| `test_api_*.py` | Flask resources and their helpers: aggregations, upload status (`dataset_processing`), track hub import and Gosling specs, orthologs, plotly NA groups, projectR helpers, top PCA genes, tSNE colors and helpers, spatial helpers, a group of small resources (`resources_small`: analyses, genes, HiGlass, SVG, ...) and `regressions` |
+| `test_anndata_processor.py`, `test_spatial.py`, `test_job_coordination.py` | Upload processing, including cancellation when an upload is deleted mid-job, and the job lock/attempt helpers |
+| `test_plotting_helpers.py`, `test_mg_plotting_helpers.py`, `test_metadata_validator.py`, `test_trackhub.py`, `test_utils_obs.py`, `test_fulltext.py`, `test_colorblind.py`, `test_spatial_colors.py`, `test_analysis_paths.py` | Library helpers in `lib/gear/` and the spatial service |
+| `test_regressions_*.py` | Regression tests for closed issues in library code (`lib`, `metadata`, `orthology`, `plotting`) |
 | `test_geardb_helpers.py` | Helpers in the real `geardb` module |
 | `test_syntax.py`, `test_docs.py` | Guards |
-| `requirements.txt`, `requirements-spatial.txt` | Pinned to the production versions in `docker/requirements.txt` |
+| `requirements.txt`, `requirements-spatial.txt` | Pinned to the production versions in `docker/requirements.txt`. `requirements.txt` includes `tables` (PyTables), which `gear.orthology` needs to read the pandas HDF5 ortholog files in the orthology tests. |
 
 > **Note:** some modules query the database when imported (for example `gear.orthology`). `conftest.py` patches `gear.db.MySQLDB.connect` so the real modules can be imported without a database or `gear.ini`.
 
@@ -49,6 +53,8 @@ python -m pytest -m spatial         # only the tests marked "spatial"
 python -m pytest -m "not spatial"   # everything except the tests marked "spatial"
 python -m pytest test_cgi_downloads.py -k owner -v
 ```
+
+The full suite takes several minutes. Most of that is the workbench CGI tests (`test_cgi_workbench_steps.py`): each CGI runs in its own subprocess and imports scanpy. Select a single file or use `-k` while iterating.
 
 The CGI tests create and remove their own directories under `www/uploads/files/` and files under `www/carts/`; both folders are gitignored.
 
@@ -168,4 +174,4 @@ These suites are not maintained. They're kept for reference, especially the note
 
 ---
 
-Last updated: September 2026
+Last updated: October 2026

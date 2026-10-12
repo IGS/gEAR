@@ -38,14 +38,25 @@ This API request will take a selection of genes and create a matplotlib figure w
 
 """
 
+def sort_clusters(clusters) -> list:
+    """
+    Sort clusters by number if numerical, otherwise by name (as in spatialpanel.sort_clusters).
+    """
+    try:
+        return sorted(clusters, key=lambda x: int(x))
+    except (TypeError, ValueError):
+        return sorted(clusters, key=str)
+
 def map_colors(adata):
     """
     Store a color per cluster in adata.uns["clusters_colors"], using obs "colors" if present.
+
+    The "clusters" categories are reordered to the sorted order, since scanpy pairs the colors
+    in uns with the categories by position.
     """
-    # Assuming df is your DataFrame and it has a column "clusters"
-    unique_clusters = adata.obs["clusters"].unique()
-    # sort unique clusters by number
-    unique_clusters = sorted(unique_clusters, key=lambda x: int(x))
+    clusters = adata.obs["clusters"].astype("category").cat.remove_unused_categories()
+    unique_clusters = sort_clusters(clusters.cat.categories)
+    adata.obs["clusters"] = clusters.cat.reorder_categories(unique_clusters)
     color_map = None
     if "colors" in adata.obs.columns:
         color_map = {cluster: adata.obs[adata.obs["clusters"] == cluster]["colors"].values[0] for cluster in unique_clusters}

@@ -38,6 +38,9 @@ def main():
     if user is None:
         error = "Not able to add to the layout. User must be logged in."
         result['error'] = error
+    elif user.id != layout.user_id:
+        # Checked before the legacy rebuild below, which saves the layout's members
+        result['error'] = "Not able to add to the profile. User doesn't own it"
     else:
         # Determine if we are in "legacy" mode where every member start_col is 1
         legacy = False
@@ -94,8 +97,7 @@ def main():
 
                 start_col_grid_heights = [m.grid_height for m in members_to_use if m.start_row == row_to_insert and m.start_col == 1]
                 if len(start_col_grid_heights) > 0:
-                    grid_height = start_col_grid_heights[0]
-                    row_to_insert += grid_height
+                    row_to_insert += start_col_grid_heights[0]
 
                 col_to_insert = 1
 

@@ -31,9 +31,11 @@ def main():
       default_display_id = geardb.get_default_display(
         user_id=user.id, dataset_id=dataset_id, is_multigene=is_multigene
 )
+    dataset = None
     if default_display_id is None:
-      # User owner's default
       dataset = geardb.get_dataset_by_id(d_id=dataset_id)
+    if dataset is not None:
+      # User owner's default
       default_display_id = geardb.get_default_display(
         user_id=dataset.owner_id
         , dataset_id=dataset_id

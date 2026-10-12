@@ -1,6 +1,7 @@
 """Regression tests for closed GitHub issues in gear.analysis and gear.anndata_processor."""
 
 import json
+import types
 
 import gear.anndata_processor as ap
 import pandas as pd
@@ -76,3 +77,39 @@ def test_expression_matrix_with_invisible_characters_is_read_with_cleanup(tmp_pa
     processor = ap.AnndataProcessor("job-1", "SHARE", staging, staging / "status.json", "DS")
     x = processor._read_expression_matrix_chunks(matrix, chunk_size=1, total_rows=2).toarray()
     assert x.tolist() == [[4.662665156, 0.0, 6.455984369], [1.5, 2.0, 0.0]]
+
+
+# ---------------------------------------------------------------- UserHistory.get_latest_entries
+
+class _Cursor:
+    def __init__(self):
+        self.calls = []
+
+    def execute(self, qry, args):
+        self.calls.append((" ".join(qry.split()), list(args)))
+
+    def __iter__(self):
+        return iter([("2026-10-01", "gene_search", "Sox2", "/p?g=Sox2")])
+
+
+@pytest.mark.parametrize("category, expected_where, expected_args", [
+    (None, "WHERE user_id = %s ORDER BY", [7, 5]),
+    ("gene_search", "WHERE user_id = %s AND entry_category = %s ORDER BY", [7, "gene_search", 5]),
+])
+def test_latest_entries_query(category, expected_where, expected_args):
+    """The category filter goes before ORDER BY (it was appended after it, which is invalid SQL),
+    filters on the requested category, and LIMIT is a query parameter."""
+    from gear.userhistory import UserHistory
+
+    cursor = _Cursor()
+    history = UserHistory.__new__(UserHistory)
+    history.user_id = 7
+    history.entry_category = None
+    history.connection = types.SimpleNamespace(get_cursor=lambda: cursor)
+
+    entries = history.get_latest_entries(entry_category=category)
+
+    ((qry, args),) = cursor.calls
+    assert expected_where in qry and qry.endswith("ORDER BY entry_date DESC LIMIT %s")
+    assert args == expected_args
+    assert [e.label for e in entries] == ["Sox2"]

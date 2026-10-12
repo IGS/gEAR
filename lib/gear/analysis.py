@@ -48,6 +48,12 @@ def _log_path(message: str, path) -> None:
 # you can use the adapters directly (H5adAdapter or ZarrAdapter)
 
 
+def _is_plain_name(value) -> bool:
+    """True if value can be used as a single path component (no separators, not "." or "..")."""
+    value = str(value)
+    return value not in ("", ".", "..") and not any(ch in value for ch in ("/", "\\", "\0"))
+
+
 def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | None, is_spatial: bool = False) -> "SpatialAnalysis | Analysis":
     """
     Retrieves an analysis object (either SpatialAnalysis or Analysis) based on the provided analysis data, dataset ID, and session ID.
@@ -263,7 +269,15 @@ class Analysis:
         """
         Returns the base directory path for an analysis, based on its actual type.  This allows for the support
         of parallel types 'primary', 'public', 'user_saved', 'user_unsaved'
+
+        Raises:
+            ValueError: If the dataset, analysis or session ID is not a plain name (e.g. "../../2/<dataset>/<id>"),
+                which would otherwise reach another user's analyses.
         """
+        for label, value in (("dataset", self.dataset_id), ("analysis", self.id), ("session", self.session_id)):
+            if value is not None and not _is_plain_name(value):
+                raise ValueError(f"Invalid {label} ID.")
+
         if self.type == "primary":
             return self.primary_path
 

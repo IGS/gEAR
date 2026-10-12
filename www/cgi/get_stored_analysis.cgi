@@ -51,15 +51,15 @@ def main():
         print(json.dumps(result))
         return
 
-    # try to read the analysis object and raise exception if FileNotFoundError
-
+    # The analysis prints as its pipeline JSON. Read it before printing the header, so a missing
+    #  pipeline file gives one JSON error rather than a second header inside the body
     try:
-        print('Content-Type: application/json\n\n')
-        print(ana)
+        analysis_json = str(ana)
     except FileNotFoundError:
-        print('Content-Type: application/json\n\n')
-        print('{"error": "Analysis config file not found"}')
-        return
+        analysis_json = json.dumps({"success": 0, "error": "Analysis config file not found"})
+
+    print('Content-Type: application/json\n\n')
+    print(analysis_json)
 
 if __name__ == '__main__':
     main()

@@ -113,7 +113,7 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 
 ### Testing
 
-- **Server-side tests (pytest, run in CI):** `tests/python/` covers CGI scripts (against a fake database), Flask API resources, the upload processors, and docs checks. No live server or MySQL is needed.
+- **Server-side tests (pytest, run in CI):** `tests/python/` covers CGI scripts (against a fake database), Flask API resources, the upload processors, `lib/gear` helpers, regression tests for closed issues, and docs checks. No live server or MySQL is needed. A full run takes several minutes, mostly in the workbench CGI tests.
 
   ```bash
   pip install -r tests/python/requirements.txt

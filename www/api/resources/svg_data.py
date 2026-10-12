@@ -39,9 +39,17 @@ class SvgData(Resource):
         vmin = request.args.get('vmin', None)
         vmax = request.args.get('vmax', None)
 
-        add_user_defined = False
-        if vmax is not None or vmin is not None:
-            add_user_defined = True
+        # A blank value is the same as not sending it
+        try:
+            vmin = float(vmin) if vmin not in (None, "") else None
+            vmax = float(vmax) if vmax not in (None, "") else None
+        except ValueError:
+            return {
+                "success": -1,
+                "message": "The vmin and vmax parameters must be numbers."
+            }
+
+        add_user_defined = vmax is not None or vmin is not None
 
         if expression_min_clip is not None:
             try:
@@ -160,14 +168,14 @@ class SvgData(Resource):
 
         if add_user_defined:
             # If either vmin or vmax is None, set to the min/max of the data
-            # Also check if vmax is 0.0, which is the default value sent from the client
-            if vmin is None or vmin == "0":
+            # Also check if vmax is 0, which is the default value sent from the client
+            if vmin is None or vmin == 0:
                 vmin = 0.0
-            if vmax is None or vmax == "0":
+            if vmax is None or vmax == 0:
                 vmax = scores["gene"]["max"]
             scores["user_defined"] = {
-                "min": float(vmin),
-                "max": float(vmax)
+                "min": vmin,
+                "max": vmax
             }
 
 

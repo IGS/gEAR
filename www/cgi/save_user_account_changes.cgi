@@ -113,6 +113,10 @@ def main():
 
             field_values.append(encoded_pass)
 
+            # Replace the help_id too, so a password-reset link sent earlier stops working
+            mid_query_settings.append(" help_id = %s")
+            field_values.append(str(uuid.uuid4()))
+
         # Build the "SET" values query
         if len(field_values):
 

@@ -58,6 +58,6 @@ class GeneSymbols(Resource):
 
         return {
             "success": 1,
-            # Convert from categorical to string, and fill in NaN values
-            "gene_symbols": adata.var.gene_symbol.astype(str).fillna("None").tolist()
+            # Fill in NaN values, then convert from categorical to string
+            "gene_symbols": adata.var.gene_symbol.astype(object).fillna("None").astype(str).tolist()
         }

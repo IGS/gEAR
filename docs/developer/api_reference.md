@@ -107,7 +107,7 @@ JSON body keys:
 | `gene_symbol` | Required. |
 | `plot_type` | See above. |
 | `analysis` | Analysis dict or ID. Omit to use the primary dataset. |
-| `x_axis`, `y_axis` (default `raw_value`), `z_axis` | Obs columns. For `contour`, `z_axis` defaults to `raw_value`. |
+| `x_axis`, `y_axis` (default `raw_value`), `z_axis` | Obs columns. `x_axis` and `y_axis` may also be an analysis embedding axis (`X_tsne_1/2`, `X_umap_1/2`, `X_pca_1/2`), read from the matching `adata.obsm` array; each axis is resolved on its own. For `contour`, `z_axis` defaults to `raw_value`. |
 | `point_label`, `color_name`, `colors`, `color_palette`, `reverse_palette`, `colorblind_mode` | Color settings. |
 | `facet_row`, `facet_col`, `order`, `size_by_group`, `marker_size` (default 3), `jitter` | Layout settings. |
 | `x_min`, `x_max`, `y_min`, `y_max`, `x_title`, `y_title`, `vlines` | Axis settings. |
@@ -135,6 +135,8 @@ Builds a multi-gene Plotly figure. The `plot_type` values handled are `dotplot`,
 | Quadrant | `compare1_condition`, `compare2_condition`, `fold_change_cutoff` (default 2), `fdr_cutoff` (default 0.05), `include_zero_fc` |
 | Violin | `stacked_violin`, `violin_add_points` |
 
+The numeric volcano and quadrant options accept numbers or numeric strings. An empty string or `null` uses the default, and anything else returns `success: -1` with `"Option '<name>' must be a number, not '<value>'."`. Conditions must be `"<obs column>;-;<value>"`, and the three quadrant conditions must use the same column. An `"NA"` value in `obs_filters` selects observations with a missing value. If the other filters leave a chosen sort-column level with no data, the message is `"No data found for the selected filters (<column>: <levels>). Try removing some filters."`.
+
 Response: `{success, message, plot_json}`, or `{success, message, image, image_format: "pdf"}` when `return_image` is set. A `MemoryError` returns HTTP 500.
 
 ### TSNEData and MGTSNEData: `POST /plot/<dataset_id>/tsne` and `/plot/<dataset_id>/mg_tsne`
@@ -153,7 +155,9 @@ Returns expression values for coloring SVG anatomy images. This endpoint reads t
 
 Query args: `gene` (required), `projection_id`, `expression_min_clip`, `vmin`, `vmax`.
 
-Response: `success` (`2` if the symbol maps to several Ensembl IDs), `message`, `scores` (keys `dataset`, `gene`, `tissue`, plus `user_defined` when `vmin` or `vmax` is given), and the expression dataframe spread as top-level keys (`data` plus obs columns). When a `cell_type` column exists, the dataframe gains `<cell_type>--mean` rows.
+`vmin` and `vmax` must be numbers: a non-numeric value returns `success: -1` ("The vmin and vmax parameters must be numbers."), and an empty value is ignored. A `vmin` of 0 means 0, and a `vmax` of 0 means the gene's maximum.
+
+Response: `success` (`2` if the symbol maps to several Ensembl IDs), `message`, `scores` (keys `dataset`, `gene`, `tissue`, plus `user_defined` when a non-empty `vmin` or `vmax` is given), and the expression dataframe spread as top-level keys (`data` plus obs columns). When a `cell_type` column exists, the dataframe gains `<cell_type>--mean` rows.
 
 ### GoslingSpec: `GET /plot/<dataset_id>/gosling`
 
@@ -161,7 +165,9 @@ Fetches a UCSC-style track hub and builds a Gosling visualization spec (BAM, BED
 
 Query args: `gene`, `assembly` and `hub_url` (all required), `zoom` (`"true"` or `"false"`), and `colorblind_mode` (`"true"` or `"false"`). Colorblind mode uses `cividis` for the Hi-C colorscale and colorcet glasbey_cool colors for gene strands and, in place of the hub's colors, for every data track (assigned in hub order).
 
-Response: `{success, spec, position, message, hic_found}`. `position` is `chr:start-end`, or `NA` if the gene was not located. Errors: 400 for a missing parameter or a hub fetch/parse failure, 404 if the dataset is not found. `post`, `put` and `delete` exist on the class but are empty stubs.
+`hub_url` must be http or https, and its host must be the configured domain's hostname or a subdomain of it (in development, also `umgear.org`, `web`, `localhost` and `127.0.0.1`). An IP address is allowed only if it is listed exactly; other private, loopback or link-local addresses, and other public IPs, are rejected.
+
+Response: `{success, spec, position, message, hic_found}`. `position` is `chr:start-end`, or `NA` if the gene was not located. Errors: 400 for a missing parameter, a rejected `hub_url`, or a hub fetch/parse failure; 404 if the dataset is not found. `post`, `put` and `delete` exist on the class but are empty stubs.
 
 ### SpatialPanel: `POST /plot/<dataset_id>/spatialpanel`
 
@@ -171,7 +177,7 @@ JSON body keys: `gene_symbol` (a gene, or a pattern name when projecting), `proj
 
 Side effects: writes `<gene_symbol>.csv` (or `<projection_id>_<gene_symbol>.csv`), `spatial_img_<channel>.npy`, `spatial_props.json` and, on image failure, `image_extraction_error.log` under `www/cache/spatial_panel/<dataset_id>/`.
 
-Response: `{script, success, message}`. Failures return `success: 0` with the error in `message`.
+Response: `{script, success, message}`. Failures return `success: 0` with the error in `message`. `dataset_id` and `projection_id` must be plain file names (unchanged by `secure_filename`), and `gene_symbol` is required and may not contain a path separator. These checks run before the cache directory is created.
 
 ### SpatialScanpyData: `POST /plot/<dataset_id>/spatial_scanpy`
 
@@ -185,7 +191,7 @@ Response: `{success, message, image}`. The image is base64 WebP, or PNG when `hi
 
 ### HiGlassGene: `GET /higlass/genes/<gene_symbol>`
 
-Query arg: `assembly`, which must be a key of `ANNOTATION_BEDDB_UID` (`danRer10`, `hg19`, `hg38`, `mm10`, `mm39`, `rn6`). The handler queries `HIGLASS_URL/suggest/` and returns the matching entry as-is (`chr`, `txStart`, `txEnd`, `score`, `geneName`). It prefers an exact case-insensitive match and falls back to the first hit. It returns `null` when HiGlass has no results. An unsupported assembly raises `ValueError`, which surfaces as HTTP 500.
+Query arg: `assembly`, which must be a key of `ANNOTATION_BEDDB_UID` (`danRer10`, `hg19`, `hg38`, `mm10`, `mm39`, `rn6`). The handler queries `HIGLASS_URL/suggest/` and returns the matching entry as-is (`chr`, `txStart`, `txEnd`, `score`, `geneName`). It prefers an exact case-insensitive match and falls back to the first hit. The gene name is sent URL-encoded as a query parameter. It returns `null` when HiGlass has no results or the request fails. A missing or unsupported assembly returns HTTP 400 `{"success": -1, "message": "Assembly <assembly> is not supported or does not have a BEDdb UID."}`.
 
 ## ProjectR resources
 
@@ -241,13 +247,13 @@ Notes:
 
 Maps the requested gene symbols to the symbols present in the dataset, using ortholog files for the gene and dataset organisms.
 
-JSON body keys: `gene_symbols` (required list), `analysis` (dict, its `id` is used), `gene_organism_id`, and `exclusive_org` (`"true"` or `"false"`, default `"false"`). When false, the handler also checks other organisms.
+JSON body keys: `gene_symbols` (required list), `analysis` (dict, its `id` is used), `gene_organism_id`, and `exclusive_org` (a JSON boolean or the string `"true"`/`"false"`, default false; `null` is false). When false, the handler also checks other organisms.
 
 Response: `{"success": 1, "mapping": {<input symbol>: [<dataset symbols>]}}` with HTTP 200. Errors return HTTP 400 as `{"error": ...}`: invalid JSON, no gene symbols, dataset not found, or dataset has no organism. File-load errors also return 400 but in the form `{"success": -1, "message": ...}`. A `MemoryError` returns 500.
 
 ## Import resources
 
-These endpoints support the dataset upload workflow. See [upload_pipeline.md](./upload_pipeline.md). Both use the per-user staging area `www/uploads/files/<session_id>/<share_uid>/`, and both return 401 if the `gear_session_id` cookie does not resolve to a user.
+These endpoints support the dataset upload workflow. See [upload_pipeline.md](./upload_pipeline.md). Both use the per-user staging area `www/uploads/files/<session_id>/<share_uid>/`, and both return 401 if the `gear_session_id` cookie does not resolve to a user. Because `share_uid` and the session ID become directory names, both endpoints reject values that are not plain names: an invalid `share_uid` returns 400 "Invalid share ID", and a malformed session ID returns 401.
 
 ### TrackHubCopy: `POST /import/trackhub/<share_uid>/copy`
 
@@ -267,13 +273,13 @@ The handler writes `status.json` in the staging area, sets `dataset_format: "gos
 
 The single status-polling endpoint for expression, spatial and track hub uploads. The optional JSON body key is `dataset_format` (for example `expression`, `spatial` or `gosling`).
 
-The handler returns the staging `status.json` with HTTP 200 and sets `progress` to 100 when the status is complete. While the status is `processing` (and the format is not `gosling`), it checks that the recorded `job_id` exists, or else that the legacy `process_id` is still alive (`ps -p`). If both checks fail, it returns HTTP 400 with `status: "error"`. Other errors are returned as `{success: false, message, status: "error", progress: 0}` with HTTP 401 (invalid session) or 404 (no status file).
+The handler returns the staging `status.json` with HTTP 200 and sets `progress` to 100 when the status is complete. While the status is `processing` (and the format is not `gosling`), it checks that the recorded `job_id` exists, or else that the legacy `process_id` is still alive (`ps -p`). If both checks fail, it returns HTTP 400 with `status: "error"`. Other errors are returned as `{success: false, message, status: "error", progress: 0}` with HTTP 400 (`share_uid` with characters other than letters, digits, `_` and `-`), 401 (missing, malformed or unknown session) or 404 (no status file).
 
 ## Other resources
 
 ### TopPCAGenes: `POST /analysis/plotTopGenesPCA`
 
-Used by the single-cell workbench. The request is **form-encoded**: `dataset_id`, `session_id`, `analysis_id`, `analysis_type`, and `pcs` (comma-separated, 2 to 5 components). The handler runs `sc.pl.pca_loadings` and saves the PNG into the `figures/` subdirectory next to the analysis h5ad; for a `primary` or `public` analysis that is the `user_unsaved` copy, where `get_analysis_image.cgi` looks. Response: `{"success": 1}`. Failures return `success: 0` (validation) or `success: -1` (load or plot errors) with a `message`.
+Used by the single-cell workbench. The request is **form-encoded**: `dataset_id`, `session_id`, `analysis_id`, `analysis_type`, and `pcs` (comma-separated, 2 to 5 components). The handler runs `sc.pl.pca_loadings` and saves the PNG into the `figures/` subdirectory next to the analysis h5ad; for a `primary` or `public` analysis that is the `user_unsaved` copy, where `get_analysis_image.cgi` looks. Response: `{"success": 1}`. Failures return `success: 0` (validation, including `"PCs must be a comma-separated list of integers"` for a missing or non-integer `pcs`) or `success: -1` (load or plot errors) with a `message`, all with HTTP 200.
 
 ### DatasetDisplay: `GET /displays/<display_id>`
 
@@ -294,11 +300,11 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `get_session_info.v2.cgi` | Return full user record for a session | session_id |
 | `get_user_history_entries.cgi` | Return the user's most recent history entries | session_id, num_entries |
 | `login.cgi` | Log in with email/password and return a session_id (0/-1 on failure) | user_email, user_pass |
-| `login.v2.cgi` | Log in (v2 form field names) and return a session_id | user-email, user-password |
+| `login.v2.cgi` | Log in (v2 form field names) and return a session_id (-1 for both an unknown email and a wrong password) | user-email, user-password |
 | `save_user_account_changes.cgi` | Change password (via help_id) or account settings | scope, help_id, session_id, new_password, email, institution, colorblind_mode, want_updates |
 | `save_user_default_organism.cgi` | Save the user's default organism | session_id, default_org_id |
 | `send_email.cgi` | Send forgot-password or user-verification email | email, scope, destination_page, verification_code_long |
-| `update_password.cgi` | Update a user's password | help_id, password |
+| `update_password.cgi` | Reset a user's password from a reset link; the help_id is then replaced, so each link works once | help_id, password |
 | `validate_help_id.cgi` | Validate a password-reset help_id and return the user name | help_id |
 
 ### Datasets
@@ -358,7 +364,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `remove_gene_cart.cgi` | Delete an owned gene cart | session_id, share_id |
 | `save_genecart_changes.cgi` | Edit metadata of an owned gene cart | session_id, gc_id, visibility, organism_id, title, ldesc |
 | `save_new_genecart_form.cgi` | Create a new gene cart from form data (pasted or uploaded genes) | session_id, new_cart_label, new_cart_organism_id, new_cart_ldesc, is_public, new_cart_upload_type, new_cart_pasted_genes |
-| `save_new_genecart_json.cgi` | Create a new gene cart from JSON on stdin (weighted carts saved to file) | JSON body: GeneCart fields (session_id, label, genes, gctype, weight_labels, ...) |
+| `save_new_genecart_json.cgi` | Create a new gene cart from JSON on stdin (requires a logged-in session_id; weighted carts saved to file) | JSON body: GeneCart fields (session_id, label, genes, gctype, weight_labels, ...) |
 
 ### Search
 
@@ -373,7 +379,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | Script | Purpose | Key parameters |
 |---|---|---|
 | `copy_dataset_analysis.cgi` | Copy or move a stored analysis between analysis classes (unsaved/saved/public) | session_id, dataset_id, source_analysis_id, source_analysis_type, dest_analysis_id, dest_analysis_type |
-| `delete_dataset_analysis.cgi` | Delete a user's stored (non-primary) analysis | session_id, dataset_id, analysis_id, analysis_type |
+| `delete_dataset_analysis.cgi` | Delete one of the user's own analyses (`user_saved` or `user_unsaved`, by plain UUID only) | session_id, dataset_id, analysis_id, analysis_type |
 | `get_PCs_from_anndata.cgi` | Return principal component loadings (varm) for an analysis as JSON | session_id, dataset_id, analysis_id, analysis_type |
 | `get_analysis_image.cgi` | Stream a plot image generated by an analysis step; with colorblind_mode, serves `<analysis_name>_colorblind.png` when the step saved one | session_id, dataset_id, analysis_id, analysis_type, analysis_name, colorblind_mode |
 | `get_dataset_comparison.cgi` | Compare expression between two conditions (fold change, p-values, filters) | dataset_id, compare_key, condition_x, condition_y, obs_filters, fold_change_cutoff, std_dev_num_cutoff, log_transformation, statistical_test |
@@ -390,7 +396,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `h5ad_identify_variable_genes.cgi` | Normalize/log and flag highly variable genes | analysis_id, analysis_type, dataset_id, session_id, norm_counts_per_cell, flavor, n_top_genes, min_mean, max_mean, min_dispersion, regress_out, scale_unit_variance, save_dataset |
 | `h5ad_preview_primary_filter.cgi` | Check that pre-generated pre-filter composition plots exist | analysis_id, analysis_type, dataset_id, session_id |
 | `h5ad_qc_by_mito.cgi` | QC cells by mitochondrial gene content and optionally filter | analysis_id, analysis_type, dataset_id, session_id, genes_prefix, filter_mito_perc, filter_mito_count, save_dataset |
-| `save_dataset_analysis.cgi` | Save the JSON state of an analysis pipeline | session_id, dataset_id, analysis_id, analysis_type, analysis_vetting, state, label |
+| `save_dataset_analysis.cgi` | Save the JSON state of one of the user's own analyses (`user_saved` or `user_unsaved`, by plain UUID only) | session_id, dataset_id, analysis_id, analysis_type, analysis_vetting, state, label |
 
 ### Uploads
 
@@ -437,4 +443,4 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 
 ---
 
-Last updated: September 2026
+Last updated: October 2026
