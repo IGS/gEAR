@@ -116,7 +116,7 @@ def _validate_hub_url(hub_url: str) -> None:
 
         # Allow internal Docker service name in development only
         if os.getenv("ENVIRONMENT", "production").lower() == "development":
-            allowed_domains.extend("umgear.org")    # A lot of testable data is on the main gEAR server
+            allowed_domains.append("umgear.org")    # A lot of testable data is on the main gEAR server
             allowed_domains.extend(["web", "localhost", "127.0.0.1"])
 
         parsed = urlparse(hub_url)
@@ -140,8 +140,9 @@ def _validate_hub_url(hub_url: str) -> None:
             if "does not appear to be" not in error_msg and "is not a valid" not in error_msg:
                 raise
 
-            # Check against whitelist (case-insensitive)
-            if not any(hostname.lower().endswith(domain.lower()) for domain in allowed_domains):
+            # Check against whitelist (case-insensitive): the domain itself or a subdomain of it
+            host = hostname.lower()
+            if not any(host == d.lower() or host.endswith("." + d.lower()) for d in allowed_domains):
                 raise ValueError(f"Hub domain '{hostname}' is not in the allowed list.")
 
     except ValueError:
@@ -222,7 +223,7 @@ def build_assembly_array(assembly) -> list:
     Builds a 2D array of chromosome names and sizes for a given genome assembly.
     Given an assembly identifier (e.g., 'hg38', 'mm10'), this function retrieves the corresponding chromosome sizes file,
     parses its contents, and returns a list of [chromosome, size] pairs. The chromosome sizes file is expected to be
-    tab-delimited with at least three columns, where the first column is the chromosome name and the third column is the size.
+    whitespace-delimited, where the first column is the chromosome name and the last column is the size. Blank lines are skipped.
     Args:
         assembly (str): The genome assembly identifier (e.g., 'hg38', 'mm10').
     Returns:
@@ -240,7 +241,7 @@ def build_assembly_array(assembly) -> list:
     # Strip out the port so we can use requests.get on it.
     genomes_base_url = GENOMES_ROOT
 
-    chromosome_sizes_url = genomes_base_url + "/" + assembly + "/" + chromosome_sizes_name
+    chromosome_sizes_url = f"{genomes_base_url}{assembly}/{chromosome_sizes_name}"
     if not chromosome_sizes_url:
         raise ValueError(f"Chromosome sizes URL for assembly {assembly} is not valid.")
 
@@ -254,10 +255,11 @@ def build_assembly_array(assembly) -> list:
         )
 
     for line in response.text.splitlines():
-        chromosome, size = line.strip().split(
-            "\t"
-        )  # my chrom sizes file has 0 in the middle column
-        assembly_array.append([chromosome, int(size)])
+        fields = line.split()
+        if not fields:
+            continue
+        # The size is the last column (older files had a 0 in a middle column)
+        assembly_array.append([fields[0], int(fields[-1])])
     return assembly_array
 
 

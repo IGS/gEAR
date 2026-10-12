@@ -7,6 +7,7 @@ spatial, and track hub (Gosling) uploads.
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,9 @@ from flask import request
 from flask_restful import Resource
 
 user_upload_file_base = Path(__file__).resolve().parents[3] / 'www' / 'uploads' / 'files'
+
+# share_uid and the session ID become directory names, so they must be plain names (no dots or separators)
+SAFE_PATH_COMPONENT = re.compile(r'[A-Za-z0-9_-]+')
 
 def _check_process_running(status_data: dict) -> None:
     """
@@ -85,6 +89,12 @@ class DatasetProcessingStatus(Resource):
         session_id = request.cookies.get('gear_session_id', "")
         req = request.get_json() or {}
         dataset_format = req.get("dataset_format", "")  # e.g. "expression", "spatial", "gosling"
+
+        if not SAFE_PATH_COMPONENT.fullmatch(share_uid):
+            return _error_response('Invalid share ID', 400)
+
+        if not SAFE_PATH_COMPONENT.fullmatch(session_id):
+            return _error_response('Invalid session', 401)
 
         user = geardb.get_user_from_session_id(session_id)
         if not user:

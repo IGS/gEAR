@@ -237,8 +237,7 @@ def _build_priority_groups(
 def _determine_annotation_shift(ds: pd.Series) -> int:
     """Determine number of pixels to shift annotation based on longest entry in dataseries."""
     if _is_categorical(ds):
-        ds_list = ds.unique().tolist()
-        longest_entry = len(max(ds_list, key=len))
+        longest_entry = max((len(str(v)) for v in ds.unique()), default=0)
         return -(longest_entry * 3 + 30)
     else:
         return -30
@@ -257,6 +256,10 @@ def _translate_and_scale(series: pd.Series, x: str) -> float:
     # These were arbitrarily chosen. At least 1 will be added to the final total based on marker size increase
     NEW_MIN = 0
     NEW_MAX = 9
+
+    # All values equal: no range to scale across, so give every point the same size
+    if unscaled_max == unscaled_min:
+        return NEW_MIN
 
     return (
         (NEW_MAX - NEW_MIN) * (x - unscaled_min) / (unscaled_max - unscaled_min)
@@ -277,6 +280,7 @@ def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[st
     truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
 
     for val in group_list:
+        val = str(val)
         if len(val) > MAX_LEN_ALLOWED:
             base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
 

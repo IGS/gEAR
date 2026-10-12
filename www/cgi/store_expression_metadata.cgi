@@ -22,14 +22,20 @@ def main():
     session_id = form.getfirst('session_id')
     share_uid = form.getfirst('share_uid')
 
-    session_id = secure_filename(session_id or '')
-    if not session_id:
+    # Both are used as path components, so refuse (rather than silently rewrite) anything but a plain name
+    safe_session_id = secure_filename(session_id or '')
+    if not safe_session_id or safe_session_id != session_id:
         print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
         return
 
-    share_uid = secure_filename(share_uid or '')
-    if not share_uid:
+    safe_share_uid = secure_filename(share_uid or '')
+    if not safe_share_uid or safe_share_uid != share_uid:
         print(json.dumps({'success': 0, 'error': 'Invalid share_uid'}))
+        return
+
+    user = geardb.get_user_from_session_id(session_id)
+    if not user:
+        print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
         return
 
     user_upload_file_base = "../uploads/files/{0}".format(session_id)
@@ -43,11 +49,6 @@ def main():
     # make sure the directory exists
     if not os.path.exists(user_upload_file_base):
         os.makedirs(user_upload_file_base)
-
-    user = geardb.get_user_from_session_id(session_id)
-    if not user:
-        print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
-        return
 
     result = {'success': 0, 'error': None}
 

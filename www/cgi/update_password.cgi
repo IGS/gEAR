@@ -24,8 +24,13 @@ def main():
     password = form.getfirst('password')
     help_id = form.getfirst('help_id')
 
-    if password is None:
+    if not password:
         result['error'] = "No password provided."
+        print(json.dumps(result))
+        return
+
+    if not help_id:
+        result['error'] = "No help ID provided."
         print(json.dumps(result))
         return
 
@@ -34,6 +39,11 @@ def main():
     count = 0
     for row in cursor:
         count = row[0]
+
+    if count == 0:
+        result['error'] = "Help ID not found."
+        print(json.dumps(result))
+        return
 
     if count != 1:
         result['error'] = ('Duplicate help ID prefixes')

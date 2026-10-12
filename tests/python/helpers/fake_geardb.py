@@ -13,6 +13,7 @@ Spec keys (all optional):
     layouts         [{id, share_id, user_id, label, is_public}]
     gene_carts      [{id, share_id, user_id, gctype, label}]
     metadata        {share_id: csv text}
+    displays        [{id, plot_type, ...}]   returned (as a dict) by get_display_by_id()
     verification_short   value returned by get_verification_code_short_form()
     sql             [{"match": "substring", "rows": [[...], ...] | "echo"}]
                     First matching rule wins. "echo" returns [[first param]].
@@ -205,6 +206,13 @@ def get_metadata_by_share_id(share_id):
 
 def get_displays_by_user_id(user_id=None, dataset_id=None, **kwargs):
     return []
+
+
+def get_display_by_id(display_id):
+    for spec in _SPEC.get("displays", []):
+        if str(spec.get("id")) == str(display_id):
+            return dict(spec)
+    return {}
 
 
 def get_organism_id_by_taxon_id(taxon_id):

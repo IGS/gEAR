@@ -108,15 +108,22 @@ def fetch_trackdb_path(genomes_txt: str, assembly: str) -> str:
     Raises:
         ValueError: If the assembly is not found or trackDb entry is missing.
 
+    Notes:
+        Each stanza starts with "genome <assembly>" and ends at a blank line; "trackDb" may be
+        on any line of the stanza.
     """
+    in_stanza = False
     for line in genomes_txt.splitlines():
-        if line.startswith(f"genome {assembly}"):
-            lines = genomes_txt.splitlines()
-            next_line_index = lines.index(line) + 1
-            if next_line_index < len(lines):
-                next_line = lines[next_line_index]
-                if next_line.startswith("trackDb"):
-                    return next_line.split(" ", 1)[1]
+        fields = line.split(None, 1)
+        if not fields:
+            in_stanza = False
+            continue
+        key = fields[0]
+        value = fields[1].strip() if len(fields) > 1 else ""
+        if key == "genome":
+            in_stanza = value == assembly
+        elif in_stanza and key == "trackDb" and value:
+            return value
 
     raise ValueError(f"Assembly {assembly} not found in genomes.txt or trackDb entry is missing.")
 

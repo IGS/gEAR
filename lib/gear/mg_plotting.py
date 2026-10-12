@@ -1091,16 +1091,23 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
 
     return df
 
+def _split_condition(condition):
+    """Split a "<obs column>;-;<value>" condition into (column, value)."""
+    key, sep, val = condition.partition(';-;')
+    if not sep:
+        raise PlotError(f"Condition '{condition}' is not in the expected '<observation group>;-;<value>' format.")
+    return key, val
+
 def validate_quadrant_conditions(obs_df, control_condition, compare_group1, compare_group2):
     """Ensure quadrant conditions make sense."""
     if not (control_condition and compare_group1 and compare_group2):
-        raise PlotError('Must pass three conditions in order to generate a volcano plot.')
+        raise PlotError('Must pass three conditions in order to generate a quadrant plot.')
 
-    (control_key, control_val) = control_condition.split(';-;')
-    (compare1_key, compare1_val) = compare_group1.split(';-;')
-    (compare2_key, compare2_val) = compare_group2.split(';-;')
+    (control_key, control_val) = _split_condition(control_condition)
+    (compare1_key, compare1_val) = _split_condition(compare_group1)
+    (compare2_key, compare2_val) = _split_condition(compare_group2)
 
-    if control_key != compare1_key and control_key != compare2_key:
+    if control_key != compare1_key or control_key != compare2_key:
         raise PlotError("All comparable conditions must came from same observation group.")
 
     if control_key not in obs_df.columns:
@@ -1543,8 +1550,8 @@ def validate_volcano_conditions(obs_df, query_condition, ref_condition):
     if not (query_condition and ref_condition):
         raise PlotError('Must pass two conditions in order to generate a volcano plot.')
 
-    (query_key, query_val) = query_condition.split(';-;')
-    (ref_key, ref_val) = ref_condition.split(';-;')
+    (query_key, query_val) = _split_condition(query_condition)
+    (ref_key, ref_val) = _split_condition(ref_condition)
 
     # Shortening the name for ease
     if ref_val == "Union of the rest of the groups":
