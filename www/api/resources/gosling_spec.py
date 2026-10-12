@@ -103,50 +103,49 @@ def _validate_hub_url(hub_url: str) -> None:
     Raises:
         ValueError: If URL is invalid or points to a disallowed host.
     """
+    domain_url = geardb._read_domain_url()
+
+    if not domain_url:
+        raise ValueError("Domain URL not configured. Cannot process track hub.")
+
+    # Build allowed domains list from configuration
+    domain_hostname = urlparse(domain_url).hostname
+    if not domain_hostname:
+        raise ValueError("Domain URL is not a valid URL. Cannot process track hub.")
+    allowed_domains = [domain_hostname.lower()]
+
+    # Allow internal Docker service name in development only
+    if os.getenv("ENVIRONMENT", "production").lower() == "development":
+        allowed_domains.append("umgear.org")    # A lot of testable data is on the main gEAR server
+        allowed_domains.extend(["web", "localhost", "127.0.0.1"])
+
+    parsed = urlparse(hub_url)
+
+    # Ensure scheme is http or https
+    if parsed.scheme not in ["http", "https"]:
+        raise ValueError("Invalid URL scheme. Only http and https are allowed.")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("Invalid URL: missing hostname.")
+    host = hostname.lower()
+
     try:
-        domain_url = geardb._read_domain_url()
-
-        if not domain_url:
-            raise ValueError("Domain URL not configured. Cannot process track hub.")
-
-        # Build allowed domains list from configuration
-        parsed_domain_url = urlparse(domain_url)
-        domain_url = parsed_domain_url.hostname
-        allowed_domains = [domain_url]
-
-        # Allow internal Docker service name in development only
-        if os.getenv("ENVIRONMENT", "production").lower() == "development":
-            allowed_domains.append("umgear.org")    # A lot of testable data is on the main gEAR server
-            allowed_domains.extend(["web", "localhost", "127.0.0.1"])
-
-        parsed = urlparse(hub_url)
-
-        # Ensure scheme is http or https
-        if parsed.scheme not in ["http", "https"]:
-            raise ValueError("Invalid URL scheme. Only http and https are allowed.")
-
-        hostname = parsed.hostname
-        if not hostname:
-            raise ValueError("Invalid URL: missing hostname.")
-
-        # Reject private/internal IP addresses
-        try:
-            ip = ipaddress.ip_address(hostname)
-            if ip.is_private or ip.is_loopback or ip.is_link_local:
-                raise ValueError(f"Access to private/internal IP address {hostname} is not allowed.")
-        except ValueError as e:
-            # Not an IP address, check domain whitelist
-            error_msg = str(e)
-            if "does not appear to be" not in error_msg and "is not a valid" not in error_msg:
-                raise
-
-            # Check against whitelist (case-insensitive): the domain itself or a subdomain of it
-            host = hostname.lower()
-            if not any(host == d.lower() or host.endswith("." + d.lower()) for d in allowed_domains):
-                raise ValueError(f"Hub domain '{hostname}' is not in the allowed list.")
-
+        ip = ipaddress.ip_address(host)
     except ValueError:
-        raise
+        ip = None
+
+    if ip is not None:
+        # IP addresses must be listed exactly, e.g. a server with no DNS name yet, or 127.0.0.1 in development
+        if str(ip) in allowed_domains:
+            return
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            raise ValueError(f"Access to private/internal IP address {hostname} is not allowed.")
+        raise ValueError(f"Hub IP address '{hostname}' is not in the allowed list.")
+
+    # Check against whitelist (case-insensitive): the domain itself or a subdomain of it
+    if not any(host == d or host.endswith("." + d) for d in allowed_domains):
+        raise ValueError(f"Hub domain '{hostname}' is not in the allowed list.")
 
 
 def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:

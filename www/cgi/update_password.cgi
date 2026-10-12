@@ -1,7 +1,9 @@
 #!/opt/bin/python3
 
 """
-Updates the password for the user, based on their session ID.
+Updates the password for the user, based on the help_id from their password-reset link.
+
+The help_id is replaced with a new one afterwards, so each reset link only works once.
 """
 
 import cgi
@@ -9,6 +11,7 @@ import hashlib
 import json
 import os
 import sys
+import uuid
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -52,8 +55,10 @@ def main():
 
     encoded_pass = hashlib.sha3_256(password.encode('utf-8')).hexdigest()
 
-    qry = "UPDATE guser SET pass = %s WHERE help_id = %s"
-    cursor.execute(qry, (encoded_pass, help_id))
+    # Replace the help_id too, so the reset link (which contains it) cannot be used again
+    new_help_id = str(uuid.uuid4())
+    qry = "UPDATE guser SET pass = %s, help_id = %s WHERE help_id = %s"
+    cursor.execute(qry, (encoded_pass, new_help_id, help_id))
 
     result['success'] = 1
     print(json.dumps(result))

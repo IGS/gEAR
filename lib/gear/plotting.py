@@ -175,7 +175,16 @@ def _aggregate_dataframe(
 ) -> pd.DataFrame:
     """Aggregate dataframe information under certain conditions."""
 
-    priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
+    # A continuous color is averaged within each group rather than being a group itself
+    continuous_color = (
+        bool(color_name)
+        and color_name not in (x, facet_row, facet_col)
+        and not _is_categorical(agg_df[color_name])
+    )
+
+    priority_groups = _build_priority_groups(
+        facet_row, facet_col, None if continuous_color else color_name, x
+    )
 
     # Safeguard against grouping by an empty list
     if not priority_groups:
@@ -184,21 +193,21 @@ def _aggregate_dataframe(
     # If observed=False, then all groupings will be present in the final dataframe
     grouped = agg_df.groupby(priority_groups, observed=False)
 
-    # Discrete colorscale or no colorscale
-    if not color_name or _is_categorical(agg_df[color_name]):
+    if continuous_color:
+        agg_df = (
+            grouped.agg(**{color_name: (color_name, "mean"), y: (y, "mean"), "std": (y, "std")})
+            .dropna(subset=[y])
+            .fillna(value={"std": 0})
+            .reset_index()
+        )
+    else:
+        # Discrete colorscale or no colorscale
         agg_df = (
             grouped.agg({y: ["mean", "std"]})
             .dropna(subset=[(y, "mean")])
             .loc[:, y]
             .fillna(value={"std": 0})
             .rename({"mean": y}, axis="columns")
-            .reset_index()
-        )
-    else:
-        # Continuous colorscale
-        agg_df = (
-            grouped.agg({color_name: ["mean"], y: ["mean", "std"]})
-            .dropna()
             .reset_index()
         )
     return agg_df

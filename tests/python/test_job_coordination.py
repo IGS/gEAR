@@ -79,6 +79,41 @@ def test_lock_is_exclusive_until_released(tmp_path):
     jc.release_lock_file(fd, str(lockfile))
 
 
+def test_failed_lock_attempt_keeps_holder_pid(tmp_path):
+    lockfile = tmp_path / ".job.lock"
+    fd = jc.try_acquire_lock_file(lockfile)
+    try:
+        assert jc.try_acquire_lock_file(lockfile) is None
+        assert lockfile.read_text() == f"{os.getpid()}\n"
+    finally:
+        jc.release_lock_file(fd, lockfile)
+
+
+def test_stale_lock_file_is_overwritten(tmp_path):
+    lockfile = tmp_path / ".job.lock"
+    lockfile.write_text("99999\nleftover from a killed worker\n")
+    fd = jc.try_acquire_lock_file(lockfile)
+    try:
+        assert lockfile.read_text() == f"{os.getpid()}\n"
+    finally:
+        jc.release_lock_file(fd, lockfile)
+
+
+def test_lock_on_a_replaced_file_is_refused(tmp_path, monkeypatch):
+    """If the holder releases (removing the file) and another worker recreates it between our open()
+    and flock(), our lock is on the old file, so taking it would let two workers run at once."""
+    lockfile = tmp_path / ".job.lock"
+    real_flock = jc.fcntl.flock
+
+    def racing_flock(fd, op):
+        lockfile.unlink()
+        lockfile.write_text("")
+        real_flock(fd, op)
+
+    monkeypatch.setattr(jc.fcntl, "flock", racing_flock)
+    assert jc.try_acquire_lock_file(lockfile) is None
+
+
 def test_release_tolerates_missing_lock_file(tmp_path):
     lockfile = tmp_path / ".job.lock"
     fd = jc.try_acquire_lock_file(lockfile)

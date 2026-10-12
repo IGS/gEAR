@@ -1,6 +1,7 @@
 """Login and password reset CGIs, plus the e-mail verification code helpers in geardb."""
 
 import hashlib
+import uuid
 
 import pytest
 
@@ -16,13 +17,22 @@ class TestUpdatePassword:
         db = {"sql": [{"match": "SELECT COUNT(*) FROM guser", "rows": [[count]]}]}
         return run_cgi("update_password.cgi", form=form, db=db)
 
-    def test_valid_help_id_updates_password(self):
+    def test_valid_help_id_updates_password_and_replaces_help_id(self):
+        """The help_id is in the reset e-mail, so it must change once used or the link works forever."""
         result = self.run(password="n3w-pass", help_id="abc123")
         assert result.json() == {"error": "", "success": 1}
         (update,) = result.writes()
-        assert update["query"] == "UPDATE guser SET pass = %s WHERE help_id = %s"
-        assert update["params"] == [hashlib.sha3_256(b"n3w-pass").hexdigest(), "abc123"]
+        assert update["query"] == "UPDATE guser SET pass = %s, help_id = %s WHERE help_id = %s"
+        encoded_pass, new_help_id, old_help_id = update["params"]
+        assert encoded_pass == hashlib.sha3_256(b"n3w-pass").hexdigest()
+        assert old_help_id == "abc123"
+        assert new_help_id != "abc123" and str(uuid.UUID(new_help_id)) == new_help_id
         assert result.logged("commit")
+
+    def test_each_reset_gets_a_different_help_id(self):
+        first = self.run(password="n3w-pass", help_id="abc123").writes()[0]["params"][1]
+        second = self.run(password="n3w-pass", help_id="abc123").writes()[0]["params"][1]
+        assert first != second
 
     @pytest.mark.parametrize("form", [{}, {"help_id": ""}])
     def test_missing_help_id(self, form):
@@ -91,10 +101,18 @@ class TestLogin:
 
     def test_unknown_user(self):
         result = self.run(user_found=False)
-        assert result.json() == {"session_id": 0, "is_admin": 0}
+        assert result.json() == {"session_id": -1, "is_admin": 0}
         assert result.writes() == []
         (query,) = result.logged("sql")
         assert query["params"] == ["alice@example.org"]
+
+    def test_unknown_user_and_wrong_password_look_the_same(self):
+        """The response must not reveal whether an e-mail is registered; the reason only goes to the server log."""
+        unknown = self.run(user_found=False)
+        wrong = self.run(password="wrong")
+        assert unknown.json() == wrong.json()
+        assert "e-mail not found" in unknown.stderr
+        assert "incorrect password" in wrong.stderr
 
 
 class TestVerificationCode:

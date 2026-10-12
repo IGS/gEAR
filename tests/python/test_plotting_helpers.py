@@ -50,13 +50,21 @@ def test_aggregate_dataframe_without_groups_is_unchanged(expr_df):
     assert plotting._aggregate_dataframe(expr_df, None, "y") is expr_df
 
 
-@pytest.mark.xfail(strict=True, reason="continuous-color aggregation groups by the color column itself and "
-                   "returns MultiIndex columns, so generate_plot cannot find 'x' afterwards")
-def test_aggregate_dataframe_continuous_color_keeps_flat_columns():
+def test_aggregate_dataframe_continuous_color_is_averaged_per_group():
     df = pd.DataFrame({"x": pd.Categorical(["a", "a", "b", "b"]), "y": [1.0, 3.0, 5.0, 5.0], "c": [1.0, 2.0, 3.0, 4.0]})
     agg = plotting._aggregate_dataframe(df, "x", "y", color_name="c")
-    assert {"x", "y", "c"} <= set(agg.columns)
-    assert len(agg) == 2
+    assert list(agg.columns) == ["x", "c", "y", "std"]
+    assert agg["x"].tolist() == ["a", "b"]
+    assert agg["c"].tolist() == [1.5, 3.5]
+    assert agg["y"].tolist() == [2.0, 5.0]
+    assert agg["std"].tolist() == pytest.approx([2 ** 0.5, 0.0])
+
+
+def test_aggregate_dataframe_continuous_color_same_as_x():
+    df = pd.DataFrame({"x": [1.0, 1.0, 2.0], "y": [1.0, 3.0, 5.0]})
+    agg = plotting._aggregate_dataframe(df, "x", "y", color_name="x")
+    assert agg["x"].tolist() == [1.0, 2.0]
+    assert agg["y"].tolist() == [2.0, 5.0]
 
 
 # ---------------------------------------------------------------- colors
@@ -145,6 +153,22 @@ def test_truncate_ticktext_non_string_values():
 def plot(df, plot_type, **kwargs):
     kwargs = {"x_title": "X", "y_title": "Y", **kwargs}
     return plotting.generate_plot(df.copy(), "x", "y", plot_type=plot_type, **kwargs)
+
+
+def test_bar_plot_with_continuous_color(expr_df):
+    df = expr_df.assign(c=range(len(expr_df)))
+    fig = plot(df, "bar", color_name="c")
+    assert [t.type for t in fig.data] == ["bar"]
+    assert list(fig.data[0].y) == [2.0, 5.0]
+    assert fig.layout.coloraxis.colorscale
+
+
+def test_scatter_with_continuous_color_is_not_aggregated(expr_df):
+    """plotly_data drops "replicate" for scatter, so each point keeps its own continuous color."""
+    df = expr_df.assign(c=[1.0, 2.0, 3.0, 4.0])
+    fig = plot(df, "scatter", color_name="c")
+    assert list(fig.data[0].y) == [1.0, 3.0, 5.0, 5.0]
+    assert list(fig.data[0].marker.color) == [1.0, 2.0, 3.0, 4.0]
 
 
 def test_bar_plot_aggregates_with_error_bars(expr_df):

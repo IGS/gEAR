@@ -52,10 +52,27 @@ def test_validate_hub_url_rejects(domain, url, message):
         gosling_spec._validate_hub_url(url)
 
 
-@pytest.mark.xfail(strict=True, reason="A public IP literal skips the domain allowlist entirely")
-def test_validate_hub_url_rejects_public_ip_outside_allowlist(domain):
+@pytest.mark.parametrize("url", ["https://8.8.8.8/hub.txt", "http://[2001:4860:4860::8888]/hub.txt"])
+def test_validate_hub_url_rejects_public_ip_outside_allowlist(domain, url):
+    with pytest.raises(ValueError, match="not in the allowed list"):
+        gosling_spec._validate_hub_url(url)
+
+
+@pytest.mark.parametrize("domain_url", ["https://203.0.113.7", "http://10.1.2.3:8080"])
+def test_validate_hub_url_accepts_configured_ip(monkeypatch, domain_url):
+    """A server with no DNS name yet is configured by IP address, and its own hubs must still load."""
+    monkeypatch.setattr(gosling_spec.geardb, "_read_domain_url", lambda: domain_url)
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    host = domain_url.split("//")[1]
+    gosling_spec._validate_hub_url(f"http://{host}/hub.txt")
     with pytest.raises(ValueError):
-        gosling_spec._validate_hub_url("https://8.8.8.8/hub.txt")
+        gosling_spec._validate_hub_url("https://203.0.113.8/hub.txt")
+
+
+def test_validate_hub_url_rejects_domain_url_without_scheme(monkeypatch):
+    monkeypatch.setattr(gosling_spec.geardb, "_read_domain_url", lambda: "gear.example.org")
+    with pytest.raises(ValueError, match="not a valid URL"):
+        gosling_spec._validate_hub_url("https://gear.example.org/hub.txt")
 
 
 def test_validate_hub_url_requires_configured_domain(monkeypatch):
@@ -69,6 +86,7 @@ def test_validate_hub_url_requires_configured_domain(monkeypatch):
     "https://devel.umgear.org/hub.txt",
     "http://web/hub.txt",
     "http://localhost:8080/hub.txt",
+    "http://127.0.0.1:8080/hub.txt",
     "https://gear.example.org/hub.txt",
 ])
 def test_validate_hub_url_development_extras(development, url):
@@ -81,7 +99,10 @@ def test_validate_hub_url_development_extras(development, url):
     "https://example.com/hub.txt",
     "https://evilumgear.org/hub.txt",
     "https://notweb/hub.txt",
-    "http://127.0.0.1/hub.txt",
+    "http://127.0.0.2/hub.txt",
+    "http://0.0.0.0/hub.txt",
+    "http://169.254.169.254/latest/meta-data",
+    "https://8.8.8.8/hub.txt",
 ])
 def test_validate_hub_url_development_still_restricted(development, url):
     with pytest.raises(ValueError):
@@ -94,20 +115,12 @@ def test_parse_position_str():
     assert gosling_spec.parse_position_str("mm10.chr7:142575529-142578143") == ("mm10", "chr7", 142575529, 142578143)
 
 
-@pytest.mark.parametrize("position", ["NA", "", "mm10.chr7", "mm10.chr7:100", "mm10.chr7:a-b"])
+# Dotted (non-UCSC) assembly names and comma-grouped coordinates are never produced internally, so are unsupported
+@pytest.mark.parametrize("position", [
+    "NA", "", "mm10.chr7", "mm10.chr7:100", "mm10.chr7:a-b", "GRCh38.p14.chr1:100-200", "hg38.chr1:1,000-2,000",
+])
 def test_parse_position_str_invalid_returns_nones(position):
     assert gosling_spec.parse_position_str(position) == (None, None, None, None)
-
-
-@pytest.mark.xfail(strict=True, reason="Positions are built internally as '<assembly>.<chrom>:<start>-<end>' and every "
-                                       "supported assembly is dot-free; a dotted assembly is ambiguous with a dotted chromosome")
-def test_parse_position_str_dotted_assembly():
-    assert gosling_spec.parse_position_str("GRCh38.p14.chr1:100-200") == ("GRCh38.p14", "chr1", 100, 200)
-
-
-@pytest.mark.xfail(strict=True, reason="UCSC-style comma-grouped coordinates are not produced by get_gene_info and are not supported")
-def test_parse_position_str_commas():
-    assert gosling_spec.parse_position_str("hg38.chr1:1,000-2,000") == ("hg38", "chr1", 1000, 2000)
 
 
 class _View:

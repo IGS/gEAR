@@ -409,7 +409,6 @@ const initCommonUI = async () => {
         event.preventDefault(); // Prevent the default form submission
 
         // reset any UI elements
-        document.getElementById('user-email-help').classList.add('is-hidden');
         document.getElementById('user-password-help').classList.add('is-hidden');
 
         // try to log in
@@ -607,12 +606,8 @@ const doLogin = async (doReload=true) => {
     const formdata = new FormData(document.getElementById("login-form"));
     const data = await apiCallsMixin.login(formdata);
 
-    if (data.session_id == 0) {
-        // user name wasn't found at all
-        document.getElementById('user-email-help').classList.remove('is-hidden');
-
-    } else if (data.session_id == -1) {
-        // User was found, password was incorrect
+    if (data.session_id == 0 || data.session_id == -1) {
+        // E-mail not found or password incorrect (the server does not say which)
         document.getElementById('user-password-help').classList.remove('is-hidden');
 
     } else if (data.session_id.toString().length > 10) {
