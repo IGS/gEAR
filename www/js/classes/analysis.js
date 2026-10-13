@@ -926,7 +926,14 @@ class AnalysisStepPrimaryFilter {
         // If a user redoes the primary filters, it's assumed they want to do this on the primary
         //  datasource again.  This allows them to lessen the stringency of a filter.
         const originalAnalysisType = this.analysis.type;
+        const originalAnalysisId = this.analysis.id;
         this.analysis.type = 'primary';
+
+        // The filtered data is always written to the user's unsaved area. For a saved analysis that
+        //  starts a new unsaved analysis (with its own ID), leaving the saved one as it was.
+        if (originalAnalysisType === 'user_saved') {
+            this.analysis.id = crypto.randomUUID();
+        }
 
         this.filterCellsLtNGenesSelected = document.querySelector(UI.filterCellsLtNGenesSelectedElt).checked;
         this.filterCellsLtNGenes = null;
@@ -978,9 +985,9 @@ class AnalysisStepPrimaryFilter {
             this.filteredGeneCount = data.n_genes;
             this.filteredCellCount = data.n_obs;
 
-            // After this step, we are now working with a curated dataset
+            // After this step, we are now working with a curated dataset in the unsaved area
             this.analysis.type = originalAnalysisType;
-            if(originalAnalysisType === 'primary') {
+            if (['primary', 'user_saved'].includes(originalAnalysisType)) {
                 this.analysis.type = 'user_unsaved';
             }
 
@@ -991,6 +998,7 @@ class AnalysisStepPrimaryFilter {
         } catch (error) {
             // Back to the analysis being filtered (e.g. a user_unsaved copy of a public analysis)
             this.analysis.type = originalAnalysisType;
+            this.analysis.id = originalAnalysisId;
             createToast(`Error applying primary filters: ${error.message}`);
             logErrorInConsole(error);
             failStepWithHref("#primary-filter-s")

@@ -3797,7 +3797,9 @@ paths:
       - Analysis/workbench
       summary: Return the JSON for one stored analysis
       description: Prints the serialized Analysis (its pipeline config, without analysis_session_id or the older
-        user_session_id). No login check; session_id locates user analyses. Errors return HTTP 200 with success 0 and error ("Dataset not found", "Analysis could not be loaded"
+        user_session_id), with vetting derived from the analysis's owner like get_stored_analysis_list.cgi
+        (gear, owner or community; a vetting saved in the pipeline file is ignored). No login check; session_id
+        locates user analyses. Errors return HTTP 200 with success 0 and error ("Dataset not found", "Analysis could not be loaded"
         (also for IDs that are not plain path components), or "Analysis config file not found" when the pipeline
         file is missing). The response always has a single Content-Type header.
       requestBody:

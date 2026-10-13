@@ -423,7 +423,29 @@ class TestGetStoredAnalysis(StoredAnalyses):
         self.store(root, "user_unsaved", U1, owner="owner", group_labels={"0": "a", "1": "b"})
         body = self.get(root, analysis_id=U1, analysis_type="user_unsaved").json()
         assert body == {"id": U1, "label": f"user_unsaved {U1}", "type": "user_unsaved", "dataset_id": "DS1",
-                        "group_labels": ["a", "b"], "success": 1}
+                        "group_labels": ["a", "b"], "success": 1, "vetting": "owner"}
+
+    @pytest.mark.parametrize("publisher, viewer, expected", [
+        ("owner", "owner", "owner"),
+        ("owner", "other", "community"),
+        ("owner", None, "community"),
+        ("curator", "other", "gear"),
+    ])
+    def test_public_analysis_vetting_comes_from_its_publisher(self, root, publisher, viewer, expected):
+        """Vetting is derived from who published the analysis; a vetting saved in the pipeline file is ignored."""
+        self.store(root, "public", P1, analysis_session_id=publisher, vetting="gear" if expected != "gear" else "owner")
+        query = {"analysis_id": P1, "analysis_type": "public"}
+        query["session_id"] = viewer
+        if viewer is None:
+            del query["session_id"]
+        body = self.run(root, "get_stored_analysis.cgi", dataset_id="DS1", **query).json()
+        assert body["success"] == 1
+        assert body["vetting"] == expected
+
+    def test_saved_analysis_vetting_ignores_value_in_file(self, root):
+        self.store(root, "user_saved", U1, owner=1, vetting="gear")
+        body = self.get(root, analysis_id=U1, analysis_type="user_saved").json()
+        assert body["vetting"] == "owner"
 
     def test_public_analysis_does_not_reveal_the_publishers_session(self, root):
         # Anyone can load a public analysis; its pipeline file holds the publishing user's login session
@@ -435,7 +457,7 @@ class TestGetStoredAnalysis(StoredAnalyses):
     def test_primary_analysis(self, root):
         self.store(root, "primary", "DS1", h5ad=False)
         body = self.get(root).json()
-        assert body["success"] == 1 and body["type"] == "primary"
+        assert body["success"] == 1 and body["type"] == "primary" and body["vetting"] == "gear"
 
     def test_missing_pipeline_file_is_one_json_error(self, root):
         # This used to print a second Content-Type header inside the body

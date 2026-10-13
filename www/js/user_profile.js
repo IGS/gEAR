@@ -28,10 +28,12 @@ for (const classElt of document.getElementsByClassName("js-password")) {
     });
 }
 
-// Toggle if password is visible or not
-document.getElementById("show-password").addEventListener("click", () => {
-    const newPasswordElt = document.getElementById("new-password");
-    newPasswordElt.type = newPasswordElt.type === "password" ? "text" : "password";
+// Toggle if both password fields are visible or not
+document.getElementById("show-password").addEventListener("change", (event) => {
+    const type = event.target.checked ? "text" : "password";
+    for (const passwordElt of document.getElementsByClassName("js-password")) {
+        passwordElt.type = type;
+    }
 });
 
 document.getElementById("update-password-toggle").addEventListener("click", () => {
