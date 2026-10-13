@@ -1896,16 +1896,14 @@ class AnalysisSteptSNE {
         //  us to just do something like recolor.
         if (this.neighborsCalculated) {
             if (this.nPcs === document.querySelector(UI.tsneNPcsElt).value &&
-                this.nNeighbors === document.querySelector(UI.dimReductionNNeighborsElt).value &&
-                this.randomState === document.querySelector(UI.tsneRandomStateElt).value) {
+                this.nNeighbors === document.querySelector(UI.dimReductionNNeighborsElt).value) {
                 computeNeighbors = 0;
             }
         }
 
         // don't recompute tSNE if we already have and nothing has changed
         if (this.tsneCalculated) {
-            if (this.nPcs === document.querySelector(UI.tsneNPcsElt).value &&
-                this.randomState === document.querySelector(UI.tsneRandomStateElt).value) {
+            if (this.nPcs === document.querySelector(UI.tsneNPcsElt).value) {
                 computeTsne = 0;
             }
         }
