@@ -29,6 +29,10 @@ def main():
         print(json.dumps(result))
         return
 
+    if not source_id:
+        print(json.dumps(result))
+        return
+
     # TODO: Consider loading from h5ad instead of tab if it exists
     file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + source_id))
 

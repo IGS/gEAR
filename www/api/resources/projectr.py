@@ -217,14 +217,19 @@ def write_to_json(projections_dict: dict, projection_json_file: Path) -> None:
 
 def calculate_chunk_size(num_genes: int, num_samples: int) -> int:
     """
-    Calculate number of chunks to divide all samples into.
+    Calculate the number of samples to send in each chunk.
+
+    Raises:
+        ValueError: If there are no genes or no samples, since nothing can be projected.
     """
-    TOTAL_DATA_LIMIT = 1e6
-    total_data = num_genes * num_samples
-    total_data_chunks = total_data / TOTAL_DATA_LIMIT
-    return int(
-        num_samples / total_data_chunks
-    )  # take floor.  returned value * num_genes < total_data_limit
+    if num_genes <= 0:
+        raise ValueError("Cannot chunk a projection with no genes.")
+    if num_samples <= 0:
+        raise ValueError("Cannot chunk a projection with no samples.")
+
+    TOTAL_DATA_LIMIT = 1_000_000
+    # Floor so that returned value * num_genes <= TOTAL_DATA_LIMIT, but always send at least one sample
+    return max(TOTAL_DATA_LIMIT // num_genes, 1)
 
 
 def concat_fetch_results_to_dataframe(
@@ -306,9 +311,14 @@ def create_weighted_loading_df(genecart_id: str) -> pd.DataFrame:
     Read the weighted gene cart's pattern file (genes x patterns) into a dataframe.
 
     Raises:
+        ValueError: If genecart_id is not a plain file name component.
         FileNotFoundError: If the pattern file does not exist.
     """
-    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
+    safe_genecart_id = secure_filename(genecart_id)
+    if not safe_genecart_id or safe_genecart_id != genecart_id:
+        raise ValueError("Invalid gene list identifier")
+
+    file_path = Path(CARTS_BASE_DIR).joinpath("cart.{}.tab".format(safe_genecart_id))
     try:
         return pd.read_csv(file_path, sep="\t")
     except FileNotFoundError:
@@ -777,6 +787,19 @@ def projectr_callback(
         status["status"] = "failed"
         status["error"] = message
         status["result"] =  {
+            "success": -1,
+            "num_common_genes": intersection_size,
+            "num_genecart_genes": num_loading_genes,
+            "num_dataset_genes": num_target_genes,
+        }
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
+
+    if adata.shape[0] == 0:
+        release_lock_file(lock_fh, lockfile)
+        status["status"] = "failed"
+        status["error"] = "The target dataset has no samples to project onto."
+        status["result"] = {
             "success": -1,
             "num_common_genes": intersection_size,
             "num_genecart_genes": num_loading_genes,

@@ -84,3 +84,38 @@ def test_missing_primary_dataset_message_has_no_path(monkeypatch, tmp_path):
     with pytest.raises(FileNotFoundError) as excinfo:
         analysis.get_primary_analysis("DS9")
     assert str(excinfo.value) == "No h5 file found for dataset DS9"
+
+
+# ---------------------------------------------------------------- Analysis.base_path components
+
+UUID = "9d7e2b4c-1111-4111-8111-111111111111"
+
+
+@pytest.mark.parametrize("atype", ["public", "user_saved", "user_unsaved"])
+def test_base_path_for_plain_ids(atype):
+    ana = analysis.Analysis(id=UUID, type=atype, dataset_id="DS1", session_id="sess", user_id=1)
+    assert ana.base_path.name == UUID
+    assert ana.dataset_path.name == "DS1.h5ad"
+
+
+@pytest.mark.parametrize("field, value", [
+    ("id", f"../../2/DS1/{UUID}"),
+    ("id", ".."),
+    ("id", "a\\b"),
+    ("dataset_id", "../DS2"),
+    ("dataset_id", "DS1/x"),
+    ("session_id", "../other-session"),
+])
+@pytest.mark.parametrize("atype", ["public", "user_saved", "user_unsaved"])
+def test_base_path_rejects_path_components(atype, field, value):
+    """An ID with a path in it must not lead into another user's (or dataset's) analysis directory."""
+    kwargs = {"id": UUID, "type": atype, "dataset_id": "DS1", "session_id": "sess", "user_id": 1, field: value}
+    ana = analysis.Analysis(**kwargs)
+    with pytest.raises(ValueError, match="Invalid"):
+        ana.base_path
+
+
+def test_primary_dataset_path_rejects_path_in_dataset_id():
+    ana = analysis.Analysis(type="primary", dataset_id="../uploads/x")
+    with pytest.raises(ValueError, match="Invalid dataset ID"):
+        ana.dataset_path

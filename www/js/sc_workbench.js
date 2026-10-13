@@ -964,34 +964,16 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
 
     await currentAnalysis.getStoredAnalysis();    // await-able
 
-    if (currentAnalysis.type === 'primary') {
-        document.querySelector(UI.analysisPrimaryNotificationElt).classList.remove("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
-        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-    }
+    // Analysis options (rename, delete, make public, ...) depend on the analysis type
+    currentAnalysis.showHideAnalysisButtons();
+    document.querySelector(UI.analysisPrimaryNotificationElt).classList.toggle("is-hidden", currentAnalysis.type !== 'primary');
 
     if (currentAnalysis.type === 'user_saved') {
-        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
         createToast("This analysis is stored in your private user profile.", "is-info", true);
-        document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
-    }
-
-    if (currentAnalysis.type === 'user_unsaved') {
-        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
-        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
     }
 
     if (currentAnalysis.type === 'public') {
-        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         createToast("Changes made to this public analysis will create a local private copy within your profile.", "is-info", true);
-        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
     }
 
 });
@@ -1014,7 +996,7 @@ document.querySelector(UI.btnLabeledTsneRunElt).addEventListener("click", async 
 document.querySelector(UI.btnApplyPrimaryFilterElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Apply the primary filter to the dataset
-    await currentAnalysis.primaryFilter.applyPrimaryFilter();
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.primaryFilter.applyPrimaryFilter.bind(currentAnalysis.primaryFilter));
     event.target.classList.remove("is-loading");
 });
 
@@ -1022,7 +1004,7 @@ document.querySelector(UI.btnApplyPrimaryFilterElt).addEventListener("click", as
 document.querySelector(UI.btnDoAnalysisQcByMitoElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Run the QC by Mito analysis
-    await currentAnalysis.qcByMito.runAnalysis(0);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.qcByMito.runAnalysis.bind(currentAnalysis.qcByMito), 0);
     event.target.classList.remove("is-loading");
 });
 
@@ -1030,7 +1012,7 @@ document.querySelector(UI.btnQbmSaveElt).addEventListener("click", async (event)
     event.target.classList.add("is-loading");
     disableAndHideElement(document.querySelector(UI.btnDoAnalysisQcByMitoElt));
     // Save the QC by Mito analysis
-    await currentAnalysis.qcByMito.runAnalysis(1);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.qcByMito.runAnalysis.bind(currentAnalysis.qcByMito), 1);
     event.target.classList.remove("is-loading");
 });
 
@@ -1039,7 +1021,7 @@ document.querySelector(UI.btnQbmSaveElt).addEventListener("click", async (event)
 document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Run the select variable genes analysis
-    await currentAnalysis.selectVariableGenes.runAnalysis(0);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.selectVariableGenes.runAnalysis.bind(currentAnalysis.selectVariableGenes), 0);
     event.target.classList.remove("is-loading");
 });
 
@@ -1048,7 +1030,7 @@ document.querySelector(UI.btnAsvgSaveElt).addEventListener("click", async (event
     disableAndHideElement(document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt));
 
     // Save the select variable genes analysis
-    await currentAnalysis.selectVariableGenes.runAnalysis(1);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.selectVariableGenes.runAnalysis.bind(currentAnalysis.selectVariableGenes), 1);
     event.target.classList.remove("is-loading");
 });
 
@@ -1166,7 +1148,7 @@ document.querySelector(UI.btnMarkerGenesRunElt).addEventListener("click", async 
 document.querySelector(UI.btnVisualizeMarkerGenesElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Visualize the marker genes
-    await currentAnalysis.markerGenes.performMarkerGeneVisualization();
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.markerGenes.performMarkerGeneVisualization.bind(currentAnalysis.markerGenes));
     event.target.classList.remove("is-loading");
 });
 
@@ -1273,7 +1255,7 @@ document.querySelector(UI.queryClusterSelectElt).addEventListener("change", (eve
 document.querySelector(UI.btnCompareGenesRunElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Run the compare genes analysis
-    await currentAnalysis.compareGenes.runAnalysis();
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.compareGenes.runAnalysis.bind(currentAnalysis.compareGenes));
     event.target.classList.remove("is-loading");
 });
 

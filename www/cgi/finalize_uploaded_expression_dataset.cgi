@@ -43,6 +43,7 @@ lib_path = Path(__file__).resolve().parents[2] / 'lib'
 sys.path.append(str(lib_path))
 import geardb
 from gear.metadata import Metadata, get_value_from_df
+from werkzeug.utils import secure_filename
 
 user_upload_file_path = Path(__file__).resolve().parents[1] / 'uploads' / 'files'
 dataset_final_dir = Path(__file__).resolve().parents[1] / 'datasets'
@@ -94,6 +95,20 @@ def main() -> dict:
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
+        return result
+
+    # These are used as path components below, so only accept plain file names
+    safe_share_uid = secure_filename(share_uid or '')
+    safe_dataset_id = secure_filename(dataset_id)
+    safe_session_id = secure_filename(session_id)
+    if not safe_share_uid or safe_share_uid != share_uid:
+        result['message'] = 'Invalid share_uid: ' + str(share_uid)
+        return result
+    if not safe_dataset_id or safe_dataset_id != dataset_id:
+        result['message'] = 'Invalid dataset_uid: ' + str(dataset_id)
+        return result
+    if not safe_session_id or safe_session_id != session_id:
+        result['message'] = 'Invalid session_id.'
         return result
 
     dataset_upload_dir = user_upload_file_path / session_id / share_uid

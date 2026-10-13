@@ -169,14 +169,14 @@ class UserHistory:
                  SELECT entry_date, entry_category, label, url
                    FROM user_history
                   WHERE user_id = %s
-                  ORDER BY entry_date DESC
         """
 
         if entry_category:
             qry += " AND entry_category = %s"
-            qry_args.append(self.entry_category)
+            qry_args.append(entry_category)
 
-        qry += f" LIMIT {entry_count}"
+        qry += " ORDER BY entry_date DESC LIMIT %s"
+        qry_args.append(int(entry_count))
 
         cursor.execute(qry, qry_args)
         entries = list()

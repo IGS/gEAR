@@ -75,6 +75,20 @@ LOG10_TRANSFORMED_DATASETS = [
 
 CLUSTER_LIMIT = 5000
 
+def _number_param(req: dict, name: str, default: float) -> float:
+    """
+    Read a numeric request option. An empty value (the curator sends "" for a blank field, and null for
+    one that is not a number) uses the default; anything else that is not a number raises PlotError.
+    """
+    value = req.get(name)
+    if value is None or value == "":
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise PlotError(f"Option '{name}' must be a number, not '{value}'.")
+
+
 class MGPlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
     Parameters
@@ -104,7 +118,6 @@ class MGPlotlyData(Resource):
         """
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
-        req = request.get_json()
         if not req:
             return {
                 "success": -1,
@@ -133,13 +146,19 @@ class MGPlotlyData(Resource):
         # Quadrant plot options
         compare_group1 = req.get("compare1_condition", None)
         compare_group2 = req.get("compare2_condition", None)
-        fc_cutoff = float(req.get("fold_change_cutoff", 2))
-        fdr_cutoff = float(req.get("fdr_cutoff", 0.05))
         include_zero_fc = req.get("include_zero_fc", True)
-        # Volcano plot options
-        pval_threshold = float(req.get("pvalue_threshold", 0.05))
-        lower_logfc_threshold = float(req.get("lower_logfc_threshold", -2))
-        upper_logfc_threshold = float(req.get("upper_logfc_threshold", 2))
+        try:
+            fc_cutoff = _number_param(req, "fold_change_cutoff", 2)
+            fdr_cutoff = _number_param(req, "fdr_cutoff", 0.05)
+            # Volcano plot options
+            pval_threshold = _number_param(req, "pvalue_threshold", 0.05)
+            lower_logfc_threshold = _number_param(req, "lower_logfc_threshold", -2)
+            upper_logfc_threshold = _number_param(req, "upper_logfc_threshold", 2)
+        except PlotError as pe:
+            return {
+                'success': -1,
+                'message': str(pe),
+            }
         query_condition = req.get('query_condition', None)
         ref_condition = req.get('ref_condition', None)
         de_test_algo = req.get("de_test_algo", "t-test")
@@ -330,26 +349,38 @@ class MGPlotlyData(Resource):
 
             # Filter dataframe on the chosen observation filters
             if filters:
+                # Levels each sort column has before filtering, to tell a stale curation (level not in the
+                # dataset) from a level that the filters left with no data
+                dataset_levels = {
+                    key: set(selected.obs[key].cat.categories)
+                    for key in sort_fields
+                    if isinstance(selected.obs[key].dtype, pd.CategoricalDtype)
+                }
+
                 for field in filters.keys():
                     values = filters[field]
 
                     if field not in selected.obs:
                         raise PlotError(f"Filter series {field} not found in observation metadata for dataset. Please update curation")
 
-                    # if there is an "NA" value in the filters but no "NA" in the dataframe
-                    # check if it is a missing value, and if so, impute it
-                    if "NA" in values and "NA" not in selected.obs[field].cat.categories:
-                        values.remove("NA")
-                        selected.obs[field].cat.add_categories("NA")
-                        selected.obs[field] = selected.obs[field].fillna("NA")
+                    # The curator lists missing values as an "NA" level (see h5ad.py), so fill them with "NA"
+                    # to let the filter select them
+                    col = selected.obs[field]
+                    if "NA" in values and col.isna().any():
+                        if isinstance(col.dtype, pd.CategoricalDtype) and "NA" not in col.cat.categories:
+                            col = col.cat.add_categories("NA")
+                        obs = selected.obs.copy()
+                        obs[field] = col.fillna("NA")
+                        selected.obs = obs
 
                     mask = selected.obs[field].isin(values)
                     selected = selected[mask, :]
 
-                    # reorder filter key the same order as sort_order if key exists
+                    # Put the chosen levels in the saved sort order (levels not in it go last)
                     # Mostly for fixing the order of the heatmap clusterbars
                     if sort_order and field in sort_order:
-                        filters[field] = sort_order[field]
+                        ordered = [val for val in sort_order[field] if val in values]
+                        filters[field] = ordered + [val for val in values if val not in ordered]
 
                 # if the filters are empty, return an empty dataframe
                 if selected.shape[0] == 0:
@@ -362,12 +393,24 @@ class MGPlotlyData(Resource):
                 # Filtering the dataset may unsort the original sort we did.
                 # This is in case the filter key has less categories than the provided sort key
                 for key in sort_fields:
-                    col = selected.obs[key]
+                    # Only filtered columns need re-sorting; the UI only sends filters for the columns the user filtered on.
+                    # Unfiltered sort columns keep the order set above.
+                    if key not in filters:
+                        continue
 
-                    # If every filter key is not in the col categories, raise an error
-                    # This can happen if a curation was made and then the dataset was reloaded with different labels
-                    if not all([val in col.cat.categories for val in filters[key]]):
+                    col = selected.obs[key]
+                    if not isinstance(col.dtype, pd.CategoricalDtype):
+                        continue
+
+                    missing = [val for val in filters[key] if val not in col.cat.categories]
+                    # A level not in the dataset at all means the curation was made before the dataset was
+                    # reloaded with different labels
+                    if any(val not in dataset_levels.get(key, set()) for val in missing):
                         raise PlotError(f"At least one value for filter series {key} is not found in the observation metadata in the dataset. Please update curation.")
+                    # Otherwise the other filters left a chosen level with no data
+                    if missing:
+                        raise PlotError("No data found for the selected filters ({}: {}). Try removing some filters.".format(
+                            key, ", ".join(str(val) for val in missing)))
 
                     reordered_col = col.cat.reorder_categories(
                         filters[key], ordered=True)

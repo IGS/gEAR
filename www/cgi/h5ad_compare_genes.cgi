@@ -133,6 +133,11 @@ def main():
         ana.type = 'user_unsaved'
 
     dest_datafile_path = ana.dataset_path
+    dest_directory = os.path.dirname(dest_datafile_path)
+
+    # Figures are saved next to the user's (possibly not yet created) unsaved analysis, as in the other steps
+    if not os.path.exists(dest_directory):
+        os.makedirs(dest_directory)
 
     if group_labels:
         adata.rename_categories(cluster_method, group_labels)
@@ -196,7 +201,7 @@ def main():
             'names': adata.var.loc[ensembl_id_list]['gene_symbol'].tolist(),
             'log2FC':adata.uns['rank_genes_groups']['logfoldchanges'],
             'P-value':adata.uns['rank_genes_groups']['pvals'],
-            'FDR':adata.uns['rank_genes_groups']['pvals_adj']}).loc[:n_genes].to_json(orient='split')
+            'FDR':adata.uns['rank_genes_groups']['pvals_adj']}).iloc[:n_genes].to_json(orient='split')
 
     if reference_cluster != 'all-reference-clusters':
         if corr_method is None:
@@ -228,7 +233,7 @@ def main():
             'names': adata.var.loc[ensembl_id_list]['gene_symbol'].tolist(),
             'log2FC':adata.uns['rank_genes_groups']['logfoldchanges'],
             'P-value':adata.uns['rank_genes_groups']['pvals'],
-            'FDR':adata.uns['rank_genes_groups']['pvals_adj']}).loc[:n_genes].to_json(orient='split')
+            'FDR':adata.uns['rank_genes_groups']['pvals_adj']}).iloc[:n_genes].to_json(orient='split')
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

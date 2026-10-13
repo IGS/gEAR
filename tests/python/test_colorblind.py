@@ -166,6 +166,7 @@ def test_clusterbar_palette(mg_plotting, colorblind_mode):
 
 # ---------------------------------------------------------------- workbench images
 
+@pytest.mark.slow
 class TestAnalysisImage:
     """get_analysis_image.cgi serves a step's colorblind copy only to colorblind viewers."""
 
@@ -198,6 +199,7 @@ class TestAnalysisImage:
 
 
 
+@pytest.mark.slow
 class TestStepCopies:
     """Plotting steps save a colorblind copy only in colorblind mode, and remove a stale one otherwise."""
 
@@ -256,6 +258,7 @@ class TestStepCopies:
 BICCN_DATASET = "4fbd43e2-f301-42d8-a61d-a5dd5bf720e7"
 
 
+@pytest.mark.slow
 def test_marker_genes_uses_biccn_cluster_column_for_primary_analysis(tmp_path):
     pytest.importorskip("scanpy")
     db = {"sessions": {"owner": 1}, "datasets": [{"id": BICCN_DATASET, "owner_id": 1}]}

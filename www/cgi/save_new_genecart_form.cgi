@@ -30,6 +30,13 @@ def exit_with_error(msg):
     print(json.dumps({"message": msg}))
     sys.exit(1)
 
+def get_uploaded_file(form):
+    """Return the uploaded new_cart_file field, or None if no file was uploaded."""
+    fileitem = form['new_cart_file'] if 'new_cart_file' in form else None
+    if fileitem is None or isinstance(fileitem, list) or not fileitem.filename:
+        return None
+    return fileitem
+
 def validate_weighted_gene_cart(df):
     """Ensure weighted gene cart meets the requirements.  Returns a boolean."""
     # Check that first column is identifiers, second column is gene symbols, and following columns are numeric weights
@@ -90,8 +97,8 @@ def main():
     elif upload_type == 'uploaded-unweighted':
         gc.gctype = 'unweighted-list'
 
-        fileitem = form['new_cart_file']
-        if fileitem.filename:
+        fileitem = get_uploaded_file(form)
+        if fileitem is not None:
             file_genes = fileitem.file.read().decode()
 
             # Split on commas and any whitespace, then remove duplicates while keeping the original order
@@ -109,8 +116,11 @@ def main():
         import pandas as pd
         gc.gctype = 'weighted-list'
 
+        fileitem = get_uploaded_file(form)
+        if fileitem is None:
+            exit_with_error("Didn't detect an uploaded file for an uploaded-weighted submission")
+
         # sanitize the file name
-        fileitem = form['new_cart_file']
         valid_chars = "-_.() {}{}".format(string.ascii_letters, string.digits)
         fileitem.filename = ''.join(c for c in fileitem.filename if c in valid_chars)
 

@@ -50,7 +50,7 @@ def main():
     # If no display found for this ID, treat as if it were already deleted.
     if not display:
         result = dict(success=True)
-    elif user.id == display['user_id']:
+    elif user is not None and user.id == display['user_id']:
         query = "DELETE FROM dataset_display where id = %s"
         cursor.execute(query, (display_id,))
         cnx.commit()

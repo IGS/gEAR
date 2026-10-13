@@ -51,7 +51,7 @@ Nearly every page in `www/` ends with an inline module like this one from `www/d
 
 When adding a new page, copy this block and replace the page-specific file names. Vendor libraries and CDN assets are loaded with ordinary `<script>`/`<link>` tags and are not versioned. `common.v2.js` itself is imported without a version string.
 
-Pages that currently do not use the helpers: the legacy `contact.html`.
+Every top-level page in `www/` uses the helpers, including `contact.html`, except the untracked `dominoSignal.html` prototype (inline module only). The unlinked legacy `workshop/registration_old.html` still adds a timestamp to its file names with `document.write`.
 
 ## Git Hook
 

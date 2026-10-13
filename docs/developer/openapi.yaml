@@ -80,9 +80,10 @@ paths:
               $ref: '#/components/schemas/ApiTopPcaGenesForm'
       responses:
         '200':
-          description: '{"success": 1} on success. Validation errors return success 0 ("Number of PCs must between
-            2 and 5", "Missing dataset_id", "Invalid dataset_id"); load or plot errors return success -1 with the
-            exception text.'
+          description: '{"success": 1} on success. Validation errors return success 0 ("PCs must be a comma-separated
+            list of integers" when pcs is missing or has a non-integer entry, "Number of PCs must between 2 and 5",
+            "Missing dataset_id", "Invalid dataset_id"); load or plot errors return success -1 with the exception
+            text.'
           content:
             application/json:
               schema:
@@ -99,7 +100,8 @@ paths:
                     type: string
                     description: Present on errors only.
         '500':
-          description: Unhandled exception (e.g. missing pcs field, non-integer PC, analysis lookup failure).
+          description: Unhandled exception from the analysis lookup (e.g. the analysis h5ad does not exist, or a
+            dataset/analysis/session ID that is not a plain path component raises "Invalid ... ID.").
           content:
             application/json:
               schema:
@@ -318,8 +320,8 @@ paths:
           type: string
       responses:
         '200':
-          description: Analyses (each serialized from the Analysis object's __dict__). Returns HTTP 200 with success
-            -1 "No dataset found with that ID" for an unknown dataset.
+          description: Analyses (each serialized from the Analysis object's __dict__, without session_id). Returns
+            HTTP 200 with success -1 "No dataset found with that ID" for an unknown dataset.
           content:
             application/json:
               schema:
@@ -551,13 +553,14 @@ paths:
                   type: integer
                   description: Organism ID of the input genes (cast with int()).
                 exclusive_org:
-                  type: string
-                  enum:
-                  - 'true'
-                  - 'false'
-                  default: 'false'
-                  description: '"true" restricts mapping to the gene organism''s ortholog file. Must be a string
-                    (the handler calls .lower(); a JSON boolean causes a 500).'
+                  oneOf:
+                  - type: boolean
+                  - type: string
+                  nullable: true
+                  default: false
+                  description: 'true (or the string "true", case-insensitive) restricts mapping to the gene organism''s
+                    ortholog file. Any other string is false; a non-string value is cast with bool() (so null or
+                    a missing key is false).'
       responses:
         '200':
           description: Mapping of each input symbol to matching dataset symbols (empty list if unmapped).
@@ -648,8 +651,8 @@ paths:
       tags:
       - HiGlass
       summary: Look up a gene's coordinates on the gEAR HiGlass server.
-      description: Queries <HIGLASS_URL>/suggest/ for the assembly's annotation BEDdb tileset and returns the matching
-        entry unchanged, preferring an exact case-insensitive geneName match and falling back to the first hit.
+      description: Queries <HIGLASS_URL>/suggest/ (d=<tileset>, ac=<gene>, URL-encoded as query parameters) for the
+        assembly's annotation BEDdb tileset and returns the matching entry unchanged, preferring an exact case-insensitive geneName match and falling back to the first hit.
         Called by apiCallsMixin.fetchHiglassGeneCoords in www/js/common.v2.js and internally by GoslingSpec via
         http://127.0.0.1/api/higlass/genes/.
       parameters:
@@ -698,12 +701,13 @@ paths:
                     type: string
                     description: Official gene name.
                 additionalProperties: true
-        '500':
-          description: Unsupported or missing assembly (the handler raises ValueError).
+        '400':
+          description: Unsupported or missing assembly ("Assembly <assembly> is not supported or does not have
+            a BEDdb UID.").
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiMessageError'
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/import/dataset/{share_uid}/status:
     post:
       operationId: getDatasetProcessingStatus
@@ -720,7 +724,8 @@ paths:
       - name: share_uid
         in: path
         required: true
-        description: Upload share UID.
+        description: Upload share UID. Must contain only letters, digits, "_" and "-", otherwise 400 "Invalid
+          share ID".
         schema:
           type: string
       requestBody:
@@ -743,13 +748,18 @@ paths:
                 $ref: '#/components/schemas/ApiUploadStatus'
         '400':
           description: Status was "processing" but neither a job_id nor a live process_id was found; the returned
-            status.json copy has status "error", progress 0 and a failure message (the file is not updated).
+            status.json copy has status "error", progress 0 and a failure message (the file is not updated). Also
+            returned (as an error object with message "Invalid share ID") when share_uid contains anything other
+            than letters, digits, "_" and "-".
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiUploadStatus'
+                oneOf:
+                - $ref: '#/components/schemas/ApiUploadStatus'
+                - $ref: '#/components/schemas/ApiUploadStatusError'
         '401':
-          description: Session cookie does not resolve to a user ("Invalid session").
+          description: Session cookie is missing, is not a plain name (letters, digits, "_" and "-" only), or does
+            not resolve to a user ("Invalid session"). The share_uid check runs first.
           content:
             application/json:
               schema:
@@ -929,7 +939,12 @@ paths:
       - name: hub_url
         in: query
         required: true
-        description: URL of the track hub.
+        description: 'URL of the track hub. Validated before any request: the scheme must be http or https and
+          the host must be the hostname of the configured domain URL or a subdomain of it (exact or ".<domain>"
+          suffix match, case-insensitive). With ENVIRONMENT=development, umgear.org, web, localhost and 127.0.0.1
+          are also allowed. An IP address host is allowed only when it is listed exactly; any other private, loopback
+          or link-local IP is rejected ("Access to private/internal IP address ... is not allowed."), as is any
+          other public IP ("Hub IP address ... is not in the allowed list.").'
         schema:
           type: string
       - name: zoom
@@ -961,8 +976,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiGoslingSpecResponse'
         '400':
-          description: Missing assembly, gene or hub_url, or the hub fetch/parse failed (ValueError or requests
-            error).
+          description: Missing assembly, gene or hub_url, hub_url rejected by the host allowlist ("Hub domain
+            ... is not in the allowed list.", "Invalid URL scheme. Only http and https are allowed.", the IP
+            messages above, or "Domain URL not configured..." / "Domain URL is not a valid URL..." when the server
+            domain is unset or unparseable), or the hub fetch/parse failed (ValueError or requests error; in genomes.txt
+            the trackDb line may be anywhere in the assembly's "genome" stanza).
           content:
             application/json:
               schema:
@@ -1067,8 +1085,16 @@ paths:
             out). Quirk: when some requested genes are not found, gear.mg_plotting.create_dataframe_gene_mask sets
             `success = 2,` (a tuple), so success serializes as [2]. Errors return HTTP 200 with success -1: no JSON
             body, dataset/file not found, no categorical obs columns, no genes for dotplot/heatmap/mg_violin, fewer
-            than 2 genes for heatmap, missing primary_col, invalid filters/sort order/clusterbar fields, "No data
-            found for the selected filters.", PlotError, or "Plot type ... is not a valid multi-gene plot option".'
+            than 2 genes for heatmap, missing primary_col, invalid filters/sort order/clusterbar fields, PlotError,
+            or "Plot type ... is not a valid multi-gene plot option". A non-numeric threshold option (fold_change_cutoff,
+            fdr_cutoff, pvalue_threshold, lower_logfc_threshold, upper_logfc_threshold) returns "Option ''<name>''
+            must be a number, not ''<value>''."; an empty string or null uses the default. A volcano/quadrant condition
+            without ";-;" returns "Condition ''...'' is not in the expected ''<observation group>;-;<value>'' format.",
+            and all three quadrant conditions must use the same obs column. An "NA" value in obs_filters selects
+            observations whose value is missing. "No data found for the selected filters." is returned when
+            filtering leaves no observations, and "No data found for the selected filters (<column>: <levels>). Try
+            removing some filters." when a chosen sort-column level is left with no data by the other filters (a
+            level not in the dataset at all instead reports that the curation needs updating).'
           content:
             application/json:
               schema:
@@ -1110,8 +1136,9 @@ paths:
               $ref: '#/components/schemas/ApiMgTsneDataRequest'
       responses:
         '200':
-          description: '{success, message, image, image_format} as for /tsne. Errors (including an unknown plot_type)
-            return HTTP 200 with success -1.'
+          description: '{success, message, image, image_format} as for /tsne. Errors (including an unknown plot_type,
+            and a stale order or obs_filters key, whose message ends in "Please update curation.") return HTTP 200 with
+            success -1.'
           content:
             application/json:
               schema:
@@ -1311,8 +1338,11 @@ paths:
       responses:
         '200':
           description: '{script, success, message}. On failure success is 0, script is null and message holds the
-            error ("No JSON body provided in the request.", "Error preparing data image: ...", "Error preparing
-            data markers: ...", or "... Error generating viewer script: ...").'
+            error ("No JSON body provided in the request.", "Invalid dataset ID." / "Invalid projection ID." when
+            the ID is not a plain file name (changed by secure_filename), "Request needs a gene symbol.", "Invalid
+            gene symbol." when the cache file name would contain a path separator, "Error preparing data image:
+            ...", "Error preparing data markers: ...", or "... Error generating viewer script: ..."). The ID checks
+            run before the cache directory is created.'
           content:
             application/json:
               schema:
@@ -1368,20 +1398,23 @@ paths:
       - name: vmin
         in: query
         required: false
-        description: User-defined color minimum. "0" or absent is treated as 0.0 when vmax is given.
+        description: User-defined color minimum. Must parse as a float; an empty value is ignored. 0 or absent
+          is treated as 0.0 when vmax is given.
         schema:
           type: number
       - name: vmax
         in: query
         required: false
-        description: User-defined color maximum. "0" or absent falls back to the gene maximum when vmin is given.
+        description: User-defined color maximum. Must parse as a float; an empty value is ignored. 0 (e.g. "0"
+          or "0.0") or absent falls back to the gene maximum when vmin is given.
         schema:
           type: number
       responses:
         '200':
           description: 'Expression data. success is 2 (with a warning message) when the symbol maps to several Ensembl
-            IDs; the first is used. Errors return HTTP 200 with success -1: non-numeric expression_min_clip, missing
-            gene, dataset not found, h5ad file not found, projection PlotError, missing gene_symbol column, or gene
+            IDs; the first is used. user_defined is present only when a non-empty vmin or vmax is sent. Errors return
+            HTTP 200 with success -1: non-numeric vmin/vmax ("The vmin and vmax parameters must be numbers."), non-numeric
+            expression_min_clip, missing gene, dataset not found, h5ad file not found, projection PlotError, missing gene_symbol column, or gene
             not found.'
           content:
             application/json:
@@ -1420,7 +1453,9 @@ paths:
             the 16383 px WebP limit, or "pdf" when high_dpi is true. success is 2 when duplicate genes were deduplicated.
             Errors return HTTP 200 with success -1 (no gene symbol, dataset not found, analysis unavailable, cannot
             load AnnData, projection PlotError, missing gene_symbol column, gene/axis validation failure, unknown
-            plot_type ("<plot_type> was not a valid plot type"), invalid vmin/vmax/median-centering combination).'
+            plot_type ("<plot_type> was not a valid plot type"), invalid vmin/vmax/median-centering combination, or
+            a saved order or obs_filters key that no longer fits the dataset: a column missing from adata.obs or an
+            order whose categories differ from the column''s. Those messages end in "Please update curation.").'
           content:
             application/json:
               schema:
@@ -1475,8 +1510,10 @@ paths:
       responses:
         '200':
           description: Job status. Failures are reported as status "failed" with the reason in error (still HTTP
-            200), e.g. unweighted lists with NMF algorithms, gene list not found/empty, analysis unavailable, RabbitMQ
-            connection/publish errors, projectR timeout.
+            200), e.g. unweighted lists with NMF algorithms, gene list not found/empty, a weighted genecart_id that
+            is not a plain file name ("Invalid gene list identifier"), a target dataset with no samples ("The target
+            dataset has no samples to project onto."), analysis unavailable, RabbitMQ connection/publish errors,
+            projectR timeout.
           content:
             application/json:
               schema:
@@ -1597,9 +1634,16 @@ paths:
       tags:
       - Collections (layouts)
       summary: Add a dataset display as a member of a layout (collection)
-      description: Requires a logged-in user who owns the layout. Computes the next free grid position (width 4
-        for single-gene, 6 for multi-gene displays) and, if the layout is in "legacy" mode (every member has start_col
-        1), first rebuilds all member grid positions. Errors are returned with HTTP 200 and success 0.
+      description: Requires a logged-in user who owns the layout ("Layout not found", "Not able to add to the layout.
+        User must be logged in.", or "Not able to add to the profile. User doesn't own it"). The display must exist
+        and its dataset must exist ("Display not found"); it must be the user's own display or one saved by the dataset's
+        owner ("Not able to add this display. It belongs to another user."); and the user must be able to see the
+        dataset (public, owned, or shared through dataset_shares; otherwise "Not able to add this display. You don't
+        have access to its dataset."). All checks run before anything is saved. If the layout is in "legacy" mode
+        (every member has start_col 1), all member grid positions are first rebuilt. The new display keeps the default
+        size (width 4 for single-gene, 6 for multi-gene displays, height 1) and goes after the last tile in the last
+        row of its kind if it fits within the 12 grid columns without overlapping a tile, else at column 1 of a new
+        row below every existing tile. Errors are returned with HTTP 200 and success 0.
       requestBody:
         required: true
         content:
@@ -2115,9 +2159,12 @@ paths:
       tags:
       - Analysis/workbench
       summary: Delete a user's stored (non-primary) analysis
-      description: Requires a logged-in user who owns the analysis. Primary analyses cannot be deleted, and the
-        directory is only removed if its name is a UUID. Errors are returned with HTTP 200 and success 0 (a missing
-        dataset returns success 0 with an empty error).
+      description: Requires a logged-in user who owns the analysis. Primary analyses cannot be deleted ("Cannot
+        delete primary analyses"); any other type except user_saved/user_unsaved, or an analysis_id that is not
+        a plain UUID, returns "Only your own saved or unsaved analyses can be deleted" (so public analyses cannot
+        be deleted here, and an ID like "../../<user>/<dataset>/<uuid>" cannot reach another user's directory).
+        The directory is only removed if its name is a UUID. Errors are returned with HTTP 200 and success 0 (a
+        missing dataset returns success 0 with an empty error).
       requestBody:
         required: true
         content:
@@ -2137,9 +2184,13 @@ paths:
                   type: string
                 analysis_id:
                   type: string
-                  description: Analysis UUID
+                  description: Analysis UUID (must be exactly a UUID)
                 analysis_type:
-                  $ref: '#/components/schemas/Cgi1AnalysisType'
+                  type: string
+                  enum:
+                  - user_saved
+                  - user_unsaved
+                  description: Only user_saved and user_unsaved are accepted
       responses:
         '200':
           description: Result of the delete.
@@ -2154,7 +2205,8 @@ paths:
       - Displays
       summary: Delete a saved dataset display owned by the user
       description: Requires a session whose user owns the display. A display that does not exist is treated as already
-        deleted (success true). Returns success false if parameters are missing or the user is not the owner.
+        deleted (success true). Returns success false if parameters are missing, the session does not resolve to
+        a user, or the user is not the owner.
       requestBody:
         required: true
         content:
@@ -2474,10 +2526,12 @@ paths:
       tags:
       - Uploads
       summary: Finalize an upload by saving metadata to MySQL and migrating files
-      description: Requires a logged-in user. Saves metadata.json to MySQL (status completed), moves the H5AD (or
+      description: 'Requires a logged-in user. Saves metadata.json to MySQL (status completed), moves the H5AD (or
         spatial Zarr / gosling track hub) and the original upload file into place, optionally migrates the primary
-        analysis JSON and preliminary plots, then deletes the upload directory. Returns per-step flags; errors are
-        returned with HTTP 200 and success 0.
+        analysis JSON and preliminary plots, then deletes the upload directory. share_uid, dataset_uid and session_id
+        are used as path components, so after the login check each must be a plain file name (unchanged by secure_filename),
+        otherwise the message is "Invalid share_uid: ...", "Invalid dataset_uid: ..." or "Invalid session_id.". Returns
+        per-step flags; errors are returned with HTTP 200 and success 0.'
       requestBody:
         required: true
         content:
@@ -2786,7 +2840,8 @@ paths:
                 type: object
                 additionalProperties: true
         '400':
-          description: No pubmed_id provided.
+          description: No pubmed_id provided ("No pubmed_id provided"), or it is not 1-20 digits ("Invalid pubmed_id"),
+            so it can't add parameters to the NCBI request URL.
           content:
             application/json:
               schema:
@@ -2999,7 +3054,9 @@ paths:
       - Displays
       summary: Return the static preview image path for a display
       description: Returns a JSON string path relative to the cgi directory (../img/dataset_previews/<dataset_id>.<display_id>.png),
-        substituting gosling.png for gosling displays and missing.png when no preview exists.
+        substituting gosling.png for gosling displays and missing.png when no preview exists. IDs that would put
+        the path outside the dataset_previews directory itself (e.g. containing "/" or "..", including a sibling
+        directory such as dataset_previews_old) also return missing.png, without a display lookup.
       requestBody:
         required: true
         content:
@@ -3165,8 +3222,8 @@ paths:
       tags:
       - Displays
       summary: Get the default display ID for a dataset
-      description: Returns the user's default display, falling back to the dataset owner's default. session_id is
-        optional.
+      description: 'Returns the user''s default display, falling back to the dataset owner''s default. session_id is
+        optional. An unknown dataset_id returns {"default_display_id": null}.'
       requestBody:
         required: true
         content:
@@ -3245,8 +3302,10 @@ paths:
       tags:
       - Misc
       summary: Report event attendance and the user's registration/waitlist status
-      description: Requires a logged-in user; returns {} otherwise. Result is keyed by event ID. Used by the workshop
-        page (whose handler currently returns early because events are closed).
+      description: Requires a logged-in user; returns {} otherwise. Result is keyed by event ID. Registrations are
+        counted in sign-up order, so the user is attending if they are within the first max_attendees registrations
+        and waitlisted otherwise. Called only by js/workshop.js, which is loaded only by the unlinked workshop/registration_old.html
+        (and its handler returns early because events are closed).
       requestBody:
         required: true
         content:
@@ -3555,7 +3614,7 @@ paths:
       summary: List pattern labels (with top genes) for a pattern gene cart
       description: For scope=unweighted-list returns a single 'unweighted' binary pattern without checking the cart.
         Otherwise reads carts/cart.<source_id>.tab and returns each weight column with its top 5 up/down genes;
-        a missing file returns [].
+        a missing or empty source_id, or a missing file, returns [].
       requestBody:
         required: true
         content:
@@ -3641,52 +3700,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cgi1PatternWeightedGenesError'
-  /cgi/get_session_info.cgi:
-    post:
-      operationId: cgiGetSessionInfo
-      tags:
-      - Account/auth
-      summary: Return basic user info for a session (legacy)
-      description: Legacy version used by js/common.js; newer pages use get_session_info.v2.cgi. Returns success
-        0 with null email/name if the session is unknown.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-              - session_id
-              properties:
-                session_id:
-                  type: string
-      responses:
-        '200':
-          description: User info.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: integer
-                    enum:
-                    - 0
-                    - 1
-                  email:
-                    type: string
-                    nullable: true
-                  name:
-                    type: string
-                    nullable: true
-                  is_admin:
-                    type: integer
-                  institution:
-                    type: string
-                  colorblind_mode:
-                    type: integer
-                  updates_wanted:
-                    type: integer
   /cgi/get_session_info.v2.cgi:
     post:
       operationId: cgiGetSessionInfoV2
@@ -3783,8 +3796,12 @@ paths:
       tags:
       - Analysis/workbench
       summary: Return the JSON for one stored analysis
-      description: Prints the serialized Analysis (its pipeline config). No login check; session_id locates user
-        analyses. Errors return HTTP 200 with success 0 and error.
+      description: Prints the serialized Analysis (its pipeline config, without analysis_session_id or the older
+        user_session_id), with vetting derived from the analysis's owner like get_stored_analysis_list.cgi
+        (gear, owner or community; a vetting saved in the pipeline file is ignored). No login check; session_id
+        locates user analyses. Errors return HTTP 200 with success 0 and error ("Dataset not found", "Analysis could not be loaded"
+        (also for IDs that are not plain path components), or "Analysis config file not found" when the pipeline
+        file is missing). The response always has a single Content-Type header.
       requestBody:
         required: true
         content:
@@ -3815,8 +3832,11 @@ paths:
       tags:
       - Analysis/workbench
       summary: List stored analyses for a dataset by class
-      description: session_id is optional; for a logged-in user each analysis also gets vetting info. An unknown
-        dataset returns {success 0, error}.
+      description: 'session_id is optional; user_saved needs a logged-in user and user_unsaved a session. For a logged-in
+        user each analysis also gets vetting (Analysis.discover_vetting): "gear" for primary analyses and for analyses
+        whose owner is a curator (whoever is viewing), "owner" when the owner is the current user, else "community";
+        null when the owner is unknown. Anonymous requests get null vetting. Analyses are serialized without session_id.
+        An unknown dataset returns {success 0, error}.'
       requestBody:
         required: true
         content:
@@ -3880,7 +3900,7 @@ paths:
       tags:
       - Misc
       summary: Return all tags (comment-form autocomplete)
-      description: Same as POST; contact.js calls it with $.get.
+      description: Same as POST; contact.js calls it with axios.get.
       responses:
         '200':
           description: Tag list.
@@ -3894,8 +3914,9 @@ paths:
       tags:
       - Gene lists (carts)
       summary: Preview genes (symbol, product) in an unweighted gene cart
-      description: share_id is reduced to ASCII letters and digits. No login check. Errors return HTTP 200 with
-        success 0 and message; a missing share_id field raises (empty body).
+      description: share_id is reduced to ASCII letters, digits, "-", "_" and "." (the characters a custom share
+        ID can use). No login check. Errors return HTTP 200 with success 0 and message ("No share ID provided"
+        when share_id is missing or empty after filtering, "Invalid share ID" when no cart has it).
       requestBody:
         required: true
         content:
@@ -4080,7 +4101,8 @@ paths:
       tags:
       - Account/auth
       summary: Return the user's most recent history entries
-      description: Returns [] if the session is not valid.
+      description: Returns [] if the session is not valid. num_entries must be a positive integer; anything else
+        (non-numeric, 0 or negative) falls back to 5. It is passed to the query's LIMIT as a bound parameter.
       requestBody:
         required: true
         content:
@@ -4237,8 +4259,9 @@ paths:
       tags:
       - Gene lists (carts)
       summary: Summarize a weighted gene cart (gene count and weight labels)
-      description: Opens carts/cart.<share_id>.h5ad (share_id reduced to letters and digits). preview_json is always
-        empty (the preview table is commented out). An unreadable file returns success -1 with HTTP 200.
+      description: Opens carts/cart.<share_id>.h5ad (share_id reduced to letters, digits, "-", "_" and "."; a missing
+        share_id is treated as empty). preview_json is always empty (the preview table is commented out). An unreadable
+        or missing file returns success -1 with HTTP 200.
       requestBody:
         required: true
         content:
@@ -4346,8 +4369,8 @@ paths:
       summary: Compare marker genes between a query cluster and a reference cluster
       description: Runs scanpy rank_genes_groups for the query cluster vs. a reference cluster (or all others),
         writes ranked/violin comparison PNGs next to the analysis file and, if a specific reference is given, also
-        the reverse comparison. Primary/public analyses are redirected to a `user_unsaved` copy. Cluster column
-        is `louvain` except for hard-coded BICCN dataset IDs.
+        the reverse comparison. Primary/public analyses are redirected to a `user_unsaved` copy, whose directory
+        is created if it does not exist yet. Cluster column is `louvain` except for hard-coded BICCN dataset IDs.
       requestBody:
         required: true
         content:
@@ -4370,7 +4393,7 @@ paths:
                     description: Cluster label to compare against, or `all-reference-clusters` for all others.
                   n_genes:
                     type: integer
-                    description: Number of top genes to plot and return.
+                    description: Number of top genes to plot and return (the tables hold exactly n_genes rows).
                   method:
                     type: string
                     description: scanpy rank_genes_groups method (frontend sends t-test, t-test_overestim_var, wilcoxon,
@@ -4897,63 +4920,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cgi2SuccessInt'
-  /cgi/login.cgi:
-    post:
-      operationId: cgiLogin
-      tags:
-      - Account/auth
-      summary: Log in with email/password and return a session_id (legacy)
-      description: Checks the password against sha3-256 then legacy md5 hashes and returns the user's existing session
-        or creates one. session_id is 0 if the email is unknown and -1 if the password is wrong (both HTTP 200).
-        Legacy; used by js/common.js (contact.html) via jQuery form serialization.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Cgi2LoginV1Form'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Cgi2LoginV1Form'
-      responses:
-        '200':
-          description: Login result.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  session_id:
-                    oneOf:
-                    - type: string
-                    - type: integer
-                      enum:
-                      - 0
-                      - -1
-                    description: Session UUID, 0 (email not found) or -1 (wrong password).
-                  is_admin:
-                    type: integer
-                    enum:
-                    - 0
-                    - 1
-                  user_id:
-                    type: integer
-                    description: Only on success.
-                  name:
-                    type: string
-                    description: User name; only on success.
-                  gear_default_domain:
-                    type: string
-                    description: Current layout label (default "Hearing (site default)"); only on success.
   /cgi/login.v2.cgi:
     post:
       operationId: cgiLoginV2
       tags:
       - Account/auth
       summary: Log in (v2 field names) and return a session_id
-      description: Same logic as login.cgi but reads hyphenated field names and also returns the current layout
-        share ID. session_id is 0 if the email is unknown and -1 if the password is wrong (both HTTP 200). The v2
-        frontend posts URLSearchParams (urlencoded).
+      description: Checks the password against sha3-256 then legacy md5 hashes and returns the user's existing
+        session or creates one. Also returns the current layout share ID. Replaces the removed v1 login.cgi. session_id
+        is -1 both when the email is unknown and when the password is wrong (HTTP 200), so
+        the form cannot be used to discover registered emails; the actual reason is logged to stderr. The v2 frontend
+        posts URLSearchParams (urlencoded).
       requestBody:
         required: true
         content:
@@ -4976,9 +4953,8 @@ paths:
                     - type: string
                     - type: integer
                       enum:
-                      - 0
                       - -1
-                    description: Session UUID, 0 (email not found) or -1 (wrong password).
+                    description: Session UUID, or -1 (email not found or wrong password).
                   is_admin:
                     type: integer
                     enum:
@@ -5353,8 +5329,10 @@ paths:
       - Analysis/workbench
       summary: Save the JSON state of an analysis pipeline
       description: 'Writes `state` verbatim to the analysis''s `<dataset_id>.pipeline.json` settings file (Analysis
-        or SpatialAnalysis, depending on the dataset''s dtype). Requires a logged-in user (`session_id`). Errors
-        are returned with HTTP 200 and `success: 0`; a missing dataset returns `success: 0` with an empty `error`.'
+        or SpatialAnalysis, depending on the dataset''s dtype). Requires a logged-in user (`session_id`). Only
+        user_saved/user_unsaved analyses with a plain UUID `analysis_id` can be saved; anything else returns "Only
+        your own saved or unsaved analyses can be saved". Errors are returned with HTTP 200 and `success: 0`; a
+        missing dataset returns `success: 0` with an empty `error`.'
       requestBody:
         required: true
         content:
@@ -5376,15 +5354,14 @@ paths:
                   description: Dataset UUID.
                 analysis_id:
                   type: string
-                  description: Analysis UUID.
+                  description: Analysis UUID (must be exactly a UUID).
                 analysis_type:
                   type: string
                   enum:
-                  - primary
-                  - public
                   - user_saved
                   - user_unsaved
-                  description: Analysis type; determines where the settings file is written.
+                  description: Analysis type; determines where the settings file is written. primary and public
+                    are rejected.
                 analysis_vetting:
                   type: string
                   description: Vetting level; "undefined", "null" or empty are treated as none.
@@ -5725,7 +5702,8 @@ paths:
                   type: string
                   format: binary
                   description: Gene file (uploaded-* types). Unweighted is a plain list of symbols; weighted must
-                    be .xlsx/.xls, .tab/.tsv or .csv.
+                    be .xlsx/.xls, .tab/.tsv or .csv. A missing file for uploaded-weighted returns HTTP 500 "Didn't
+                    detect an uploaded file for an uploaded-weighted submission".
       responses:
         '200':
           description: The new cart's ID.
@@ -5749,9 +5727,11 @@ paths:
       tags:
       - Gene lists (carts)
       summary: Create a new gene cart from a JSON body
-      description: Does not use cgi.FieldStorage; reads a JSON object from the request body (`GeneCart.update_from_json`).
-        A `session_id` for a logged-in user is required in practice (an invalid one raises an error). Weighted carts
-        are also written to `www/carts/cart.<share_id>.tab` and `.h5ad`. Errors return HTTP 500.
+      description: 'Does not use cgi.FieldStorage; reads a JSON object from the request body (`GeneCart.update_from_json`).
+        A `session_id` for a logged-in user is required; a missing or invalid one returns HTTP 500 {"message": "No
+        logged-in user detected"} before any cart file is written, and the cart is owned by that user. `is_domain`
+        is honored only for an admin; for anyone else the cart is saved with is_domain 0. Weighted carts are also
+        written to `www/carts/cart.<share_id>.tab` and `.h5ad`. Errors return HTTP 500.'
       requestBody:
         required: true
         content:
@@ -5787,6 +5767,7 @@ paths:
                   enum:
                   - 0
                   - 1
+                  description: Domain (site-wide) list. Admins only; ignored (saved as 0) for other users.
                 weight_labels:
                   type: array
                   items:
@@ -5837,8 +5818,12 @@ paths:
       summary: Change the user's password or account settings
       description: 'Requires a logged-in user. With `scope=password` the new password is stored for the account
         matching `help_id` (not the session user) and the help_id is rotated. With `scope=settings_change`, email/institution/password
-        are updated if given and colorblind_mode/updates_wanted are always written. Errors use HTTP 200 and `success:
-        0`.'
+        are updated if given and colorblind_mode/updates_wanted are always written; changing the password here
+        also rotates the user''s help_id, so an earlier password-reset link stops working. A changed email (compared
+        case-insensitively after trimming; the profile page always sends the current one, which is accepted as is)
+        must match the same pattern as create_account.js ("Please enter a valid email address.") and must not belong
+        to another account, compared case-insensitively ("Another account already uses this email address."); on
+        either error nothing is saved. Errors use HTTP 200 and `success: 0`.'
       requestBody:
         required: true
         content:
@@ -5891,8 +5876,10 @@ paths:
       tags:
       - Collections (layouts)
       summary: Save the user's selected layout (collection)
-      description: Requires a valid `session_id`. Sets `guser.layout_id` to the layout with the given share ID (the
-        docstring says layout_share_id; an unknown share ID stores NULL). Replaces the legacy set_primary_layout.cgi.
+      description: Requires a valid `session_id`. Sets `guser.layout_id` to the layout with the given share ID. The
+        layout must be the user's own, public, a domain (site) layout, or shared with one of the user's groups (the
+        layouts the collection selectors list); another user's private layout returns success 0 and nothing is saved.
+        An unknown share ID stores NULL, so the site default is used. Replaces the legacy set_primary_layout.cgi.
       requestBody:
         required: true
         content:
@@ -5924,7 +5911,8 @@ paths:
                     - 1
                   message:
                     type: string
-                    description: '"Invalid session_id" on failure, else empty.'
+                    description: '"Invalid session_id" or "Not able to choose this collection. It belongs to another
+                      user and isn''t public." on failure, else empty.'
   /cgi/save_user_default_organism.cgi:
     post:
       operationId: cgiSaveUserDefaultOrganism
@@ -6009,7 +5997,8 @@ paths:
                   description: Only datasets added within the last interval.
                 ownership:
                   type: string
-                  description: Comma-separated subset of yours, shared, public, group (logged-in users only).
+                  description: Comma-separated subset of yours, shared, public, group (logged-in users only). If
+                    no value is recognized, no datasets match (success 1, empty list).
                 layout_share_id:
                   type: string
                   description: List datasets with displays in this layout (ignores sort order).
@@ -6067,7 +6056,8 @@ paths:
       - Search
       summary: Search and filter gene carts with paging
       description: Anonymous users see public carts; logged-in users default to public, own and group members' carts.
-        The 'shared' ownership option is not implemented (sending only 'shared' produces an invalid query). An invalid
+        The 'shared' ownership option is not implemented; an ownership value with nothing recognized (e.g. only
+        'shared') matches no carts. An invalid
         page/limit (non-numeric or < 1), or a database error while searching, returns success 0 with a `problem`
         message (HTTP 200). Logs the search to user history when terms are given.
       requestBody:
@@ -6097,7 +6087,8 @@ paths:
                   - year
                 ownership:
                   type: string
-                  description: Comma-separated subset of yours, public, group (shared is ignored).
+                  description: Comma-separated subset of yours, public, group (shared is ignored; no recognized
+                    value matches no carts).
                 page:
                   type: integer
                   minimum: 1
@@ -6240,8 +6231,14 @@ paths:
       tags:
       - Misc
       summary: Register or unregister the user for an event
-      description: Requires a logged-in user. Inserts or deletes an `event_registration` row. Used by the workshop
-        page. A missing or non-integer registration_status raises a server error.
+      description: 'Requires a logged-in user. Inserts or deletes an `event_registration` row. Registrations are
+        counted in sign-up order: the first max_attendees have a seat and the next waitlist_size are waitlisted. Registering
+        when the seats are taken adds the user to the waitlist ("All seats are taken, so you have been added to the
+        waitlist"); registering when the waitlist is also full returns success 0 "This event is full". Registering
+        again returns success 1 "You are already registered" without adding a row. registration_status other than
+        0 or 1 returns success 0 "Unrecognized registration status", and a missing, non-integer or unknown event_id
+        returns success 0 "Unknown event". The event row is locked (SELECT ... FOR UPDATE) while counting, so concurrent
+        sign-ups can''t oversubscribe it. Called only by js/workshop.js (see get_event_registration_list.cgi).'
       requestBody:
         required: true
         content:
@@ -6282,11 +6279,11 @@ paths:
                     type: string
                   current_count:
                     type: integer
-                    description: Number of registrations for the event.
+                    description: Number of registrations (seats and waitlist) for the event after the change. Only
+                      when success is 1.
                   event:
                     type: object
-                    nullable: true
-                    description: Event capacity info.
+                    description: Event capacity info, with zeroed attendee counters. Only when success is 1.
                     properties:
                       attendees:
                         type: integer
@@ -6495,9 +6492,11 @@ paths:
       tags:
       - Uploads
       summary: Save the uploader's metadata form to metadata.json
-      description: 'Requires a logged-in user. Creates `uploads/files/<session_id>/<share_uid>/` (before checking
-        the user) and writes the form fields to metadata.json using legacy key names (e.g. geo_id to geo_accession,
-        taxon_id to sample_taxid). Errors use HTTP 200 and `success: 0`.'
+      description: 'Requires a logged-in user. session_id and share_uid must be plain file names (unchanged by
+        secure_filename), otherwise "Invalid session_id" / "Invalid share_uid" (they are refused, not rewritten).
+        After the user check, creates `uploads/files/<session_id>/<share_uid>/` and writes the form fields to metadata.json
+        using legacy key names (e.g. geo_id to geo_accession, taxon_id to sample_taxid). Errors use HTTP 200 and
+        `success: 0`.'
       requestBody:
         required: true
         content:
@@ -6630,9 +6629,10 @@ paths:
       - Account/auth
       summary: Reset a password using a help_id
       description: Used by the forgot-password page; no login required. Stores the SHA3-256 hash of `password` for
-        the single user with this `help_id` (the docstring's mention of session ID is outdated). Any match count
-        other than one returns "Duplicate help ID prefixes". Unlike save_user_account_changes.cgi, the help_id is
-        not rotated.
+        the single user with this `help_id`, then replaces the help_id with a new UUID so each reset link works
+        only once. Errors (success 0) are "No password provided." (missing or empty), "No help ID provided.", "Help
+        ID not found." (no match, including a link that was already used) and "Duplicate help ID prefixes" (more
+        than one match).
       requestBody:
         required: true
         content:
@@ -6663,8 +6663,11 @@ paths:
       - Misc
       summary: Change the share ID (permalink) of a dataset, layout or gene cart the user owns
       description: 'Requires a logged-in owner. Both IDs must be unchanged by secure_filename, the new ID must fit
-        its column (24 characters for a layout, 50 for a dataset or gene cart) and must be unused. For gene carts it also renames weighted cart files in `www/carts` and rewrites references under
-        `www/projections`. Errors use HTTP 200 and `success: 0`.'
+        its column (24 characters for a layout, 50 for a dataset or gene cart) and must be unused. For weighted gene carts it
+        also renames that cart''s own `www/carts/cart.<share_id>.tab` and `.h5ad` (not other carts whose IDs contain
+        it). For all gene carts it renames the cart''s key (or legacy `cart.<share_id>` key) in each `www/projections/by_dataset/*/projections.json`,
+        leaving other entries untouched, and renames `www/projections/by_genecart/<share_id>/` unless the new directory
+        already exists. Errors use HTTP 200 and `success: 0`.'
       requestBody:
         required: true
         content:
@@ -6896,7 +6899,8 @@ components:
       - type: string
     ApiAnalysis:
       type: object
-      description: Serialized gear.analysis.Analysis (object __dict__).
+      description: Serialized gear.analysis.Analysis (object __dict__ via Analysis._serialize_json). The session ID
+        is left out, because for a public analysis it is the publishing user's login session.
       properties:
         id:
           type: string
@@ -6905,12 +6909,11 @@ components:
         label:
           type: string
           nullable: true
-        session_id:
-          type: string
-          nullable: true
         user_id:
           type: integer
           nullable: true
+          description: Owner, looked up from the session that saved or published the analysis (for user_saved and
+            user_unsaved, the user whose area it is). A user_id in the pipeline JSON is ignored.
         type:
           type: string
           enum:
@@ -6925,6 +6928,8 @@ components:
           - owner
           - gear
           - community
+          description: Derived by Analysis.discover_vetting, never read from the pipeline JSON. This endpoint doesn't
+            call it, so the value is null.
         tsne:
           type: object
           additionalProperties: true
@@ -6988,11 +6993,14 @@ components:
           $ref: '#/components/schemas/ApiAnalysisRef'
         x_axis:
           type: string
-          description: obs column (or raw_value, X_tsne_1, X_umap_1, X_pca_1...).
+          description: obs column, raw_value, or an analysis embedding axis (X_tsne_1, X_tsne_2, X_umap_1, X_umap_2,
+            X_pca_1, X_pca_2), which is read from the matching adata.obsm array (column 1 or 2) when that array
+            exists. Each axis is resolved on its own, so x and y may come from different embeddings or mix with
+            obs columns.
         y_axis:
           type: string
           default: raw_value
-          description: obs column or raw_value.
+          description: obs column, raw_value, or an analysis embedding axis (see x_axis).
         z_axis:
           type: string
           description: Contour z column; defaults to raw_value for contour and is ignored otherwise.
@@ -7297,13 +7305,19 @@ components:
           description: Differential expression test.
         pvalue_threshold:
           type: number
+          nullable: true
           default: 0.05
+          description: Volcano p-value threshold. Numeric strings are accepted; "" or null uses the default.
         lower_logfc_threshold:
           type: number
+          nullable: true
           default: -2
+          description: Volcano lower log fold-change threshold ("" or null uses the default).
         upper_logfc_threshold:
           type: number
+          nullable: true
           default: 2
+          description: Volcano upper log fold-change threshold ("" or null uses the default).
         adj_pvals:
           type: boolean
           default: true
@@ -7313,12 +7327,14 @@ components:
           default: true
         fold_change_cutoff:
           type: number
+          nullable: true
           default: 2
-          description: Quadrant fold-change cutoff.
+          description: Quadrant fold-change cutoff ("" or null uses the default).
         fdr_cutoff:
           type: number
+          nullable: true
           default: 0.05
-          description: Quadrant FDR cutoff.
+          description: Quadrant FDR cutoff ("" or null uses the default).
         include_zero_fc:
           type: boolean
           default: true
@@ -7520,7 +7536,7 @@ components:
               additionalProperties: true
             user_defined:
               type: object
-              description: '{min, max} from vmin/vmax; present only when either is given.'
+              description: '{min, max} from vmin/vmax; present only when either is given non-empty.'
               additionalProperties: true
         data:
           type: object
@@ -8002,6 +8018,8 @@ components:
     Cgi1Analysis:
       type: object
       description: Serialized gear.analysis.Analysis (pipeline config); error responses have success and error instead.
+        The session ID (session_id, analysis_session_id or user_session_id) is never included, because for a public
+        analysis it is the publishing user's login session.
       additionalProperties: true
       properties:
         id:
@@ -8012,6 +8030,15 @@ components:
           type: string
         label:
           type: string
+        vetting:
+          type: string
+          nullable: true
+          enum:
+          - owner
+          - gear
+          - community
+          description: In get_stored_analysis_list.cgi, derived for a logged-in user (see that endpoint).
+            get_stored_analysis.cgi returns whatever the pipeline file holds.
         success:
           type: integer
           enum:
@@ -8023,7 +8050,9 @@ components:
       type: object
       description: Common workbench fields. If analysis_id and analysis_type are both empty the dataset's primary
         analysis is used. session_id is used to locate user_saved/user_unsaved analysis directories; login is not
-        enforced.
+        enforced. dataset_id, analysis_id and session_id become path components, so gear.analysis.Analysis.base_path
+        raises ValueError ("Invalid dataset ID." / "Invalid analysis ID." / "Invalid session ID.") for "", ".",
+        ".." or any value containing "/", a backslash or a NUL character.
       required:
       - dataset_id
       properties:
@@ -8097,17 +8126,6 @@ components:
           description: Session of the dataset owner.
         dataset_id:
           type: string
-    Cgi2LoginV1Form:
-      type: object
-      required:
-      - user_email
-      properties:
-        user_email:
-          type: string
-        user_pass:
-          type: string
-          format: password
-          description: Treated as empty string if missing.
     Cgi2LoginV2Form:
       type: object
       required:

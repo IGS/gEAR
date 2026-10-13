@@ -312,33 +312,26 @@ def map_colors(dataframe: pd.DataFrame, found_img: bool, is_cool_dataset: bool) 
     Returns:
         pd.DataFrame: The dataframe with cluster colors.
     """
-    # Assuming df is your DataFrame and it has a column "clusters"
-    unique_clusters = dataframe["clusters"].cat.categories
-    sorted_clusters = sort_clusters(unique_clusters)
-
     if "colors" in dataframe:
-        color_map = {
-            cluster: dataframe[dataframe["clusters"] == cluster][
-                "colors"
-            ].to_numpy()[0]
-            for cluster in sorted_clusters
-        }
-    else:
-        # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
-        # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
-        swatch_color = (
-            cc.b_glasbey_bw if found_img else cc.glasbey_light
-        )
+        return dataframe
 
-        if is_cool_dataset:
-            swatch_color = cc.glasbey_cool
+    sorted_clusters = sort_clusters(dataframe["clusters"].cat.categories)
 
-        color_map = {
-            cluster: swatch_color[i % len(swatch_color)]
-            for i, cluster in enumerate(sorted_clusters)
-        }
-        # Map the colors to the clusters
-        dataframe["colors"] = dataframe["clusters"].map(color_map)
+    # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
+    # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
+    swatch_color = (
+        cc.b_glasbey_bw if found_img else cc.glasbey_light
+    )
+
+    if is_cool_dataset:
+        swatch_color = cc.glasbey_cool
+
+    color_map = {
+        cluster: swatch_color[i % len(swatch_color)]
+        for i, cluster in enumerate(sorted_clusters)
+    }
+    # Map the colors to the clusters
+    dataframe["colors"] = dataframe["clusters"].map(color_map)
     return dataframe
 
 def sort_clusters(clusters) -> list:
@@ -462,12 +455,26 @@ class SpatialPanel(Resource):
             "message": "",
         }
 
-        DATASET_DIR = PANEL_CSV_CACHE_DIR / dataset_id
-        DATASET_DIR.mkdir(parents=True, exist_ok=True)
+        # dataset_id, projection_id and gene_symbol become cache paths below, so reject anything that isn't a plain name
+        if not dataset_id or secure_filename(dataset_id) != dataset_id:
+            response["message"] = "Invalid dataset ID."
+            return response
+        if projection_id and secure_filename(projection_id) != projection_id:
+            response["message"] = "Invalid projection ID."
+            return response
+        if not gene_symbol:
+            response["message"] = "Request needs a gene symbol."
+            return response
 
         filename_to_check = f"{gene_symbol}.csv"
         if projection_id:
             filename_to_check = f"{projection_id}_{gene_symbol}.csv"
+        if Path(filename_to_check).name != filename_to_check:
+            response["message"] = "Invalid gene symbol."
+            return response
+
+        DATASET_DIR = PANEL_CSV_CACHE_DIR / dataset_id
+        DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
         message = ""
 

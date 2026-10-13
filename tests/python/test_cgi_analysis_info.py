@@ -45,11 +45,15 @@ class TestDiscoverVetting:
     def test_unknown_owner_leaves_vetting_unset(self):
         assert self.make("public", None).discover_vetting(current_user_id=1) is None
 
-    @pytest.mark.parametrize("current_user_id, expected", [(1, "owner"), (2, "gear"), (3, None)])
-    def test_owned_analysis(self, current_user_id, expected):
-        ana = self.make("user_saved", 1)
-        if expected is None:
-            with pytest.raises(Exception, match="without a current user"):
-                ana.discover_vetting(current_user_id=current_user_id)
-        else:
-            assert ana.discover_vetting(current_user_id=current_user_id) == expected
+    @pytest.mark.parametrize("current_user_id, expected", [(1, "owner"), (2, "community"), (3, "community"),
+                                                            (None, "community")])
+    def test_analysis_owned_by_a_user(self, current_user_id, expected):
+        # A curator (user 2) viewing someone else's analysis used to make it "gear" vetted
+        assert self.make("public", 1).discover_vetting(current_user_id=current_user_id) == expected
+
+    @pytest.mark.parametrize("current_user_id", [1, 2, 3])
+    def test_analysis_owned_by_a_curator_is_gear_vetted(self, current_user_id):
+        assert self.make("public", 2).discover_vetting(current_user_id=current_user_id) == "gear"
+
+    def test_owner_whose_account_is_gone_is_not_gear_vetted(self):
+        assert self.make("user_saved", 4).discover_vetting(current_user_id=4) == "owner"

@@ -409,7 +409,6 @@ const initCommonUI = async () => {
         event.preventDefault(); // Prevent the default form submission
 
         // reset any UI elements
-        document.getElementById('user-email-help').classList.add('is-hidden');
         document.getElementById('user-password-help').classList.add('is-hidden');
 
         // try to log in
@@ -607,12 +606,8 @@ const doLogin = async (doReload=true) => {
     const formdata = new FormData(document.getElementById("login-form"));
     const data = await apiCallsMixin.login(formdata);
 
-    if (data.session_id == 0) {
-        // user name wasn't found at all
-        document.getElementById('user-email-help').classList.remove('is-hidden');
-
-    } else if (data.session_id == -1) {
-        // User was found, password was incorrect
+    if (data.session_id == 0 || data.session_id == -1) {
+        // E-mail not found or password incorrect (the server does not say which)
         document.getElementById('user-password-help').classList.remove('is-hidden');
 
     } else if (data.session_id.toString().length > 10) {
@@ -874,8 +869,30 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
         notification.remove();
     });
     toast.appendChild(toastButton);
-    toast.appendChild(opts?.isHTML ? (() => {
-        const span = document.createElement("span");
+
+    const span = document.createElement("span");
+    if (opts?.isHTML) {
+        // Parse the message as markup, then strip anything executable.
+        const template = document.createElement("template");
+        template.innerHTML = String(msg);
+        for (const el of template.content.querySelectorAll("script, style, iframe, object, embed")) {
+            el.remove();
+        }
+        for (const el of template.content.querySelectorAll("*")) {
+            for (const attr of [...el.attributes]) {
+                const name = attr.name.toLowerCase();
+                const value = attr.value.trim().toLowerCase();
+                if (name.startsWith("on") || (["href", "src", "xlink:href"].includes(name) && value.startsWith("javascript:"))) {
+                    el.removeAttribute(attr.name);
+                }
+            }
+            if (el.tagName === "A" && el.getAttribute("target") === "_blank") {
+                el.setAttribute("rel", "noopener noreferrer");
+            }
+        }
+        span.appendChild(template.content);
+    } else {
+       // Plain text: keep it literal, but render "\n" as line breaks for multi-line messages.
         const lines = String(msg).split("\n");
         for (let i = 0; i < lines.length; i++) {
             span.appendChild(document.createTextNode(lines[i]));
@@ -883,8 +900,8 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
                 span.appendChild(document.createElement("br"));
             }
         }
-        return span;
-    })() : document.createTextNode(msg));
+    }
+    toast.appendChild(span);
 
     const numToasts = document.querySelectorAll(".js-toast.notification").length;
     const numToastsThisLevel = document.querySelectorAll(`.js-toast.notification.${levelClass}`).length;

@@ -18,10 +18,10 @@ def get_gene_coords_from_higlass(tileset_id: str, gene_name: str):
     """
     # HiGlass endpoint for fetching specific tile data or searching tags
     # We query the 'tiles' endpoint for the text-index tile (usually tile 0.0 for search)
-    query_url = f"{HIGLASS_URL}/suggest/?d={tileset_id}&ac={gene_name}"
+    query_url = f"{HIGLASS_URL}/suggest/"
 
     try:
-        response = requests.get(query_url)
+        response = requests.get(query_url, params={"d": tileset_id, "ac": gene_name})
         response.raise_for_status()
         data: list = response.json()
 
@@ -51,7 +51,7 @@ class HiGlassGene(Resource):
         """
         Return the HiGlass suggest entry (chr, txStart, txEnd, geneName, ...) for the gene, or None.
 
-        Query params: assembly (required). Raises ValueError if the assembly has no
+        Query params: assembly (required). Returns a 400 error if the assembly has no
         annotation BEDdb tileset.
         """
 
@@ -60,8 +60,9 @@ class HiGlassGene(Resource):
 
         beddb_uid = ANNOTATION_BEDDB_UID.get(assembly, "")
         if not beddb_uid:
-            raise ValueError(
-                f"Assembly {assembly} is not supported or does not have a BEDdb UID."
-            )
+            return {
+                "success": -1,
+                "message": f"Assembly {assembly} is not supported or does not have a BEDdb UID."
+            }, 400
 
         return get_gene_coords_from_higlass(beddb_uid, gene_symbol)

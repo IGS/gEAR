@@ -175,7 +175,16 @@ def _aggregate_dataframe(
 ) -> pd.DataFrame:
     """Aggregate dataframe information under certain conditions."""
 
-    priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
+    # A continuous color is averaged within each group rather than being a group itself
+    continuous_color = (
+        bool(color_name)
+        and color_name not in (x, facet_row, facet_col)
+        and not _is_categorical(agg_df[color_name])
+    )
+
+    priority_groups = _build_priority_groups(
+        facet_row, facet_col, None if continuous_color else color_name, x
+    )
 
     # Safeguard against grouping by an empty list
     if not priority_groups:
@@ -184,21 +193,21 @@ def _aggregate_dataframe(
     # If observed=False, then all groupings will be present in the final dataframe
     grouped = agg_df.groupby(priority_groups, observed=False)
 
-    # Discrete colorscale or no colorscale
-    if not color_name or _is_categorical(agg_df[color_name]):
+    if continuous_color:
+        agg_df = (
+            grouped.agg(**{color_name: (color_name, "mean"), y: (y, "mean"), "std": (y, "std")})
+            .dropna(subset=[y])
+            .fillna(value={"std": 0})
+            .reset_index()
+        )
+    else:
+        # Discrete colorscale or no colorscale
         agg_df = (
             grouped.agg({y: ["mean", "std"]})
             .dropna(subset=[(y, "mean")])
             .loc[:, y]
             .fillna(value={"std": 0})
             .rename({"mean": y}, axis="columns")
-            .reset_index()
-        )
-    else:
-        # Continuous colorscale
-        agg_df = (
-            grouped.agg({color_name: ["mean"], y: ["mean", "std"]})
-            .dropna()
             .reset_index()
         )
     return agg_df
@@ -237,8 +246,7 @@ def _build_priority_groups(
 def _determine_annotation_shift(ds: pd.Series) -> int:
     """Determine number of pixels to shift annotation based on longest entry in dataseries."""
     if _is_categorical(ds):
-        ds_list = ds.unique().tolist()
-        longest_entry = len(max(ds_list, key=len))
+        longest_entry = max((len(str(v)) for v in ds.unique()), default=0)
         return -(longest_entry * 3 + 30)
     else:
         return -30
@@ -257,6 +265,10 @@ def _translate_and_scale(series: pd.Series, x: str) -> float:
     # These were arbitrarily chosen. At least 1 will be added to the final total based on marker size increase
     NEW_MIN = 0
     NEW_MAX = 9
+
+    # All values equal: no range to scale across, so give every point the same size
+    if unscaled_max == unscaled_min:
+        return NEW_MIN
 
     return (
         (NEW_MAX - NEW_MIN) * (x - unscaled_min) / (unscaled_max - unscaled_min)
@@ -277,6 +289,7 @@ def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[st
     truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
 
     for val in group_list:
+        val = str(val)
         if len(val) > MAX_LEN_ALLOWED:
             base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
 
@@ -481,7 +494,7 @@ def generate_plot(
 
         # If x axis is continuous, sort dataframe by this column.
         # Issue found in https://github.com/IGS/gEAR/issues/1285 where 0.0 was last entry causing line to loop back.
-        if x in df.columns and df[x].dtype in ["float64", "int64"]:
+        if x in df.columns and pd.api.types.is_numeric_dtype(df[x]) and not pd.api.types.is_bool_dtype(df[x]):
             df = df.sort_values(x)
 
     # Scatter plots are the only types that let you set marker size by group
@@ -675,7 +688,9 @@ def generate_plot(
                     new_plotting_args[k] = group[v] if v else group[y]
 
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
-                new_plotting_args["scalegroup"] = "_".join([str(n) for n in name]) # protect against numbers
+                # name is a bare category (not a tuple) when there is only one grouping
+                name_parts = name if isinstance(name, tuple) else (name,)
+                new_plotting_args["scalegroup"] = "_".join([str(n) for n in name_parts]) # protect against numbers
 
                 # If color dataseries is present, add some special configurations
                 if color_name:

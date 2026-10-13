@@ -21,14 +21,12 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     help_id = form.getfirst('help_id')
-    print(help_id, file=sys.stderr)
     result = {}
 
     # Get user_name if help_id is valid
     user_name = validate_help_id(cursor, help_id)
 
     if user_name:
-        print(user_name, file=sys.stderr)
         result['user_name'] = user_name
         result['success'] = 1
         cnx.commit()

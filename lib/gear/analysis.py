@@ -48,6 +48,12 @@ def _log_path(message: str, path) -> None:
 # you can use the adapters directly (H5adAdapter or ZarrAdapter)
 
 
+def _is_plain_name(value) -> bool:
+    """True if value can be used as a single path component (no separators, not "." or "..")."""
+    value = str(value)
+    return value not in ("", ".", "..") and not any(ch in value for ch in ("/", "\\", "\0"))
+
+
 def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | None, is_spatial: bool = False) -> "SpatialAnalysis | Analysis":
     """
     Retrieves an analysis object (either SpatialAnalysis or Analysis) based on the provided analysis data, dataset ID, and session ID.
@@ -242,9 +248,11 @@ class Analysis:
         pipeline_file = self.settings_path
         with open(pipeline_file) as f:
             json_data = json.loads(f.read())
-            # change "user_session_id" to "analysis_session_id" for consistency
-            if "user_session_id" in json_data:
-                json_data["analysis_session_id"] = json_data.pop("user_session_id")
+            # Leave out the session ID ("analysis_session_id", or "user_session_id" in older pipelines):
+            #  for a public analysis it is the publishing user's login session, and anyone can load
+            #  a public analysis. The workbench uses the viewer's own session instead.
+            json_data.pop("user_session_id", None)
+            json_data.pop("analysis_session_id", None)
 
             # Analysis object expects a list for this
             if "group_labels" in json_data and isinstance(json_data["group_labels"], dict):
@@ -255,15 +263,25 @@ class Analysis:
             return json.dumps(json_data, indent=4)
 
     def _serialize_json(self):
-        # Called when json modules attempts to serialize
-        return self.__dict__
+        # Called when json modules attempts to serialize.
+        # The session ID is left out: for a public analysis it is the publishing user's login session,
+        #  and analysis lists are shown to everyone (the workbench uses the viewer's own session instead)
+        return {k: v for k, v in self.__dict__.items() if k != "session_id"}
 
     @property
     def base_path(self) -> Path:
         """
         Returns the base directory path for an analysis, based on its actual type.  This allows for the support
         of parallel types 'primary', 'public', 'user_saved', 'user_unsaved'
+
+        Raises:
+            ValueError: If the dataset, analysis or session ID is not a plain name (e.g. "../../2/<dataset>/<id>"),
+                which would otherwise reach another user's analyses.
         """
+        for label, value in (("dataset", self.dataset_id), ("analysis", self.id), ("session", self.session_id)):
+            if value is not None and not _is_plain_name(value):
+                raise ValueError(f"Invalid {label} ID.")
+
         if self.type == "primary":
             return self.primary_path
 
@@ -320,7 +338,8 @@ class Analysis:
         Returns one of the values 'owner', 'gear' or 'community', or None when the analysis has no
         recorded owner (vetting can't be determined, which is not an error).
 
-        If the owner is also a curator it gives priority to the curator status (gear)
+        If the owner (self.user_id) is also a curator it gives priority to the curator status (gear).
+        Whether the current user is a curator doesn't matter.
         """
 
         # Primary analyses come with the dataset and have no owner of their own
@@ -333,18 +352,12 @@ class Analysis:
         if self.user_id is None:
             return self.vetting
 
-        current_user = get_user_by_id(current_user_id)
-
-        if current_user is None:
-            raise Exception(
-                "ERROR: Attempted to call Analysis.discover_vetting() without a current user assigned to the analysis"
-            )
-
         # if the user who created it is a gear curator, return that
-        if current_user.is_curator:
+        owner = get_user_by_id(self.user_id)
+        if owner is not None and owner.is_curator:
             self.vetting = "gear"
-        # Are the current user and dataset owner the same?
-        elif self.user_id == current_user_id:
+        # Are the current user and analysis owner the same?
+        elif current_user_id is not None and str(self.user_id) == str(current_user_id):
             self.vetting = "owner"
         else:
             self.vetting = "community"
@@ -409,6 +422,9 @@ class Analysis:
             # that a user could have analyses across multiple user sessions
             session_id = jsn["user_session_id"]
 
+        # The owner (user_id) is looked up from the session that saved or published the analysis.
+        #  A "user_id" or "vetting" in the JSON is not used: the browser writes this file, and
+        #  vetting is derived (see discover_vetting)
         ana = Analysis(
             id=jsn["id"],
             dataset_id=dataset_id,
@@ -671,8 +687,12 @@ class AnalysisCollection:
                 for json_thing in a_dir.glob("**/*.pipeline.json"):
                     json_path = json_thing
                     json_obj = json.loads(open(json_path, encoding="utf-8").read())
-                    ana = ana_cls.from_json(json_obj)
-                    analyses.append(ana)
+                    stored = ana_cls.from_json(json_obj)
+                    # A user's saved and unsaved areas belong to that user, whichever session wrote the
+                    #  pipeline file (an older session may be gone, so it can't always be looked up)
+                    if atype in ("user_saved", "user_unsaved"):
+                        stored.user_id = ana.user_id
+                    analyses.append(stored)
 
         return analyses
 
