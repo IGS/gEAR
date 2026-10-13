@@ -93,12 +93,23 @@ class _Cursor:
         return iter([("2026-10-01", "gene_search", "Sox2", "/p?g=Sox2")])
 
 
-#@pytest.mark.parametrize("category, expected_where, expected_args", [
-#    (None, "WHERE user_id = %s ORDER BY", [7, 5]),
-#    ("gene_search", "WHERE user_id = %s AND entry_category = %s ORDER BY", [7, "gene_search", 5]),
-#])
-@pytest.mark.skip(reason="need to mock the 'history' section of the ini file")
-def test_latest_entries_query(category, expected_where, expected_args):
+@pytest.fixture
+def history_config(monkeypatch):
+    """UserHistory.__init__ reads the [history] section of gear.ini, which doesn't exist in CI."""
+    import configparser
+
+    from gear import userhistory
+
+    config = configparser.ConfigParser()
+    config.read_dict({"history": {"enable_user_history": "1", "history_count": "10"}})
+    monkeypatch.setattr(userhistory.ServerConfig, "parse", lambda self: config)
+
+
+@pytest.mark.parametrize("category, expected_where, expected_args", [
+    (None, "WHERE user_id = %s ORDER BY", [7, 5]),
+    ("gene_search", "WHERE user_id = %s AND entry_category = %s ORDER BY", [7, "gene_search", 5]),
+])
+def test_latest_entries_query(history_config, category, expected_where, expected_args):
     """The category filter goes before ORDER BY (it was appended after it, which is invalid SQL),
     filters on the requested category, and LIMIT is a query parameter."""
     from gear.userhistory import UserHistory
@@ -115,3 +126,20 @@ def test_latest_entries_query(category, expected_where, expected_args):
     assert expected_where in qry and qry.endswith("ORDER BY entry_date DESC LIMIT %s")
     assert args == expected_args
     assert [e.label for e in entries] == ["Sox2"]
+
+
+def test_history_is_off_without_a_history_section(monkeypatch):
+    """A gear.ini with no [history] section turns history off instead of raising NoSectionError
+    wherever a page records history."""
+    import configparser
+
+    from gear import userhistory
+
+    monkeypatch.setattr(userhistory.ServerConfig, "parse", lambda self: configparser.ConfigParser())
+    cursor = _Cursor()
+    history = userhistory.UserHistory(connection=types.SimpleNamespace(get_cursor=lambda: cursor))
+
+    assert history.user_history_enabled is False
+    assert history.history_count == 10
+    assert history.add_record(user_id=7, entry_category="gene_search", label="Sox2", gene_symbol="Sox2") is False
+    assert cursor.calls == []

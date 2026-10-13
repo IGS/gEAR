@@ -45,9 +45,10 @@ class UserHistory:
         self.label = label
         self.url = url
 
+        # Without a [history] section in gear.ini, history is off rather than an error
         server_config = ServerConfig().parse()
-        self.user_history_enabled = server_config.getboolean('history', 'enable_user_history')
-        self.history_count = server_config.getint('history', 'history_count')
+        self.user_history_enabled = server_config.getboolean('history', 'enable_user_history', fallback=False)
+        self.history_count = server_config.getint('history', 'history_count', fallback=10)
 
     def _serialize_json(self):
         # Called when json modules attempts to serialize
