@@ -510,9 +510,21 @@ export class Analysis {
 
         analysis.markerGenes = await AnalysisStepMarkerGenes.loadFromJson(data.marker_genes, analysis);
 
-        // Support legacy data.
-        const clusteringEditData = data.clustering_edit || data.clustering
-        clusteringEditData.mode = "edit";
+       // Support legacy data. Older saves have no clustering_edit because renaming/merging was done
+       // in the initial clustering step. Treat those as edited (irreversible) only if the stored
+       // group labels differ from the default "0".."n-1" cluster names.
+        let clusteringEditData;
+        if (data.clustering_edit) {
+            clusteringEditData = { ...data.clustering_edit, mode: "edit" };
+        } else {
+            const labels = (analysis.groupLabels || []).map(String);
+            const isDefaultLabels = labels.every((label, i) => label === String(i));
+            clusteringEditData = {
+                ...(data.clustering || {}),
+                mode: "edit",
+                calculated: Boolean(data.clustering?.calculated) && labels.length > 0 && !isDefaultLabels,
+            };
+        }
 
         analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(clusteringEditData, analysis);
 
@@ -2055,11 +2067,6 @@ class AnalysisStepClustering {
             logErrorInConsole("Invalid mode for AnalysisStepClustering. Defaulting to 'initial'.");
             this.mode = "initial";
         }
-        if (this.mode === "edit") {
-            // Don't run clustering again if we are just editing the labels
-            this.calculated = true;
-        }
-
     }
 
     /**
@@ -2078,7 +2085,13 @@ class AnalysisStepClustering {
         step.plotTsne = data['plot_tsne'];
         step.plotUmap = data['plot_umap'];
 
-        if (step.calculated ) {
+        // Saves made before the constructor fix stored calculated=true for an edit step that never ran.
+        // A real edit run records which plots were drawn.
+        if (step.mode === "edit" && !step.plotTsne && !step.plotUmap) {
+            step.calculated = false;
+        }
+
+        if (step.calculated) {
             step.updateUIWithResults();
         }
 
@@ -2112,7 +2125,7 @@ class AnalysisStepClustering {
         document.querySelector(UI.resolutionElt).value = this.resolution;
 
         // Hide elements that were revealed by previous steps
-        this.moda === "edit" && document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
+        this.mode === "edit" && document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
 
         // Show the instructions
         this.mode === "initial" && document.querySelector(UI.clusteringInstructionsElt).classList.remove("is-hidden");
