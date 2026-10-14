@@ -7,7 +7,7 @@ import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
 import { DatasetTree } from "./classes/tree.js";
 import { resetStepperWithHrefs } from "./helpers/stepper-fxns.js";
-import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, GENE_LIST_MANAGER_LINK, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
@@ -487,7 +487,7 @@ const updateManualMarkerGeneEntries = (geneString) => {
  * @param {Object} geneCart - The saved marker gene list object.
  */
 const updateUiAfterMarkerGeneListSaveSuccess = (geneCart) => {
-    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+    createToast("Gene cart saved successfully.", "is-success", true, { link: GENE_LIST_MANAGER_LINK });
 }
 
 /**
@@ -508,7 +508,7 @@ const updateUiAfterMarkerGeneListSaveFailure = (geneCart, message) => {
  * @param {Object} geneCart - The saved gene list object.
  */
 const updateUiAfterPcaGeneListSaveSuccess = (geneCart) => {
-    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+    createToast("Gene cart saved successfully.", "is-success", true, { link: GENE_LIST_MANAGER_LINK });
 
 }
 

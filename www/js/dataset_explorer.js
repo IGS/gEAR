@@ -576,7 +576,7 @@ class ResultItem {
                     if (data?.error_detail) {
                         msg += `\nDetails: ${data.error_detail}`;
                     }
-                    createToast(msg, "is-danger", true, { isHTML: true });
+                    createToast(msg, "is-danger", true);
                     return;
                 }
                 createToast("Dataset changes saved", "is-success");

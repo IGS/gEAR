@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, createToast, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
+import { apiCallsMixin, getCurrentUser, createToast, GENE_LIST_MANAGER_LINK, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
 import { curatorCommon } from "./curator_common.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
@@ -1783,7 +1783,7 @@ const updateGroupOptions = (classSelector, groupsArray) => {
 };
 
 const updateUIAfterGeneCartSaveSuccess = (gc) => {
-    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+    createToast("Gene cart saved successfully.", "is-success", true, { link: GENE_LIST_MANAGER_LINK });
 };
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {

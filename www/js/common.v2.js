@@ -850,15 +850,24 @@ const convertToFormData = (object) => {
     return formData;
 }
 
+// Link shown in the toast after a gene list is saved
+const GENE_LIST_MANAGER_LINK = {
+    href: "/gene_list_manager.html?sort_by=date_created",
+    text: "Open Gene List Manager",
+    newTab: true,
+};
+
 /**
  * Creates a toast notification with the given message.
  *
  * @param {string} msg - The message to display in the toast.
  * @param {string} [levelClass="is-danger"] - The CSS class for the toast level. Defaults to "is-danger".
  * @param {boolean} [closeManually=false] - Indicates whether the toast can be closed manually or after a timeout. Defaults to false.
- * @param {Object} [opts={ isHTML: false }] - Additional options for the toast.
+ * @param {Object} [opts={}] - Additional options for the toast.
+ * @param {Object} [opts.link] - A link to show after the message: {href, text, newTab}. The message itself is always
+ *   shown as plain text, so it is safe to include server or user text in it.
  */
-const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { isHTML: false }) => {
+const createToast = (msg, levelClass="is-danger", closeManually=false, opts = {}) => {
     const toast = document.createElement("div");
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
@@ -870,37 +879,25 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     });
     toast.appendChild(toastButton);
 
+    // Plain text: keep it literal, but render "\n" as line breaks for multi-line messages.
     const span = document.createElement("span");
-    if (opts?.isHTML) {
-        // Parse the message as markup, then strip anything executable.
-        const template = document.createElement("template");
-        template.innerHTML = String(msg);
-        for (const el of template.content.querySelectorAll("script, style, iframe, object, embed")) {
-            el.remove();
+    const lines = String(msg).split("\n");
+    for (let i = 0; i < lines.length; i++) {
+        span.appendChild(document.createTextNode(lines[i]));
+        if (i < lines.length - 1) {
+            span.appendChild(document.createElement("br"));
         }
-        for (const el of template.content.querySelectorAll("*")) {
-            for (const attr of [...el.attributes]) {
-                const name = attr.name.toLowerCase();
-                const value = attr.value.trim().toLowerCase();
-                const blockedSchemes = ["javascript:", "data:", "vbscript:"];
-                if (name.startsWith("on") || (["href", "src", "xlink:href"].includes(name) && blockedSchemes.some((scheme) => value.startsWith(scheme)))) {
-                    el.removeAttribute(attr.name);
-                }
-            }
-            if (el.tagName === "A" && el.getAttribute("target") === "_blank") {
-                el.setAttribute("rel", "noopener noreferrer");
-            }
+    }
+
+    if (opts?.link) {
+        const a = document.createElement("a");
+        a.href = opts.link.href;
+        a.textContent = opts.link.text;
+        if (opts.link.newTab) {
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
         }
-        span.appendChild(template.content);
-    } else {
-       // Plain text: keep it literal, but render "\n" as line breaks for multi-line messages.
-        const lines = String(msg).split("\n");
-        for (let i = 0; i < lines.length; i++) {
-            span.appendChild(document.createTextNode(lines[i]));
-            if (i < lines.length - 1) {
-                span.appendChild(document.createElement("br"));
-            }
-        }
+        span.append(" ", a);
     }
     toast.appendChild(span);
 
@@ -1951,6 +1948,7 @@ export {
     rebindUrlParam,
     disableAndHideElement,
     enableAndShowElement,
+    GENE_LIST_MANAGER_LINK,
     commonDateTime,
     copyToClipboard,
     convertToFormData,
