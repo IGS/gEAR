@@ -1,10 +1,13 @@
 [Unit]
 Description="TrackHub (Gosling Upload) RabbitMQ Consumer - #%i"
-Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.rabbitmq.md
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/developer/services/rabbitmq_consumers.md
 After=rabbitmq-server.service
+PartOf=gosling-upload-consumer.target
 
 [Service]
 Type=simple
+User=www-data
+Group=www-data
 Environment=APACHE_STARTED_BY_SYSTEMD=true
 ExecStart=/opt/bin/python3 <gear_root>/listeners/gosling_upload_consumer.py
 # Joins the aggregate memory budget shared across all gEAR consumer families -- see

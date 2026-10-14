@@ -6,7 +6,7 @@
 
 import { blockAnalysisStep, openNextAnalysisStep, UI } from "./analysis-ui.js";
 import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../helpers/stepper-fxns.js";
-import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js";
+import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, downloadWithMetadata, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js";
 
 let analysisLabels = new Set();
 
@@ -75,7 +75,7 @@ export class Analysis {
      */
     async checkDependenciesAndRun(callback, opts) {
         if (this.type === 'public') {
-            this.copyToUserUnsaved(callback, opts);
+            await this.copyToUserUnsaved(callback, opts);
         } else {
             await callback(opts);
         }
@@ -105,14 +105,15 @@ export class Analysis {
     /**
      * Copies the dataset analysis to a new analysis of the specified type.
      * @param {string} destType - The type of the destination analysis.
+     * @param {string} [destId=this.id] - The ID of the destination analysis.
      * @returns {Promise<any>} - A promise that resolves with the copied analysis data.
      */
-    async copyDatasetAnalysis(destType) {
+    async copyDatasetAnalysis(destType, destId = this.id) {
         const params = {
             session_id: this.analysisSessionId,
             dataset_id: this.dataset.id,
             source_analysis_id: this.id,
-            dest_analysis_id: this.id,
+            dest_analysis_id: destId,
             source_analysis_type: this.type,
             dest_analysis_type: destType
         }
@@ -132,7 +133,9 @@ export class Analysis {
         const newAnalysisId = crypto.randomUUID();
 
         try {
-            const data = await this.copyDatasetAnalysis('user_unsaved');
+            // The copy goes in the current user's unsaved area, under the new ID
+            this.analysisSessionId = getCurrentUser()?.session_id;
+            const data = await this.copyDatasetAnalysis('user_unsaved', newAnalysisId);
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -141,10 +144,8 @@ export class Analysis {
 
             this.type = 'user_unsaved';
             this.id = newAnalysisId;
-            this.analysisSessionId = getCurrentUser()?.session_id;
 
-            document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
-            document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
+            this.showHideAnalysisButtons();
 
             await this.getSavedAnalysesList(this.dataset.id, newAnalysisId);
 
@@ -198,16 +199,18 @@ export class Analysis {
             type: "h5ad",
         }
 
-        // download the h5ad
+        // download the metadata, then the h5ad
         const url = `./cgi/download_source_file.cgi?${new URLSearchParams(params).toString()}`;
         try {
-            const {data} = await axios.get(url, {responseType: 'blob'});
-            const blob = new Blob([data], {type: 'application/octet-stream'});
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `${this.dataset.share_id}.${this.id}.h5ad`;
-            a.click();
+            await downloadWithMetadata(this.dataset.share_id, async () => {
+                const {data} = await axios.get(url, {responseType: 'blob'});
+                const blob = new Blob([data], {type: 'application/octet-stream'});
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `${this.dataset.share_id}.${this.id}.h5ad`;
+                a.click();
+            });
         } catch (error) {
             console.error("Error downloading analysis h5ad", this);
             logErrorInConsole(error);
@@ -393,6 +396,14 @@ export class Analysis {
             const ana = await Analysis.loadFromJson(data, datasetObj);
             Object.assign(this, ana);
 
+            // The steps were created for "ana". Point them at this instance, so that changes made here
+            // (copying a public analysis to a new ID, renaming) are used when a step runs and saves.
+            for (const step of Object.values(this)) {
+                if (step?.analysis === ana) {
+                    step.analysis = this;
+                }
+            }
+
             // If tSNE was calculatee, show the labeled tSNE section
             // Mainly for primary analyses
             // ? verify claim
@@ -499,9 +510,21 @@ export class Analysis {
 
         analysis.markerGenes = await AnalysisStepMarkerGenes.loadFromJson(data.marker_genes, analysis);
 
-        // Support legacy data.
-        const clusteringEditData = data.clustering_edit || data.clustering
-        clusteringEditData.mode = "edit";
+       // Support legacy data. Older saves have no clustering_edit because renaming/merging was done
+       // in the initial clustering step. Treat those as edited (irreversible) only if the stored
+       // group labels differ from the default "0".."n-1" cluster names.
+        let clusteringEditData;
+        if (data.clustering_edit) {
+            clusteringEditData = { ...data.clustering_edit, mode: "edit" };
+        } else {
+            const labels = (analysis.groupLabels || []).map(String);
+            const isDefaultLabels = labels.every((label, i) => label === String(i));
+            clusteringEditData = {
+                ...(data.clustering || {}),
+                mode: "edit",
+                calculated: Boolean(data.clustering?.calculated) && labels.length > 0 && !isDefaultLabels,
+            };
+        }
 
         analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(clusteringEditData, analysis);
 
@@ -574,13 +597,10 @@ export class Analysis {
                 throw new Error(error);
             }
 
-            this.type = 'user_saved';
-            document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
+            // The saved analysis is moved (not copied) to the public area
+            this.type = 'public';
             createToast("Changes made to this public analysis will create a local copy within your profile.", "is-info", true);
-            document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
-            document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-            document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
-            document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
+            this.showHideAnalysisButtons();
 
             await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {
@@ -603,7 +623,8 @@ export class Analysis {
         const url = "./cgi/get_analysis_image.cgi";
 
         try {
-            const response = await axios.get(url, { params });
+            // Colorblind viewers get a step's colorblind copy of the image, if it has one
+            const response = await axios.get(url, { params: { ...params, colorblind_mode: apiCallsMixin.colorblindMode } });
             if (response?.status === 200) {
                 const imgSrc = response.request.responseURL;
                 const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
@@ -784,9 +805,18 @@ export class Analysis {
      * Toggles the visibility of analysis buttons based on the analysis type.
      */
     showHideAnalysisButtons() {
-        // Unhide delete buttons, which were hidden for new analyses
-        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
-        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.remove("is-hidden");
+        // Unhide delete and rename buttons, which were hidden for new analyses.
+        // Public analyses can't be deleted, since saved display curations may still use them, or renamed,
+        // since only the user's own analyses can be saved. Changing one makes a private copy first.
+        const isUsersOwn = ['user_saved', 'user_unsaved'].includes(this.type);
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.toggle("is-hidden", !isUsersOwn);
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.toggle("is-hidden", !isUsersOwn);
+        for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
+            button.classList.toggle("is-hidden", !isUsersOwn);
+        }
+
+        // Only a saved analysis can be made public (a public one already is)
+        document.querySelector(UI.btnMakePublicCopyElt).classList.toggle("is-hidden", this.type !== 'user_saved');
 
         if (this.type === 'user_unsaved') {
             document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
@@ -794,6 +824,10 @@ export class Analysis {
         } else if (this.type === 'user_saved') {
             document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
+        } else {
+            // primary or public
+            document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
+            document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         }
     }
 
@@ -904,7 +938,14 @@ class AnalysisStepPrimaryFilter {
         // If a user redoes the primary filters, it's assumed they want to do this on the primary
         //  datasource again.  This allows them to lessen the stringency of a filter.
         const originalAnalysisType = this.analysis.type;
+        const originalAnalysisId = this.analysis.id;
         this.analysis.type = 'primary';
+
+        // The filtered data is always written to the user's unsaved area. For a saved analysis that
+        //  starts a new unsaved analysis (with its own ID), leaving the saved one as it was.
+        if (originalAnalysisType === 'user_saved') {
+            this.analysis.id = crypto.randomUUID();
+        }
 
         this.filterCellsLtNGenesSelected = document.querySelector(UI.filterCellsLtNGenesSelectedElt).checked;
         this.filterCellsLtNGenes = null;
@@ -939,7 +980,8 @@ class AnalysisStepPrimaryFilter {
                 filter_cells_lt_n_genes: this.filterCellsLtNGenes || "",
                 filter_cells_gt_n_genes: this.filterCellsGtNGenes || "",
                 filter_genes_lt_n_cells: this.filterGenesLtNCells || "",
-                filter_genes_gt_n_cells: this.filterGenesGtNCells || ""
+                filter_genes_gt_n_cells: this.filterGenesGtNCells || "",
+                colorblind_mode: apiCallsMixin.colorblindMode
             }));
 
             if (!data.success || data.success < 1) {
@@ -955,9 +997,9 @@ class AnalysisStepPrimaryFilter {
             this.filteredGeneCount = data.n_genes;
             this.filteredCellCount = data.n_obs;
 
-            // After this step, we are now working with a curated dataset
+            // After this step, we are now working with a curated dataset in the unsaved area
             this.analysis.type = originalAnalysisType;
-            if(originalAnalysisType === 'primary') {
+            if (['primary', 'user_saved'].includes(originalAnalysisType)) {
                 this.analysis.type = 'user_unsaved';
             }
 
@@ -966,6 +1008,9 @@ class AnalysisStepPrimaryFilter {
             createToast("Data filters applied", "is-success");
 
         } catch (error) {
+            // Back to the analysis being filtered (e.g. a user_unsaved copy of a public analysis)
+            this.analysis.type = originalAnalysisType;
+            this.analysis.id = originalAnalysisId;
             createToast(`Error applying primary filters: ${error.message}`);
             logErrorInConsole(error);
             failStepWithHref("#primary-filter-s")
@@ -1684,7 +1729,8 @@ class AnalysisStepPCA {
             }));
 
             if (!data.success || data.success < 1) {
-                const error = data.error || "Unknown error. Please contact gEAR support.";
+                // The API reports errors in "message"
+                const error = data.message || data.error || "Unknown error. Please contact gEAR support.";
                 throw new Error(error);
             }
 
@@ -1862,16 +1908,14 @@ class AnalysisSteptSNE {
         //  us to just do something like recolor.
         if (this.neighborsCalculated) {
             if (this.nPcs === document.querySelector(UI.tsneNPcsElt).value &&
-                this.nNeighbors === document.querySelector(UI.dimReductionNNeighborsElt).value &&
-                this.randomState === document.querySelector(UI.tsneRandomStateElt).value) {
+                this.nNeighbors === document.querySelector(UI.dimReductionNNeighborsElt).value) {
                 computeNeighbors = 0;
             }
         }
 
         // don't recompute tSNE if we already have and nothing has changed
         if (this.tsneCalculated) {
-            if (this.nPcs === document.querySelector(UI.tsneNPcsElt).value &&
-                this.randomState === document.querySelector(UI.tsneRandomStateElt).value) {
+            if (this.nPcs === document.querySelector(UI.tsneNPcsElt).value) {
                 computeTsne = 0;
             }
         }
@@ -1907,7 +1951,8 @@ class AnalysisSteptSNE {
             'compute_tsne': computeTsne,
             'compute_umap': computeUmap,
             'plot_tsne': plotTsne,
-            'plot_umap': plotUmap
+            'plot_umap': plotUmap,
+            'colorblind_mode': apiCallsMixin.colorblindMode
         }
 
         try {
@@ -2022,11 +2067,6 @@ class AnalysisStepClustering {
             logErrorInConsole("Invalid mode for AnalysisStepClustering. Defaulting to 'initial'.");
             this.mode = "initial";
         }
-        if (this.mode === "edit") {
-            // Don't run clustering again if we are just editing the labels
-            this.calculated = true;
-        }
-
     }
 
     /**
@@ -2045,7 +2085,13 @@ class AnalysisStepClustering {
         step.plotTsne = data['plot_tsne'];
         step.plotUmap = data['plot_umap'];
 
-        if (step.calculated ) {
+        // Saves made before the constructor fix stored calculated=true for an edit step that never ran.
+        // A real edit run records which plots were drawn.
+        if (step.mode === "edit" && !step.plotTsne && !step.plotUmap) {
+            step.calculated = false;
+        }
+
+        if (step.calculated) {
             step.updateUIWithResults();
         }
 
@@ -2079,7 +2125,7 @@ class AnalysisStepClustering {
         document.querySelector(UI.resolutionElt).value = this.resolution;
 
         // Hide elements that were revealed by previous steps
-        this.moda === "edit" && document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
+        this.mode === "edit" && document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
 
         // Show the instructions
         this.mode === "initial" && document.querySelector(UI.clusteringInstructionsElt).classList.remove("is-hidden");
@@ -2163,7 +2209,8 @@ class AnalysisStepClustering {
                 compute_clusters: computeClustering,
                 plot_tsne: plotTsne,
                 plot_umap: plotUmap,
-                cluster_info: JSON.stringify(clusterInfo)
+                cluster_info: JSON.stringify(clusterInfo),
+                colorblind_mode: apiCallsMixin.colorblindMode
             }));
 
             if (!data.success || data.success < 1) {
@@ -2408,7 +2455,8 @@ class AnalysisStepMarkerGenes {
                 'analysis_id': this.analysis.id,
                 'analysis_type': this.analysis.type,
                 'session_id': this.analysis.analysisSessionId,
-                'marker_genes': JSON.stringify([...this.genesOfInterest])
+                'marker_genes': JSON.stringify([...this.genesOfInterest]),
+                'colorblind_mode': apiCallsMixin.colorblindMode
             }));
 
             if ((!data.success) || (data.success < 1)) {

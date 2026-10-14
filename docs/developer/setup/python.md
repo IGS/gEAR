@@ -109,19 +109,19 @@ I cannot add comments to the bash code without breaking the command.  So consult
 ```bash
     ./pip3 install --upgrade pip
     ./pip3 install \
-    aiohttp==3.13.5 \
+    aiohttp==3.14.3 \
     aiohttp_retry==2.9.1 \
     anndata==0.12.11 \
     biocode==0.10.0 \
     biopython==1.87 \
     biothings-client==0.5.0 \
-    cairosvg==2.7.1 \
+    cairosvg==2.9.1 \
     colorcet==3.1.0 \
     datashader==0.19.0 \
     Flask==3.1.3 \
     Flask-RESTful==0.3.9 \
     google-analytics-data==0.21.0 \
-    google-auth
+    google-auth==2.57.0 \
     gosling==0.3.0 \
     h11==0.16.0 \
     hic2cool==0.8.3 \
@@ -130,6 +130,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     hvplot==0.12.2 \
     jupyterlab==4.0.5 \
     jupyter==1.0.0 \
+    kaleido==1.4.0 \
     leidenalg==0.10.2 \
     legacy-cgi==2.6.4 \
     llvmlite==0.47.0 \
@@ -137,24 +138,22 @@ I cannot add comments to the bash code without breaking the command.  So consult
     mod-wsgi==6.0.6 \
     more_itertools==11.0.2 \
     mygene==3.2.2 \
-    mysql-connector-python==8.0.28 \
+    mysql-connector-python==9.7.0 \
     numba==0.65.0 \
     numpy==2.4.0 \
     openpyxl==3.1.5 \
     pandas==2.3.3 \
     panel==1.9.3 \
-    Pillow==12.2.0 \
+    Pillow==12.3.0 \
     pika==1.3.2 \
     pims==0.7.0 \
     plotly==6.6.0 \
     pybigwig==0.3.25 \
-    python-dotenv==0.20.0 \
-    requests==2.31.0 \
+    requests==2.33.1 \
     rpy2==3.6.7 \
     scanpy==1.12.1 \
     scipy==1.17.1 \
     seaborn==0.13.2 \
-    setuptools==81.0.0 \
     spatialdata==0.7.3 \
     spatialdata_io==0.7.1 \
     spatialpandas==0.5.0 \

@@ -9,9 +9,11 @@ import json
 import shutil
 from pathlib import Path
 
+import h5py
 import numpy as np
 import scanpy as sc
 from anndata import AnnData
+from anndata.io import write_elem
 from scipy.sparse import csr_matrix, issparse
 
 from .analysis import H5adAdapter, ZarrAdapter
@@ -34,6 +36,25 @@ class PrimaryAnalysisProcessingError(Exception):
     pass
 
 def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir, dataset_format):
+    """
+    Set up the primary analysis for an uploaded dataset in its staging directory.
+
+    Loads (or creates from template) analysis_pipeline.json, writes preliminary composition
+    plots, and records any detected tSNE, UMAP or clustering results, adding them to the
+    AnnData object and rewriting the H5AD and JSON files when changes are made.
+
+    Args:
+        dataset_id (str): Dataset ID, also used as the primary analysis ID.
+        share_id (str): Share ID used to name the uploaded .h5ad or .zarr file.
+        staging_dir (Path): Directory containing the uploaded dataset files.
+        dataset_format (str): Dataset format; "spatial" loads a .zarr store, anything else an .h5ad.
+
+    Returns:
+        bool: True on success.
+
+    Raises:
+        PrimaryAnalysisProcessingError: If the uploaded dataset file is not found.
+    """
 
     # Load the analysis JSON or create from template
     analysis_json_path = staging_dir / "analysis_pipeline.json"
@@ -113,9 +134,18 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir, dataset_f
             h5ad_changes_made = True
 
     if h5ad_changes_made:
-        # 482cb81f-4816-e4e3-a3fe-514707b847d8.h5ad
         print("\tWriting new H5AD")
-        adata.write()
+        if adata.isbacked:
+            # adata.write() on a backed object deletes the "raw" group before reading
+            # raw.X back from that same group, failing with "Could not find dataset for
+            # raw X" and leaving the file without raw. The add_* helpers above only
+            # touch obs and obsm, so write just those in place.
+            adata.file.close()
+            with h5py.File(upload_file, "a") as h5:
+                write_elem(h5, "obs", adata.obs)
+                write_elem(h5, "obsm", dict(adata.obsm))
+        else:
+            adata.write()
 
     # Does the JSON need to be updated?
     if json_changes_made:
@@ -125,6 +155,9 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir, dataset_f
     return True
 
 def add_clustering_analysis(adata: "AnnData") -> None:
+    """
+    Copy the first recognized cluster column in adata.obs into obs['louvain'] as categories.
+    """
     cols = adata.obs.columns.tolist()
 
     for vname in VALID_CLUSTER_COLUMN_NAMES:
@@ -134,6 +167,9 @@ def add_clustering_analysis(adata: "AnnData") -> None:
             return
 
 def add_tsne_analysis(adata: "AnnData") -> None:
+    """
+    Copy the first recognized tSNE coordinate column pair in adata.obs into obsm['X_tsne'].
+    """
     cols = adata.obs.columns.tolist()
 
     for pair in VALID_TSNE_PAIRS:
@@ -142,6 +178,9 @@ def add_tsne_analysis(adata: "AnnData") -> None:
             return
 
 def add_umap_analysis(adata: "AnnData") -> None:
+    """
+    Copy the first recognized UMAP coordinate column pair in adata.obs into obsm['X_umap'].
+    """
     cols = adata.obs.columns.tolist()
 
     for pair in VALID_UMAP_PAIRS:
@@ -150,6 +189,18 @@ def add_umap_analysis(adata: "AnnData") -> None:
             return
 
 def create_composition_plots(adata: "AnnData", dataset_path: str, is_spatial: bool) -> None:
+    """
+    Write preliminary QC plots (genes/counts per cell violin and counts-vs-genes scatter).
+
+    Per-cell stats are computed in chunks so backed AnnData objects are never fully
+    loaded into memory; cells with fewer than 3 expressed genes are excluded.
+
+    Args:
+        adata (AnnData): Dataset to summarize; may be in backed mode.
+        dataset_path (str): Dataset path; its .h5ad/.zarr extension is replaced to name the
+            ".prelim_violin.png" and ".prelim_n_genes.png" output images.
+        is_spatial (bool): Whether the dataset path uses a .zarr extension instead of .h5ad.
+    """
     # Create the pathnames for the images
     extension = ".h5ad"
     if is_spatial:
@@ -241,6 +292,9 @@ def detect_umap(adata: "AnnData") -> bool:
     return False
 
 def has_clustering(adata: "AnnData") -> bool:
+    """
+    Return True if adata.obs already has a 'louvain' clustering column.
+    """
     cols = adata.obs.columns.tolist()
     # "louvain" is a legacy name when we used the scanpy
     # louvain analysis instead of the modern leiden one.
@@ -250,6 +304,9 @@ def has_clustering(adata: "AnnData") -> bool:
         return False
 
 def has_tsne(adata: "AnnData") -> bool:
+    """
+    Return True if adata.obsm already contains 'X_tsne' coordinates.
+    """
     try:
         if "X_tsne" in adata.obsm.keys():
             return True
@@ -259,6 +316,9 @@ def has_tsne(adata: "AnnData") -> bool:
     return False
 
 def has_umap(adata: "AnnData") -> bool:
+    """
+    Return True if adata.obsm already contains 'X_umap' coordinates.
+    """
     try:
         if "X_umap" in adata.obsm.keys():
             return True

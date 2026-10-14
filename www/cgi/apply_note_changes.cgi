@@ -28,13 +28,13 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    title = form.getvalue('title')
-    ldesc = form.getvalue('ldesc')
-    dataset_id = form.getvalue('dataset_id') # 'None' if scope='edit'
-    is_public = form.getvalue('access_level')
-    scope = form.getvalue('scope') # 'new', 'edit', or 'remove'
-    note_id = form.getvalue('note_id') #if scope = 'edit', this is contains the note_id
+    session_id = form.getfirst('session_id')
+    title = form.getfirst('title')
+    ldesc = form.getfirst('ldesc')
+    dataset_id = form.getfirst('dataset_id') # 'None' if scope='edit'
+    is_public = form.getfirst('access_level')
+    scope = form.getfirst('scope') # 'new', 'edit', or 'remove'
+    note_id = form.getfirst('note_id') #if scope = 'edit', this is contains the note_id
 
     current_user_id = get_user_id_from_session_id(cursor, session_id)
 
@@ -53,12 +53,15 @@ def main():
 
         # Save changes to existing note
         if scope == 'edit':
-            if note_id is not None:
+            if note_id is None:
+                result['error'] = 'Not able to save changes to note. Invalid note ID.'
+            # Only the note's owner may edit it (as with 'remove' below)
+            elif check_note_ownership(cursor, note_id, current_user_id) == True:
                 save_changes(cursor, note_id, title, ldesc, is_public)
                 cnx.commit()
                 result['success'] = 1
             else:
-                result['error'] = 'Not able to save changes to note. Invalid note ID.'
+                result['error'] = 'Not able to save changes to note. Not note owner.'
 
         # Remove the note from database
         if scope == 'remove':
@@ -78,6 +81,9 @@ def main():
     print(json.dumps(result))
 
 def remove_note(cursor, note_id):
+    """
+    Delete a note from the database by ID.
+    """
     qry = """
         DELETE FROM note
         WHERE id = %s
@@ -85,6 +91,13 @@ def remove_note(cursor, note_id):
     cursor.execute(qry, (note_id,))
 
 def check_note_ownership(cursor, note_id, current_user_id):
+    """
+    Check whether a note belongs to the given user.
+
+    Returns:
+        True if the note's user_id matches current_user_id, False otherwise
+        (None if the note does not exist).
+    """
     qry = """
         SELECT user_id
         FROM note
@@ -98,6 +111,9 @@ def check_note_ownership(cursor, note_id, current_user_id):
             return False
 
 def save_changes(cursor, note_id, title, ldesc, is_public):
+    """
+    Update the title, description, and visibility of an existing note.
+    """
     qry = """
        UPDATE note
        SET title = %s, ldesc = %s, is_public = %s, date_last_changed = NOW()
@@ -106,6 +122,9 @@ def save_changes(cursor, note_id, title, ldesc, is_public):
     cursor.execute(qry, (title, ldesc, is_public, note_id,))
 
 def add_new_note(cursor, title, ldesc, current_user_id, dataset_id, is_public):
+    """
+    Insert a new note for a dataset owned by the given user.
+    """
     qry = """
        INSERT INTO note (title, ldesc, user_id, dataset_id, is_public, date_added, date_last_changed)
        VALUES (%s, %s, %s, %s, %s, NOW(), NOW() )
@@ -114,6 +133,12 @@ def add_new_note(cursor, title, ldesc, current_user_id, dataset_id, is_public):
 
 
 def get_user_id_from_session_id(cursor, session_id):
+    """
+    Look up the user ID associated with a session ID.
+
+    Returns:
+        The user ID, or None if the session is not found.
+    """
     qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
     cursor.execute(qry, (session_id, ) )
     user_id = None

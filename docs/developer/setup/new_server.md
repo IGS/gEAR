@@ -33,7 +33,6 @@ To fix:
 `ln -s  /mnt/disks/datastore/datasets /var/www/datasets`
 `ln -s  /mnt/disks/datastore/uploads /var/www/uploads`
 
-
 ### MYSQL
 
 `sudo apt install mysql-server`
@@ -50,6 +49,9 @@ Please consult [the R setup](./r_rpy2.md) for packages to install in order to in
 
 Not necessary if you want projectR to run in the Apache environment or do not want to setup the RabbitMQ messaging service (configurable in gear.ini)
 
+`sudo mkdir -p /var/log/gEAR_queue`
+`sudo chown -R www-data:www-data /var/log/gEAR_queue`
+
 Follow instructions in [the RabbitMQ setup](./rabbitmq.md) document
 
 ### Python
@@ -64,30 +66,34 @@ Follow instructions in [the Apache setup](./apache.md) document
 
 ### Sass
 
-Used for changing theme colors between portal flavors.
-NOTE: Ruby Sass is end-of-life and they recommend switching to Dart Sass
+Used for changing theme colors between portal flavors (e.g. `www/css/gear-theme-purple.scss`).
 
-`sudo apt install ruby-sass`
+Ruby Sass (`ruby-sass`) is end-of-life and may not be packaged on current Ubuntu releases. Install Dart Sass instead, either via npm or a standalone release from <https://github.com/sass/dart-sass/releases>:
+
+```bash
+sudo npm install -g sass
+sass www/css/gear-theme-purple.scss www/css/gear-theme-purple.css
+```
 
 ### gEAR portal
 
 ```bash
-cd ~jorvis/git
-git clone https://github.com/jorvis/gEAR.git
+cd ~/git
+git clone https://github.com/IGS/gEAR.git
 cd /var
-sudo rm -rf www && sudo ln -s ~jorvis/git/gEAR/www
+sudo rm -rf www && sudo ln -s ~/git/gEAR/www
 ```
 
 ### Systemd Services
 
-More information about these services can be found at `gEAR/systemd/README.md`
+More information about these services can be found in [systemd.md](./systemd.md), [RabbitMQ Consumers](../services/rabbitmq_consumers.md) and [Spatial Panel](../services/spatial.md).
 
 ```bash
-cd ~jorvis/git/gEAR/systemd
-sudo cp *target /etc/systemd/system/
-sudo cp *service /etc/systemd/system/
+cd ~/git/gEAR/systemd
+sudo cp *.target *.service *.slice /etc/systemd/system/
 
-echo "**IMPORTANT**: For the *service files, correct the <gEAR_path> to point to the gEAR root on this server"
+echo "**IMPORTANT**: In the *.service files, replace <gear_root> with the gEAR root on this server"
+echo "  (spatial-panel.service also has <domain url> and a Python path to check)"
 
 # Reload systemd
 sudo systemctl daemon-reload
@@ -122,7 +128,21 @@ cd /var/www
 chmod 777 datasets datasets/spatial analyses/* carts/ projections/ uploads/files/ img/dataset_previews/ cache/spatial_panel/
 ```
 
+### E-mail support
+
+The portal uses e-mail only when users create a new account or use the "forgot password" link
+functionality. Here are the steps for setting this up (assuming running on a GCP node):
+
+- $ sudo apt install sendmail
+- Go to your Google Account Settings
+- Make sure that 2-step verification is turned ON
+- Go to your Google Account App Passwords page (https://myaccount.google.com/apppasswords)
+- Give your app a custom name, like 'gear-emailer' and click Create
+- Copy the 16-character password that appears in the model
+- Put your email and this password in your portal's gear.ini file
+
+
 ### Undocumented currently
 
-- Setting up mail server so forgot password works
+
 - What to do for helpdesk config?

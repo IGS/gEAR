@@ -1,0 +1,18 @@
+/* ==========================================================================
+   Page-specific styles for contact.html
+   Modal layout and centering are handled by Bulma's .modal / .modal-card,
+   so only overrides Bulma doesn't provide belong here.
+   ========================================================================== */
+
+/* Bulma sets .input { width: 100% }, which overrides the "size" attribute.
+   Reset the width so the short security-check answer box sizes to its "size" value. */
+#super-impressive-security-check {
+    width: auto;
+}
+
+/* Bulma labels are full-width blocks, so clicking the empty space beside a label's text
+   focuses its field (and opens the Tom Select tag dropdown). Shrink labels to their text
+   so that space can be clicked to leave a field; clicking the text still focuses the field. */
+#upload-form .label {
+    width: fit-content;
+}

@@ -37,8 +37,8 @@ def main():
     config.read('../../gear.ini')
 
     form = cgi.FieldStorage()
-    dataset_share_id = form.getvalue('dataset_share_id')
-    layout_share_id = form.getvalue('layout_share_id')
+    dataset_share_id = form.getfirst('dataset_share_id')
+    layout_share_id = form.getfirst('layout_share_id')
     dataset = None
     owner = None
 

@@ -1,9 +1,17 @@
+"""
+common.py - Shared plotting and data helpers for the spatial Panel apps.
+
+Used by panel_common.py to build Datashader/HoloViews spatial, UMAP, and
+violin plots from the CSV and image caches in www/cache/spatial_panel.
+"""
+
 import json
 from pathlib import Path
 import sys
 
 import colorcet as cc
 import datashader as ds
+import matplotlib
 import holoviews as hv
 import numpy as np
 import pandas as pd
@@ -27,6 +35,9 @@ DEFAULT_PLOT_HEIGHT = 300
 ### Functions
 
 def autohide_toolbar(plot, element):
+    """
+    HoloViews hook that hides the Bokeh toolbar until the plot is hovered.
+    """
     plot.state.toolbar.autohide = True
 
 def fix_colorbar_hook(plot, element):
@@ -160,9 +171,19 @@ def _prepare_category_renderers(cmap, registry=None):
     return hook
 
 
+def expression_clim(cbar_min:float|None=None, cbar_max:float|None=None) -> tuple|None:
+    """
+    Colorbar limits for an expression plot, or None to let HoloViews pick them.
+
+    The lower limit defaults to 0, and a missing upper limit (NaN) is left for HoloViews to pick from the data.
+    """
+    if cbar_min is None and cbar_max is None:
+        return None
+    return (0 if cbar_min is None else cbar_min, np.nan if cbar_max is None else cbar_max)
+
 def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatial2', color_col:str='raw_value', cmap="YlOrRd",
                         is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None,
-                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3):
+                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3, cbar_min:float|None=None):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
     plot_kwargs = dict(
@@ -175,7 +196,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
-        clim = (0, cbar_max) if cbar_max is not None else None,
+        clim = expression_clim(cbar_min, cbar_max),
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
@@ -222,7 +243,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         ))
     return plot
 
-def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
+def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15, cbar_min:float|None=None):
     """Generates a Datashaded UMAP."""
 
     color_col_title = title if title else color_col.title()
@@ -238,7 +259,7 @@ def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", 
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
-        clim = (0, cbar_max) if cbar_max is not None else None,
+        clim = expression_clim(cbar_min, cbar_max),
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
@@ -428,6 +449,9 @@ def create_datashader_agg(df, x: str, y: str, width:int=DEFAULT_PLOT_WIDTH, heig
     return agg
 
 def create_clusters_df(agg):
+    """
+    Return a dataframe of pixel coordinates and cluster codes present in a Datashader aggregate.
+    """
     agg_df = agg.to_dataframe(name="clusters_cat_codes")
     agg_df = agg_df[agg_df["clusters_cat_codes"]]
     # The columns we want are in the multi-index, so we need to make them into a dataframe
@@ -435,6 +459,9 @@ def create_clusters_df(agg):
     return final_df
 
 def create_expression_df(agg):
+    """
+    Return a dataframe of pixel coordinates and max expression, dropping empty pixels.
+    """
     agg_df = agg.to_dataframe(name="raw_value")
     # Drop missing values
     agg_df = agg_df.dropna()
@@ -623,6 +650,23 @@ def sort_clusters(clusters) -> list:
     return sorted_clusters
 
 
+def get_color_maps(df, colorblind_mode=False):
+    """
+    Return (expression_cmap, cluster_cmap) for the viewers.
+
+    The normal cluster colors come from the cached dataframe's "colors" column. Colorblind mode
+    (a per-viewer setting, never saved) uses reversed cividis for expression and colorcet glasbey_cool
+    for clusters, matching lib/gear/colorblind.py (this service cannot import it).
+    """
+    if not colorblind_mode:
+        return cc.m_CET_L4_r, dict(zip(df['clusters'], df['colors']))
+
+    sorted_clusters = sort_clusters(df['clusters'].unique())
+    palette = cc.glasbey_cool
+    cluster_cmap = {cluster: palette[i % len(palette)] for i, cluster in enumerate(sorted_clusters)}
+    return matplotlib.colormaps["cividis_r"], cluster_cmap
+
+
 ### Classes
 class Settings(param.Parameterized):
     """
@@ -633,6 +677,8 @@ class Settings(param.Parameterized):
     dataset_id = param.String(doc="Dataset ID to display")
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
+    vmin = param.Number(doc="User-defined expression colorbar minimum", allow_None=True)
+    vmax = param.Number(doc="User-defined expression colorbar maximum", allow_None=True)
 
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False
@@ -646,4 +692,8 @@ class Settings(param.Parameterized):
 
     nosave = param.Boolean(
         doc="If true, do not show the contents related to saving.", default=False
+    )
+
+    colorblind_mode = param.Boolean(
+        doc="If true, use colorblind-friendly palettes for this viewer (never saved).", default=False
     )

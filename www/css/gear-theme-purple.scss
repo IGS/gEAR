@@ -29,6 +29,11 @@ $gear-bg-tertiary: #EFEDF7;
 //$gear-bg-secondary: #6f94cd;
 //$gear-bg-tertiary: #FAFBF4;
 
+// For inflammation-gEAR
+$gear-bg-primary: #c1121f;
+$gear-bg-secondary: #780000;
+$gear-bg-tertiary: #fdf0d5;
+
 // For node-cmtrf (major/minor/accent per site branding)
 //$gear-bg-primary: #f6d55c;
 //$gear-bg-secondary: #006838;
@@ -37,6 +42,13 @@ $gear-bg-tertiary: #EFEDF7;
 $gear-state-success: #E2FFBD;
 $gear-state-error: #FFCDBD;
 $gear-state-disabled: #D1D1D1;
+
+// Export these to CSS variables
+:root {
+    --gear-bg-primary: #{$gear-bg-primary};
+    --gear-bg-secondary: #{$gear-bg-secondary};
+    --gear-bg-tertiary: #{$gear-bg-tertiary};
+}
 
 // Update some of Bulma's global variables
 $family-sans-serif: "Inter", sans-serif;

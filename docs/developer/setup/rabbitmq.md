@@ -14,7 +14,7 @@ There is a module at `<root>/lib/gearqueue.py` that contains a class to connect 
 
 ## Creating a log file to view RabbitMQ logs
 
-As root, I would create a file in `/var/log/gEAR_queue` named `<service>.log` where `<service>` is the name of the RabbitMQ consumer service (i.e. projectr). The `/var/log/gEAR_queue` directory is owned by root:adm with 750 permissions and the service log file within should be 644 permissions.
+As root, I would create a file in `/var/log/gEAR_queue` named `<service>.log` where `<service>` is the name of the RabbitMQ consumer service (i.e. projectr). The `/var/log/gEAR_queue` directory is owned by www-data:www-data with 750 permissions and the service log file within should be 644 permissions.
 
 ## Running a particular consumer
 
@@ -49,11 +49,11 @@ on some inputs, so each guards against a duplicate/OOM-prone run of the same job
   of starting a duplicate worker.
 - The anndata upload consumer (`listeners/anndata_upload_consumer.py`) does the same for a
   duplicate/redelivered *queue message*: it acquires a non-blocking lock
-  (`gear.utils.try_acquire_lock_file`) on a `.job.lock` file in the job's staging directory before
+  (`gear.utils.job_coordination.try_acquire_lock_file`) on a `.job.lock` file in the job's staging directory before
   processing, and if another worker already holds it, just acks and drops the duplicate delivery
   instead of starting a second conversion.
 - The anndata upload consumer also self-imposes an `RLIMIT_AS` ceiling at process start
-  (`set_memory_limit_from_cgroup()`, `lib/gear/utils.py`), sized to a fraction of the
+  (`set_memory_limit_from_cgroup()`, `lib/gear/utils/resource_limits.py`), sized to a fraction of the
   container/VM's cgroup memory limit, so an approaching OOM raises a catchable `MemoryError`
   instead of an uncatchable kernel `SIGKILL`. `process_uploaded_expression_dataset.cgi` sets the
   same guard for its synchronous fallback path (used when the queue is disabled or unreachable),

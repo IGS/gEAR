@@ -48,6 +48,7 @@ RUN apt -qq update \
   fontconfig \
   libgfortran5 \
   libuv1 \
+  libcairo2 \
   libhdf5-dev \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \

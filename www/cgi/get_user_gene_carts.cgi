@@ -65,11 +65,11 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('share_id')
-    filter_cart_type = form.getvalue('cart_type', None)
-    group_by_type = form.getvalue("group_by_type", False)
-    include_members = form.getvalue("include_members", 1)
+    session_id = form.getfirst('session_id')
+    share_id = form.getfirst('share_id')
+    filter_cart_type = form.getfirst('cart_type', None)
+    group_by_type = form.getfirst("group_by_type", False)
+    include_members = form.getfirst("include_members", 1)
     current_user = geardb.get_user_from_session_id(session_id)
 
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
@@ -140,6 +140,13 @@ def main():
     print(json.dumps(result, default=lambda o: o.__dict__))
 
 def filter_any_previous(ids, new_carts):
+    """
+    Return carts whose IDs are not already in ids, adding them to ids.
+
+    Args:
+        ids: Set of cart IDs already assigned to a category (mutated in place).
+        new_carts: Candidate carts for the current category.
+    """
     carts = []
 
     for cart in new_carts:

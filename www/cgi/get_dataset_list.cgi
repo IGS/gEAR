@@ -37,6 +37,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 
 import geardb
+from gear.utils.fulltext import to_boolean_mode_query
 
 def main():
     cnx = geardb.Connection()
@@ -45,18 +46,20 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    scope = form.getvalue('scope')
-    search_terms = form.getvalue('search_terms')
+    session_id = form.getfirst('session_id')
+    scope = form.getfirst('scope')
+    search_terms = form.getfirst('search_terms')
 
-    # temporarily dealing with https://github.com/jorvis/gEAR/issues/350
-    if search_terms is not None:
-        search_terms = search_terms.translate(str.maketrans('','','+-/@'))
+    # Punctuation is an operator in boolean mode (see https://github.com/jorvis/gEAR/issues/350), so
+    #  convert the text first; if nothing searchable is left, list datasets as if no terms were given
+    fulltext_query = to_boolean_mode_query(search_terms)
+    if not fulltext_query:
+        search_terms = None
 
-    permalink_id = form.getvalue('permalink_share_id')  # dataset permalink
-    only_types_str = form.getvalue('only_types')
-    sort_order = form.getvalue('order')
-    default_domain_label = form.getvalue('default_domain')
+    permalink_id = form.getfirst('permalink_share_id')  # dataset permalink
+    only_types_str = form.getfirst('only_types')
+    sort_order = form.getfirst('order')
+    default_domain_label = form.getfirst('default_domain')
 
     only_types = None
 
@@ -80,8 +83,8 @@ def main():
         print(json.dumps(result))
         return
 
-    if form.getvalue(("layout_share_id")) is not None:
-        layout_share_id = form.getvalue('layout_share_id')
+    if form.getfirst(("layout_share_id")) is not None:
+        layout_share_id = form.getfirst('layout_share_id')
         layouts = geardb.LayoutCollection().get_by_share_id(layout_share_id)
         if len(layouts) > 2:
             raise Exception("More than one layout found with share ID {0}".format(layout_share_id))
@@ -106,8 +109,8 @@ def main():
             search_term_qry = '''   AND MATCH(d.title, d.ldesc, d.geo_id) AGAINST( %s )
                 ORDER BY MATCH(d.title, d.ldesc) AGAINST(%s IN BOOLEAN MODE) DESC
             '''
-            qry_params.append(search_terms)
-            qry_params.append(search_terms)
+            qry_params.append(fulltext_query)
+            qry_params.append(fulltext_query)
 
         matching_dataset_ids = list()
         if scope == 'others':
@@ -257,6 +260,17 @@ def main():
     print(json.dumps(result))
 
 def get_default_layout(cursor, domain_label):
+    """
+    Return the datasets in the default layout for a domain.
+
+    Args:
+        cursor: Database cursor (unused).
+        domain_label: Domain profile label; unrecognized labels fall back to the
+            hearing layout.
+
+    Returns:
+        List of Dataset objects in the layout.
+    """
     # this is the hearing one
     layout_id = 0
 
@@ -275,6 +289,11 @@ def get_default_layout(cursor, domain_label):
     return dsc.datasets
 
 def get_users_datasets(cursor, user_id):
+    """
+    Return summary dicts for all datasets owned by a user.
+
+    Datasets marked for removal are skipped.
+    """
     qry = """
        SELECT d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc,
        d.dtype, d.schematic_image, d.share_id, d.math_default,
@@ -333,6 +352,12 @@ def get_users_datasets(cursor, user_id):
     return datasets
 
 def get_permalink_dataset(cursor, permalink_id):
+    """
+    Return the dataset for a permalink share ID, flagged with is_permalink.
+
+    Returns:
+        A list containing the dataset, or an empty list if not found.
+    """
     dataset_id = geardb.get_dataset_id_from_share_id(permalink_id)
     dsc = geardb.DatasetCollection()
     dsc.get_by_dataset_ids(ids=[dataset_id])
@@ -347,6 +372,12 @@ def get_permalink_dataset(cursor, permalink_id):
 
 
 def get_user_id_from_session_id(cursor, session_id):
+    """
+    Look up the user ID associated with a session ID.
+
+    Returns:
+        The user ID, or None if the session is not found.
+    """
     qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
     cursor.execute(qry, (session_id, ) )
     user_id = None

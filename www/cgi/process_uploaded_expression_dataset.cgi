@@ -30,7 +30,7 @@ import geardb
 from gear.anndata_processor import process_anndata_synchronously, write_status
 from gear.spatial_processor import process_spatial_synchronously
 from gear.spatialhandler import SPATIALTYPE2CLASS
-from gear.utils import set_memory_limit_from_cgroup
+from gear.utils.resource_limits import set_memory_limit_from_cgroup
 from werkzeug.utils import secure_filename
 
 # The RabbitMQ consumer path (listeners/anndata_upload_consumer.py) self-imposes this same

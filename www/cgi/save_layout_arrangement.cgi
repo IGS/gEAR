@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+save_layout_arrangement.cgi - Save the grid arrangement of displays in a layout (dataset collection).
 
+Input: session_id (required; must own the layout), layout_share_id,
+       layout_arrangement (JSON {single: [...], multi: [...]} with display_id, grid_width, grid_height, start_col, start_row).
+Output: JSON {success, error?}.
 """
 
 import cgi
@@ -20,11 +24,14 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_share_id = form.getvalue('layout_share_id')
-    layout_arrangement_json = form.getvalue('layout_arrangement')
+    session_id = form.getfirst('session_id')
+    layout_share_id = form.getfirst('layout_share_id')
+    layout_arrangement_json = form.getfirst('layout_arrangement')
 
     user = geardb.get_user_from_session_id(session_id)
+    if user is None:
+        print(json.dumps({'success': 0, 'error': 'User must be logged in'}))
+        return
 
     layout = geardb.get_layout_by_share_id(layout_share_id)
 
@@ -74,6 +81,9 @@ def main():
     print(json.dumps(result))
 
 def check_layout_ownership(cursor, current_user_id, layout_id):
+    """
+    Return True if the user owns the given layout.
+    """
     qry = """
        SELECT l.id, l.user_id
        FROM layout l

@@ -1,3 +1,9 @@
+"""
+higlass.py - Look up gene coordinates on the gEAR HiGlass server.
+
+Serves /higlass/genes/<gene_symbol> in www/api/api.py.
+"""
+
 import os
 
 import requests
@@ -12,10 +18,10 @@ def get_gene_coords_from_higlass(tileset_id: str, gene_name: str):
     """
     # HiGlass endpoint for fetching specific tile data or searching tags
     # We query the 'tiles' endpoint for the text-index tile (usually tile 0.0 for search)
-    query_url = f"{HIGLASS_URL}/suggest/?d={tileset_id}&ac={gene_name}"
+    query_url = f"{HIGLASS_URL}/suggest/"
 
     try:
-        response = requests.get(query_url)
+        response = requests.get(query_url, params={"d": tileset_id, "ac": gene_name})
         response.raise_for_status()
         data: list = response.json()
 
@@ -37,16 +43,26 @@ def get_gene_coords_from_higlass(tileset_id: str, gene_name: str):
 
 
 class HiGlassGene(Resource):
+    """
+    Flask-RESTful resource that returns HiGlass annotation data for a gene.
+    """
 
     def get(self, gene_symbol):
+        """
+        Return the HiGlass suggest entry (chr, txStart, txEnd, geneName, ...) for the gene, or None.
+
+        Query params: assembly (required). Returns a 400 error if the assembly has no
+        annotation BEDdb tileset.
+        """
 
         # Get the assembly from the query parameters
         assembly = request.args.get('assembly', "")
 
         beddb_uid = ANNOTATION_BEDDB_UID.get(assembly, "")
         if not beddb_uid:
-            raise ValueError(
-                f"Assembly {assembly} is not supported or does not have a BEDdb UID."
-            )
+            return {
+                "success": -1,
+                "message": f"Assembly {assembly} is not supported or does not have a BEDdb UID."
+            }, 400
 
         return get_gene_coords_from_higlass(beddb_uid, gene_symbol)

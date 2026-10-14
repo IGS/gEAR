@@ -51,8 +51,7 @@ ul#pattern-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
 ul#pattern-result-list li.is-selected {
-    /* TODO: Make this a variable */
-    background-color: #483285;
+    background-color: var(--gear-bg-primary);
     color: white;
 }
 ul#go-terms {

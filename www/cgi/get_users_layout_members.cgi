@@ -24,8 +24,8 @@ def main():
     config.read('../../gear.ini')
 
     form = cgi.FieldStorage()
-    share_id = form.getvalue('layout_share_id')
-    session_id = form.getvalue('session_id')
+    share_id = form.getfirst('layout_share_id')
+    session_id = form.getfirst('session_id')
     user = geardb.get_user_from_session_id(session_id)
 
     # default to gear.ini default_layout_share_id if not provided

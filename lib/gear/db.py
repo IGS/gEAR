@@ -1,3 +1,10 @@
+"""
+db.py - MySQL database connection helper.
+
+Provides MySQLDB, which opens connections to the gEAR MySQL instance using
+settings from gear.ini.
+"""
+
 import mysql.connector
 
 # This resolves some "no localization support for language 'eng'" error

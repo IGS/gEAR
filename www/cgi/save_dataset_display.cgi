@@ -1,5 +1,14 @@
 #!/opt/bin/python3
 
+"""
+save_dataset_display.cgi - Create or update a saved dataset display and regenerate its static preview PNG.
+
+Input: id (display_id; omit to insert new), session_id (required), dataset_id, label, plot_type,
+       plotly_config (JSON string), is_local.
+Output: JSON {display_id, success}; writes img/dataset_previews/<dataset_id>.<display_id>.png
+        (only when the display was saved).
+"""
+
 import cgi
 import json
 import os
@@ -93,13 +102,13 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    display_id = form.getvalue('id')
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
-    label = form.getvalue('label')
-    plot_type = form.getvalue('plot_type')
-    plotly_config = form.getvalue('plotly_config')
-    is_local = form.getvalue('is_local', False)
+    display_id = form.getfirst('id')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
+    label = form.getfirst('label')
+    plot_type = form.getfirst('plot_type')
+    plotly_config = form.getfirst('plotly_config')
+    is_local = form.getfirst('is_local', False)
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
@@ -159,29 +168,26 @@ def main():
         """
         cursor.execute(query,
             (dataset_id, user_id, label, plot_type, plotly_config))
-        result = dict(success=True)
 
-        # Retrieve display ID so we can generate the static image
-        query = """
-            SELECT id FROM dataset_display
-            WHERE dataset_id = %s
-                AND user_id = %s
-                AND label = %s
-                AND plot_type = %s
-                AND plotly_config = %s
-            ORDER BY id DESC LIMIT 1
-        """
-        cursor.execute(query,
-            (dataset_id, user_id, label, plot_type, plotly_config))
-
-        row = cursor.fetchone()
-        if row:
-            (display_id,) = row
-            result["display_id"] = display_id
-
-        if not display_id:
+        # Use the new row's ID directly. Looking it up again by matching the saved columns missed
+        #  rows with a blank label (stored as NULL, and "label = NULL" is never true), which named
+        #  the preview image "<dataset_id>.None.png"
+        display_id = cursor.lastrowid
+        if display_id:
+            result = dict(display_id=display_id, success=True)
+        else:
             print('Display ID not found after insert.', file=sys.stderr)
-            result = dict(success=False)
+            result = dict(display_id=None, success=False)
+
+    # Don't generate a preview for a display that wasn't saved (e.g. one this user doesn't own)
+    if not result["success"]:
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     filename = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.png".format(dataset_id, display_id))
 

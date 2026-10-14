@@ -1,3 +1,9 @@
+"""
+mg_plotting.py - Plotly figure generation for multi-gene expression displays.
+
+Builds dot plots, heatmaps (with optional dendrograms and cluster bars), quadrant,
+violin and volcano plots, along with the data preparation helpers they rely on.
+"""
 
 import sys
 from functools import partial
@@ -15,6 +21,8 @@ from plotly.subplots import make_subplots
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import linkage, leaves_list
 
+from gear.colorblind import CATEGORICAL_PALETTE
+
 ALPHABET_COLORS = px.colors.qualitative.Alphabet
 BOLD_COLORS = px.colors.qualitative.Bold
 D3_COLORS = px.colors.qualitative.D3
@@ -22,6 +30,9 @@ DARK24_COLORS = px.colors.qualitative.Dark24  # 24 colors.  Could be problematic
 LIGHT24_COLORS = px.colors.qualitative.Light24
 SAFE_COLORS = px.colors.qualitative.Safe
 VIVID_COLORS = px.colors.qualitative.Vivid
+
+# Swatch name that colorblind mode passes as a colorscale (see gear.colorblind)
+COLORBLIND_SWATCH = "colorblind"
 
 color_swatch_map = {
     "alphabet": ALPHABET_COLORS
@@ -31,6 +42,7 @@ color_swatch_map = {
     , "light24": LIGHT24_COLORS
     , "safe": SAFE_COLORS
     , "vivid": VIVID_COLORS
+    , COLORBLIND_SWATCH: list(CATEGORICAL_PALETTE)
 }
 
 PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
@@ -44,10 +56,48 @@ class PlotError(Exception):
         self.message = message
         super().__init__(self.message)
 
+def _colorscale_bounds(default_min: float, default_max: float, vmin: float | None=None, vmax: float | None=None) -> tuple[float, float]:
+    """Return the (min, max) colorscale bounds, using the user-defined vmin/vmax where given."""
+    color_min = vmin if vmin is not None else default_min
+    color_max = vmax if vmax is not None else default_max
+    if color_min >= color_max:
+        raise PlotError("Colorscale minimum value ({}) must be less than the maximum value ({}).".format(color_min, color_max))
+    return color_min, color_max
+
+def _heatmap_colorscale_bounds(values_max: float, center_around_zero: bool=False, vmin: float | None=None, vmax: float | None=None) -> tuple[float | None, float | None, float | None]:
+    """
+    Return the (zmin, zmax, zmid) heatmap colorscale settings.
+
+    Plotly ignores zmid once zmin and zmax are set, so when centering around zero a single
+    user-defined bound is mirrored to keep zero in the middle of the colorscale.
+    Two bounds are used as given and must be on either side of zero.
+    """
+    if not center_around_zero:
+        zmin, zmax = _colorscale_bounds(0, values_max, vmin, vmax)
+        return zmin, zmax, None
+
+    if vmin is None and vmax is None:
+        return None, None, 0
+
+    if vmin is not None and vmax is not None:
+        if not vmin < 0 < vmax:
+            raise PlotError("When centering around zero, the colorscale minimum must be below zero and the maximum above zero.")
+        return vmin, vmax, None
+
+    bound = abs(vmin if vmin is not None else vmax)
+    if bound == 0:
+        raise PlotError("When centering around zero, the colorscale bound cannot be zero.")
+    return -bound, bound, None
+
 ### Dotplot fxns
 
-def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Magma", reverse_colorscale:bool=False, non_interactive:bool=False):
-    """Creates a dot plot.  Returns the figure."""
+def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Magma", reverse_colorscale:bool=False, non_interactive:bool=False,
+                    vmin:float|None=None, vmax:float|None=None):
+    """Creates a dot plot.  Returns the figure.
+
+    vmin and vmax are user-defined colorscale bounds in the log-transformed units shown on the colorbar.
+    By default the colorscale runs from 0 to the highest mean expression.
+    """
     # x = group
     # y = gene
     # color = mean expression
@@ -69,6 +119,9 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     if not colorscale:
         colorscale="Magma"
 
+    # Anchor colorscale min at 0 unless the user set bounds
+    cmin, cmax = _colorscale_bounds(0, float(mean.max()), vmin, vmax)
+
     hover_template = "N: %{text}<br>Percent: %{marker.size:.2f}<br>Mean: %{marker.color:.2f}"
     if non_interactive:
         hover_template = None
@@ -81,8 +134,8 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
         , mode="markers"
         , marker=dict(
             color=mean
-            , cmin=0    # Anchor colorscale min at 0
-            , cmax=float(mean.max())    # Required if cmin is set.
+            , cmin=cmin
+            , cmax=cmax    # Required if cmin is set.
             , colorscale=colorscale
             , reversescale=reverse_colorscale
             , size=df["percent"]
@@ -219,7 +272,27 @@ def create_floating_dot_legend(fig: go.Figure):
 
 ### Heatmap fxns
 
-def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start_pos: float, flip_axes: bool=False, pivot_cols=None, cluster_obs=False, obs_index_col=None):
+def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start_pos: float, flip_axes: bool=False, pivot_cols=None, cluster_obs=False, obs_index_col=None, colorblind: bool=False):
+    """
+    Add one single-row categorical heatmap ("clusterbar") per field to a heatmap figure.
+
+    Each bar is aligned to the main heatmap's observation axis and gets its own discrete
+    colorscale and colorbar legend. Updates 'fig' inplace.
+
+    Args:
+        fig (go.Figure): Heatmap figure to add the clusterbars to.
+        obs_columns (pd.MultiIndex): Observation columns of the pivoted heatmap dataframe.
+        all_categories (list): Obs fields to draw clusterbars for; each must be a level of obs_columns.
+        bar_start_pos (float): Gene-axis position of the first clusterbar.
+        flip_axes (bool, optional): If True, draw bars vertically for a flipped heatmap. Defaults to False.
+        pivot_cols (optional): Unused.
+        cluster_obs (bool, optional): Whether observations were clustered, which changes axis labels. Defaults to False.
+        obs_index_col (str, optional): If set, the heatmap is per-observation and bars use integer positions.
+        colorblind (bool, optional): If True, color every bar with the colorblind-friendly palette. Defaults to False.
+
+    Raises:
+        PlotError: If a clusterbar field is not a level of obs_columns.
+    """
     curr_bar_pos = bar_start_pos
     curr_legend_pos = 1.2
 
@@ -243,7 +316,7 @@ def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start
         y = [curr_bar_pos]
         text = [categories]
 
-        palette = get_categorical_palette(i)
+        palette = get_categorical_palette(i, colorblind)
         unique_vals = list(dict.fromkeys(categories))
         # map colors to categories
         color_map = {val: i for i, val in enumerate(unique_vals)}
@@ -306,6 +379,18 @@ def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start
         curr_legend_pos += 0.25  # Move to the next legend position
 
 def add_left_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=None):
+    """
+    Add a right-facing dendrogram of the rows of 'data' on the left side of the heatmap.
+
+    Uses the x2/y2 axes. Updates 'fig' inplace.
+
+    Args:
+        fig (go.Figure): Heatmap figure to add the dendrogram to.
+        data (array-like): 2D values whose rows are clustered.
+        distfun (callable): Distance function passed to ff.create_dendrogram.
+        dendro_domain (dict, optional): Domains as returned under "dendro" by calculate_x_domains
+            and calculate_y_domains, keyed by "x"/"y" then "left". Defaults are used if missing.
+    """
     dendro = ff.create_dendrogram(data, orientation='right', distfun=distfun)
 
     # Calculate the internal coordinate limits
@@ -339,6 +424,18 @@ def add_left_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=Non
     )
 
 def add_top_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=None):
+    """
+    Add a downward-facing dendrogram of the rows of 'data' above the heatmap.
+
+    Uses the x3/y3 axes. Updates 'fig' inplace.
+
+    Args:
+        fig (go.Figure): Heatmap figure to add the dendrogram to.
+        data (array-like): 2D values whose rows are clustered.
+        distfun (callable): Distance function passed to ff.create_dendrogram.
+        dendro_domain (dict, optional): Domains as returned under "dendro" by calculate_x_domains
+            and calculate_y_domains, keyed by "x"/"y" then "top". Defaults are used if missing.
+    """
     dendro = ff.create_dendrogram(data, orientation='bottom', distfun=distfun)
 
     num_leaves = len(data)
@@ -370,6 +467,19 @@ def add_top_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=None
     )
 
 def build_multicategory_obs_labels(obs_columns):
+    """
+    Convert observation columns into Plotly axis labels.
+
+    A MultiIndex becomes a multicategory axis (a list of per-level lists); since Plotly
+    supports at most two levels, levels after the first are joined with ";" when there
+    are more than two. Any other index becomes a flat list.
+
+    Args:
+        obs_columns (pd.Index | pd.MultiIndex): Observation columns of the pivoted heatmap dataframe.
+
+    Returns:
+        list: Flat list of labels, or a list of two (or fewer) label lists for a multicategory axis.
+    """
     obs_groups = obs_columns
     if isinstance(obs_columns, pd.MultiIndex):
         # Attempt to make this a multicategory axis of 2 levels (which is the plotly max)
@@ -389,6 +499,17 @@ def build_multicategory_obs_labels(obs_columns):
     return obs_groups
 
 def calculate_x_domains(show_dendrogram=True, gene_domain_ratio=1.0):
+    """
+    Calculate horizontal paper-coordinate domains for the heatmap and its dendrograms.
+
+    Args:
+        show_dendrogram (bool, optional): Whether space is reserved for a left dendrogram. Defaults to True.
+        gene_domain_ratio (float, optional): Fraction of the heatmap width occupied by genes
+            (versus clusterbars), used to size the top dendrogram. Defaults to 1.0.
+
+    Returns:
+        dict: {"heatmap": [left, right], "dendro": {"left": [left, right], "top": [left, right]}}.
+    """
     # Fixed heights in normalized paper units (0 to 1)
     dendro_width = 0.18 if show_dendrogram else 0
 
@@ -411,6 +532,17 @@ def calculate_x_domains(show_dendrogram=True, gene_domain_ratio=1.0):
     }
 
 def calculate_y_domains(show_dendrogram=True, gene_domain_ratio=1.0):
+    """
+    Calculate vertical paper-coordinate domains for the heatmap and its dendrograms.
+
+    Args:
+        show_dendrogram (bool, optional): Whether space is reserved for a top dendrogram. Defaults to True.
+        gene_domain_ratio (float, optional): Fraction of the heatmap height occupied by genes
+            (versus clusterbars), used to size the left dendrogram. Defaults to 1.0.
+
+    Returns:
+        dict: {"heatmap": [bottom, top], "dendro": {"left": [bottom, top], "top": [bottom, top]}}.
+    """
     # Fixed heights in normalized paper units (0 to 1)
     dendro_height = 0.18 if show_dendrogram else 0
 
@@ -436,8 +568,47 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
                     cluster_genes:bool=False, flip_axes:bool=False, center_around_zero:bool=False,
                     distance_metric:str="euclidean", colorscale:str|None="cividis", reverse_colorscale:bool=False,
                     title:str|None=None, hide_obs_labels:bool=False, hide_gene_labels:bool=False,
-                    obs_index_col:str|None=None,
+                    obs_index_col:str|None=None, colorblind:bool=False,
+                    vmin:float|None=None, vmax:float|None=None,
                     ) -> go.Figure:
+    """
+    Create a gene-by-observation expression heatmap, with optional dendrograms and clusterbars.
+
+    Expression values are log2-transformed (after adding LOG_COUNT_ADJUSTER) unless already
+    log10, then pivoted so genes form one axis and groupby/clusterbar categories the other.
+    Note that df["value"] is overwritten with the transformed values.
+
+    Args:
+        df (pd.DataFrame): Long-form dataframe with "gene_symbol", "value" and any groupby or clusterbar columns.
+        groupby_filters (list, optional): Obs fields that define the observation columns.
+        clusterbar_fields (list, optional): Obs fields to draw as clusterbars alongside the heatmap.
+        is_log10 (bool, optional): If True, values are already log10 and are not transformed. Defaults to False.
+        cluster_obs (bool, optional): Cluster observations and draw their dendrogram. Defaults to False.
+        cluster_genes (bool, optional): Cluster genes and draw their dendrogram. Defaults to False.
+        flip_axes (bool, optional): Put genes on the x-axis instead of the y-axis. Defaults to False.
+        center_around_zero (bool, optional): Center the colorscale at zero. Defaults to False.
+        distance_metric (str, optional): scipy pdist metric used for clustering. Defaults to "euclidean".
+        colorscale (str, optional): Plotly colorscale name; if empty, "RdYlBu" or "Reds" is chosen
+            based on center_around_zero. Defaults to "cividis".
+        reverse_colorscale (bool, optional): Reverse the colorscale. Defaults to False.
+        title (str, optional): Plot title; defaults to a log2/log10 expression title.
+        hide_obs_labels (bool, optional): Hide observation axis tick labels. Defaults to False.
+        hide_gene_labels (bool, optional): Hide gene axis tick labels. Defaults to False.
+        obs_index_col (str, optional): Column that uniquely identifies observations, to plot each
+            observation individually instead of averaging within groups.
+        colorblind (bool, optional): Use the colorblind-friendly palette for clusterbars. Defaults to False.
+        vmin (float, optional): User-defined colorscale minimum, in the log-transformed units shown on the colorbar.
+        vmax (float, optional): User-defined colorscale maximum, in the log-transformed units shown on the colorbar.
+            When centering around zero, a single bound is mirrored (i.e. vmax=2 gives -2 to 2), and
+            two bounds must be on either side of zero.
+
+    Returns:
+        go.Figure: The heatmap figure.
+
+    Raises:
+        ValueError: If distance_metric is not a valid pdist metric.
+        PlotError: If a clusterbar field is not among the heatmap columns, or the colorscale bounds are invalid.
+    """
 
     # df is long form
     # columns include:
@@ -456,6 +627,9 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
         values = np.log2(values)
 
     df["value"] = values
+
+    # Check the colorscale bounds before the more expensive pivoting and clustering
+    zmin, zmax, zmid = _heatmap_colorscale_bounds(float(values.max()), center_around_zero, vmin, vmax)
 
     pivot_cols = df.index.name
     pivot_col_fields = groupby_filters + clusterbar_fields
@@ -619,9 +793,9 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
         ),
         reversescale=reverse_colorscale,
         colorscale=colorscale,
-        zmin=0 if not center_around_zero else None,
-        zmax=float(values.max()) if not center_around_zero else None,
-        zmid=0 if center_around_zero else None,
+        zmin=zmin,
+        zmax=zmax,
+        zmid=zmid,
         name="expression"
     )
 
@@ -657,7 +831,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
 
     # Add clusterbars if they are needed.
     if clusterbar_fields:
-        add_clusterbars(fig, pivot_df.columns, clusterbar_fields, bars_start, flip_axes, pivot_cols, cluster_obs, obs_index_col)
+        add_clusterbars(fig, pivot_df.columns, clusterbar_fields, bars_start, flip_axes, pivot_cols, cluster_obs, obs_index_col, colorblind)
 
 
     x_visible = True
@@ -811,7 +985,7 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale
     # If scale is discrete, use the colorscale
     if colorscale:
         if colorscale.lower() in px.colors.named_colorscales():
-            px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), len(colors))
+            colors = px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), len(colors))
         elif colorscale not in color_swatch_map:
             # Not all the quantitivate colorscales available are in the color_swatch_map
             raise Exception("Colorscale {} not a valid colorscale to choose from".format(colorscale))
@@ -966,16 +1140,23 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
 
     return df
 
+def _split_condition(condition):
+    """Split a "<obs column>;-;<value>" condition into (column, value)."""
+    key, sep, val = condition.partition(';-;')
+    if not sep:
+        raise PlotError(f"Condition '{condition}' is not in the expected '<observation group>;-;<value>' format.")
+    return key, val
+
 def validate_quadrant_conditions(obs_df, control_condition, compare_group1, compare_group2):
     """Ensure quadrant conditions make sense."""
     if not (control_condition and compare_group1 and compare_group2):
-        raise PlotError('Must pass three conditions in order to generate a volcano plot.')
+        raise PlotError('Must pass three conditions in order to generate a quadrant plot.')
 
-    (control_key, control_val) = control_condition.split(';-;')
-    (compare1_key, compare1_val) = compare_group1.split(';-;')
-    (compare2_key, compare2_val) = compare_group2.split(';-;')
+    (control_key, control_val) = _split_condition(control_condition)
+    (compare1_key, compare1_val) = _split_condition(compare_group1)
+    (compare2_key, compare2_val) = _split_condition(compare_group2)
 
-    if control_key != compare1_key and control_key != compare2_key:
+    if control_key != compare1_key or control_key != compare2_key:
         raise PlotError("All comparable conditions must came from same observation group.")
 
     if control_key not in obs_df.columns:
@@ -1418,8 +1599,8 @@ def validate_volcano_conditions(obs_df, query_condition, ref_condition):
     if not (query_condition and ref_condition):
         raise PlotError('Must pass two conditions in order to generate a volcano plot.')
 
-    (query_key, query_val) = query_condition.split(';-;')
-    (ref_key, ref_val) = ref_condition.split(';-;')
+    (query_key, query_val) = _split_condition(query_condition)
+    (ref_key, ref_val) = _split_condition(ref_condition)
 
     # Shortening the name for ease
     if ref_val == "Union of the rest of the groups":
@@ -1481,7 +1662,7 @@ def create_dataframe_gene_mask(df, gene_symbols):
         # Note to user which genes were not found in the dataset
         genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
         if genes_not_present:
-            success = 2,
+            success = 2
             message_list.append('<li>One or more genes were not found in the dataset nor could be mapped: {}</li>'.format(', '.join(genes_not_present)))
         message = "\n".join(message_list)
         return gene_filter, success, message
@@ -1544,7 +1725,14 @@ def create_composite_index_column(df, columns):
     """
     return df[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
 
-def get_categorical_palette(index):
+def get_categorical_palette(index, colorblind=False):
+    """
+    Return a Colorcet Glasbey categorical palette, cycling through four palettes by index.
+    In colorblind mode, always return the colorblind-friendly palette.
+    """
+    if colorblind:
+        return CATEGORICAL_PALETTE
+
     # Cycle through Colorcet categorical palettes
     palettes = [cc.glasbey_dark, cc.glasbey_cool, cc.glasbey_warm, cc.glasbey_hv]
     return palettes[index % len(palettes)]
@@ -1572,7 +1760,9 @@ def get_discrete_colors(fields: list, colorscale: str | None="vivid", reverse_co
     colors = None
     if colorscale.lower() in px.colors.named_colorscales():
         num_colors = len(fields)
-        px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), num_colors)
+        colors = px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), num_colors)
+        if reverse_colorscale:
+            colors = colors[::-1]
     elif colorscale not in color_swatch_map:
         # Not all the quantitivate colorscales available are in the color_swatch_map
         raise Exception("Colorscale {} not a valid colorscale to choose from".format(colorscale))

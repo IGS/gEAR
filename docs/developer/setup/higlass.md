@@ -59,8 +59,8 @@ There is currently one VM used for HiGlass services, and it is being used across
   * `higlass-manage create superuser`
     * User \- gear
     * Email \- [sadkins@som.umaryland.edu](mailto:sadkins@som.umaryland.edu)
-    * Pass \- gearadmin
-  * We can now use this to upload data via POST using curl.  Pass in `-u gear:gearadmin` as user credentials in the request.
+    * Pass \- [pass]
+  * We can now use this to upload data via POST using curl.  Pass in `-u gear:[pass]` as user credentials in the request.
   * This also lets us use the admin panel at [https://higlass.umgear.org/aadmin](https://higlass.umgear.org/admin)
 
 ## API endpoint URLs

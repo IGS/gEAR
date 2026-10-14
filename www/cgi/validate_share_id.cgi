@@ -19,9 +19,9 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('share_id')
-    scope = form.getvalue('scope') #'permalink', 'profile', or 'dataset'
+    session_id = form.getfirst('session_id')
+    share_id = form.getfirst('share_id')
+    scope = form.getfirst('scope') #'permalink', 'profile', or 'dataset'
     result = {}
 
     user = geardb.get_user_from_session_id(session_id)
@@ -71,7 +71,12 @@ def main():
         valid_share = validate_share_id(cursor, share_id)
 
         # share_id is valid
-        if valid_share == True:
+        if valid_share == True and user is None:
+            # Checking existing shares needs a logged-in user
+            result = {'error': "Please log in to add a shared dataset.", 'success': 0}
+            print(json.dumps(result))
+
+        elif valid_share == True:
 
             #Check if user already has the share_id
             already_has = check_dataset_shares(cursor, share_id, user.id)
@@ -104,6 +109,9 @@ def main():
 
 
 def validate_layout_share_id(cursor, share_id):
+    """
+    Return True if a layout with this share ID exists.
+    """
     qry = ( "SELECT share_id FROM layout WHERE share_id = %s" )
     cursor.execute(qry, (share_id,))
 
@@ -114,6 +122,9 @@ def validate_layout_share_id(cursor, share_id):
             return False
 
 def validate_share_id(cursor, share_id):
+    """
+    Return True if a dataset with this share ID exists.
+    """
     qry = ( "SELECT share_id FROM dataset WHERE share_id = %s" )
     cursor.execute(qry, (share_id,))
 
@@ -124,6 +135,9 @@ def validate_share_id(cursor, share_id):
             return False
 
 def check_dataset_shares(cursor, share_id, current_user_id):
+    """
+    Return True if the dataset with this share ID has been shared with the user.
+    """
     qry = """
         SELECT d.share_id
         FROM dataset d
@@ -139,6 +153,9 @@ def check_dataset_shares(cursor, share_id, current_user_id):
             return False
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d

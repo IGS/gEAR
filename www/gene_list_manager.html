@@ -489,7 +489,7 @@
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit list metadata" aria-label="Edit list metadata">
+                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit gene list" aria-label="Edit gene list">
                                                                     <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-pencil"></i></span>
                                                                 </button>
                                                             </p>
@@ -527,6 +527,18 @@
 
                                         <!-- Gene preview section -->
                                         <div class="js-preview-genes-container is-hidden">
+                                        </div>
+                                        <div class="columns js-editable-genes">
+                                            <div class="column is-3 py-0"></div>
+                                            <div class="column is-9 py-0 js-editable-version is-hidden">
+                                                <div class="field">
+                                                    <div class="control">
+                                                        <label class="label">Genes (space-separated)
+                                                            <textarea class="textarea" rows="3"></textarea>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                         <hr class="js-expandable-view is-hidden" />
                                         <!-- Long description section -->

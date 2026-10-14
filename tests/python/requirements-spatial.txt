@@ -1,0 +1,7 @@
+# Extra dependencies for tests marked "spatial" (the SpatialData stack is large).
+-r requirements.txt
+spatialdata==0.7.3
+spatialdata_io==0.7.1
+# Spatial Panel viewer (services/spatial), for test_spatial_colors.py; versions match services/spatial/requirements.txt
+datashader==0.19.0
+hvplot==0.12.2

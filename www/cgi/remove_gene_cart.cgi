@@ -31,8 +31,8 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('share_id')
+    session_id = form.getfirst('session_id')
+    share_id = form.getfirst('share_id')
 
     current_user_id = get_user_id_from_session_id(cursor, session_id)
 
@@ -57,7 +57,7 @@ def main():
         print(json.dumps(result))
 
     else:
-        error = "Not able to remove dataset. User does not own the dataset."
+        error = "Not able to remove gene list. User does not own the gene list."
         result = { 'success': 0, 'error': error }
         print(json.dumps(result))
 
@@ -66,6 +66,9 @@ def main():
 
 
 def check_cart_ownership(cursor, current_user_id, gc_id):
+    """
+    Return True if the user owns the gene cart with the given ID.
+    """
     qry = """
        SELECT id, user_id
        FROM gene_cart
@@ -82,6 +85,9 @@ def check_cart_ownership(cursor, current_user_id, gc_id):
     return False
 
 def get_user_id_from_session_id(cursor, session_id):
+    """
+    Return the user ID for a session ID, or None if not found.
+    """
     qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
     cursor.execute(qry, (session_id, ) )
     user_id = None

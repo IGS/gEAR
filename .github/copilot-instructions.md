@@ -12,7 +12,7 @@
     - Single-cell RNA-Seq analysis (similar to Seurat pipeline)
     - Comparison tool for gene expression data within a dataset
     - Integration with external data sources
-- Major production instances: [UMgEAR](https://umgear.org) (hearing research), [NeMO Analytics](https://nemoanalytics.org) (brain research).
+- Major production instances: [UMgEAR](https://umgear.org) (hearing research), [NeMO Analytics](https://nemoanalytics.org) (brain research), [cancer-gEAR](https://cancer.umgear.org).
 
 ## Architecture & Key Components
 - **Backend**:

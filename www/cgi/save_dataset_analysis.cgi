@@ -15,16 +15,18 @@ sys.path.append(lib_path)
 import geardb
 from gear.analysis import Analysis, SpatialAnalysis
 
+UUID_PATTERN = re.compile(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+
 
 def main() -> dict:
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    analysis_vetting = form.getvalue('analysis_vetting')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
-    state = form.getvalue('state')
-    label = form.getvalue('label')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    analysis_vetting = form.getfirst('analysis_vetting')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
+    state = form.getfirst('state')
+    label = form.getfirst('label')
     user = geardb.get_user_from_session_id(session_id)
 
     result = {'success': 0, 'error': ""}
@@ -44,6 +46,13 @@ def main() -> dict:
         return result
 
     is_spatial = ds.dtype == "spatial"
+
+    # Only the user's own analyses can be saved (the workbench saves nothing else), and only by a
+    #  plain UUID: a 'primary' or 'public' type, or an ID like "../..", would write the pipeline file
+    #  over a dataset's shared analysis or into another directory, since base_path joins the ID as given
+    if analysis_type not in ["user_saved", "user_unsaved"] or not UUID_PATTERN.fullmatch(analysis_id or ""):
+        result['error'] = "Only your own saved or unsaved analyses can be saved"
+        return result
 
     if is_spatial:
         ana_cls = SpatialAnalysis

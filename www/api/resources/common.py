@@ -2,6 +2,7 @@
 Common functions shared across several resources
 """
 
+import math
 import os
 import sys
 import tempfile
@@ -61,6 +62,56 @@ def clip_expression_values(adata: "AnnData", min_clip: float | None=None, max_cl
     X = X.clip(lower=min_clip, upper=max_clip)
     adata.X = X.to_numpy()
     return adata
+
+def parse_color_bounds(vmin: float | str | None, vmax: float | str | None, zero_is_unset: bool = False) -> tuple[float | None, float | None]:
+    """
+    Validate user-defined colorscale bounds (vmin/vmax) for plots with a colorbar.
+
+    The curators send these as strings, and a blank field means "not set". A value of 0 is
+    a real bound unless zero_is_unset is True (the SVG curator sends 0 for an empty field).
+
+    Parameters
+    ----------
+    vmin : float, str or None
+        Minimum value of the colorscale. None or "" means unset.
+    vmax : float, str or None
+        Maximum value of the colorscale. None or "" means unset.
+    zero_is_unset : bool, optional
+        If True, a value of 0 is treated as unset. Defaults to False.
+
+    Returns
+    -------
+    tuple[float | None, float | None]
+        The (vmin, vmax) pair as floats, with unset values as None.
+
+    Raises
+    ------
+    ValueError
+        If either value is not a finite number, or if vmax is not greater than vmin.
+        The message is suitable to show to the user.
+    """
+    def to_float(value):
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        if isinstance(value, bool):
+            raise ValueError
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError
+        if zero_is_unset and number == 0:
+            return None
+        return number
+
+    try:
+        vmin = to_float(vmin)
+        vmax = to_float(vmax)
+    except (TypeError, ValueError):
+        raise ValueError("The vmin and vmax parameters must be numbers.") from None
+
+    if vmin is not None and vmax is not None and vmax <= vmin:
+        raise ValueError("Maximum cap value must be greater than minimum cap value.")
+
+    return vmin, vmax
 
 def get_adata_from_analysis(
     analysis: dict | str | None, dataset_id: str, session_id: str | None, backed: bool = False

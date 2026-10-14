@@ -108,6 +108,16 @@ Used a2ensite to enable the umgear-ssl site.
      $ sudo a2ensite
      $ sudo service apache2 restart
 
+Lately we have shifted to using Let's Encrypt for our SSL, which was pretty easy:
+
+
+     $ sudo snap install --classic certbot
+     $ sudo ln -s /snap/bin/certbot /usr/bin/certbot
+     $ sudo certbot --apache -d yourdomain.org
+     (then answer the interactive questions)
+
+     $ sudo service apache2 restart
+      
 ### Custom config needed for Flask API
 
 Resources:

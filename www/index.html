@@ -76,7 +76,7 @@
                             <div class="control has-icons-left mr-0">
                               <!-- TODO make example gene customizable by domain -->
                               <label for="genes-manually-entered" class="is-sr-only">Search gene symbols</label>
-                              <input class="input" type="search" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols, such as Sox2"\>
+                              <input class="input" type="search" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols"\>
                               <span class="icon is-small is-left" aria-hidden="true">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
@@ -534,6 +534,11 @@
       <script type="module">
         import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        const geneSearchInput = document.getElementById('genes-manually-entered');
+        if (geneSearchInput) {
+          geneSearchInput.placeholder = "Type here to search using specific gene symbols, such as " + (prefs.default_demo_gene || 'Sox2');
+        }
 
         const onboardingDomainShortLabel = document.getElementById('onboarding-domain-short-label');
         if (onboardingDomainShortLabel && typeof prefs.domain_short_display_label === 'string' && prefs.domain_short_display_label.trim().length > 0) {

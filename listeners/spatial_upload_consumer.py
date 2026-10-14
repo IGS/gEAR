@@ -29,6 +29,13 @@ from gear.serverconfig import ServerConfig  # noqa: I001
 
 from gear.anndata_processor import write_status  # noqa: E402
 from gear.spatial_processor import process_spatial_synchronously  # noqa: E402
+from gear.utils.job_coordination import (  # noqa: E402
+    check_and_record_attempt,
+    clear_attempt_count,
+    log_line,
+    release_lock_file,
+    try_acquire_lock_file,
+)
 
 servercfg = ServerConfig().parse()
 
@@ -38,6 +45,11 @@ logfile = f"/var/log/gEAR_queue/{queue_name}.log"
 pid = os.getpid()
 
 user_upload_base = gear_root / 'www' / 'uploads' / 'files'
+
+# Original attempt + one retry. A job that still fails after this many tries is far more
+# likely to genuinely need more memory than is available than to be a one-off transient
+# hiccup, so it's better to fail cleanly than to let it redeliver and retry forever.
+MAX_JOB_ATTEMPTS = 2
 
 
 def _on_request(channel, method_frame, properties, body) -> None:
@@ -52,21 +64,15 @@ def _on_request(channel, method_frame, properties, body) -> None:
     perform_primary_analysis = deserialized_body.get("perform_primary_analysis", False)
 
     with open(logfile, "a") as fh:
-        print(
-            f"{pid} - [x] Received request for spatial job {job_id}",
-            flush=True,
-            file=fh,
-        )
+        log_line(fh, f"{pid} - [x] Received request for spatial job {job_id}")
 
         if not user_upload_base.is_dir():
-            print(
-                f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist",
-                flush=True,
-                file=fh,
-            )
+            log_line(fh, f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
+        lock_fh = None
+        lockfile = None
         try:
             # Infer staging_area from share_uid directory structure
             staging_area = None
@@ -79,23 +85,44 @@ def _on_request(channel, method_frame, properties, body) -> None:
             if not staging_area:
                 raise FileNotFoundError(f"Could not find staging area for {share_uid}")
 
+            # Guard against a live duplicate: if another worker is still actively processing
+            # this exact job (e.g. this delivery arrived because RabbitMQ's ack deadline was
+            # exceeded while the original worker was still legitimately running -- spatial
+            # processing can be slow enough for that), don't start a second concurrent run on
+            # top of it -- ack-and-drop instead. Non-blocking, so it never stalls this ioloop
+            # thread waiting on the lock.
+            lockfile = staging_area / ".job.lock"
+            lock_fh = try_acquire_lock_file(lockfile)
+            if lock_fh is None:
+                log_line(
+                    fh,
+                    f"{pid} - Job {job_id} for share {share_uid} is already being processed by "
+                    "another worker (lock held); acking duplicate delivery without reprocessing.",
+                )
+                channel.basic_ack(delivery_tag=delivery_tag)
+                return
+
             status_file = staging_area / "status.json"
 
-            # A redelivered message means this exact job was already delivered once and
-            # never acked/nacked - almost always because the previous worker died mid-job
-            # (e.g. a hard OOM-kill). Reprocessing would just repeat the same crash forever,
-            # so fail it cleanly here instead of retrying.
-            if method_frame.redelivered:
+            # Bound how many times this exact job gets retried. Recorded now, before any real
+            # work starts, so the count is preserved even if this attempt itself gets killed
+            # (e.g. an OOM-kill) -- otherwise a job whose memory need exceeds what's available
+            # would get redelivered and retried identically, forever.
+            allowed, attempt_number = check_and_record_attempt(
+                staging_area, max_attempts=MAX_JOB_ATTEMPTS
+            )
+            if not allowed:
                 message = (
-                    "A previous attempt to process this dataset was interrupted unexpectedly "
-                    "(the worker did not finish cleanly, most likely because it ran out of "
-                    "available memory). Please contact the gEAR team to resolve this issue "
+                    f"This dataset failed to process after {MAX_JOB_ATTEMPTS} attempts and will "
+                    "not be retried further. This usually means it needs more memory than is "
+                    "available on this server, though it can also happen if several large jobs "
+                    "happened to run at the same time. Please contact the gEAR team for help "
                     f"(share ID: {share_uid})."
                 )
-                print(
-                    f"{pid} - Job {job_id} was redelivered; failing without retry: {message}",
-                    flush=True,
-                    file=fh,
+                log_line(
+                    fh,
+                    f"{pid} - Job {job_id} for share {share_uid} has already failed "
+                    f"{attempt_number} time(s); giving up without retrying further.",
                 )
                 write_status(
                     status_file,
@@ -112,14 +139,18 @@ def _on_request(channel, method_frame, properties, body) -> None:
                 spatial_format=spatial_format,
                 perform_primary_analysis=perform_primary_analysis,
             )
+            if result.get("success"):
+                clear_attempt_count(staging_area)
 
-            print(f"{pid} - Job {job_id}: {result['message']}", flush=True, file=fh)
+            log_line(fh, f"{pid} - Job {job_id}: {result['message']}")
             channel.basic_ack(delivery_tag=delivery_tag)
         except Exception as e:
             traceback.print_exc()
-            print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)
+            log_line(fh, f"{pid} - Caught error '{str(e)}'")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
         finally:
+            if lock_fh is not None:
+                release_lock_file(lock_fh, lockfile)
             gc.collect()
 
 
@@ -187,7 +218,7 @@ class Consumer:
 
 def main() -> None:
     """Start the spatial processing consumer."""
-    from gear.utils import set_memory_limit_from_cgroup
+    from gear.utils.resource_limits import set_memory_limit_from_cgroup
 
     # Spatial processing (spatialdata_io readers) can spike memory well above what a
     # clean Python exception would normally warn about. Self-impose a ceiling below the

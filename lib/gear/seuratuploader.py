@@ -1,22 +1,39 @@
+"""
+seuratuploader.py - Convert Seurat RDS objects into gEAR-ready H5AD files.
+
+Uses rpy2 to load a Seurat object in R, convert it to AnnData, map gene symbols
+to Ensembl IDs, and copy reduction coordinates into obs. Can be run as a script.
+"""
+
 import argparse
 import os
 import sys
 import traceback
+from typing import Callable, Optional
 
 import pandas as pd
 import rpy2.rinterface_lib.callbacks as r_cbs
 import rpy2.robjects as ro
 import rpy2.robjects.packages as rpackages
 import scanpy
-from gear.utils import map_gene_symbols_via_mygene
+from gear.utils.gene_mapping import map_gene_symbols_via_mygene
 from rpy2.robjects.packages import importr
 
 
 def silent_handler(s:str) -> None:
+    """
+    Discard R console output (used as an rpy2 console write callback).
+    """
     # way to bypass the R stderr output
     pass
 
 def argument_parser():
+    """
+    Parse command-line arguments.
+
+    Returns:
+        dict: Parsed arguments with keys 'rds', 'share_id', and 'tax_id'.
+    """
     parser = argparse.ArgumentParser(usage="%(prog)s -r [RDS Object] -s [Share ID]",add_help=True)
     parser.add_argument('-r', '--rds', required=True, type=str)
     parser.add_argument('-s', '--share-id', required=True, type=str)
@@ -26,6 +43,9 @@ def argument_parser():
 
 # TODO: Recently switched to the pak installer for the docker image, should consider switching this too
 def r_package_installer() -> None:
+    """
+    Install the R packages needed for Seurat conversion if they are not already installed.
+    """
     utils = rpackages.importr('utils')
     # Install BiocManager if not installed
     if not rpackages.isinstalled('BiocManager'):
@@ -63,15 +83,30 @@ def r_package_importer(package_name:str):
         raise ImportError(importErrorMessage)
 
 
-def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
+def seurat_to_anndata(
+    file_path: str,
+    share_name: str,
+    output_dir: str = ".",
+    progress_callback: Optional[Callable[[int, str], None]] = None,
+):
     """
     file_path: path to rds or rdata file
     share_name: final h5ad string name to be expected (without h5ad)
     output_dir: directory to write the temporary h5ad file into
+    progress_callback: optional (progress: int, message: str) callback invoked before each of
+        the three R steps to log progress, which is relayed to the user
 
     return:
         absolute path to tmp h5ad, or False on failure
     """
+
+    def _report(pct: int, msg: str) -> None:
+        # Always print to stderr (timestamped by journald under systemd) even without a
+        # callback, so this is visible in the consumer's own logs either way.
+        print(f"INFO: {msg}", file=sys.stderr, flush=True)
+        if progress_callback is not None:
+            progress_callback(pct, msg)
+
     # Suppress R console output and ensure required packages are loaded,
     # since this function may be called as a module in cgi script (not via main()).
     r_cbs.consolewrite_print = silent_handler
@@ -87,6 +122,7 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
         raise
     # Use R's readRDS to load the object.
     # The result is an R object within the Python environment.
+    _report(6, "Reading Seurat/RDS object into R (large files can take a while)...")
     try:
         r_seurat_obj = base.readRDS(file_path)
     except Exception as e:
@@ -102,17 +138,25 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     obsm_mapping = ro.ListVector({name: name for name in reduction_names})
     ro.globalenv['obsm_mapping'] = obsm_mapping
 
-    # Using anndataR write out a converted h5ad, passing along the reduction mapping
-    ro.r('adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping)')
-
+    # Convert directly to a file-backed HDF5AnnData object (output_class = "HDF5AnnData")
+    # instead of anndataR's default InMemoryAnnData. This streams the conversion straight to
+    # the target .h5ad file rather than first building a second full in-memory representation
+    # of the already-loaded R Seurat object, then a third copy when using write_h5ad()
     output_path = os.path.join(output_dir, f'tmp_{share_name}.h5ad')
+    _report(10, "Converting Seurat object to AnnData (this can take a while for large datasets)...")
     try:
-        ro.r(f'write_h5ad(adata, "{output_path}")')
-        return output_path
-    # In cases where the write fails we will assume the h5ad already exists
-    except Exception:
-        print(f"h5ad name already exists {output_path}", file=sys.stderr)
-        raise ValueError("Error writing h5ad file to output path")
+        ro.r(
+            'adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping, '
+            f'output_class = "HDF5AnnData", file = "{output_path}", mode = "w")'
+        )
+        # Close to release lock on file.
+        ro.r('adata$close()')
+    except Exception as e:
+        print(f"Error converting Seurat object to AnnData: {e}", file=sys.stderr)
+        raise ValueError("Error converting Seurat object to AnnData")
+
+    _report(14, "Finished writing H5AD file.")
+    return output_path
 
 def openh5ad(h5ad_name):
     """Just open the supplied h5ad file"""
@@ -121,6 +165,19 @@ def openh5ad(h5ad_name):
 
 
 def genes_to_ensembl(adata, taxid=None):
+    """
+    Replace the AnnData var index of gene symbols with Ensembl IDs via MyGene.
+
+    Unmapped genes get placeholder IDs ("Fake0", "Fake1", ...). Original symbols
+    are kept in a "gene_symbol" var column.
+
+    Args:
+        adata (AnnData): AnnData object whose var index holds gene symbols.
+        taxid (str | None): NCBI taxonomy ID of the organism.
+
+    Returns:
+        AnnData | None: The updated AnnData, or None if taxid is not given.
+    """
     if taxid is None:
         return None
 
@@ -140,6 +197,12 @@ def genes_to_ensembl(adata, taxid=None):
 
 
 def reduction_to_metadata(adata):
+    """
+    Copy the first two components of each obsm reduction into obs columns (e.g. "umap_1", "umap_2").
+
+    Raises:
+        ValueError: If the reductions cannot be processed.
+    """
     # Discussion with Carlo and Brian resulted in us determining we would like to
     # take the first 2 values of each reduction
     # PCA in the future, and potentially other reductions may need more
@@ -155,12 +218,18 @@ def reduction_to_metadata(adata):
 
 
 def layer_to_X(adata, layer_name):
+    """
+    Set the AnnData X matrix from the named layer and return the AnnData.
+    """
     # Possibility for Seurat -> Anndata conversion doesn not create the X matrix.
     # Use adata.layers['data'] as X
     adata.X = adata.layers[layer_name]
     return adata
 
 def main():
+    """
+    Convert an RDS file to a gEAR-formatted H5AD file named after the share ID.
+    """
     arguments = argument_parser()
     # Args
     rds_path = arguments['rds']

@@ -1,3 +1,9 @@
+"""
+spatial_scanpy_data.py - Render static Scanpy spatial and UMAP plots for a spatial dataset.
+
+Serves /plot/<dataset_id>/spatial_scanpy in www/api/api.py.
+"""
+
 import base64
 import io
 
@@ -32,11 +38,25 @@ This API request will take a selection of genes and create a matplotlib figure w
 
 """
 
+def sort_clusters(clusters) -> list:
+    """
+    Sort clusters by number if numerical, otherwise by name (as in spatialpanel.sort_clusters).
+    """
+    try:
+        return sorted(clusters, key=lambda x: int(x))
+    except (TypeError, ValueError):
+        return sorted(clusters, key=str)
+
 def map_colors(adata):
-    # Assuming df is your DataFrame and it has a column "clusters"
-    unique_clusters = adata.obs["clusters"].unique()
-    # sort unique clusters by number
-    unique_clusters = sorted(unique_clusters, key=lambda x: int(x))
+    """
+    Store a color per cluster in adata.uns["clusters_colors"], using obs "colors" if present.
+
+    The "clusters" categories are reordered to the sorted order, since scanpy pairs the colors
+    in uns with the categories by position.
+    """
+    clusters = adata.obs["clusters"].astype("category").cat.remove_unused_categories()
+    unique_clusters = sort_clusters(clusters.cat.categories)
+    adata.obs["clusters"] = clusters.cat.reorder_categories(unique_clusters)
     color_map = None
     if "colors" in adata.obs.columns:
         color_map = {cluster: adata.obs[adata.obs["clusters"] == cluster]["colors"].values[0] for cluster in unique_clusters}
@@ -54,6 +74,17 @@ def normalize_gene_symbols(dataset_genes, chosen_genes):
     return case_insensitive_genes
 
 def create_plot(adata, gene_symbols, colorblind_mode):
+    """
+    Create a matplotlib figure of spatial and UMAP plots per gene and cluster, plus a violin plot.
+
+    Args:
+        adata (AnnData): Spatial dataset with "clusters" in obs and a computed UMAP.
+        gene_symbols (list[str]): Genes to plot.
+        colorblind_mode (bool): Use colorblind-friendly color maps.
+
+    Returns:
+        matplotlib.figure.Figure: The combined figure.
+    """
     # Set color maps
     spatial_color_map = "YlGn"
     umap_color_map = "YlOrRd"
@@ -162,6 +193,11 @@ class SpatialScanpyData(Resource):
     Byte stream image data (to be converted back to an image on the client side)
     """
     def post(self, dataset_id):
+        """
+        Return a base64-encoded image of the spatial comparison plots.
+
+        Request body keys: gene_symbols, analysis, projection_id, colorblind_mode, high_dpi.
+        """
         req = request.get_json()
         gene_symbols = req.get('gene_symbols', [])
         analysis = req.get('analysis', None)

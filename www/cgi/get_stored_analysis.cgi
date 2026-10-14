@@ -12,15 +12,15 @@ import sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-from gear.analysis import get_analysis
+from gear.analysis import Analysis, get_analysis
 
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
 
     result = {"success": 0, "error": ""}
 
@@ -51,15 +51,42 @@ def main():
         print(json.dumps(result))
         return
 
-    # try to read the analysis object and raise exception if FileNotFoundError
+    # The analysis prints as its pipeline JSON. Read it before printing the header, so a missing
+    #  pipeline file gives one JSON error rather than a second header inside the body
+    try:
+        analysis_data = json.loads(str(ana))
+    except FileNotFoundError:
+        analysis_data = {"success": 0, "error": "Analysis config file not found"}
+    else:
+        current_user = geardb.get_user_from_session_id(session_id) if session_id else None
+        analysis_data["vetting"] = stored_vetting(ana, current_user.id if current_user else None)
+
+    print('Content-Type: application/json\n\n')
+    print(json.dumps(analysis_data, indent=4))
+
+def stored_vetting(ana, current_user_id):
+    """
+    Vetting derived from the analysis's owner, the same way as get_stored_analysis_list.cgi. A vetting
+    saved in the pipeline file is not used, since the browser writes that file.
+    """
+    if ana.type in ("user_saved", "user_unsaved"):
+        # Loaded from the current user's own area, so they own it
+        owner_ana = ana
+    else:
+        # The owner of a public analysis is found from the session that published it
+        try:
+            with open(ana.settings_path) as fh:
+                owner_ana = Analysis.from_json(json.load(fh))
+            owner_ana.type = ana.type
+        except Exception as e:
+            print(f"Could not determine the owner of analysis {ana.id}: {e}", file=sys.stderr)
+            return None
 
     try:
-        print('Content-Type: application/json\n\n')
-        print(ana)
-    except FileNotFoundError:
-        print('Content-Type: application/json\n\n')
-        print('{"error": "Analysis config file not found"}')
-        return
+        return owner_ana.discover_vetting(current_user_id)
+    except Exception as e:
+        print(f"Could not determine vetting for analysis {ana.id}: {e}", file=sys.stderr)
+        return None
 
 if __name__ == '__main__':
     main()

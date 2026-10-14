@@ -24,8 +24,14 @@ sys.path.insert(0, str(gear_lib))
 import gearqueue
 from gear.serverconfig import ServerConfig  # noqa: I001
 
-from gear.anndata_processor import AnndataProcessor  # noqa: E402
-from gear.utils import release_lock_file, try_acquire_lock_file  # noqa: E402
+from gear.anndata_processor import AnndataProcessor, write_status  # noqa: E402
+from gear.utils.job_coordination import (  # noqa: E402
+    check_and_record_attempt,
+    clear_attempt_count,
+    log_line,
+    release_lock_file,
+    try_acquire_lock_file,
+)
 
 servercfg = ServerConfig().parse()
 
@@ -35,6 +41,11 @@ logfile = f"/var/log/gEAR_queue/{queue_name}.log"
 pid = os.getpid()
 
 user_upload_base = gear_root / 'www' / 'uploads' / 'files'
+
+# Original attempt + one retry. A job that still fails after this many tries is far more
+# likely to genuinely need more memory than is available than to be a one-off transient
+# hiccup, so it's better to fail cleanly than to let it redeliver and retry forever.
+MAX_JOB_ATTEMPTS = 2
 
 
 def _on_request(channel, method_frame, properties, body) -> None:
@@ -50,18 +61,10 @@ def _on_request(channel, method_frame, properties, body) -> None:
     perform_primary_analysis = deserialized_body.get("perform_primary_analysis", False)
 
     with open(logfile, "a") as fh:
-        print(
-            f"{pid} - [x] Received request for anndata job {job_id}",
-            flush=True,
-            file=fh,
-        )
+        log_line(fh, f"{pid} - [x] Received request for anndata job {job_id}")
 
         if not user_upload_base.is_dir():
-            print(
-                f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist",
-                flush=True,
-                file=fh,
-            )
+            log_line(fh, f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
@@ -88,16 +91,42 @@ def _on_request(channel, method_frame, properties, body) -> None:
             lockfile = staging_area / ".job.lock"
             lock_fh = try_acquire_lock_file(lockfile)
             if lock_fh is None:
-                print(
+                log_line(
+                    fh,
                     f"{pid} - Job {job_id} for share {share_uid} is already being processed by "
                     "another worker (lock held); acking duplicate delivery without reprocessing.",
-                    flush=True,
-                    file=fh,
                 )
                 channel.basic_ack(delivery_tag=delivery_tag)
                 return
 
             status_file = staging_area / "status.json"
+
+            # Bound how many times this exact job gets retried. Recorded now, before any real
+            # work starts, so the count is preserved even if this attempt itself gets killed
+            # (e.g. an OOM-kill) -- otherwise a job whose memory need exceeds what's available
+            # would get redelivered and retried identically, forever.
+            allowed, attempt_number = check_and_record_attempt(
+                staging_area, max_attempts=MAX_JOB_ATTEMPTS
+            )
+            if not allowed:
+                message = (
+                    f"This dataset failed to process after {MAX_JOB_ATTEMPTS} attempts and will "
+                    "not be retried further. This usually means it needs more memory than is "
+                    "available on this server, though it can also happen if several large jobs "
+                    "happened to run at the same time. Please contact the gEAR team for help "
+                    f"(share ID: {share_uid})."
+                )
+                log_line(
+                    fh,
+                    f"{pid} - Job {job_id} for share {share_uid} has already failed "
+                    f"{attempt_number} time(s); giving up without retrying further.",
+                )
+                write_status(
+                    status_file,
+                    {"job_id": job_id, "status": "error", "message": message, "progress": 0},
+                )
+                channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+                return
 
             # Process the job
             processor = AnndataProcessor(
@@ -112,31 +141,25 @@ def _on_request(channel, method_frame, properties, body) -> None:
                 dataset_format=dataset_format,
                 perform_primary_analysis=perform_primary_analysis,
             )
+            if result.get("success"):
+                clear_attempt_count(staging_area)
 
-            print(f"{pid} - Job {job_id}: {result['message']}", flush=True, file=fh)
+            log_line(fh, f"{pid} - Job {job_id}: {result['message']}")
             if channel.is_open:
                 channel.basic_ack(delivery_tag=delivery_tag)
             else:
                 # Broker likely closed the channel (e.g. ack deadline exceeded) and already
                 # redelivered this message elsewhere. Acking here would raise and escape this
                 # except block unhandled, so just log and move on.
-                print(
-                    f"{pid} - Channel already closed, could not ack delivery {delivery_tag}",
-                    flush=True,
-                    file=fh,
-                )
+                log_line(fh, f"{pid} - Channel already closed, could not ack delivery {delivery_tag}")
         except Exception as e:
             traceback.print_exc()
-            print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)
+            log_line(fh, f"{pid} - Caught error '{str(e)}'")
             try:
                 if channel.is_open:
                     channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             except Exception as nack_err:
-                print(
-                    f"{pid} - Could not nack delivery {delivery_tag}: '{str(nack_err)}'",
-                    flush=True,
-                    file=fh,
-                )
+                log_line(fh, f"{pid} - Could not nack delivery {delivery_tag}: '{str(nack_err)}'")
         finally:
             if lock_fh is not None:
                 release_lock_file(lock_fh, lockfile)
@@ -208,7 +231,7 @@ class Consumer:
 def main() -> None:
     """Start the anndata processing consumer."""
 
-    from gear.utils import set_memory_limit_from_cgroup
+    from gear.utils.resource_limits import set_memory_limit_from_cgroup
 
     # Sometimes processing can spike memory well above what a
     # clean Python exception would normally warn about. Self-impose a ceiling below the

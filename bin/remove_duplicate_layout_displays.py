@@ -3,6 +3,14 @@
 # This is to fix an issue where some layouts have duplicated display members, if the user
 # saved layouts in the layout arranger when the duplcation bug was active (https://github.com/IGS/gEAR/issues/768)
 
+"""
+remove_duplicate_layout_displays.py - Delete duplicate rows from the layout_displays table.
+
+Keeps the lowest-ID row among rows with the same collection, display and grid position,
+and prints the row counts before and after. No arguments; run from bin/ on a server
+with gear.ini.
+"""
+
 import sys
 
 from pathlib import Path

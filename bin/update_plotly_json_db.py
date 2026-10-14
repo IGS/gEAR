@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+"""
+update_plotly_json_db.py - One-off migration of bar, line and violin display configs.
+
+Replaces the old "index" list in dataset_display.plotly_config with the explicit
+x_axis, color_name, facet_row and facet_col keys.
+
+Usage: update_plotly_json_db.py -u <db_user> -p <db_password> -d <db_name>
+"""
+
 import argparse
 import mysql.connector
 import json

@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 
 """
+fix_array_x_axis.py - One-off repair of dataset_display configs whose x_axis was saved as a one-item list.
 
+Finds plotly_config values containing "x_axis": [...] and replaces the list with its single
+value. Fixes the output of update_plotly_json_db.py, which stored x_axis as a list for some
+displays.
+
+Usage: fix_array_x_axis.py -u <db_user> -p <db_password> -d <db_name>
 """
 
 import argparse

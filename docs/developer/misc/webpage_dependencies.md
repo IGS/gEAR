@@ -1,5 +1,7 @@
 # Webpage dependencies
 
+> **Note:** These scratch notes were written for the older jQuery UI (`common.js`, `DatasetCollectionPanel`). Current pages use ES modules and `initCommonUI()` in `www/js/common.v2.js`, and the front-page tiles are rendered by `www/js/classes/tilegrid.js`. The ordering concerns (login before session-dependent calls, layout before search) still apply.
+
 This is just some scratch notes about page elements that need to load or be processed first before other things.  These can be addressed in a few different ways:
 
 1. Using async/await or function () => {}.then () => {}
@@ -32,7 +34,7 @@ These pertain to retrieving the data to load the JSTree objects
 ### Setting the layout (AKA profile)
 
 1. Profile JSTree object is retrieved, and `DatasetCollectionPanel.set_layout()` is run.  This sets the active layout ID.
-2. Depending on if URL parameters were provided, the search button may be "clicked", which triggers `search_genes.py` and eventual drawing of plots for each display for the active layout ID. If there is no active layout ID, then the default layout ID is used.
+2. Depending on if URL parameters were provided, the search button may be "clicked", which triggers `cgi/search_genes.cgi` and eventual drawing of plots for each display for the active layout ID. If there is no active layout ID, then the default layout ID is used.
     1. Seeing displays from the default layout ID when another profile is selected could mean that the profile tree (and active layout ID) was not loaded before the `windows.onload()` event started (which triggers the clicking of the search button if either gene symbols or a gene cart is in the URL).
 
 TO BE CONTINUED

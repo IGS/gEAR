@@ -1,5 +1,13 @@
 #!/opt/bin/python3
 
+"""
+get_event_registration_list.cgi - Report event registration status for the user.
+
+Input: session_id (required), min_event_id, max_event_id.
+Output: JSON {event_id: {attendees, max_attendees, waitlist_size, user_attending,
+        user_waitlisted}}, or {} if no valid session.
+"""
+
 import cgi, json
 import os, sys
 
@@ -9,9 +17,9 @@ import geardb
 
 def main():
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    min_event_id = form.getvalue('min_event_id')
-    max_event_id = form.getvalue('max_event_id')
+    session_id = form.getfirst('session_id')
+    min_event_id = form.getfirst('min_event_id')
+    max_event_id = form.getfirst('max_event_id')
     user = geardb.get_user_from_session_id(session_id) if session_id else None
 
     print('Content-Type: application/json\n\n')
@@ -30,6 +38,7 @@ def main():
                  JOIN event_registration er ON er.event_id=e.id
                  JOIN guser u on er.user_id=u.id
            WHERE e.id BETWEEN %s AND %s
+        ORDER BY er.id
     """
 
     qry_args = [min_event_id, max_event_id]
@@ -41,10 +50,10 @@ def main():
         event = events[row[0]]
         event['attendees'] += 1
 
-        ## is it the current user?
+        ## is it the current user?  Registrations are counted in sign-up order, so the
+        #  user has a seat if they are within the first max_attendees, else they're waitlisted
         if registered_user_id == user.id:
-            # else are we already over max & waitlist
-            if event['attendees'] >= event['max_attendees']:
+            if event['attendees'] > event['max_attendees']:
                 event['user_waitlisted'] = 1
             else:
                 event['user_attending'] = 1
@@ -55,6 +64,12 @@ def main():
     cnx.close()
     
 def get_event_info(cursor, min_event_id, max_event_id):
+    """
+    Return base info for events with IDs in the given range.
+
+    Returns:
+        Dict keyed by event ID with attendee counters initialized to 0.
+    """
     qry = "SELECT id, label, max_attendees, waitlist_size FROM event WHERE id BETWEEN %s AND %s"
     events = dict()
 

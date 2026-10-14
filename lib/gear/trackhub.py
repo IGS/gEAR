@@ -108,15 +108,22 @@ def fetch_trackdb_path(genomes_txt: str, assembly: str) -> str:
     Raises:
         ValueError: If the assembly is not found or trackDb entry is missing.
 
+    Notes:
+        Each stanza starts with "genome <assembly>" and ends at a blank line; "trackDb" may be
+        on any line of the stanza.
     """
+    in_stanza = False
     for line in genomes_txt.splitlines():
-        if line.startswith(f"genome {assembly}"):
-            lines = genomes_txt.splitlines()
-            next_line_index = lines.index(line) + 1
-            if next_line_index < len(lines):
-                next_line = lines[next_line_index]
-                if next_line.startswith("trackDb"):
-                    return next_line.split(" ", 1)[1]
+        fields = line.split(None, 1)
+        if not fields:
+            in_stanza = False
+            continue
+        key = fields[0]
+        value = fields[1].strip() if len(fields) > 1 else ""
+        if key == "genome":
+            in_stanza = value == assembly
+        elif in_stanza and key == "trackDb" and value:
+            return value
 
     raise ValueError(f"Assembly {assembly} not found in genomes.txt or trackDb entry is missing.")
 
@@ -512,6 +519,19 @@ def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> 
         raise
 
 def check_higlass_url(config, file_uuid) -> str:
+    """
+    Verify that a file was ingested into HiGlass despite an ingestion timeout.
+
+    Args:
+        config (dict): HiGlass config with hostname and admin credentials.
+        file_uuid (str): Tileset UID to check.
+
+    Returns:
+        str: The tileset_info URL if the tileset exists.
+
+    Raises:
+        Exception: If the tileset cannot be verified.
+    """
     try:
         auth = (config['higlass_admin_user'], config['higlass_admin_pass'])
         check_url = f"{config['higlass_hostname']}/api/v1/tileset_info/?d={file_uuid}"
@@ -671,6 +691,9 @@ class TrackHubProcessor:
         message: str = "",
         track_statuses: Optional[dict] = None,
     ) -> None:
+        """
+        Write the current job status to this processor's status file.
+        """
         write_status(
             self.status_file,
             self.job_id,

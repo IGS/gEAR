@@ -19,22 +19,22 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue("dataset_id")
-    display_id = form.getvalue('display_id')
+    dataset_id = form.getfirst("dataset_id")
+    display_id = form.getfirst('display_id')
 
     image_preview_url = os.path.join(WEB_IMAGE_ROOT, "{}.{}.png".format(dataset_id, display_id))
 
+    # The IDs must not lead outside the preview directory (or into a sibling like dataset_previews_old)
     image_preview_url = os.path.normpath(image_preview_url)
-    if not image_preview_url.startswith(WEB_IMAGE_ROOT):
-        raise Exception("Invalid filename: {}".format(image_preview_url))
+    valid_path = os.path.dirname(image_preview_url) == os.path.normpath(WEB_IMAGE_ROOT)
 
     #print(image_preview_url, file=sys.stderr)
 
-    display = geardb.get_display_by_id(display_id)
+    display = geardb.get_display_by_id(display_id) if valid_path else None
     if display and display.get("plot_type", None) == "gosling":
         image_preview_url = "{0}/gosling.png".format(WEB_IMAGE_ROOT)
 
-    if not os.path.exists(image_preview_url):
+    if not valid_path or not os.path.exists(image_preview_url):
         image_preview_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
 

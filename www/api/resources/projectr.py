@@ -1,3 +1,12 @@
+"""
+projectr.py - Project gene-list patterns onto a dataset with projectR.
+
+Serves /projectr/<dataset_id>, /projectr/<dataset_id>/output_file, and
+/projectr/<projection_id>/status in www/api/api.py. Projections run either
+inline or through the "projectr" RabbitMQ queue, and chunks are sent to the
+projectR Cloud Run service.
+"""
+
 import asyncio
 import functools
 import gc
@@ -19,7 +28,8 @@ from flask import abort, request
 from flask_restful import Resource, inputs, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
-from gear.utils import catch_memory_error, release_lock_file, try_acquire_lock_file
+from gear.utils.job_coordination import release_lock_file, try_acquire_lock_file
+from gear.utils.resource_limits import catch_memory_error
 import google.auth.transport.requests
 import google.oauth2.id_token
 from more_itertools import sliced
@@ -198,20 +208,28 @@ def get_existing_projection_result(
 
 
 def write_to_json(projections_dict: dict, projection_json_file: Path) -> None:
+    """
+    Write the projections dict to the given JSON file.
+    """
     with open(projection_json_file, "w") as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
 
 
 def calculate_chunk_size(num_genes: int, num_samples: int) -> int:
     """
-    Calculate number of chunks to divide all samples into.
+    Calculate the number of samples to send in each chunk.
+
+    Raises:
+        ValueError: If there are no genes or no samples, since nothing can be projected.
     """
-    TOTAL_DATA_LIMIT = 1e6
-    total_data = num_genes * num_samples
-    total_data_chunks = total_data / TOTAL_DATA_LIMIT
-    return int(
-        num_samples / total_data_chunks
-    )  # take floor.  returned value * num_genes < total_data_limit
+    if num_genes <= 0:
+        raise ValueError("Cannot chunk a projection with no genes.")
+    if num_samples <= 0:
+        raise ValueError("Cannot chunk a projection with no samples.")
+
+    TOTAL_DATA_LIMIT = 1_000_000
+    # Floor so that returned value * num_genes <= TOTAL_DATA_LIMIT, but always send at least one sample
+    return max(TOTAL_DATA_LIMIT // num_genes, 1)
 
 
 def concat_fetch_results_to_dataframe(
@@ -267,6 +285,9 @@ def create_new_uuid(*args) -> uuid.UUID:
 
 
 def create_unweighted_loading_df(genecart: geardb.GeneCart) -> pd.DataFrame:
+    """
+    Build a loading dataframe from an unweighted gene cart, giving each gene a weight of 1.
+    """
     # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
     gene_collection = geardb.GeneCollection()
     genecart.get_genes()
@@ -286,7 +307,18 @@ def create_unweighted_loading_df(genecart: geardb.GeneCart) -> pd.DataFrame:
 
 
 def create_weighted_loading_df(genecart_id: str) -> pd.DataFrame:
-    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
+    """
+    Read the weighted gene cart's pattern file (genes x patterns) into a dataframe.
+
+    Raises:
+        ValueError: If genecart_id is not a plain file name component.
+        FileNotFoundError: If the pattern file does not exist.
+    """
+    safe_genecart_id = secure_filename(genecart_id)
+    if not safe_genecart_id or safe_genecart_id != genecart_id:
+        raise ValueError("Invalid gene list identifier")
+
+    file_path = Path(CARTS_BASE_DIR).joinpath("cart.{}.tab".format(safe_genecart_id))
     try:
         return pd.read_csv(file_path, sep="\t")
     except FileNotFoundError:
@@ -294,6 +326,9 @@ def create_weighted_loading_df(genecart_id: str) -> pd.DataFrame:
 
 
 def chunk_dataframe(df: pd.DataFrame, chunk_size: int):
+    """
+    Yield (chunk index, dataframe) pairs, splitting the dataframe by columns into chunks of chunk_size.
+    """
     # Chunk dataset by samples/cells (cols). Is a generator function
     # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
     index_slices = sliced(range(len(df.columns)), chunk_size)
@@ -302,9 +337,15 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int):
         yield idx, df.iloc[:, list(index_slice)]
 
 def init_job_status(projection_id: str) -> dict:
+    """
+    Return a new "pending" job status dict for the projection.
+    """
     return {"status": "pending", "result": {"projection_id":projection_id}, "error": None}
 
 def write_result_to_file(result, filename) -> None:
+    """
+    Write a chunk's projectR result as JSON to CHUNK_OUTPUTS_DIR.
+    """
     # Write chunked dataframe results to a file, using the projection ID and the dataframe indexes in the filename
     filepath = CHUNK_OUTPUTS_DIR.joinpath(filename)
     with open(filepath, "w") as f:
@@ -476,6 +517,9 @@ async def fetch_one(client: RetryClient, payload: dict) -> dict:
         ) from te
 
 def write_projection_status(file, status):
+    """
+    Write the job status dict as JSON to the given file.
+    """
     with open(file, "w") as fh:
         json.dump(status, fh)
 
@@ -490,6 +534,25 @@ def projectr_callback(
     zscore: bool,
     full_output: bool,
 ) -> dict:
+    """
+    Run a projectR projection of a gene cart onto a dataset and save the results.
+
+    Uses a lock file so that only one worker runs a given projection; other workers
+    wait and reuse its output. Progress is written to the job status file.
+
+    Args:
+        dataset_id (str): Target dataset ID.
+        genecart_id (str): Gene cart (pattern) share ID.
+        projection_id (str): Projection UUID used for output and status file names.
+        session_id (str): User session ID, used to load the analysis.
+        scope (str): Gene cart scope, e.g. "unweighted-list".
+        algorithm (str): Projection algorithm (e.g. "pca", "binary", "nmf", "fixednmf").
+        zscore (bool): Whether to z-score the dataset before projecting.
+        full_output (bool): Whether to also compute a p-value matrix.
+
+    Returns:
+        dict: Job status with "status", "result", and "error" keys.
+    """
     success = 1
     message = ""
 
@@ -510,11 +573,8 @@ def projectr_callback(
 
     # Try to acquire the lock for this exact projection BEFORE doing any expensive work (loading
     # the dataset, densifying it, etc). dataset_id/genecart_id/projection_id are all we need to
-    # build the lock path, so this can happen up front. try_acquire_lock_file is non-blocking: if
-    # a live worker already holds it, we get None back immediately and explicitly wait (bounded)
-    # to steal its result, rather than silently blocking here until it's released. The lock is
-    # kernel-released automatically if the holding process dies, so there is no separate "stale
-    # lock" case to detect -- a fresh acquire attempt on an abandoned lock file just succeeds.
+    # build the lock path, so this can happen up front.  It is non-blocking meaning we find out
+    # immediately if another worker is already running this exact projection, and we can wait for it to finish
     dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
     lockfile = str(dataset_projection_csv) + ".lock"
 
@@ -530,6 +590,8 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
+    # If a new lock fh was not made, it means another worker is running this exact projection.
+    # Wait for it to finish and steal its output, rather than running everything again.
     if lock_fh is None:
         print(
             "INFO: Found an in-progress projectR run of {}. Going to wait for that run to finish and steal its output.".format(
@@ -733,6 +795,19 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
+    if adata.shape[0] == 0:
+        release_lock_file(lock_fh, lockfile)
+        status["status"] = "failed"
+        status["error"] = "The target dataset has no samples to project onto."
+        status["result"] = {
+            "success": -1,
+            "num_common_genes": intersection_size,
+            "num_genecart_genes": num_loading_genes,
+            "num_dataset_genes": num_target_genes,
+        }
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
+
     message = "Found {} common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
         intersection_size, num_target_genes, num_loading_genes
     )
@@ -765,9 +840,6 @@ def projectr_callback(
 
     if dedup_copy.exists():
         dedup_copy.unlink()
-
-    # NOTE: The lock for this projection was already acquired at the top of this function,
-    # before any of the expensive dataset loading above, so there is nothing more to do here.
 
     # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
     chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
@@ -1080,6 +1152,12 @@ class ProjectROutputFile(Resource):
     """
 
     def post(self, dataset_id: str) -> dict:
+        """
+        Return the projection ID of an existing projection matching the request, or None.
+
+        Request params: genecart_id, algorithm, zscore. Creates the projection
+        directories and JSON files if they do not exist.
+        """
         args = parser.parse_args()
         genecart_id = args["genecart_id"]
         algorithm = args["algorithm"]
@@ -1178,6 +1256,13 @@ class ProjectR(Resource):
     """
 
     def post(self, dataset_id: str) -> dict:
+        """
+        Start (or reuse) a projectR projection of a gene cart onto the dataset.
+
+        Request params: genecart_id, algorithm, scope, zscore, full_output, and
+        projection_id (optional). Returns a job status dict ("status", "result",
+        "error") that clients poll through ProjectRStatus.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = run_projectr_parser.parse_args()
 
@@ -1398,6 +1483,9 @@ class ProjectRStatus(Resource):
     Get the status of a ProjectR job.
     """
     def get(self, projection_id):
+        """
+        Return the job status dict for the projection; the status file is deleted once complete.
+        """
         safe_projection_id = secure_filename(str(projection_id))
         JOB_STATUS_FILE = JOB_STATUS_DIR.joinpath(f"job_{safe_projection_id}.json")
         # Validate the final path is within the job status dir

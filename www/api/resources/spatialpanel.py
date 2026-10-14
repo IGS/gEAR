@@ -1,3 +1,10 @@
+"""
+spatialpanel.py - Prepare spatial data for the Holoviz Panel spatial viewer.
+
+Serves /plot/<dataset_id>/spatialpanel in www/api/api.py. Writes per-gene CSV
+and image caches that services/spatial reads, and returns the embed script.
+"""
+
 import datetime
 import json
 import os
@@ -22,7 +29,7 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.utils import secure_filename
 
-from .common import create_projection_adata
+from .common import create_projection_adata, parse_color_bounds
 
 TWO_LEVELS_UP = 2
 ABS_PATH_WWW = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
@@ -294,33 +301,37 @@ def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
     return dataframe
 
 def map_colors(dataframe: pd.DataFrame, found_img: bool, is_cool_dataset: bool) -> pd.DataFrame:
-    # Assuming df is your DataFrame and it has a column "clusters"
-    unique_clusters = dataframe["clusters"].cat.categories
-    sorted_clusters = sort_clusters(unique_clusters)
+    """
+    Add a "colors" column mapping each cluster to a color, unless one already exists.
 
+    Args:
+        dataframe (pd.DataFrame): Dataframe with a categorical "clusters" column.
+        found_img (bool): Whether a tissue image is shown (picks a palette suited to it).
+        is_cool_dataset (bool): Use the glasbey_cool palette instead.
+
+    Returns:
+        pd.DataFrame: The dataframe with cluster colors.
+    """
     if "colors" in dataframe:
-        color_map = {
-            cluster: dataframe[dataframe["clusters"] == cluster][
-                "colors"
-            ].to_numpy()[0]
-            for cluster in sorted_clusters
-        }
-    else:
-        # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
-        # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
-        swatch_color = (
-            cc.b_glasbey_bw if found_img else cc.glasbey_light
-        )
+        return dataframe
 
-        if is_cool_dataset:
-            swatch_color = cc.glasbey_cool
+    sorted_clusters = sort_clusters(dataframe["clusters"].cat.categories)
 
-        color_map = {
-            cluster: swatch_color[i % len(swatch_color)]
-            for i, cluster in enumerate(sorted_clusters)
-        }
-        # Map the colors to the clusters
-        dataframe["colors"] = dataframe["clusters"].map(color_map)
+    # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
+    # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
+    swatch_color = (
+        cc.b_glasbey_bw if found_img else cc.glasbey_light
+    )
+
+    if is_cool_dataset:
+        swatch_color = cc.glasbey_cool
+
+    color_map = {
+        cluster: swatch_color[i % len(swatch_color)]
+        for i, cluster in enumerate(sorted_clusters)
+    }
+    # Map the colors to the clusters
+    dataframe["colors"] = dataframe["clusters"].map(color_map)
     return dataframe
 
 def sort_clusters(clusters) -> list:
@@ -387,6 +398,15 @@ class SpatialPanel(Resource):
     File name for the prepared csv file to import in the Panel app.
     """
     def post(self, dataset_id):
+        """
+        Cache the gene's spatial data and return a script tag that embeds the Panel viewer.
+
+        Main request body keys: gene_symbol, projection_id, is_zoomed, min_genes,
+        expression_min_clip, vmin, vmax, disable_save, and x/y range start/end.
+
+        Returns:
+            dict: "script" (embed script or None), "success", and "message".
+        """
 
         req = request.get_json()
         if req is None:
@@ -401,7 +421,10 @@ class SpatialPanel(Resource):
         min_genes = req.get('min_genes', 0)
         min_genes = int(min_genes) if min_genes is not None else 0
         expression_min_clip = req.get('expression_min_clip', None)
+        vmin = req.get('vmin', None)    # User-defined expression colorbar minimum
+        vmax = req.get('vmax', None)    # User-defined expression colorbar maximum
         nosave = req.get('disable_save', True)  # Disable save button for saving displays
+        colorblind_mode = bool(req.get('colorblind_mode', False))  # Per-viewer palette; the cached CSV is unaffected
 
         x_range_start = req.get('x_range_start', None)
         x_range_end = req.get('x_range_end', None)
@@ -413,7 +436,8 @@ class SpatialPanel(Resource):
             "gene_symbol": gene_symbol,
             "projection_id": projection_id,
             "expression_min_clip": expression_min_clip,
-            "nosave": nosave
+            "nosave": nosave,
+            "colorblind_mode": colorblind_mode
         }
 
         # All 4 values must be provided to set the initial view range, otherwise ignore them
@@ -433,12 +457,41 @@ class SpatialPanel(Resource):
             "message": "",
         }
 
-        DATASET_DIR = PANEL_CSV_CACHE_DIR / dataset_id
-        DATASET_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            vmin, vmax = parse_color_bounds(vmin, vmax)
+        except ValueError as ve:
+            response["message"] = str(ve)
+            return response
+        # The colorbar minimum defaults to 0
+        if vmin is None and vmax is not None and vmax <= 0:
+            response["message"] = "Maximum cap value must be greater than 0 when no minimum cap value is given."
+            return response
+        # Only pass bounds that are set. The Panel app reads them from URL arguments.
+        if vmin is not None:
+            config["vmin"] = vmin
+        if vmax is not None:
+            config["vmax"] = vmax
+
+        # dataset_id, projection_id and gene_symbol become cache paths below, so reject anything that isn't a plain name
+        if not dataset_id or secure_filename(dataset_id) != dataset_id:
+            response["message"] = "Invalid dataset ID."
+            return response
+        if projection_id and secure_filename(projection_id) != projection_id:
+            response["message"] = "Invalid projection ID."
+            return response
+        if not gene_symbol:
+            response["message"] = "Request needs a gene symbol."
+            return response
 
         filename_to_check = f"{gene_symbol}.csv"
         if projection_id:
             filename_to_check = f"{projection_id}_{gene_symbol}.csv"
+        if Path(filename_to_check).name != filename_to_check:
+            response["message"] = "Invalid gene symbol."
+            return response
+
+        DATASET_DIR = PANEL_CSV_CACHE_DIR / dataset_id
+        DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
         message = ""
 

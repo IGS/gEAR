@@ -40,13 +40,13 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    email = form.getvalue('email')
-    scope = form.getvalue('scope')
+    email = form.getfirst('email')
+    scope = form.getfirst('scope')
 
     #print("Got e-mail: {0}".format(email))
     #print("Got scope: {0}".format(scope))
 
-    destination_page = form.getvalue('destination_page')
+    destination_page = form.getfirst('destination_page')
 
     # https://docs.python.org/3/library/email-examples.html
     msg = MIMEMultipart('alternative')
@@ -88,7 +88,7 @@ def main():
             result['error'] = "We could not find that email. Please check what you entered and try again."
 
     elif scope == 'user_verification':
-        verification_code_long = form.getvalue('verification_code_long')
+        verification_code_long = form.getfirst('verification_code_long')
         verification_code = geardb.get_verification_code_short_form(verification_code_long)
 
         msg['Subject'] = 'Your {} account verification code'.format(domain_short_label)
@@ -132,8 +132,8 @@ def main():
             s.sendmail(sender, email, msg.as_string())
             s.quit()
         except Exception as e:
-            s.set_debuglevel(1)
-            print(f"Detailed SMTP Error: {e}")
+            # Log to stderr; printing to stdout put this line ahead of the JSON response
+            print(f"Detailed SMTP Error: {e}", file=sys.stderr)
             result['error'] = "E-mail delivery failed. Please try again later or contact us."
             result['success'] = 0
     else:
@@ -149,6 +149,9 @@ def main():
 
 
 def get_help_id(cursor, email):
+    """
+    Return the help_id for the user with the given email, or None.
+    """
     help_id = None
 
     qry = "SELECT help_id FROM guser WHERE email = %s"

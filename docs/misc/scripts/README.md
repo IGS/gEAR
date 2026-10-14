@@ -1,6 +1,6 @@
 # gEAR Utility Scripts Documentation
 
-The `/bin` directory contains 110 utility scripts for various tasks related to data management, conversion, validation, and administration. This guide categorizes these scripts and provides usage scenarios.
+The `/bin` directory contains 121 utility scripts (`.py` and `.sh`) for various tasks related to data management, conversion, validation, and administration. This guide categorizes these scripts and provides usage scenarios.
 
 ## Quick Reference
 
@@ -84,6 +84,37 @@ Converts Zarr spatial datasets to H5AD format for analysis.
 
 **Note**: Processes all Zarr datasets in `www/datasets/spatial/` directory
 
+#### `h5ad_convert_from_3tab.py`
+
+Creates an H5AD file from 3-tab input files, with optional NeMO file naming.
+
+**Use case**: Converting 3-tab directories, including NeMO-style `{prefix}_DataMTX.tab` / `_COLmeta.tab` / `_ROWmeta.tab` files
+
+```bash
+./bin/h5ad_convert_from_3tab.py -i /path/to/3tab/directory -o output.h5ad
+./bin/h5ad_convert_from_3tab.py -i /path/to/dir -f <file_prefix> -o output.h5ad
+```
+
+- `-i`: Directory containing `expression.tab`, `observations.tab`, `genes.tab` (required)
+- `-f`: File prefix; switches to NeMO naming conventions
+- `-o`: Output H5AD file (required)
+
+#### `h5ad_convert_from_gear_standard_tab.py`
+
+Converts a single gEAR "standard" tab file (`Ensembl_ID`, `Gene_symbol`, then one column per sample) to H5AD.
+
+**Use case**: Converting older grouped/bulk tab files
+
+```bash
+./bin/h5ad_convert_from_gear_standard_tab.py -i input.tab -o output.h5ad -d 1
+```
+
+- `-i`: Input tab file (required)
+- `-o`: Output H5AD file (required)
+- `-d`: Set to `1` if column headers use `SITE--CELL_ID` format (default `0`)
+
+**Note**: Writes intermediate `expression.tab`, `observations.tab` and `genes.tab` to `/tmp/`
+
 ### Format Translation
 
 #### `create_MEX_from_gear_standard_tab.py`
@@ -104,6 +135,19 @@ Converts old gEAR dataset formats to current formats.
 
 **Use case**: Migrating old datasets to new format
 **Status**: May be obsolete if all datasets already migrated
+
+#### `csv_to_parquet.py`
+
+Recursively converts every `.csv` under a directory to `.parquet` (pyarrow), casting string columns to categoricals for Datashader.
+
+**Use case**: Producing smaller, faster-loading tabular files (e.g. for Datashader/Panel plotting)
+
+```bash
+./bin/csv_to_parquet.py /path/to/dir [--delete]
+```
+
+- `directory`: Root directory to crawl (required)
+- `--delete`: Remove each original CSV after a successful conversion
 
 ### Metadata Handling
 
@@ -283,9 +327,11 @@ Loads gene synonym mappings.
 
 #### `load_komp_repository_data.py`
 
-Loads data from KOMP (Knockout Mouse Project) repository.
+Loads gene synonyms and external links (MGI, IGTC, IMSR, BioGPS, GEO) scraped from the KOMP (Knockout Mouse Project) repository, from the `komp_repository_data.p` pickle written by `fetch_komp_repository_data.py`.
 
-**Use case**: Integrating KOMP knockout data
+**Use case**: Adding KOMP synonyms to `gene_symbol` and links to `gene_urls`
+
+**Status**: Possibly legacy. Added in 2020 and unchanged since; the `gene_urls` table it writes is not in `create_schema.sql` and nothing on the website reads it.
 
 #### `load_mgi_mirna_aliases.py` / `load_mirna_fam_data.py`
 
@@ -308,10 +354,19 @@ Uploads spatial transcriptomics datasets.
 **Use case**: Loading Visium or other spatial datasets
 
 ```bash
-./bin/upload_spatial_dataset.py -i spatial_data/ -o dataset_id
+./bin/upload_spatial_dataset.py -i spatial_data.tar.gz -t visium -d <dataset_id>
 ```
 
-See also: `docs/uploading_spatial_dataset.md`
+- `-i`: Input spatial tarball (required)
+- `-t`: Platform type: `cosmx`, `curio`, `geomx`, `visium`, `visium_hd`/`visiumhd`, `xenium` (required)
+- `-d`: Dataset ID (required)
+- `-org`: Organism ID (only for platforms needing gene symbol to Ensembl ID remapping when metadata is not in the database)
+- `--h5ad`: Write an H5AD instead of a Zarr store (testing)
+- `--overwrite`: Overwrite an existing Zarr store
+
+Writes `www/datasets/spatial/<dataset_id>.zarr`. Metadata must already be in the database (`add_excel_metadata_to_db.py`).
+
+See also: [Uploading a Spatial Dataset](../../analyst/uploading_spatial_dataset.md)
 
 #### `FACS_RNAseq_Data.loader.py`
 
@@ -432,8 +487,20 @@ Create a MySQL DB dump of only datasets referenced by layout_displays for given 
 **Use case**: Creating a SQL environment for new developers that only have access to a limited number of datasets
 
 ```bash
-./bin/create_test_mysql_dumpy.py --layout-ids 1 2 3 --dump-file /tmp/mini-gear.sql
+./bin/create_test_mysql_dump.py --layout-ids 1 2 3 --dump-file /tmp/mini-gear.sql
 ```
+
+#### `export_dataset_sql.sh`
+
+Prints `INSERT` statements (via `mysqldump --compact -t`) for one dataset's `dataset` and `dataset_display` rows from the `gear_portal` database.
+
+**Use case**: Copying a single dataset's metadata to a development system (the H5AD must be copied separately)
+
+```bash
+./bin/export_dataset_sql.sh <dataset_id> > dataset.sql
+```
+
+**Note**: Requires MySQL credentials in `~/.my.cnf` (`[mysqldump]` section)
 
 ### Dataset Operations
 
@@ -522,6 +589,18 @@ Scripts for validating data integrity and testing functionality.
 
 ### File Validation
 
+#### `test_sniffer.py`
+
+Runs Python's `csv.Sniffer` on a text file and prints the first four parsed rows.
+
+**Use case**: Checking which delimiter the uploader's delimiter detection will pick
+
+```bash
+./bin/test_sniffer.py -f input.tab
+```
+
+**Note**: Prints a spurious "ERROR: No input file included" message when `-f` *is* given (inverted check)
+
 #### `validate_tab_file.py`
 
 Validates tab-delimited files for common issues.
@@ -596,6 +675,18 @@ Tests MySQL string type handling.
 
 **Use case**: Debugging MySQL configuration issues
 
+#### `audit_cache_busting.py`
+
+Scans `www/**/*.html` for local CSS/JS references that lack a `?v=` cache-busting version.
+
+**Use case**: Finding pages that may serve stale assets after a deploy
+
+```bash
+./bin/audit_cache_busting.py
+```
+
+Reads the current version from `www/cache_version.json` and treats pages that call `insertVersionedJS()`/`insertVersionedCSS()` as compliant. See the [cache busting guide](../../developer/misc/cache_busting_guide.md).
+
 ---
 
 ## Visualization & SVG
@@ -630,7 +721,7 @@ Replaces anatomy IDs with standardized class names.
 
 #### `generate_static_display_images.py`
 
-Generates static preview images for displays.
+Generates static preview images for displays that don't have one yet (`www/img/dataset_previews/<dataset_id>.<display_id>.png`), and points each dataset owner's default displays at them through `<dataset_id>.single.default.png` and `<dataset_id>.multi.default.png`. A default link that points at a different image is replaced.
 
 **Use case**: Creating dataset thumbnails
 
@@ -708,6 +799,52 @@ Aggregates bigWig files for Gosling group tracks.
 ```
 
 **Note**: I/O intensive; run as background job for large genomes
+
+#### `convert_STAR_sj_tab_into_biginteract.py`
+
+Converts a STAR `SJ.out.tab` splice-junction file into a bigInteract file (junctions with at least one unique read).
+
+**Use case**: Displaying splice junctions as arcs in a genome browser track
+
+```bash
+./bin/convert_STAR_sj_tab_into_biginteract.py --star_file SJ.out.tab \
+    --chromsizes_file genome.chrom.sizes --output_file out.bb \
+    --bedtobigbed_path /path/to/bedToBigBed
+```
+
+**Note**: Requires UCSC `bedToBigBed` and an `interact.as` file in the current directory. Remove chromosomes not present in the chrom-sizes file from the STAR file first.
+
+#### `convert_exon_bed_to_bed12.sh`
+
+Combines a gene/transcript BED6 file and an exon BED6 file (matched on the name column) into BED12 with `blockSizes`/`blockStarts`.
+
+**Use case**: Building gene-model annotation tracks
+
+```bash
+./bin/convert_exon_bed_to_bed12.sh genes.bed6 exons.bed6 out.bed12
+```
+
+#### `convert_exon_bed_to_bed6and2.sh`
+
+Same inputs as above, but outputs BED6+2 with comma-separated `exonStarts` and `exonEnds` columns.
+
+**Use case**: Annotation tracks that expect explicit exon start/end lists
+
+```bash
+./bin/convert_exon_bed_to_bed6and2.sh genes.bed6 exons.bed6 out.bed8
+```
+
+#### `create_higlass_annotation_files.sh`
+
+Builds a HiGlass gene-annotation BED (`geneAnnotations.bed`, `geneAnnotationsExonUnions.bed`) for one assembly from NCBI gene data and the UCSC `refGene` table, following the HiGlass data-preparation docs.
+
+**Use case**: Creating gene annotation tracks for a new assembly
+
+```bash
+cd bin && ./create_higlass_annotation_files.sh
+```
+
+**Note**: No arguments. Edit `ASSEMBLY`/`TAXID` at the top of the script (currently `rn6`/`10116`) and the path to `exonU.py` at the bottom. Output goes to `www/tracks/genomes/v2/<assembly>/`. See also [HiGlass setup](../../developer/setup/higlass.md).
 
 ---
 
@@ -841,22 +978,23 @@ Gets email list of users (for announcements).
 
 #### `fetch_komp_repository_data.py`
 
-Fetches data from KOMP repository.
+Scrapes gene synonyms and links from the KOMP repository website into `komp_repository_data.p` for `load_komp_repository_data.py`.
 
-**Use case**: Updating KOMP integration
+**Use case**: Refreshing the KOMP data
+
+**Status**: Possibly legacy (see `load_komp_repository_data.py`)
 
 #### `query_geo.py`
 
-Queries GEO (Gene Expression Omnibus) database.
-
-**Use case**: Finding datasets to import
+Unfinished stub: holds two example GEO / Entrez search URLs and exits without doing anything. (GEO metadata lookup in the uploader is done by `www/cgi/get_metadata_from_geo.cgi`.)
 
 #### `get_shield_pages.py` / `process_shield_pages.py`
 
-Downloads and processes pages from SHIELD database.
+`get_shield_pages.py` downloads gene pages from the SHIELD inner ear database; `process_shield_pages.py` parses them and prints SQL that sets `gene.shield_facs_chart_url` to each gene's FACS chart image (`shield_urls_update.sql` is a saved run).
 
-**Use case**: Integrating SHIELD gene expression data
-**Status**: May be deprecated
+**Use case**: Linking SHIELD FACS charts to genes
+
+**Status**: Possibly legacy. Added in 2020 and unchanged since; the `shield_facs_chart_url` column is not in `create_schema.sql` and nothing on the website reads it.
 
 ### Utilities
 
@@ -879,6 +1017,18 @@ Reports information about tab-delimited files.
 ```bash
 ./bin/tab_file_info.py -i data.tab
 ```
+
+#### `create_shortform_url.py`
+
+Converts a long-form gEAR URL into its `/p` short-form equivalent (the reverse of `www/p`).
+
+**Use case**: Generating short share links
+
+```bash
+./bin/create_shortform_url.py --url "https://umgear.org/expression.html?share_id=abc123&gene_symbol=Atoh1"
+```
+
+**Note**: Supports `expression.html`, `projection.html`, `sc_workbench.html`, `dataset_explorer.html` and `gene_list_manager.html`; see the script docstring for the parameter mapping
 
 #### `export_gene_cart_sql.py`
 
@@ -953,6 +1103,18 @@ Generates gcloud commands to download profile datasets.
 ./bin/get_profile_dataset_download_commands.py -p profile_share_id
 ```
 
+#### `gene_as_xy.py`
+
+Prototype script that plots the expression of one gene against another (with per-cell-type linear regression lines). Written for one dataset (the Kelley P1 cochlea dataset) on a single gEAR instance.
+
+**Use case**: Ad hoc gene-vs-gene scatter plots
+
+```bash
+cd bin && ./gene_as_xy.py
+```
+
+**Status**: One-off. Dataset path, gene symbols, cell types and the output PNG path are hard-coded; edit the script before running
+
 ---
 
 ## Notes on Script Status
@@ -963,7 +1125,9 @@ These scripts may no longer be needed (verify before removal):
 
 - `convert_layout_member_datasets_to_displays.py` - Migration script
 - `load_old_gcid_gene_symbols.py` - Legacy system migration
-- `get_shield_pages.py` / `process_shield_pages.py` - SHIELD integration may be deprecated
+- `get_shield_pages.py` / `process_shield_pages.py` - SHIELD integration; the column they fill is not in the schema or read by the site
+- `fetch_komp_repository_data.py` / `load_komp_repository_data.py` - KOMP integration; the `gene_urls` table is not in the schema or read by the site
+- `query_geo.py` - unfinished stub
 - `fix_x.py` / `fix_array_x_axis.py` - Specific data fixes
 - Any script referencing "old" or "legacy" in name
 

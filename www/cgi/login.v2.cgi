@@ -7,8 +7,9 @@ For a given username and password, returns a JSON structure:
 
 Where the session_id is one of the following:
 
-   0 - The user name wasn't found at all.
-  -1 - User was found, but the password was incorrect
+  -1 - The e-mail wasn't found, or the password was incorrect. Both get the same
+       response so the login form can't be used to find registered e-mails; the
+       actual reason is logged to stderr.
    ? - Any other value is the session ID
 
 """
@@ -75,6 +76,8 @@ def main():
                 break
 
     if not user_email_found:
+        print("login.v2.cgi: login failed for {}: e-mail not found".format(user_email), file=sys.stderr)
+        result['session_id'] = -1
         print(json.dumps(result))
     else:
         # Check the password for the user
@@ -107,6 +110,7 @@ def main():
             print(json.dumps(result))
         else:
             # If the password was invalid, return -1
+            print("login.v2.cgi: login failed for {}: incorrect password".format(user_email), file=sys.stderr)
             result['session_id'] = -1
             print(json.dumps(result))
 

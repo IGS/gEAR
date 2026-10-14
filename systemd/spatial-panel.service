@@ -1,6 +1,6 @@
 [Unit]
 Description="Panel app deployment to display spatial transcriptomics plots"
-Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.new_server_notes.md
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/developer/services/spatial.md https://github.com/IGS/gEAR/blob/main/docs/developer/setup/new_server.md
 
 [Service]
 Type=simple

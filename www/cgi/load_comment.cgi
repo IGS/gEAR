@@ -22,17 +22,17 @@ def main():
     cursor = cnx.get_cursor()
 
     form = cgi.FieldStorage()
-#    session_id = form.getvalue('session_id')
+#    session_id = form.getfirst('session_id')
 #    user_id = get_user_id_from_session_id(cursor, session_id)
 
-    firstname = form.getvalue('submitter_firstname')
-    lastname = form.getvalue('submitter_lastname')
-    email = form.getvalue('submitter_email')
-    title = form.getvalue('comment_title')
-    comment = form.getvalue('comment')
-    tag = form.getvalue('comment_tag')
+    firstname = form.getfirst('submitter_firstname')
+    lastname = form.getfirst('submitter_lastname')
+    email = form.getfirst('submitter_email')
+    title = form.getfirst('comment_title')
+    comment = form.getfirst('comment')
+    tag = form.getfirst('comment_tag')
     print(tag, file=sys.stderr)
-    security_check = form.getvalue('super_impressive_security_check')
+    security_check = form.getfirst('super_impressive_security_check')
 
     is_read = 0 # 0 = not read (false)
 
@@ -100,6 +100,9 @@ def main():
 
 
 def get_user_id_from_session_id(cursor, session_id):
+    """
+    Return the user ID for a session ID, or None if not found.
+    """
     qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
     cursor.execute(qry, (session_id, ) )
     user_id = None
