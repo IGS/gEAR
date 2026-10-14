@@ -375,7 +375,7 @@ def test_svg_clip_and_user_defined_range(svg_client):
     assert result["scores"]["user_defined"] == {"min": 0.0, "max": 5.0}
 
 
-@pytest.mark.parametrize("query", ["vmax=0.0", "vmax=", "vmin=&vmax=0"])
+@pytest.mark.parametrize("query", ["vmax=0.0", "vmax=", "vmin=&vmax=0", "vmin=0&vmax=0"])
 def test_svg_zero_or_blank_vmax_uses_gene_max(svg_client, query):
     write_svg_h5ad(svg_client.h5_path)
     result = ok_json(svg_client.get(f"/plot/DS1/svg?gene=G1&{query}"))
@@ -389,6 +389,12 @@ def test_svg_non_numeric_range_gives_clear_error(svg_client, query):
     write_svg_h5ad(svg_client.h5_path)
     result = ok_json(svg_client.get(f"/plot/DS1/svg?gene=G1&{query}"))
     assert result == {"success": -1, "message": "The vmin and vmax parameters must be numbers."}
+
+
+def test_svg_max_below_min_gives_clear_error(svg_client):
+    write_svg_h5ad(svg_client.h5_path)
+    result = ok_json(svg_client.get("/plot/DS1/svg?gene=G1&vmin=4&vmax=2"))
+    assert result == {"success": -1, "message": "Maximum cap value must be greater than minimum cap value."}
 
 
 def test_svg_duplicate_symbol_uses_first_ensembl_id(svg_client):

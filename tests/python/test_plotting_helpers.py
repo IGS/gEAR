@@ -171,6 +171,43 @@ def test_scatter_with_continuous_color_is_not_aggregated(expr_df):
     assert list(fig.data[0].marker.color) == [1.0, 2.0, 3.0, 4.0]
 
 
+@pytest.mark.parametrize("bounds, expected", [
+    ({"vmin": 1.5, "vmax": 3.5}, (1.5, 3.5)),
+    ({"vmax": 3.0}, (1.0, 3.0)),     # the missing end comes from the data
+    ({"vmin": 2.0}, (2.0, 4.0)),
+])
+def test_scatter_continuous_color_bounds(expr_df, bounds, expected):
+    """#1166: vmin/vmax bound the colorbar of a continuous color series."""
+    df = expr_df.assign(c=[1.0, 2.0, 3.0, 4.0])
+    fig = plot(df, "scatter", color_name="c", palette="Viridis", **bounds)
+    assert (fig.layout.coloraxis.cmin, fig.layout.coloraxis.cmax) == expected
+    # The data itself is not clipped
+    assert list(fig.data[0].marker.color) == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_scatter_without_bounds_leaves_coloraxis_auto(expr_df):
+    df = expr_df.assign(c=[1.0, 2.0, 3.0, 4.0])
+    fig = plot(df, "scatter", color_name="c", palette="Viridis")
+    assert fig.layout.coloraxis.cmin is None and fig.layout.coloraxis.cmax is None
+
+
+def test_color_bounds_ignored_for_categorical_color(expr_df):
+    fig = plot(expr_df, "scatter", color_name="g", colormap={"p": "red", "q": "blue"}, vmin=0, vmax=1)
+    assert fig.layout.coloraxis.cmin is None
+
+
+def test_color_bound_beyond_data_is_plot_error(expr_df):
+    df = expr_df.assign(c=[1.0, 2.0, 3.0, 4.0])
+    with pytest.raises(plotting.PlotError, match="must be less than the maximum"):
+        plot(df, "scatter", color_name="c", palette="Viridis", vmin=5.0)
+
+
+def test_contour_color_bounds():
+    df = pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0], "y": [1.0, 2.0, 1.0, 2.0], "raw_value": [0.0, 1.0, 2.0, 8.0]})
+    fig = plot(df, "contour", z="raw_value", vmax=4.0)
+    assert (fig.data[0].zmin, fig.data[0].zmax) == (0.0, 4.0)
+
+
 def test_bar_plot_aggregates_with_error_bars(expr_df):
     fig = plot(expr_df, "bar")
     assert [t.type for t in fig.data] == ["bar"]

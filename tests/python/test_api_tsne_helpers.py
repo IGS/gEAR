@@ -419,6 +419,10 @@ def post(client, route, **body):
         ("tsne", {"gene_symbol": "G1", "x_axis": "UMAP_1"}, "Dataseries UMAP_1 was selected"),
         ("tsne", {"gene_symbol": "G1", "plot_type": "violin"}, "violin was not a valid plot type"),
         ("tsne", {"gene_symbol": "G1", "vmax": 0.2, "vmin": 0.5}, "Maximum cap value must be greater"),
+        ("tsne", {"gene_symbol": "G1", "vmax": "0.2", "vmin": "0.5"}, "Maximum cap value must be greater"),
+        ("tsne", {"gene_symbol": "G1", "vmax": 0, "vmin": 0}, "Maximum cap value must be greater"),
+        ("tsne", {"gene_symbol": "G1", "vmin": "abc"}, "The vmin and vmax parameters must be numbers."),
+        ("mg_tsne", {"gene_symbols": ["G1", "G2"], "vmax": "x"}, "The vmin and vmax parameters must be numbers."),
         ("tsne", {"gene_symbol": "G1", "center_around_median": True, "vmax": 0.0001}, "Median expression value"),
         ("tsne", {"gene_symbol": "G1", "center_around_median": True, "vmin": 0.9999}, "Median expression value"),
         # Saved curations that no longer fit the dataset (these were 500s)

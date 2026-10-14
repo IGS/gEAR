@@ -97,6 +97,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 if expression_min_clip is not None:
                     self.settings.expression_min_clip = float(expression_min_clip)
 
+            # User-defined expression colorbar bounds (validated by the gEAR API before reaching here)
+            for bound in ('vmin', 'vmax'):
+                if bound in args:
+                    value = get_arg(bound)
+                    if value is not None:
+                        setattr(self.settings, bound, float(value))
+
             if 'nosave' in args:
                 nosave = get_arg('nosave', True)
                 if nosave is not None:
@@ -242,6 +249,14 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if self.expression_98 == 0:
             self.expression_98 = None
 
+        # Expression colorbar limits. User-defined bounds take priority over 0 and the 98th-percentile.
+        self.cbar_min = self.settings.vmin
+        self.cbar_max = self.settings.vmax if self.settings.vmax is not None else self.expression_98
+        if self.settings.vmax is None and self.cbar_min is not None \
+            and self.cbar_max is not None and self.cbar_min >= self.cbar_max:
+            # The 98th-percentile is below the user's minimum, so let the data set the upper limit
+            self.cbar_max = None
+
         ### Set up some initial attributes to use when plotting
         self._init_widgets()
 
@@ -278,6 +293,12 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         # Include expression clip if it exists
         if self.settings.expression_min_clip is not None:
             state["expression_min_clip"] = self.settings.expression_min_clip
+
+        # Include user-defined colorbar bounds if they exist
+        if self.settings.vmin is not None:
+            state["vmin"] = self.settings.vmin
+        if self.settings.vmax is not None:
+            state["vmax"] = self.settings.vmax
 
         # Include the current view range, if zoomed in
         range_fig = getattr(self, '_range_figure', None)
@@ -597,7 +618,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         # Generate base plots
         expr_plot = create_spatial_plot(self.expression_df, y_col="y_plot", color_col='raw_value',
                                         cmap=self.expression_cmap, title=f"Expression: {self.current_gene}",
-                                        cbar_max=self.expression_98, radius=self.marker_radius)
+                                        cbar_min=self.cbar_min, cbar_max=self.cbar_max, radius=self.marker_radius)
         cluster_plot = create_spatial_plot(self.clusters_df, y_col="y_plot", color_col='clusters',
                                         cmap=self.cluster_cmap, is_categorical=True, title="Clusters",
                                         category_renderers=category_renderers, radius=self.marker_radius)
@@ -729,7 +750,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         # Main row
         expr_plot = create_spatial_plot(self.expression_df, y_col="y_plot", color_col='raw_value',
                                         cmap=self.expression_cmap, title=f"Expression: {self.current_gene}",
-                                        cbar_max=self.expression_98, min_height=EXPANDED_PLOT_MIN_HEIGHT,
+                                        cbar_min=self.cbar_min, cbar_max=self.cbar_max, min_height=EXPANDED_PLOT_MIN_HEIGHT,
                                         min_width=EXPANDED_PLOT_MIN_WIDTH, radius=self.marker_radius)
         cluster_plot = create_spatial_plot(self.clusters_df, y_col="y_plot", color_col='clusters',
                                         cmap=self.cluster_cmap, is_categorical=True, title="Clusters",
@@ -752,7 +773,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         umap_category_renderers = {}
         expr_umap = create_umap_plot(
             self.umap_df, color_col='raw_value', cmap=self.expression_cmap, is_categorical=False,
-            title=f"{self.current_gene} Expression", cbar_max=self.expression_98, radius=self.umap_marker_radius
+            title=f"{self.current_gene} Expression", cbar_min=self.cbar_min, cbar_max=self.cbar_max, radius=self.umap_marker_radius
             )
         cluster_umap = create_umap_plot(
             self.umap_df, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True,

@@ -1314,6 +1314,15 @@ paths:
                   type: number
                   nullable: true
                   description: Lower clip for expression values (passed to the Panel app config).
+                vmin:
+                  type: number
+                  nullable: true
+                  description: Expression colorbar minimum (default 0), passed to the Panel app config when set.
+                vmax:
+                  type: number
+                  nullable: true
+                  description: Expression colorbar maximum (default the 98th percentile of nonzero expression), passed
+                    to the Panel app config when set. Must be greater than vmin, or than 0 if vmin is not set.
                 disable_save:
                   type: boolean
                   default: true
@@ -1413,8 +1422,8 @@ paths:
         '200':
           description: 'Expression data. success is 2 (with a warning message) when the symbol maps to several Ensembl
             IDs; the first is used. user_defined is present only when a non-empty vmin or vmax is sent. Errors return
-            HTTP 200 with success -1: non-numeric vmin/vmax ("The vmin and vmax parameters must be numbers."), non-numeric
-            expression_min_clip, missing gene, dataset not found, h5ad file not found, projection PlotError, missing gene_symbol column, or gene
+            HTTP 200 with success -1: non-numeric vmin/vmax ("The vmin and vmax parameters must be numbers."), nonzero
+            vmin/vmax with vmax not greater than vmin, non-numeric expression_min_clip, missing gene, dataset not found, h5ad file not found, projection PlotError, missing gene_symbol column, or gene
             not found.'
           content:
             application/json:
@@ -7099,6 +7108,16 @@ components:
           type: number
           nullable: true
           description: Lower clip for expression values.
+        vmin:
+          type: number
+          nullable: true
+          description: Colorscale minimum for a numeric color series (or contour z). Numeric strings are accepted;
+            null or "" means the data minimum. Must be less than vmax.
+        vmax:
+          type: number
+          nullable: true
+          description: Colorscale maximum for a numeric color series (or contour z). Numeric strings are accepted;
+            null or "" means the data maximum. Must be greater than vmin.
         return_image:
           type: boolean
           default: false
@@ -7357,6 +7376,17 @@ components:
         expression_min_clip:
           type: number
           nullable: true
+        vmin:
+          type: number
+          nullable: true
+          description: Dotplot/heatmap colorscale minimum, in the log-transformed colorbar units. Numeric strings are
+            accepted; null or "" uses the default (0). With heatmap center_around_zero, a single bound is mirrored,
+            and two bounds must be on either side of zero.
+        vmax:
+          type: number
+          nullable: true
+          description: Dotplot/heatmap colorscale maximum, in the log-transformed colorbar units. Numeric strings are
+            accepted; null or "" uses the data maximum. Must be greater than vmin.
         colorblind_mode:
           type: boolean
           default: false
@@ -7444,11 +7474,13 @@ components:
         vmin:
           type: number
           nullable: true
-          description: Color minimum cap.
+          description: Color minimum cap. Numeric strings are accepted; null or "" means unset. A non-number returns
+            success -1 ("The vmin and vmax parameters must be numbers.").
         vmax:
           type: number
           nullable: true
-          description: Color maximum cap.
+          description: Color maximum cap. Numeric strings are accepted; null or "" means unset. Must be greater than
+            vmin.
         make_zero_gray:
           type: boolean
           default: true

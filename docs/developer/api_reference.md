@@ -56,6 +56,7 @@ Most read endpoints do not reject anonymous callers. They pass the session ID (p
 | `get_spatial_adata(analysis, dataset_id, session_id)` | Loads `AnnData` from a `SpatialAnalysis`. Raises `ValueError` if the analysis is not spatial. |
 | `create_projection_adata(dataset_adata, dataset_id, projection_id)` | Builds an `AnnData` from `www/projections/by_dataset/<dataset_id>/<projection_id>.csv`, copying `obs`, `obsm` and `uns` from the source. Raises `PlotError` on failure. |
 | `clip_expression_values(adata, min_clip, max_clip)` | Clips `adata.X`. Backs the `expression_min_clip` parameter. |
+| `parse_color_bounds(vmin, vmax, zero_is_unset=False)` | Converts user-defined colorscale bounds to floats (`None`/`""` means unset, and so does 0 with `zero_is_unset`, which the SVG endpoint uses). Raises `ValueError` with a user-facing message for non-numbers or `vmax <= vmin`. Used by the Plotly, multigene Plotly, tSNE/UMAP, SVG and spatial panel endpoints. |
 | `order_by_time_point(obs_df)` | Orders the `time_point` category by the `time_point_order` column, then drops that column. |
 | `ANNOTATION_BEDDB_UID`, `HIGLASS_URL` | Assembly-to-HiGlass-tileset map and HiGlass server base URL, used by `higlass.py`. |
 | `PROJECTIONS_BASE_DIR` | `www/projections`. |
@@ -115,6 +116,7 @@ JSON body keys:
 | `obs_filters` | Dict of obs column to list of allowed values. |
 | `projection_id` | Plot a projectR pattern instead of a gene (see [ProjectR](#projectr-resources)). |
 | `expression_min_clip` | Lower clip for expression values. |
+| `vmin`, `vmax` | Colorscale bounds for a numeric color series (or the contour `z`). They bound the colorbar only; the data is not clipped. Numbers or numeric strings; `null` or `""` uses the data minimum or maximum. `vmax` must be greater than `vmin`, otherwise `success: -1`. Ignored for categorical colors. |
 | `return_image` | If true, return a base64 PDF instead of JSON. |
 | `custom_props` | Extra kwargs passed to the plotting function. |
 
@@ -129,6 +131,7 @@ Builds a multi-gene Plotly figure. The `plot_type` values handled are `dotplot`,
 | Key group | JSON body keys |
 |---|---|
 | Common | `analysis`, `plot_type`, `gene_symbols`, `obs_filters`, `projection_id`, `expression_min_clip`, `colorblind_mode`, `return_image`, `custom_props`, `plot_title`, `legend_title` |
+| Colorscale bounds (`dotplot`, `heatmap`) | `vmin` (default 0), `vmax` (default the data maximum), in the log-transformed units shown on the colorbar. They bound the colorbar only. `vmax` must be greater than `vmin`. With heatmap `center_around_zero`, a single bound is mirrored (`vmax` 2 gives -2 to 2), and two bounds must be on either side of zero. |
 | Grouping and sorting | `primary_col` (required for `dotplot`, `mg_violin` and heatmap matrixplots), `secondary_col`, `sort_order`, `clusterbar_fields`, `subsample_limit` |
 | Heatmap | `matrixplot`, `center_around_zero`, `cluster_obs`, `cluster_genes`, `flip_axes`, `distance_metric` (default `euclidean`), `hide_obs_labels`, `hide_gene_labels`, `colorscale`, `reverse_colorscale` |
 | Volcano | `query_condition`, `ref_condition`, `de_test_algo` (default `t-test`), `pvalue_threshold`, `lower_logfc_threshold`, `upper_logfc_threshold`, `adj_pvals`, `annotate_nonsignificant` |
@@ -155,7 +158,7 @@ Returns expression values for coloring SVG anatomy images. This endpoint reads t
 
 Query args: `gene` (required), `projection_id`, `expression_min_clip`, `vmin`, `vmax`.
 
-`vmin` and `vmax` must be numbers: a non-numeric value returns `success: -1` ("The vmin and vmax parameters must be numbers."), and an empty value is ignored. A `vmin` of 0 means 0, and a `vmax` of 0 means the gene's maximum.
+`vmin` and `vmax` must be numbers: a non-numeric value returns `success: -1` ("The vmin and vmax parameters must be numbers."), and an empty value is ignored. A `vmin` of 0 means 0, and a `vmax` of 0 means the gene's maximum. When both are nonzero, `vmax` must be greater than `vmin` ("Maximum cap value must be greater than minimum cap value.").
 
 Response: `success` (`2` if the symbol maps to several Ensembl IDs), `message`, `scores` (keys `dataset`, `gene`, `tissue`, plus `user_defined` when a non-empty `vmin` or `vmax` is given), and the expression dataframe spread as top-level keys (`data` plus obs columns). When a `cell_type` column exists, the dataframe gains `<cell_type>--mean` rows.
 
@@ -173,7 +176,7 @@ Response: `{success, spec, position, message, hic_found}`. `position` is `chr:st
 
 Prepares cached inputs for the HoloViz Panel spatial viewer and returns the script that embeds it. See [services/spatial.md](./services/spatial.md).
 
-JSON body keys: `gene_symbol` (a gene, or a pattern name when projecting), `projection_id`, `is_zoomed`, `min_genes`, `expression_min_clip`, `disable_save` (default true), `colorblind_mode` (default false), and the optional initial view range `x_range_start`, `x_range_end`, `y_range_start`, `y_range_end`. The range is used only when all four are given. Colorblind mode is passed to the Panel app, which then uses reversed cividis for expression and colorcet glasbey_cool for clusters; the cached CSV keeps the normal cluster colors.
+JSON body keys: `gene_symbol` (a gene, or a pattern name when projecting), `projection_id`, `is_zoomed`, `min_genes`, `expression_min_clip`, `vmin` and `vmax` (expression colorbar bounds; default 0 and the 98th percentile of nonzero expression; `vmax` must be greater than `vmin`, or than 0 when `vmin` is not set), `disable_save` (default true), `colorblind_mode` (default false), and the optional initial view range `x_range_start`, `x_range_end`, `y_range_start`, `y_range_end`. The range is used only when all four are given. Colorblind mode is passed to the Panel app, which then uses reversed cividis for expression and colorcet glasbey_cool for clusters; the cached CSV keeps the normal cluster colors.
 
 Side effects: writes `<gene_symbol>.csv` (or `<projection_id>_<gene_symbol>.csv`), `spatial_img_<channel>.npy`, `spatial_props.json` and, on image failure, `image_extraction_error.log` under `www/cache/spatial_panel/<dataset_id>/`.
 

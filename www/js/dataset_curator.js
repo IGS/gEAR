@@ -52,6 +52,8 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
         , "js-plotly-marker-size": "marker_size"
         , "js-plotly-color-palette": "color_palette"
         , "js-plotly-reverse-palette": "reverse_palette"
+        , "js-plotly-vmin": "vmin"
+        , "js-plotly-vmax": "vmax"
     };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
@@ -1205,6 +1207,7 @@ const setupPlotlyOptions = async (datasetId) => {
     const colorSeriesElts = document.getElementsByClassName("js-plotly-color");
     const colorPaletteElts = document.getElementsByClassName("js-plotly-color-palette");
     const reversePaletteElts = document.getElementsByClassName("js-plotly-reverse-palette");
+    const colorBoundElts = [...document.getElementsByClassName("js-plotly-vmin"), ...document.getElementsByClassName("js-plotly-vmax")];
     const hideLegend = document.getElementsByClassName("js-plotly-hide-legend");
     for (const elt of colorSeriesElts) {
         elt.addEventListener("change", (event) => {
@@ -1212,6 +1215,11 @@ const setupPlotlyOptions = async (datasetId) => {
                 curatorCommon.renderColorPicker(event.target.value);
                 for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
                     paletteElt.disabled = true;
+                }
+                // Colorscale bounds only apply to continuous color series. Clear them so they are not saved.
+                for (const boundElt of colorBoundElts) {
+                    boundElt.disabled = true;
+                    boundElt.value = "";
                 }
                 for (const legendElt of hideLegend) {
                     legendElt.disabled = false;
@@ -1226,7 +1234,7 @@ const setupPlotlyOptions = async (datasetId) => {
                 colorsContainer.replaceChildren();
 
                 // Enable the color palette select
-                for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
+                for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts, ...colorBoundElts]) {
                     paletteElt.disabled = false;
                 }
                 for (const legendElt of hideLegend) {

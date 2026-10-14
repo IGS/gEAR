@@ -216,3 +216,45 @@ def test_categorical_palette_cycles_through_four(mg):
 
 def test_categorical_palette_colorblind(mg):
     assert all(mg.get_categorical_palette(i, colorblind=True) is mg.CATEGORICAL_PALETTE for i in range(3))
+
+
+# ---------------------------------------------------------------- colorscale bounds (#1166)
+
+@pytest.mark.parametrize("center, vmin, vmax, expected", [
+    (False, None, None, (0, 5.0, None)),
+    (False, 1.0, None, (1.0, 5.0, None)),
+    (False, None, 3.0, (0, 3.0, None)),
+    (True, None, None, (None, None, 0)),
+    (True, None, 2.0, (-2.0, 2.0, None)),
+    (True, -3.0, None, (-3.0, 3.0, None)),
+    (True, 3.0, None, (-3.0, 3.0, None)),
+    (True, -1.0, 4.0, (-1.0, 4.0, None)),
+])
+def test_heatmap_colorscale_bounds(mg, center, vmin, vmax, expected):
+    assert mg._heatmap_colorscale_bounds(5.0, center, vmin, vmax) == expected
+
+
+@pytest.mark.parametrize("center, vmin, vmax", [
+    (False, 6.0, None),     # above the data maximum
+    (False, None, -1.0),    # below the default minimum of 0
+    (True, 1.0, 4.0),       # both on one side of zero
+    (True, None, 0.0),
+])
+def test_heatmap_colorscale_bounds_errors(mg, center, vmin, vmax):
+    with pytest.raises(mg.PlotError):
+        mg._heatmap_colorscale_bounds(5.0, center, vmin, vmax)
+
+
+def test_dot_plot_colorscale_bounds(mg):
+    df = pd.DataFrame({
+        "gene_symbol": ["G1", "G1", "G2", "G2"],
+        "cluster": ["a", "b", "a", "b"],
+        "mean": [1.0, 3.0, 7.0, 15.0],
+        "count": [2, 2, 2, 2],
+        "percent": [50.0, 100.0, 50.0, 100.0],
+    })
+    marker = mg.create_dot_plot(df, ["cluster"]).data[0].marker
+    assert (marker.cmin, marker.cmax) == (0, 4.0)    # log2(15 + 1)
+
+    marker = mg.create_dot_plot(df, ["cluster"], vmin=1.0, vmax=2.0).data[0].marker
+    assert (marker.cmin, marker.cmax) == (1.0, 2.0)

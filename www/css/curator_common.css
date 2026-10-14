@@ -39,8 +39,10 @@
 }
 
 #post-plot-customize {
-    overflow-y:auto;
-    overflow-x:hidden;
+    /* "clip" (unlike "hidden") does not make this a scroll container, so the absolutely-positioned
+       "Select parameters to edit" dropdown menu can extend past this box instead of being clipped */
+    overflow-y:visible;
+    overflow-x:clip;
     /*flex: 0 1 auto;*/ /* flex-grow, flex-shrink, flex-basis */
 }
 

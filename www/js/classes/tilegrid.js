@@ -2298,6 +2298,8 @@ class DatasetTile {
             projection_id: plotConfig.projection_id,
             is_zoomed: this.isZoomed,
             expression_min_clip: plotConfig.expression_min_clip,
+            vmin: plotConfig.vmin,  // User-defined expression colorbar bounds
+            vmax: plotConfig.vmax,
             disable_save: !apiCallsMixin.sessionId && this.isZoomed,  // If not logged in, then do not allow saving the display
         }
 

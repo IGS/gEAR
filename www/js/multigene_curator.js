@@ -33,6 +33,8 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
         , "js-dash-secondary": "secondary_col"
         , "js-dash-color-palette": "colorscale"
         , "js-dash-reverse-palette": "reverse_colorscale"
+        , "js-dash-vmin": "vmin"
+        , "js-dash-vmax": "vmax"
         , "js-dash-distance-metric": "distance_metric"
         , "js-dash-matrixplot": "matrixplot"
         , "js-dash-center-mean": "center_around_zero"
@@ -180,6 +182,8 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
                     targetElt.closest(".is-justify-content-space-between").remove();
                 }
             }
+            // Remove colorscale min/max options since violin plots have no colorbar
+            document.querySelector(".js-dash-colorscale-range")?.remove();
 
             prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
             postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");

@@ -28,6 +28,7 @@ from .common import (
     get_adata_from_analysis,
     get_spatial_adata,
     order_by_time_point,
+    parse_color_bounds,
 )
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
@@ -101,7 +102,7 @@ class PlotlyData(Resource):
         Build a single-gene Plotly figure (bar, violin, scatter, line, etc.).
 
         Main request body keys: gene_symbol, plot_type, x_axis, y_axis, color_name,
-        colors, order, obs_filters, analysis, projection_id, return_image.
+        colors, order, obs_filters, analysis, projection_id, vmin, vmax, return_image.
 
         Returns:
             dict: "success", "message", "plot_json" (or a base64 "image" when
@@ -149,6 +150,8 @@ class PlotlyData(Resource):
         filters = req.get('obs_filters', {})   # Dict of lists
         projection_id = req.get('projection_id', None)    # projection id of csv output
         expression_min_clip = req.get('expression_min_clip', None)    # Minimum clip value for expression data
+        vmin = req.get('vmin', None)    # User-defined colorscale minimum
+        vmax = req.get('vmax', None)    # User-defined colorscale maximum
         colorblind_mode = req.get('colorblind_mode', False)
         return_image = req.get('return_image', False)   # Whether to return a base64 encoded image string in the response for direct use in the frontend
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
@@ -192,6 +195,13 @@ class PlotlyData(Resource):
         if not gene_symbol or not dataset_id:
             return_dict["success"] = -1
             return_dict["message"] = "Request needs both dataset id and gene symbol."
+            return return_dict
+
+        try:
+            vmin, vmax = parse_color_bounds(vmin, vmax)
+        except ValueError as pe:
+            return_dict["success"] = -1
+            return_dict["message"] = str(pe)
             return return_dict
 
         ds = geardb.get_dataset_by_id(dataset_id)
@@ -537,6 +547,8 @@ class PlotlyData(Resource):
                 vlines=vlines,
                 is_projection=projection_id is not None,
                 non_interactive=return_image,
+                vmin=vmin,
+                vmax=vmax,
                 **kwargs
             )
         except PlotError as pe:

@@ -43,7 +43,7 @@ Browser loads <domain>/panel/ws/panel_app (or panel_app_expanded)
 Panel server reads the cached CSV/NumPy files and renders the plot
 ```
 
-The `script` returned by the API points at `panel_app_expanded` when the request sets `is_zoomed`, otherwise `panel_app`. URL arguments passed to Panel include `dataset_id`, `gene_symbol`, `projection_id`, `expression_min_clip`, `nosave`, `filename`, and optionally `x_range_start`/`x_range_end`/`y_range_start`/`y_range_end`.
+The `script` returned by the API points at `panel_app_expanded` when the request sets `is_zoomed`, otherwise `panel_app`. URL arguments passed to Panel include `dataset_id`, `gene_symbol`, `projection_id`, `expression_min_clip`, `nosave`, `filename`, and optionally `vmin`/`vmax` (expression colorbar bounds for the spatial and UMAP expression plots, also kept in HTML downloads) and `x_range_start`/`x_range_end`/`y_range_start`/`y_range_end`.
 
 A second endpoint, `POST /api/plot/<dataset_id>/spatial_scanpy` (`www/api/resources/spatial_scanpy_data.py`), produces static Scanpy images and does not use the Panel server.
 

@@ -222,6 +222,109 @@ def test_blank_or_numeric_option_plots(mg_client, value):
     assert result["success"] == 1, result["message"]
 
 
+# ---------------------------------------------------------------- colorscale bounds (#1166)
+
+@pytest.mark.parametrize("vmin, vmax, expected", [
+    (None, None, (None, None)),
+    ("", "  ", (None, None)),
+    (0, None, (0.0, None)),            # 0 is a real bound, not "unset"
+    ("0.5", "2", (0.5, 2.0)),          # the curators send strings
+    (-1, 3, (-1.0, 3.0)),
+])
+def test_parse_color_bounds(vmin, vmax, expected):
+    assert common.parse_color_bounds(vmin, vmax) == expected
+
+
+@pytest.mark.parametrize("vmin, vmax, message", [
+    ("abc", None, "must be numbers"),
+    (None, [1], "must be numbers"),
+    (True, None, "must be numbers"),
+    ("nan", None, "must be numbers"),
+    (None, "inf", "must be numbers"),
+    (2, 2, "Maximum cap value must be greater"),
+    (3, 1, "Maximum cap value must be greater"),
+])
+def test_parse_color_bounds_rejects_bad_values(vmin, vmax, message):
+    with pytest.raises(ValueError, match=message):
+        common.parse_color_bounds(vmin, vmax)
+
+
+@pytest.mark.parametrize("vmin, vmax, expected", [
+    ("0", 0.0, (None, None)),
+    (0, "4", (None, 4.0)),
+    ("-1", 0, (-1.0, None)),
+])
+def test_parse_color_bounds_zero_is_unset(vmin, vmax, expected):
+    """The SVG curator sends 0 for an empty field, so 0 is unset there and is not compared."""
+    assert common.parse_color_bounds(vmin, vmax, zero_is_unset=True) == expected
+
+
+def heatmap_trace(result):
+    (trace,) = [t for t in result["plot_json"]["data"] if t["type"] == "heatmap"]
+    return trace
+
+
+def test_heatmap_colorscale_bounds(mg_client):
+    """#1166: vmin/vmax set the heatmap's zmin/zmax, in the log2 units shown on the colorbar."""
+    trace = heatmap_trace(mg_plot(mg_client, vmin="1", vmax="2.5"))
+    assert (trace["zmin"], trace["zmax"]) == (1.0, 2.5)
+
+    # Defaults are 0 to the data maximum (G2 mean of cluster b is (6 + 8) / 2)
+    trace = heatmap_trace(mg_plot(mg_client, matrixplot=True))
+    assert trace["zmin"] == 0
+    assert trace["zmax"] == pytest.approx(np.log2(7 + 1))
+
+
+@pytest.mark.parametrize("body, expected", [
+    ({"vmax": 2}, (-2.0, 2.0)),             # a single bound is mirrored to keep zero centered
+    ({"vmin": "-3"}, (-3.0, 3.0)),
+    ({"vmin": -1, "vmax": 4}, (-1.0, 4.0)),  # two bounds are used as given
+])
+def test_centered_heatmap_colorscale_bounds(mg_client, body, expected):
+    trace = heatmap_trace(mg_plot(mg_client, center_around_zero=True, **body))
+    assert (trace["zmin"], trace["zmax"]) == expected
+
+
+def test_centered_heatmap_bounds_must_straddle_zero(mg_client):
+    result = mg_plot(mg_client, center_around_zero=True, vmin=1, vmax=4)
+    assert result["success"] == -1
+    assert "minimum must be below zero" in result["message"]
+
+
+def test_dotplot_colorscale_bounds(mg_client):
+    """#1166: vmin/vmax set the dot plot's marker cmin/cmax; the default min stays 0."""
+    result = mg_plot(mg_client, plot_type="dotplot", vmax=2)
+    assert result["success"] == 1, result["message"]
+    marker = result["plot_json"]["data"][0]["marker"]
+    assert (marker["cmin"], marker["cmax"]) == (0, 2.0)
+
+
+@pytest.mark.parametrize("plot_type, body, expected", [
+    ("heatmap", {"vmin": "abc"}, "The vmin and vmax parameters must be numbers."),
+    ("heatmap", {"vmin": 3, "vmax": 1}, "Maximum cap value must be greater than minimum cap value."),
+    ("dotplot", {"vmax": -1}, "Colorscale minimum value (0) must be less than the maximum value (-1.0)."),
+])
+def test_bad_mg_colorscale_bounds_give_clear_error(mg_client, plot_type, body, expected):
+    result = mg_plot(mg_client, plot_type=plot_type, **body)
+    assert result == {"success": -1, "message": expected}
+
+
+def test_single_gene_colorscale_bounds(monkeypatch):
+    """#1166: vmin/vmax bound the coloraxis of a continuous color series."""
+    result = embedding_plot(monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2", color_name="raw_value",
+                            color_palette="Viridis", vmin="15", vmax="35")
+    assert result["success"] == 1, result["message"]
+    coloraxis = result["plot_json"]["layout"]["coloraxis"]
+    assert (coloraxis["cmin"], coloraxis["cmax"]) == (15.0, 35.0)
+
+
+def test_single_gene_bad_colorscale_bounds_give_clear_error(monkeypatch):
+    result = embedding_plot(monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2", color_name="raw_value",
+                            vmin="5", vmax="abc")
+    assert result["success"] == -1
+    assert result["message"] == "The vmin and vmax parameters must be numbers."
+
+
 # ---------------------------------------------------------------- single-gene plots (plotly_data)
 
 @pytest.mark.parametrize("name", ["PC1", "condition"])

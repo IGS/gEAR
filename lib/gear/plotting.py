@@ -421,6 +421,8 @@ def generate_plot(
     y_title: str | None = None,
     is_projection: bool = False,
     non_interactive: bool = False,  # If True, will skip certain formatting that causes issues for static images (e.g. truncated axis labels)
+    vmin: float | None = None,  # User-defined colorscale minimum (continuous color or contour only)
+    vmax: float | None = None,  # User-defined colorscale maximum (continuous color or contour only)
     **kwargs: dict,
 ) -> go.Figure:
     """Generates and returns figure for facet grid."""
@@ -523,6 +525,16 @@ def generate_plot(
     if plot_type in ["strip", "box", "violin", "contour", "line"]:
         plotting_args.pop("color_continuous_scale", None)
 
+    # Bound the continuous colorscale if the user set a min and/or max.
+    # Plotly Express needs both ends, so fill a missing one from the data.
+    if (vmin is not None or vmax is not None) and "color_continuous_scale" in plotting_args \
+        and color_name and pd.api.types.is_numeric_dtype(df[color_name]):
+        color_min = vmin if vmin is not None else float(df[color_name].min())
+        color_max = vmax if vmax is not None else float(df[color_name].max())
+        if color_min >= color_max:
+            raise PlotError("Colorscale minimum value must be less than the maximum value ({}).".format(color_max))
+        plotting_args["range_color"] = [color_min, color_max]
+
     if plot_type in ["bar"]:
         plotting_args["error_y"] = "std" if "std" in df.columns else None
 
@@ -548,6 +560,12 @@ def generate_plot(
         if z == "raw_value":
             kwargs["traces"]["zmin"] = 0.0
             kwargs["traces"]["zmax"] = max(df[z].tolist())
+        # User-defined bounds override the defaults. zmin and zmax must be set together.
+        if vmin is not None or vmax is not None:
+            kwargs["traces"]["zmin"] = vmin if vmin is not None else kwargs["traces"].get("zmin", float(df[z].min()))
+            kwargs["traces"]["zmax"] = vmax if vmax is not None else kwargs["traces"].get("zmax", float(df[z].max()))
+            if kwargs["traces"]["zmin"] >= kwargs["traces"]["zmax"]:
+                raise PlotError("Colorscale minimum value must be less than the maximum value ({}).".format(kwargs["traces"]["zmax"]))
 
     ### CREATE THE PLOT
 

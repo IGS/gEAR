@@ -27,6 +27,7 @@ from .common import (
     get_adata_from_analysis,
     get_spatial_adata,
     order_by_time_point,
+    parse_color_bounds,
 )
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
@@ -109,7 +110,7 @@ class MGPlotlyData(Resource):
         Build a multigene Plotly figure from the request options.
 
         Main request body keys: plot_type, gene_symbols, analysis, obs_filters,
-        primary_col, secondary_col, sort_order, colorscale, plus plot-type-specific
+        primary_col, secondary_col, sort_order, colorscale, vmin, vmax, plus plot-type-specific
         options (heatmap clustering, volcano/quadrant comparison conditions and cutoffs).
 
         Returns:
@@ -132,6 +133,8 @@ class MGPlotlyData(Resource):
         sort_order = req.get('sort_order', {})
         colorscale = req.get('colorscale', None)    # If None, this can override the "reverse_colorscale" param by using defaults.
         reverse_colorscale = req.get('reverse_colorscale', False)
+        vmin = req.get('vmin', None)    # User-defined colorscale minimum (dotplot and heatmap)
+        vmax = req.get('vmax', None)    # User-defined colorscale maximum (dotplot and heatmap)
         # Heatmap opts
         clusterbar_fields = req.get('clusterbar_fields', [])
         subsample_limit = req.get('subsample_limit', 0)
@@ -158,6 +161,13 @@ class MGPlotlyData(Resource):
             return {
                 'success': -1,
                 'message': str(pe),
+            }
+        try:
+            vmin, vmax = parse_color_bounds(vmin, vmax)
+        except ValueError as ve:
+            return {
+                'success': -1,
+                'message': str(ve),
             }
         query_condition = req.get('query_condition', None)
         ref_condition = req.get('ref_condition', None)
@@ -554,7 +564,14 @@ class MGPlotlyData(Resource):
             if colorblind_mode:
                 colorscale = CONTINUOUS_CMAP
 
-            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale, non_interactive=return_image)
+            try:
+                fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale,
+                                         non_interactive=return_image, vmin=vmin, vmax=vmax)
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
 
         elif plot_type == "heatmap":
 
@@ -662,6 +679,8 @@ class MGPlotlyData(Resource):
                     , hide_gene_labels
                     , None if matrixplot else obs_id_col
                     , colorblind=bool(colorblind_mode)
+                    , vmin=vmin
+                    , vmax=vmax
                     )
             except PlotError as pe:
                 return {

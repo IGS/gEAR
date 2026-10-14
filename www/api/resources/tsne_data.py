@@ -44,7 +44,7 @@ if typing.TYPE_CHECKING:
     from matplotlib.colors import Colormap
     from matplotlib.figure import Figure
 
-from .common import clip_expression_values, create_projection_adata
+from .common import clip_expression_values, create_projection_adata, parse_color_bounds
 
 sc.settings.verbosity = 0
 
@@ -94,8 +94,9 @@ parser.add_argument("flip_y", type=inputs.boolean, default=False, location="json
 parser.add_argument("horizontal_legend", type=inputs.boolean, default=False, location="json")
 parser.add_argument("marker_size", type=inputs.positive, default=None)
 parser.add_argument("center_around_median", type=inputs.boolean, default=False, location="json")
-parser.add_argument('vmax', type=float, default=None)
-parser.add_argument('vmin', type=float, default=None)
+# Validated by parse_color_bounds, so a bad value gets a clear message instead of a 400
+parser.add_argument('vmax', type=str, default=None)
+parser.add_argument('vmin', type=str, default=None)
 parser.add_argument("make_zero_gray", type=inputs.boolean, default=True, location="json")  # Keep with old plot styles
 parser.add_argument("enforce_equal_aspect", type=inputs.boolean, default=False, location="json")
 parser.add_argument("obs_filters", type=dict, default={}, location="json")  # dict of lists
@@ -767,8 +768,8 @@ def generate_tsne_figure(
     colors: dict = {},
     colorblind_mode: bool = False,
     center_around_median: bool = False,
-    vmax: float | None = None,
-    vmin: float | None = None,
+    vmax: float | str | None = None,
+    vmin: float | str | None = None,
     expression_palette: str = "viridis",
     reverse_palette: bool = False,
     high_dpi: bool = False,
@@ -823,10 +824,12 @@ def generate_tsne_figure(
         Whether to use a colorblind-friendly palette.
     center_around_median : bool
         Whether to center the color scale around the median expression.
-    vmax: float or None
+    vmax: float, str or None
         Maximum expression value for color scaling. Applies to expression panels only.
-    vmin: float or None
+        A numeric string is accepted; None or "" means unset.
+    vmin: float, str or None
         Minimum expression value for color scaling. Applies to expression panels only.
+        A numeric string is accepted; None or "" means unset.
     expression_palette : str
         Name of the color palette for gene expression.
     reverse_palette : bool
@@ -865,6 +868,11 @@ def generate_tsne_figure(
     dataset_id = ana.dataset_id
     if not dataset_id:
         return {"success": -1, "message": "Request needs a dataset id."}
+
+    try:
+        vmin, vmax = parse_color_bounds(vmin, vmax)
+    except ValueError as ve:
+        return {"success": -1, "message": str(ve)}
 
     try:
         selected = filter_adata_genes(adata, gene_symbols)
@@ -935,27 +943,16 @@ def generate_tsne_figure(
     if max_columns:
         max_columns = int(max_columns)
 
-    # These work with a string but want to safeguard
-    if vmax:
-        vmax = float(vmax)
-        if plot_vcenter and vmax <= plot_vcenter:
-            return {
-                "success": -1,
-                "message": "Median expression value is equal to maximum cap value. Please disable centering or adjust maximum cap.",
-            }
-
-    if vmin:
-        vmin = float(vmin)
-        if plot_vcenter and vmin >= plot_vcenter:
-            return {
-                "success": -1,
-                "message": "Median expression value is equal to minimum cap value. Please disable centering or adjust minimum cap.",
-            }
-
-    if vmax and vmin and vmax <= vmin:
+    if plot_vcenter and vmax is not None and vmax <= plot_vcenter:
         return {
             "success": -1,
-            "message": "Maximum cap value must be greater than minimum cap value.",
+            "message": "Median expression value is equal to maximum cap value. Please disable centering or adjust maximum cap.",
+        }
+
+    if plot_vcenter and vmin is not None and vmin >= plot_vcenter:
+        return {
+            "success": -1,
+            "message": "Median expression value is equal to minimum cap value. Please disable centering or adjust minimum cap.",
         }
 
     # Colorize logic (shared, but with some differences for single/multi)
