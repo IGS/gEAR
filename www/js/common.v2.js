@@ -882,7 +882,8 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
             for (const attr of [...el.attributes]) {
                 const name = attr.name.toLowerCase();
                 const value = attr.value.trim().toLowerCase();
-                if (name.startsWith("on") || (["href", "src", "xlink:href"].includes(name) && value.startsWith("javascript:"))) {
+                const blockedSchemes = ["javascript:", "data:", "vbscript:"];
+                if (name.startsWith("on") || (["href", "src", "xlink:href"].includes(name) && blockedSchemes.some((scheme) => value.startsWith(scheme)))) {
                     el.removeAttribute(attr.name);
                 }
             }
