@@ -118,8 +118,6 @@ export class TileGrid {
         // sort by grid position
         this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
 
-        const specialRows = new Set();
-
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
             // Get HTML for the tile
@@ -134,20 +132,6 @@ export class TileGrid {
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
             tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
-        }
-
-        // Set grid-template-rows for special rows
-        // ? This feels hacky... this property could get crazy long if there are a lot of rows.
-        if (specialRows.size > 0) {
-            const uniqueRows = [...specialRows];
-            let gridTemplateRows = "";
-            const maxStartRow = Math.max(...this.tiles.map(t => t.tile.startRow));
-            // Normal datasets get "auto", gosling and spatial datasets get "1fr"
-            for (let i = 1; i <= maxStartRow; i++) {
-                gridTemplateRows += uniqueRows.includes(i) ? "1fr " : "auto ";
-            }
-            selectorElt.style.gridTemplateRows = gridTemplateRows;
-
         }
     }
 
@@ -1375,6 +1359,9 @@ class DatasetTile {
         this.currentPlotType = null;
         this.svg = null;
 
+        // Clear inline styles that a previous display type (spatial, gosling) set on this tile
+        this.resetTileStyles();
+
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
         if (displayId === null) {
@@ -1597,10 +1584,11 @@ class DatasetTile {
                 }
             } else if (display.plot_type === "gosling") {
 
-                // Unset the autoGridRows of the parent selector
-                const parentSelector = this.parentTileGrid.selector;
-                if (parentSelector) {
-                    document.querySelector(parentSelector).style.gridAutoRows = "unset";
+                // Single-dataset views show the whole Gosling embedding, so lift this tile's max-height.
+                // Only this tile is changed; changing the grid's rows would resize every other tile mid-render.
+                if (this.parentTileGrid.type === "dataset") {
+                    const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+                    if (tileElement) tileElement.style.maxHeight = "none";
                 }
 
                 await this.renderGoslingDisplay(display, otherOpts);
@@ -1900,11 +1888,11 @@ class DatasetTile {
 
         // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
-        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
+        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "config");
         Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, customConfig);
         // ! Occasionally get a "something went wrong with axis scaling" error. This seems to arise if the colorbar is too small
 
-        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
         // Attach tooltips for any truncated axis labels
@@ -1972,9 +1960,9 @@ class DatasetTile {
         }
         // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
-        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
+        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "config");
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
-        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "layout");
         Plotly.relayout(plotlyPreview.id, customLayout);
 
         // Attach tooltips for any truncated axis labels
@@ -2330,7 +2318,7 @@ class DatasetTile {
             // Enforce boundaries so Panel's stretch_both has walls to push against
             cardImage.style.display = "block";
             cardImage.style.width = "100%";
-            if (!self.isZoomed) {
+            if (!this.isZoomed) {
                 cardImage.style.minHeight = "360px";
             }
 
@@ -2542,6 +2530,24 @@ class DatasetTile {
         }
         this.controller = new AbortController(); // Create new controller for new set of frames
 
+    }
+
+    /**
+     * Clears inline styles that display-specific renderers set on this tile, so they do not carry
+     * over when the tile shows a different display type. The .card-image height is left alone,
+     * since resizeCardImage() and renderOrthologDropdown() manage it.
+     */
+    resetTileStyles() {
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!tileElement) return;
+        tileElement.style.maxHeight = "";    // set for gosling displays
+
+        const cardImage = tileElement.querySelector(".card-image");
+        if (!cardImage) return;
+        // set for spatial panel displays
+        for (const prop of ["display", "width", "minHeight", "position"]) {
+            cardImage.style[prop] = "";
+        }
     }
 
     /**
