@@ -18,6 +18,13 @@
           -->
         <base href="/" />
 
+        <!-- First-time visitors (no returning-visitor or session cookie) are sent to the landing page, which sets the cookie. -->
+        <script>
+          if (!/(^|;\s*)(gear_returning_visitor|gear_session_id)=/.test(document.cookie)) {
+            window.location.replace('/landing.html');
+          }
+        </script>
+
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
         <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css" />

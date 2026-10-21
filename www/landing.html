@@ -6,8 +6,8 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>gEAR template page</title>
-        <meta name="description" content="">
+        <title>gEAR - Explore gene expression data</title>
+        <meta name="description" content="Search gene expression across public datasets, compare conditions, and share your own data. No coding required.">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
         <meta http-equiv="Expires" content="-1">
@@ -33,83 +33,73 @@
           <header id="header-c" class="is-fullwidth">
             <div class="columns is-gapless is-vcentered">
               <div class="column is-2">
-                <img id="landing-logo" class="pt-2 pl-3" src="/img/logos/gear-B-3.png" alt="gEAR logo" />
+                <a href="/"><img id="landing-logo" class="pt-2 pl-3" src="/img/logos/gear-B-3.png" alt="gEAR home" /></a>
               </div>
               <div class="column is-10 has-text-right">
-                <button href="login.html" class="button is-small is-ghost">Login</button>
-                <button href="register.html" class="button is-small is-primary is-outlined is-rounded mr-3">Register</button>
+                <a href="/index.html" class="button is-small is-ghost">Skip to portal</a>
+                <a href="/create_account.html" class="button is-small is-primary is-outlined is-rounded mr-3">Create account</a>
               </div>
             </div>
           </header>
 
           <section id="primary-intro-c" class="columns is-gapless is-vcentered">
-            <div class="column is-6">
-              &nbsp;
-            </div>
+            <div class="column is-6">&nbsp;</div>
             <div class="column is-4">
-              <h1 class="title">Explore gene expression with over 1000 datasets!</h1>
+              <h1 class="title">Where is your gene expressed?</h1>
               <p class="subtitle mt-1">
-                gEAR is a one-stop portal for creating visualizations at the press of a button,
-                for all your gene analysis needs!
+                Search a gene and instantly see its expression across public datasets.
+                No account, no coding.
               </p>
-              <div class="buttons">
-                <button class="button is-small is-primary is-outlined is-rounded">Create an Account</button>
-                <button class="button is-small is-ghost">Explore as a guest</button>
-              </div>
+              <form id="hero-search-form" action="/expression.html" method="get" role="search">
+                <label class="label is-sr-only" for="hero-gene-symbol">Gene symbol</label>
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input id="hero-gene-symbol" name="gene_symbol" class="input" type="text" placeholder="e.g. Pou4f3, SOX2, GAPDH" autocomplete="off" required />
+                  </div>
+                  <div class="control">
+                    <button type="submit" class="button is-primary">Search</button>
+                  </div>
+                </div>
+              </form>
+              <p class="help">
+                Or <a href="/dataset_explorer.html">browse all datasets</a>
+              </p>
             </div>
-            <div class="column is-2">
-              &nbsp;
-            </div>
+            <div class="column is-2">&nbsp;</div>
           </section>
         </section>
 
         <section id="main-c" class="pl-0 pt-0">
-          <section id="content-c" data-nav-link="workspace">
+          <section id="content-c">
 
             <section id="justification-c" class="columns is-gapless">
-              <div class="column is-3">
-                &nbsp;
-              </div>
+              <div class="column is-3">&nbsp;</div>
               <div class="column is-6">
-                <h1 class="title has-text-centered">Why gEAR?</h1>
+                <h2 class="title has-text-centered">Get started in three steps</h2>
                 <p class="subtitle has-text-centered mt-1">
-                  With gEAR, you can easily search gene expression data and analyze them without 
-                  any coding. You can also browse hundreds of public datasets.
+                  Most visitors begin with a gene they care about. From there, go as deep as you like.
                 </p>
               </div>
-              <div class="column is-3">
-                &nbsp;
-              </div>
+              <div class="column is-3">&nbsp;</div>
             </section>
 
             <section id="card-collection-c" class="columns is-gapless">
-              <div class="column is-3">
-                &nbsp;
-              </div>
+              <div class="column is-3">&nbsp;</div>
               <div class="column is-6">
                 <div id="landing-cards" class="columns">
                   <div class="column is-4 mt-6">
                     <div class="card">
                       <div class="card-image">
-                        <figure class="image">
-                          <img
-                            src="/img/guide_image_mag_dna.png"
-                            alt="DNA magnifying glass icon"
-                          />
-                        </figure>
+                        <figure class="image"><img src="/img/guide_image_mag_dna.png" alt="Magnifying glass over DNA" /></figure>
                       </div>
                       <div class="card-content">
                         <div class="content has-text-centered">
-                          <h2 class="title is-3">Search & Explore</h2>
-                          <p class="subtitle">
-                            Search genes in curated displays at the click of a button!
-                          </p>
-                          <button class="button is-ghost is-outlined is-small mt-3">
+                          <h2 class="title is-3">1. Search</h2>
+                          <p class="subtitle">Enter one or more genes and see expression in curated displays, side by side across datasets.</p>
+                          <a class="button is-primary is-outlined is-small mt-3" href="/expression.html">
                             <span>Gene Expression Search</span>
-                            <span class="icon is-small">
-                              <i class="mdi mdi-arrow-right"></i>
-                            </span>
-                          </button>
+                            <span class="icon is-small"><i class="mdi mdi-arrow-right" aria-hidden="true"></i></span>
+                          </a>
                         </div>
                       </div>
                     </div>
@@ -117,25 +107,16 @@
                   <div class="column is-4 mt-6">
                     <div class="card">
                       <div class="card-image">
-                        <figure class="image">
-                          <img
-                            src="/img/guide_image_bidirectional.png"
-                            alt="DNA magnifying glass icon"
-                          />
-                        </figure>
+                        <figure class="image"><img src="/img/guide_image_bidirectional.png" alt="Two-way arrows" /></figure>
                       </div>
                       <div class="card-content">
                         <div class="content has-text-centered">
-                          <h2 class="title is-3">Analyze & Save</h2>
-                          <p class="subtitle">
-                            Compare gene expression, create single- and multi-gene displays.
-                          </p>
-                          <button class="button is-ghost is-outlined is-small mt-3">
-                            <span>Single Cell Workbench</span>
-                            <span class="icon is-small">
-                              <i class="mdi mdi-arrow-right"></i>
-                            </span>
-                          </button>
+                          <h2 class="title is-3">2. Compare</h2>
+                          <p class="subtitle">Compare conditions or cell types within a dataset, or build your own multi-gene displays.</p>
+                          <a class="button is-primary is-outlined is-small mt-3" href="/compare_datasets.html">
+                            <span>Comparison Tool</span>
+                            <span class="icon is-small"><i class="mdi mdi-arrow-right" aria-hidden="true"></i></span>
+                          </a>
                         </div>
                       </div>
                     </div>
@@ -143,112 +124,89 @@
                   <div class="column is-4 mt-6">
                     <div class="card">
                       <div class="card-image">
-                        <figure class="image">
-                          <img
-                            src="/img/guide_image_dna_folder.png"
-                            alt="DNA magnifying glass icon"
-                          />
-                        </figure>
+                        <figure class="image"><img src="/img/guide_image_dna_folder.png" alt="DNA in a folder" /></figure>
                       </div>
                       <div class="card-content">
                         <div class="content has-text-centered">
-                          <h2 class="title is-3">Upload & Share</h2>
-                          <p class="subtitle">
-                            Upload your dataset to gEAR to access the analysis tools.
-                          </p>
-                          <button class="button is-ghost is-outlined is-small mt-3">
-                            <span>Dataset Uploader</span>
-                            <span class="icon is-small">
-                              <i class="mdi mdi-arrow-right"></i>
-                            </span>
-                          </button>
+                          <h2 class="title is-3">3. Share your data</h2>
+                          <p class="subtitle">Create a free account to upload your own data, save displays and gene lists, and share them with collaborators.</p>
+                          <a class="button is-primary is-outlined is-small mt-3" href="/create_account.html">
+                            <span>Create a free account</span>
+                            <span class="icon is-small"><i class="mdi mdi-arrow-right" aria-hidden="true"></i></span>
+                          </a>
                         </div>
                       </div>
                     </div>
                   </div>
+                </div>
               </div>
-              <div class="column is-3">
-                &nbsp;
-              </div>
+              <div class="column is-3">&nbsp;</div>
             </section>
 
             <section id="banded-section-c" class="pt-6 pb-6">
               <section id="element-intro-c" class="columns is-gapless">
-                <div class="column is-3">
-                  &nbsp;
-                </div>
+                <div class="column is-3">&nbsp;</div>
                 <div class="column is-6">
-                  <h1 class="title has-text-centered">Explore the possibilities</h1>
+                  <h2 class="title has-text-centered">Tools for every question</h2>
                   <p class="subtitle has-text-centered mt-1">
-                    We have created pre-loaded analyses to show you what you can do with gEAR!
-                    Whether it's the Comparison Tool, Multi-gene Curator or any other tool, gEAR
-                    is here for all your analysis needs.
+                    Browsing and searching are open to everyone. An account is only needed to
+                    upload data and save your work.
                   </p>
                 </div>
-                <div class="column is-3">
-                  &nbsp;
-                </div>
+                <div class="column is-3">&nbsp;</div>
               </section>
               <section id="element-grid-c" class="columns is-gapless pt-6">
                 <div class="column is-2">&nbsp;</div>
                 <div class="column is-8">
                   <div class="tile is-ancestor">
-                    <div class="tile  is-vertical is-parent">
+                    <div class="tile is-vertical is-parent">
                       <div class="tile is-child box">
                         <div class="columns">
                           <div class="column is-7">
-                            <p class="title mb-2">My Workspace</p>
-                            <p class="description mb-2">
-                              Browse your personal workspace and continue your work from where you left!
-                            </p>
-                            <a class="tool-link" href="#">Try Now</a>
+                            <p class="title mb-2">Dataset Explorer</p>
+                            <p class="description mb-2">Browse public datasets by organism, tissue, and assay, and view them in one click.</p>
+                            <a class="tool-link" href="/dataset_explorer.html">Open Dataset Explorer</a>
                           </div>
                           <div class="column is-5">
-                            <img class="img-fluid" src="/img/workspace_screenshot.png" alt="Workspace screenshot" />
+                            <img class="img-fluid" src="/img/workspace_screenshot.png" alt="Dataset Explorer screenshot" />
                           </div>
                         </div>
                       </div>
                       <div class="tile is-child box">
                         <div class="columns">
                           <div class="column is-7">
-                            <p class="title mb-2">Multigene Curator</p>
-                            <p class="description mb-2">
-                              Generate custom graphical displays of your datasets.
-                            </p>
-                            <a class="tool-link" href="#">Try Now</a>
+                            <p class="title mb-2">Multi-gene Curator</p>
+                            <p class="description mb-2">Build heatmaps, dot plots and more for a set of genes across a dataset.</p>
+                            <a class="tool-link" href="/multigene_curator.html">Open Multi-gene Curator</a>
                           </div>
                           <div class="column is-5">
-                            <img class="img-fluid" src="/img/analyzer_composite_screenshot.png" alt="Multi-gene curator screenshot" />
+                            <img class="img-fluid" src="/img/analyzer_composite_screenshot.png" alt="Multi-gene Curator screenshot" />
                           </div>
                         </div>
                       </div>
                     </div>
-                    <div class="tile  is-vertical is-parent">
+                    <div class="tile is-vertical is-parent">
                       <div class="tile is-child box">
                         <div class="columns">
                           <div class="column is-7">
-                            <p class="title mb-2">Dataset Comparison</p>
-                            <p class="description mb-2">
-                              Quickly compare between two different conditions or cell types within a single dataset.
-                            </p>
-                            <a class="tool-link" href="#">Try Now</a>
+                            <p class="title mb-2">Comparison Tool</p>
+                            <p class="description mb-2">Find differentially expressed genes between two conditions or cell types in a dataset.</p>
+                            <a class="tool-link" href="/compare_datasets.html">Open Comparison Tool</a>
                           </div>
                           <div class="column is-5">
-                            <img class="img-fluid" src="/img/comparison_tool_screenshot.png" alt="Comparison tool screenshot" />
+                            <img class="img-fluid" src="/img/comparison_tool_screenshot.png" alt="Comparison Tool screenshot" />
                           </div>
                         </div>
                       </div>
                       <div class="tile is-child box">
                         <div class="columns">
                           <div class="column is-7">
-                            <p class="title mb-2">Dataset Upload</p>
-                            <p class="description mb-2">
-                              Add your dataset to gEAR and get started with your analysis!
-                            </p>
-                            <a class="tool-link" href="#">Try Now</a>
+                            <p class="title mb-2">Dataset Uploader</p>
+                            <p class="description mb-2">Bring your own data into gEAR (account required) and analyze it with the same tools.</p>
+                            <a class="tool-link" href="/upload_dataset.html">Open Dataset Uploader</a>
                           </div>
                           <div class="column is-5">
-                            <img class="img-fluid" src="/img/uploader_screenshot.png" alt="Uploader screenshot" />
+                            <img class="img-fluid" src="/img/uploader_screenshot.png" alt="Dataset Uploader screenshot" />
                           </div>
                         </div>
                       </div>
@@ -258,25 +216,31 @@
                 <div class="column is-2">&nbsp;</div>
               </section>
             </section>
-            
+
+            <section id="final-cta-c" class="columns is-gapless pt-6 pb-6">
+              <div class="column is-3">&nbsp;</div>
+              <div class="column is-6 has-text-centered">
+                <h2 class="title">Ready to dig in?</h2>
+                <p class="subtitle mt-1">Need help? Visit the <a href="https://github.com/IGS/gEAR/wiki">user guide</a> or <a href="/contact.html">contact us</a>.</p>
+                <div class="buttons is-centered">
+                  <a class="button is-primary is-rounded" href="/expression.html">Start searching</a>
+                  <a class="button is-primary is-outlined is-rounded" href="/create_account.html">Create an account</a>
+                </div>
+              </div>
+              <div class="column is-3">&nbsp;</div>
+            </section>
+
           </section><!-- end #content-c -->
-        </section> <!-- end #main-c -->
+        </section><!-- end #main-c -->
       </div>
       <footer>
         <div>
           <!-- content here TO BE inserted via common.js -->
         </div>
       </footer>
-
-      <script src="js/vendor/js.cookie.js"></script>
-
-      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-      <!--<script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>-->
-
-      <!-- Page-specific JS file here -->
-      <script>document.write('<script src="js/landing.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
+      <script>
+        // Mark this browser as having seen the landing page so index.html no longer redirects here.
+        document.cookie = 'gear_returning_visitor=1; path=/; max-age=31536000; SameSite=Lax';
+      </script>
     </body>
 </html>
