@@ -1,7 +1,7 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
+import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurrentUser, logErrorInConsole, openModal, triggerUrlDownload } from "../common.v2.js";
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 import { Citation } from "./citation.js";
@@ -118,8 +118,6 @@ export class TileGrid {
         // sort by grid position
         this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
 
-        const specialRows = new Set();
-
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
             // Get HTML for the tile
@@ -134,20 +132,6 @@ export class TileGrid {
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
             tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
-        }
-
-        // Set grid-template-rows for special rows
-        // ? This feels hacky... this property could get crazy long if there are a lot of rows.
-        if (specialRows.size > 0) {
-            const uniqueRows = [...specialRows];
-            let gridTemplateRows = "";
-            const maxStartRow = Math.max(...this.tiles.map(t => t.tile.startRow));
-            // Normal datasets get "auto", gosling and spatial datasets get "1fr"
-            for (let i = 1; i <= maxStartRow; i++) {
-                gridTemplateRows += uniqueRows.includes(i) ? "1fr " : "auto ";
-            }
-            selectorElt.style.gridTemplateRows = gridTemplateRows;
-
         }
     }
 
@@ -270,6 +254,14 @@ export class TileGrid {
         }
     }
 
+    /**
+     * Checks whether any tile in the grid is currently showing an SVG display.
+     * @returns {boolean} True if at least one tile's current display is an SVG.
+     */
+    hasSvgDisplay() {
+        return this.tiles.some((tile) => tile.currentPlotType === "svg");
+    }
+
     warnGeneAnnotationNotFound() {
         const warningMessage = "Searched gene(s) not found in our annotation database. Please search for another gene.";
         for (const tile of this.tiles) {
@@ -317,6 +309,7 @@ class DatasetTile {
         }
 
         this.svg = null; // The SVG element for the plot
+        this.currentPlotType = null;    // plot_type of the display currently rendered in this tile (e.g. "svg")
 
         // Projection information
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
@@ -983,6 +976,18 @@ class DatasetTile {
             });
         }
 
+        // Link downloads (bundle, h5ad, projection) get the metadata first, then the file at the link's current href.
+        // ("download-image" handlers are set up when the plot type is known.)
+        const metadataFirstTools = ["download-bundle", "download-h5ad", "download-projection"];
+        for (const item of dropdownItems) {
+            if (!metadataFirstTools.includes(item.dataset.tool)) continue;
+            item.addEventListener("click", async (event) => {
+                event.preventDefault();
+                const url = event.currentTarget.href;
+                await downloadWithMetadata(shareId, () => triggerUrlDownload(url));
+            });
+        }
+
         // Add links to the dropdown above the download-bundle item
         if (links.length) {
             const downloadBundle = dropdownContent.querySelector('.dropdown-item[data-tool="download-bundle"]');
@@ -1349,6 +1354,14 @@ class DatasetTile {
         // Since this method manipulates the geneSymbolInput, we need to store the original input
         this.geneInput = geneSymbolInput;
 
+        // Clear info about the previous display. renderSVG() sets this.svg again if the new display is an SVG,
+        // so pages do not try to rescore an SVG that is no longer shown.
+        this.currentPlotType = null;
+        this.svg = null;
+
+        // Clear inline styles that a previous display type (spatial, gosling) set on this tile
+        this.resetTileStyles();
+
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
         if (displayId === null) {
@@ -1440,7 +1453,7 @@ class DatasetTile {
                     newDownloadImage.classList.remove("is-hidden");
                     newDownloadImage.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialHTML(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadSpatialHTML(display));
                     });
                 }
                 return;
@@ -1472,6 +1485,7 @@ class DatasetTile {
         if (display.plot_type === "tsne") {
             display.plot_type = "tsne_static";
         }
+        this.currentPlotType = display.plot_type;
 
         // Add gene or genes to plot config
         if (this.type === "multi") {
@@ -1514,7 +1528,7 @@ class DatasetTile {
 
                     newDownloadImage.classList.remove("is-hidden");
                     newDownloadImage.addEventListener("click", async (event) => {
-                        await this.downloadPlotlyImage(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadPlotlyImage(display));
                     });
                 }
 
@@ -1535,7 +1549,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadScanpyImage(display, false);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadScanpyImage(display, false));
                     });
                 }
 
@@ -1550,7 +1564,7 @@ class DatasetTile {
 
                     newDownloadSVG.classList.remove("is-hidden");
                     newDownloadSVG.addEventListener("click", async (event) => {
-                        await this.downloadSVG(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadSVG(display));
                     });
                 }
 
@@ -1565,15 +1579,16 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialHTML(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadSpatialHTML(display));
                     });
                 }
             } else if (display.plot_type === "gosling") {
 
-                // Unset the autoGridRows of the parent selector
-                const parentSelector = this.parentTileGrid.selector;
-                if (parentSelector) {
-                    document.querySelector(parentSelector).style.gridAutoRows = "unset";
+                // Single-dataset views show the whole Gosling embedding, so lift this tile's max-height.
+                // Only this tile is changed; changing the grid's rows would resize every other tile mid-render.
+                if (this.parentTileGrid.type === "dataset") {
+                    const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+                    if (tileElement) tileElement.style.maxHeight = "none";
                 }
 
                 await this.renderGoslingDisplay(display, otherOpts);
@@ -1588,7 +1603,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadGoslingPNG(display);
+                        await downloadWithMetadata(this.dataset.share_id, () => this.downloadGoslingPNG(display));
                     });
                 }
 
@@ -1607,7 +1622,7 @@ class DatasetTile {
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
                             // get the download URL
-                            await this.downloadScanpyImage(display, true);
+                            await downloadWithMetadata(this.dataset.share_id, () => this.downloadScanpyImage(display, true));
                         });
 
                     }
@@ -1622,7 +1637,7 @@ class DatasetTile {
 
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
-                            await this.downloadPlotlyImage(display, true);
+                            await downloadWithMetadata(this.dataset.share_id, () => this.downloadPlotlyImage(display, true));
                         });
                     }
                 }
@@ -1636,6 +1651,10 @@ class DatasetTile {
             createCardMessage(this.tile.tileId, "danger", error.message);
         }
 
+        // Let the page know this tile's display changed (e.g. to show/hide SVG-only controls)
+        document.dispatchEvent(new CustomEvent("tile-display-rendered", {
+            detail: { tileId: this.tile.tileId, plotType: this.currentPlotType }
+        }));
     }
 
     /**
@@ -1869,11 +1888,11 @@ class DatasetTile {
 
         // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
-        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
+        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "config");
         Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, customConfig);
         // ! Occasionally get a "something went wrong with axis scaling" error. This seems to arise if the colorbar is too small
 
-        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
         // Attach tooltips for any truncated axis labels
@@ -1941,9 +1960,9 @@ class DatasetTile {
         }
         // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
-        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
+        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "config");
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
-        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "layout");
         Plotly.relayout(plotlyPreview.id, customLayout);
 
         // Attach tooltips for any truncated axis labels
@@ -2267,6 +2286,8 @@ class DatasetTile {
             projection_id: plotConfig.projection_id,
             is_zoomed: this.isZoomed,
             expression_min_clip: plotConfig.expression_min_clip,
+            vmin: plotConfig.vmin,  // User-defined expression colorbar bounds
+            vmax: plotConfig.vmax,
             disable_save: !apiCallsMixin.sessionId && this.isZoomed,  // If not logged in, then do not allow saving the display
         }
 
@@ -2297,7 +2318,7 @@ class DatasetTile {
             // Enforce boundaries so Panel's stretch_both has walls to push against
             cardImage.style.display = "block";
             cardImage.style.width = "100%";
-            if (!self.isZoomed) {
+            if (!this.isZoomed) {
                 cardImage.style.minHeight = "360px";
             }
 
@@ -2509,6 +2530,24 @@ class DatasetTile {
         }
         this.controller = new AbortController(); // Create new controller for new set of frames
 
+    }
+
+    /**
+     * Clears inline styles that display-specific renderers set on this tile, so they do not carry
+     * over when the tile shows a different display type. The .card-image height is left alone,
+     * since resizeCardImage() and renderOrthologDropdown() manage it.
+     */
+    resetTileStyles() {
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!tileElement) return;
+        tileElement.style.maxHeight = "";    // set for gosling displays
+
+        const cardImage = tileElement.querySelector(".card-image");
+        if (!cardImage) return;
+        // set for spatial panel displays
+        for (const prop of ["display", "width", "minHeight", "position"]) {
+            cardImage.style[prop] = "";
+        }
     }
 
     /**

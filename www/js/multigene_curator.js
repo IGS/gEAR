@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, createToast, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
+import { apiCallsMixin, getCurrentUser, createToast, GENE_LIST_MANAGER_LINK, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
 import { curatorCommon } from "./curator_common.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
@@ -33,6 +33,8 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
         , "js-dash-secondary": "secondary_col"
         , "js-dash-color-palette": "colorscale"
         , "js-dash-reverse-palette": "reverse_colorscale"
+        , "js-dash-vmin": "vmin"
+        , "js-dash-vmax": "vmax"
         , "js-dash-distance-metric": "distance_metric"
         , "js-dash-matrixplot": "matrixplot"
         , "js-dash-center-mean": "center_around_zero"
@@ -180,6 +182,8 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
                     targetElt.closest(".is-justify-content-space-between").remove();
                 }
             }
+            // Remove colorscale min/max options since violin plots have no colorbar
+            document.querySelector(".js-dash-colorscale-range")?.remove();
 
             prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
             postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");
@@ -1779,7 +1783,7 @@ const updateGroupOptions = (classSelector, groupsArray) => {
 };
 
 const updateUIAfterGeneCartSaveSuccess = (gc) => {
-    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+    createToast("Gene cart saved successfully.", "is-success", true, { link: GENE_LIST_MANAGER_LINK });
 };
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {

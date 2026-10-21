@@ -31,6 +31,9 @@ LIGHT24_COLORS = px.colors.qualitative.Light24
 SAFE_COLORS = px.colors.qualitative.Safe
 VIVID_COLORS = px.colors.qualitative.Vivid
 
+# Swatch name that colorblind mode passes as a colorscale (see gear.colorblind)
+COLORBLIND_SWATCH = "colorblind"
+
 color_swatch_map = {
     "alphabet": ALPHABET_COLORS
     , "bold": BOLD_COLORS
@@ -39,6 +42,7 @@ color_swatch_map = {
     , "light24": LIGHT24_COLORS
     , "safe": SAFE_COLORS
     , "vivid": VIVID_COLORS
+    , COLORBLIND_SWATCH: list(CATEGORICAL_PALETTE)
 }
 
 PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
@@ -52,10 +56,48 @@ class PlotError(Exception):
         self.message = message
         super().__init__(self.message)
 
+def _colorscale_bounds(default_min: float, default_max: float, vmin: float | None=None, vmax: float | None=None) -> tuple[float, float]:
+    """Return the (min, max) colorscale bounds, using the user-defined vmin/vmax where given."""
+    color_min = vmin if vmin is not None else default_min
+    color_max = vmax if vmax is not None else default_max
+    if color_min >= color_max:
+        raise PlotError("Colorscale minimum value ({}) must be less than the maximum value ({}).".format(color_min, color_max))
+    return color_min, color_max
+
+def _heatmap_colorscale_bounds(values_max: float, center_around_zero: bool=False, vmin: float | None=None, vmax: float | None=None) -> tuple[float | None, float | None, float | None]:
+    """
+    Return the (zmin, zmax, zmid) heatmap colorscale settings.
+
+    Plotly ignores zmid once zmin and zmax are set, so when centering around zero a single
+    user-defined bound is mirrored to keep zero in the middle of the colorscale.
+    Two bounds are used as given and must be on either side of zero.
+    """
+    if not center_around_zero:
+        zmin, zmax = _colorscale_bounds(0, values_max, vmin, vmax)
+        return zmin, zmax, None
+
+    if vmin is None and vmax is None:
+        return None, None, 0
+
+    if vmin is not None and vmax is not None:
+        if not vmin < 0 < vmax:
+            raise PlotError("When centering around zero, the colorscale minimum must be below zero and the maximum above zero.")
+        return vmin, vmax, None
+
+    bound = abs(vmin if vmin is not None else vmax)
+    if bound == 0:
+        raise PlotError("When centering around zero, the colorscale bound cannot be zero.")
+    return -bound, bound, None
+
 ### Dotplot fxns
 
-def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Magma", reverse_colorscale:bool=False, non_interactive:bool=False):
-    """Creates a dot plot.  Returns the figure."""
+def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Magma", reverse_colorscale:bool=False, non_interactive:bool=False,
+                    vmin:float|None=None, vmax:float|None=None):
+    """Creates a dot plot.  Returns the figure.
+
+    vmin and vmax are user-defined colorscale bounds in the log-transformed units shown on the colorbar.
+    By default the colorscale runs from 0 to the highest mean expression.
+    """
     # x = group
     # y = gene
     # color = mean expression
@@ -77,6 +119,9 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     if not colorscale:
         colorscale="Magma"
 
+    # Anchor colorscale min at 0 unless the user set bounds
+    cmin, cmax = _colorscale_bounds(0, float(mean.max()), vmin, vmax)
+
     hover_template = "N: %{text}<br>Percent: %{marker.size:.2f}<br>Mean: %{marker.color:.2f}"
     if non_interactive:
         hover_template = None
@@ -89,8 +134,8 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
         , mode="markers"
         , marker=dict(
             color=mean
-            , cmin=0    # Anchor colorscale min at 0
-            , cmax=float(mean.max())    # Required if cmin is set.
+            , cmin=cmin
+            , cmax=cmax    # Required if cmin is set.
             , colorscale=colorscale
             , reversescale=reverse_colorscale
             , size=df["percent"]
@@ -524,6 +569,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
                     distance_metric:str="euclidean", colorscale:str|None="cividis", reverse_colorscale:bool=False,
                     title:str|None=None, hide_obs_labels:bool=False, hide_gene_labels:bool=False,
                     obs_index_col:str|None=None, colorblind:bool=False,
+                    vmin:float|None=None, vmax:float|None=None,
                     ) -> go.Figure:
     """
     Create a gene-by-observation expression heatmap, with optional dendrograms and clusterbars.
@@ -551,13 +597,17 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
         obs_index_col (str, optional): Column that uniquely identifies observations, to plot each
             observation individually instead of averaging within groups.
         colorblind (bool, optional): Use the colorblind-friendly palette for clusterbars. Defaults to False.
+        vmin (float, optional): User-defined colorscale minimum, in the log-transformed units shown on the colorbar.
+        vmax (float, optional): User-defined colorscale maximum, in the log-transformed units shown on the colorbar.
+            When centering around zero, a single bound is mirrored (i.e. vmax=2 gives -2 to 2), and
+            two bounds must be on either side of zero.
 
     Returns:
         go.Figure: The heatmap figure.
 
     Raises:
         ValueError: If distance_metric is not a valid pdist metric.
-        PlotError: If a clusterbar field is not among the heatmap columns.
+        PlotError: If a clusterbar field is not among the heatmap columns, or the colorscale bounds are invalid.
     """
 
     # df is long form
@@ -577,6 +627,9 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
         values = np.log2(values)
 
     df["value"] = values
+
+    # Check the colorscale bounds before the more expensive pivoting and clustering
+    zmin, zmax, zmid = _heatmap_colorscale_bounds(float(values.max()), center_around_zero, vmin, vmax)
 
     pivot_cols = df.index.name
     pivot_col_fields = groupby_filters + clusterbar_fields
@@ -740,9 +793,9 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
         ),
         reversescale=reverse_colorscale,
         colorscale=colorscale,
-        zmin=0 if not center_around_zero else None,
-        zmax=float(values.max()) if not center_around_zero else None,
-        zmid=0 if center_around_zero else None,
+        zmin=zmin,
+        zmax=zmax,
+        zmid=zmid,
         name="expression"
     )
 
@@ -1087,16 +1140,23 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
 
     return df
 
+def _split_condition(condition):
+    """Split a "<obs column>;-;<value>" condition into (column, value)."""
+    key, sep, val = condition.partition(';-;')
+    if not sep:
+        raise PlotError(f"Condition '{condition}' is not in the expected '<observation group>;-;<value>' format.")
+    return key, val
+
 def validate_quadrant_conditions(obs_df, control_condition, compare_group1, compare_group2):
     """Ensure quadrant conditions make sense."""
     if not (control_condition and compare_group1 and compare_group2):
-        raise PlotError('Must pass three conditions in order to generate a volcano plot.')
+        raise PlotError('Must pass three conditions in order to generate a quadrant plot.')
 
-    (control_key, control_val) = control_condition.split(';-;')
-    (compare1_key, compare1_val) = compare_group1.split(';-;')
-    (compare2_key, compare2_val) = compare_group2.split(';-;')
+    (control_key, control_val) = _split_condition(control_condition)
+    (compare1_key, compare1_val) = _split_condition(compare_group1)
+    (compare2_key, compare2_val) = _split_condition(compare_group2)
 
-    if control_key != compare1_key and control_key != compare2_key:
+    if control_key != compare1_key or control_key != compare2_key:
         raise PlotError("All comparable conditions must came from same observation group.")
 
     if control_key not in obs_df.columns:
@@ -1539,8 +1599,8 @@ def validate_volcano_conditions(obs_df, query_condition, ref_condition):
     if not (query_condition and ref_condition):
         raise PlotError('Must pass two conditions in order to generate a volcano plot.')
 
-    (query_key, query_val) = query_condition.split(';-;')
-    (ref_key, ref_val) = ref_condition.split(';-;')
+    (query_key, query_val) = _split_condition(query_condition)
+    (ref_key, ref_val) = _split_condition(ref_condition)
 
     # Shortening the name for ease
     if ref_val == "Union of the rest of the groups":

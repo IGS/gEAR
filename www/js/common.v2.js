@@ -409,7 +409,6 @@ const initCommonUI = async () => {
         event.preventDefault(); // Prevent the default form submission
 
         // reset any UI elements
-        document.getElementById('user-email-help').classList.add('is-hidden');
         document.getElementById('user-password-help').classList.add('is-hidden');
 
         // try to log in
@@ -607,12 +606,8 @@ const doLogin = async (doReload=true) => {
     const formdata = new FormData(document.getElementById("login-form"));
     const data = await apiCallsMixin.login(formdata);
 
-    if (data.session_id == 0) {
-        // user name wasn't found at all
-        document.getElementById('user-email-help').classList.remove('is-hidden');
-
-    } else if (data.session_id == -1) {
-        // User was found, password was incorrect
+    if (data.session_id == 0 || data.session_id == -1) {
+        // E-mail not found or password incorrect (the server does not say which)
         document.getElementById('user-password-help').classList.remove('is-hidden');
 
     } else if (data.session_id.toString().length > 10) {
@@ -779,6 +774,51 @@ const logErrorInConsole = (error) => {
 }
 
 /**
+ * Downloads a dataset's metadata CSV first, then runs the requested dataset download (bundle, h5ad, image, projection).
+ * The metadata always goes with the data to follow FAIR/TRUST principles, so if the metadata is missing
+ * or cannot be downloaded, the dataset download is cancelled.
+ * @param {string} shareId - The share ID of the dataset.
+ * @param {Function} downloadFn - The dataset download to run (and await) once the metadata is handled.
+ * @returns {Promise<boolean>} - True if downloadFn ran, false if the download was cancelled.
+ */
+const downloadWithMetadata = async (shareId, downloadFn) => {
+    const params = new URLSearchParams({ type: "metadata", share_id: shareId || "" });
+    try {
+        const {data} = await axios.get(`./cgi/download_source_file.cgi?${params.toString()}`, {responseType: 'blob'});
+        const downloadUrl = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `${shareId}.metadata.csv`;
+        a.click();
+        // Give the browser time to start the download before freeing the blob
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+        logErrorInConsole(error);
+        // ? Do we want to have a popover to ask if the user wants to download anyways?
+        if (error.response?.status === 404) {
+            createToast("No metadata was found for this dataset, so the download was cancelled. Please contact the gEAR team.");
+        } else {
+            createToast("The dataset metadata could not be downloaded, so the download was cancelled.");
+        }
+        return false;
+    }
+
+    await downloadFn();
+    return true;
+}
+
+/**
+ * Starts a browser download of the given URL without navigating away from the page.
+ * @param {string} url - The URL to download.
+ */
+const triggerUrlDownload = (url) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "";
+    a.click();
+}
+
+/**
  * Copies the specified text to the clipboard.
  * @param {string} text - The text to be copied.
  * @returns {Promise<boolean>} - A promise that resolves to true if the text was successfully copied, false otherwise.
@@ -810,15 +850,24 @@ const convertToFormData = (object) => {
     return formData;
 }
 
+// Link shown in the toast after a gene list is saved
+const GENE_LIST_MANAGER_LINK = {
+    href: "/gene_list_manager.html?sort_by=date_created",
+    text: "Open Gene List Manager",
+    newTab: true,
+};
+
 /**
  * Creates a toast notification with the given message.
  *
  * @param {string} msg - The message to display in the toast.
  * @param {string} [levelClass="is-danger"] - The CSS class for the toast level. Defaults to "is-danger".
  * @param {boolean} [closeManually=false] - Indicates whether the toast can be closed manually or after a timeout. Defaults to false.
- * @param {Object} [opts={ isHTML: false }] - Additional options for the toast.
+ * @param {Object} [opts={}] - Additional options for the toast.
+ * @param {Object} [opts.link] - A link to show after the message: {href, text, newTab}. The message itself is always
+ *   shown as plain text, so it is safe to include server or user text in it.
  */
-const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { isHTML: false }) => {
+const createToast = (msg, levelClass="is-danger", closeManually=false, opts = {}) => {
     const toast = document.createElement("div");
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
@@ -829,17 +878,28 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
         notification.remove();
     });
     toast.appendChild(toastButton);
-    toast.appendChild(opts?.isHTML ? (() => {
-        const span = document.createElement("span");
-        const lines = String(msg).split("\n");
-        for (let i = 0; i < lines.length; i++) {
-            span.appendChild(document.createTextNode(lines[i]));
-            if (i < lines.length - 1) {
-                span.appendChild(document.createElement("br"));
-            }
+
+    // Plain text: keep it literal, but render "\n" as line breaks for multi-line messages.
+    const span = document.createElement("span");
+    const lines = String(msg).split("\n");
+    for (let i = 0; i < lines.length; i++) {
+        span.appendChild(document.createTextNode(lines[i]));
+        if (i < lines.length - 1) {
+            span.appendChild(document.createElement("br"));
         }
-        return span;
-    })() : document.createTextNode(msg));
+    }
+
+    if (opts?.link) {
+        const a = document.createElement("a");
+        a.href = opts.link.href;
+        a.textContent = opts.link.text;
+        if (opts.link.newTab) {
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+        }
+        span.append(" ", a);
+    }
+    toast.appendChild(span);
 
     const numToasts = document.querySelectorAll(".js-toast.notification").length;
     const numToastsThisLevel = document.querySelectorAll(`.js-toast.notification.${levelClass}`).length;
@@ -1888,10 +1948,12 @@ export {
     rebindUrlParam,
     disableAndHideElement,
     enableAndShowElement,
+    GENE_LIST_MANAGER_LINK,
     commonDateTime,
     copyToClipboard,
     convertToFormData,
     doLogin,
+    downloadWithMetadata,
     trigger,
     openModal,
     closeModal,
@@ -1899,5 +1961,6 @@ export {
     insertVersionedJS,
     loadDomainFunding,
     SHARE_ID_MAX_LENGTH,
+    triggerUrlDownload,
     validateShareId,
 };

@@ -26,7 +26,13 @@ class TopPCAGenes(Resource):
         req = request.form
         analysis_id = req.get('analysis_id')
         analysis_type = req.get('analysis_type')
-        pcs = [int(pc.replace(' ', '')) for pc in req.get('pcs').split(',')]
+        try:
+            pcs = [int(pc.replace(' ', '')) for pc in (req.get('pcs') or '').split(',')]
+        except ValueError:
+            return {
+                "success": 0,
+                "message": "PCs must be a comma-separated list of integers",
+            }
         # Currently, ScanPy is throwing errors both when number
         # of PCs is less than 2 or greater than 5. Have an issue
         # open: https://github.com/theislab/scanpy/issues/431

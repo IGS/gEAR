@@ -63,6 +63,18 @@ def test_get_discrete_colors_samples_named_colorscales(mg_plotting):
 
 
 
+def test_colorblind_swatch_gives_palette_colors_in_order(mg_plotting):
+    assert mg_plotting.get_discrete_colors(["a", "b", "c"], mg_plotting.COLORBLIND_SWATCH)[:3] == colorblind.categorical_colors(3)
+
+
+def test_quadrant_plot_colorblind_swatch(mg_plotting):
+    import pandas as pd
+    df = pd.DataFrame({"s1_c_log2FC": [1.0, -1.0], "s2_c_log2FC": [1.0, -1.0],
+                       "ensm_id": ["E1", "E2"], "gene_symbol": ["G1", "G2"]})
+    fig = mg_plotting.create_quadrant_plot(df, "ctrl", "c1", "c2", colorscale=mg_plotting.COLORBLIND_SWATCH)
+    # UP/UP and DOWN/DOWN take the first two palette colors
+    assert [trace.marker.color for trace in fig.data] == colorblind.categorical_colors(2)
+
 def test_quadrant_plot_uses_sampled_colorscale(mg_plotting):
     import pandas as pd
     df = pd.DataFrame({"s1_c_log2FC": [1.0, -1.0], "s2_c_log2FC": [1.0, -1.0],
@@ -154,6 +166,7 @@ def test_clusterbar_palette(mg_plotting, colorblind_mode):
 
 # ---------------------------------------------------------------- workbench images
 
+@pytest.mark.slow
 class TestAnalysisImage:
     """get_analysis_image.cgi serves a step's colorblind copy only to colorblind viewers."""
 
@@ -186,6 +199,7 @@ class TestAnalysisImage:
 
 
 
+@pytest.mark.slow
 class TestStepCopies:
     """Plotting steps save a colorblind copy only in colorblind mode, and remove a stale one otherwise."""
 
@@ -244,6 +258,7 @@ class TestStepCopies:
 BICCN_DATASET = "4fbd43e2-f301-42d8-a61d-a5dd5bf720e7"
 
 
+@pytest.mark.slow
 def test_marker_genes_uses_biccn_cluster_column_for_primary_analysis(tmp_path):
     pytest.importorskip("scanpy")
     db = {"sessions": {"owner": 1}, "datasets": [{"id": BICCN_DATASET, "owner_id": 1}]}

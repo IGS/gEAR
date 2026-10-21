@@ -227,7 +227,7 @@ class Orthologs(Resource):
                 "gene_symbols": list of str,  # List of gene symbols to be mapped.
                 "analysis": str,              # Analysis identifier (optional).
                 "gene_organism_id": int,      # Organism ID for the genes (optional).
-                "exclusive_org": str          # "true" or "false" indicating whether to exclusively check the specified organism (default: "false").
+                "exclusive_org": bool | str   # true/false or "true"/"false": whether to exclusively check the specified organism (default: false).
             }
 
         Raises:
@@ -240,7 +240,12 @@ class Orthologs(Resource):
         gene_symbols = req.get('gene_symbols')
         analysis = req.get('analysis')
         gene_organism_id = req.get('gene_organism_id')
-        exclusive_org = req.get('exclusive_org', "false").lower() == "true" # If true, only check this organism. If false, loop through other organisms
+        # If true, only check this organism. If false, loop through other organisms
+        exclusive_org = req.get('exclusive_org', False)
+        if isinstance(exclusive_org, str):
+            exclusive_org = exclusive_org.lower() == "true"
+        else:
+            exclusive_org = bool(exclusive_org)
 
         if not gene_symbols:
             return {"error": "No gene symbols provided."}, 400

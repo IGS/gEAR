@@ -21,8 +21,9 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    share_id = form.getfirst('share_id')
-    valid_chars = "%s%s" % (string.ascii_letters, string.digits)
+    share_id = form.getfirst('share_id', '')
+    # Same characters a custom share ID can use (update_share_id.cgi), so no path separators
+    valid_chars = "%s%s-_." % (string.ascii_letters, string.digits)
     share_id = ''.join(c for c in share_id if c in valid_chars)
 
     result = { 'success': 0 }

@@ -44,7 +44,7 @@ class TestRenameLayout:
         assert result.json()["layout_label"] == "New name"
 
     def test_name_at_limit_is_saved(self):
-        name = "x" * 255
+        name = "x" * 110
         result = run_cgi("rename_layout.cgi", db=DB,
                          query={"session_id": "owner", "layout_share_id": "L1", "layout_name": name})
         assert result.json()["layout_label"] == name

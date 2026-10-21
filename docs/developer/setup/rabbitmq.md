@@ -14,7 +14,7 @@ There is a module at `<root>/lib/gearqueue.py` that contains a class to connect 
 
 ## Creating a log file to view RabbitMQ logs
 
-As root, I would create a file in `/var/log/gEAR_queue` named `<service>.log` where `<service>` is the name of the RabbitMQ consumer service (i.e. projectr). The `/var/log/gEAR_queue` directory is owned by root:adm with 750 permissions and the service log file within should be 644 permissions.
+As root, I would create a file in `/var/log/gEAR_queue` named `<service>.log` where `<service>` is the name of the RabbitMQ consumer service (i.e. projectr). The `/var/log/gEAR_queue` directory is owned by www-data:www-data with 750 permissions and the service log file within should be 644 permissions.
 
 ## Running a particular consumer
 

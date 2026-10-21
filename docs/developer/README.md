@@ -42,7 +42,7 @@ gEAR is a LAMP-stack portal with the following key components:
 ### Frontend Components
 
 - **JavaScript**: ES modules in `www/js/`
-  - `common.v2.js` holds shared page code (login, site preferences, plugins, cache-busting helpers) and is imported by every top-level page except the legacy `contact.html`. The `.v2` suffix is historical; only `common.v2.js`, `classes/genecart.v2.js` and `classes/user.v2.js` (plus `css/common.v2.css`) carry it, and other current files do not.
+  - `common.v2.js` holds shared page code (login, site preferences, plugins, cache-busting helpers) and is imported by every top-level page. The v1 `common.js` is now loaded only by the unlinked `workshop/registration_old.html`. The `.v2` suffix is historical; only `common.v2.js`, `classes/genecart.v2.js` and `classes/user.v2.js` (plus `css/common.v2.css`) carry it, and other current files do not.
   - jQuery-based code is legacy (being phased out)
 - **D3.js & Snap.svg**: SVG-based data visualization
 - **Plot.ly**: Interactive plots
@@ -113,7 +113,7 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 
 ### Testing
 
-- **Server-side tests (pytest, run in CI):** `tests/python/` covers CGI scripts (against a fake database), Flask API resources, the upload processors, and docs checks. No live server or MySQL is needed.
+- **Server-side tests (pytest, run in CI):** `tests/python/` covers CGI scripts (against a fake database), Flask API resources, the upload processors, `lib/gear` helpers, regression tests for closed issues, and docs checks. No live server or MySQL is needed. A full run takes several minutes, mostly in the workbench CGI tests.
 
   ```bash
   pip install -r tests/python/requirements.txt

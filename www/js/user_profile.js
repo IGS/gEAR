@@ -28,10 +28,12 @@ for (const classElt of document.getElementsByClassName("js-password")) {
     });
 }
 
-// Toggle if password is visible or not
-document.getElementById("show-password").addEventListener("click", () => {
-    const newPasswordElt = document.getElementById("new-password");
-    newPasswordElt.type = newPasswordElt.type === "password" ? "text" : "password";
+// Toggle if both password fields are visible or not
+document.getElementById("show-password").addEventListener("change", (event) => {
+    const type = event.target.checked ? "text" : "password";
+    for (const passwordElt of document.getElementsByClassName("js-password")) {
+        passwordElt.type = type;
+    }
 });
 
 document.getElementById("update-password-toggle").addEventListener("click", () => {
@@ -65,11 +67,12 @@ document.getElementById("submit-preferences").addEventListener("click", async (e
             var msg = "Settings have been saved!";
             createToast(msg, "is-success");
         } else {
-            var msg = "An error occurred while updating preferences.  Please try again.";
-            throw new Error(msg);
+            // Show the server's reason (e.g. an invalid or already-used email address)
+            throw new Error(data?.error || "An error occurred while updating preferences.  Please try again.");
         }
     } catch (error) {
-        const msg = "Unable to update preferences. Please try again.";
+        // A failed request's message (e.g. "Network Error") isn't meant for the user
+        const msg = (!error.isAxiosError && error.message) || "Unable to update preferences. Please try again.";
         logErrorInConsole(msg);
         createToast(msg);
     } finally {

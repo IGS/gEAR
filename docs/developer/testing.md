@@ -14,8 +14,10 @@ This page covers the automated tests in the repository: the server-side pytest s
 The suite covers:
 
 - **CGI scripts**, run against a fake database.
-- **Flask API resources**, through Flask's test client.
+- **Flask API resources**, through Flask's test client, plus the helper functions inside them.
 - **Upload processors** (`gear.anndata_processor`, `gear.spatial_processor`, `gear.spatialhandler`), using the real example files in `www/user_templates/`.
+- **Library helpers** in `lib/gear/` (plotting, metadata validation, track hubs, job coordination, obs handling, full-text search).
+- **Regressions:** tests for closed GitHub issues, one class per issue or area, so a fixed bug stays fixed.
 - **Guards:** every server-side Python file parses, `openapi.yaml` validates, and relative Markdown links resolve.
 
 ### Layout
@@ -26,13 +28,15 @@ The suite covers:
 | `helpers/cgi_harness.py` | `run_cgi(...)` runs a CGI in a subprocess and returns a `CGIResult` |
 | `helpers/run_cgi.py` | Runner used by `run_cgi`: installs the fake `geardb`, then runs the script as `__main__` |
 | `helpers/fake_geardb.py` | Spec-driven stand-in for `lib/geardb.py` that logs every SQL statement, commit and save |
-| `fakes/` | Small fake modules for individual tests, such as a `gear.analysis` that returns a synthetic AnnData |
-| `test_cgi_*.py` | CGI tests, grouped by area (uploads, collections, datasets, accounts, downloads, gene lists and search, comparison) |
-| `test_api_*.py` | Flask resources (`Aggregations`, `TrackHubCopy`) and static tSNE/UMAP category colors |
-| `test_anndata_processor.py`, `test_spatial.py` | Upload processing, including cancellation when an upload is deleted mid-job |
+| `fakes/` | Small modules swapped in with `fake_modules=`, named after the tests that use them (`accounts_*`, `cgi_acct_*`, `cgi_wb_*` for the workbench, `guards_*`, `regress_*`, ...). Most are fakes, such as a `gear.analysis` that returns a synthetic AnnData or a `requests` that never touches the network. `cgi_wb_real_analysis.py` and `regress_analysis.py` instead load the real `gear.analysis` with its root directory moved into a temporary tree, so path handling is tested against the real code. |
+| `test_cgi_*.py` | CGI tests, grouped by area: uploads and upload path guards (`uploads`, `upload_guards`), collections and displays (`collections`, `layout_pages`), datasets and downloads, accounts and login (`accounts`, `account_pages`, `auth`), gene lists and search (`gene_lists_search`, `gene_list_edits`), the workbench (`analysis_info`, `workbench_steps`), comparison, small lookups (`misc_lookups`, `misc_guards`) and `regressions` |
+| `test_api_*.py` | Flask resources and their helpers: aggregations, upload status (`dataset_processing`), track hub import and Gosling specs, orthologs, plotly NA groups, projectR helpers, top PCA genes, tSNE colors and helpers, spatial helpers, a group of small resources (`resources_small`: analyses, genes, HiGlass, SVG, ...) and `regressions` |
+| `test_anndata_processor.py`, `test_spatial.py`, `test_job_coordination.py` | Upload processing, including cancellation when an upload is deleted mid-job, and the job lock/attempt helpers |
+| `test_plotting_helpers.py`, `test_mg_plotting_helpers.py`, `test_metadata_validator.py`, `test_trackhub.py`, `test_utils_obs.py`, `test_fulltext.py`, `test_colorblind.py`, `test_spatial_colors.py`, `test_analysis_paths.py` | Library helpers in `lib/gear/` and the spatial service |
+| `test_regressions_*.py` | Regression tests for closed issues in library code (`lib`, `metadata`, `orthology`, `plotting`) |
 | `test_geardb_helpers.py` | Helpers in the real `geardb` module |
 | `test_syntax.py`, `test_docs.py` | Guards |
-| `requirements.txt`, `requirements-spatial.txt` | Pinned to the production versions in `docker/requirements.txt` |
+| `requirements.txt`, `requirements-spatial.txt` | Pinned to the production versions in `docker/requirements.txt`. `requirements.txt` includes `tables` (PyTables), which `gear.orthology` needs to read the pandas HDF5 ortholog files in the orthology tests. |
 
 > **Note:** some modules query the database when imported (for example `gear.orthology`). `conftest.py` patches `gear.db.MySQLDB.connect` so the real modules can be imported without a database or `gear.ini`.
 
@@ -47,8 +51,11 @@ cd tests/python
 python -m pytest                    # all tests (the "core" CI job); spatial ones skip if spatialdata isn't installed
 python -m pytest -m spatial         # only the tests marked "spatial"
 python -m pytest -m "not spatial"   # everything except the tests marked "spatial"
+python -m pytest -m "not slow"      # quick run: skips the CGI tests that import scanpy
 python -m pytest test_cgi_downloads.py -k owner -v
 ```
+
+The full suite takes about 6 minutes. Most of that is the CGI tests that import scanpy in their subprocess (the workbench steps in `test_cgi_workbench_steps.py`, comparison, weighted gene lists, and the workbench image and plot-step tests in `test_colorblind.py`), which are marked `slow`. `pytest -m "not slow"` skips them and takes about 2 minutes. Run the full suite before pushing, or select a single file or use `-k` while iterating.
 
 The CGI tests create and remove their own directories under `www/uploads/files/` and files under `www/carts/`; both folders are gitignored.
 
@@ -102,7 +109,9 @@ Import individual resources (`from resources.aggregations import Aggregations`),
 
 A [marker](https://docs.pytest.org/en/stable/how-to/mark.html) tags tests so they can be selected with `-m`: `pytest -m spatial` runs only the tests marked `spatial`, and `pytest -m "not spatial"` runs everything else. Markers are registered in `tests/python/pytest.ini`, which also turns on `--strict-markers`, so an unregistered (for example misspelled) marker is an error.
 
-Markers here mean "needs an optional dependency stack":
+There are two kinds of marker.
+
+**Stack markers** mean "needs an optional dependency stack":
 
 | Marker | Needs | Installed by |
 |---|---|---|
@@ -122,11 +131,13 @@ To add a stack (for example `epigenome`):
 
 The core job doesn't change.
 
+**`slow`** is not a stack marker: the tests it tags need nothing extra and always run in CI. It marks tests that run a CGI which imports scanpy in a fresh subprocess, which takes a few seconds per test. It is only for a quick local run with `pytest -m "not slow"`. Mark a whole module with `pytestmark = pytest.mark.slow` (`test_cgi_workbench_steps.py`, `test_cgi_comparison.py`), or single tests and classes with `@pytest.mark.slow` (the weighted-list classes in `test_cgi_gene_list_edits.py`, and the workbench image and plot-step tests in `test_colorblind.py`). Add it to any new test that runs such a CGI.
+
 ### CI
 
 `.github/workflows/python_tests.yml` runs on push and pull request to `devel` and `main` when server-side code, docs, example files or the tests change. It can also be started by hand (`workflow_dispatch`). It has two jobs on Python 3.14:
 
-- **core:** `pip install -r tests/python/requirements.txt`, then `pytest` with no marker filter. Tests for optional stacks skip themselves, and the skips are listed in the summary.
+- **core:** `pip install -r tests/python/requirements.txt`, then `pytest` with no marker filter, so the `slow` tests run too. Tests for optional stacks skip themselves, and the skips are listed in the summary.
 - **spatial:** installs `requirements-spatial.txt`, then runs `pytest -m spatial` (only the tests marked `spatial`).
 
 Other workflows are not test suites:
@@ -168,4 +179,4 @@ These suites are not maintained. They're kept for reference, especially the note
 
 ---
 
-Last updated: September 2026
+Last updated: October 2026

@@ -6,7 +6,6 @@ spreadsheet uploaded alongside an expression data file.
 """
 
 import pandas as pd
-import numpy as np
 import os, sys
 import re
 import requests
@@ -37,10 +36,11 @@ class MetadataValidator:
         Return True if the value is present and longer than one character.
         """
         is_valid = False
-        if value is None:
+        # NaN never compares equal to anything (including np.nan), so check it with pd.isna
+        if value is None or (pd.api.types.is_scalar(value) and pd.isna(value)):
             return is_valid
         else:
-            if len(str(value)) > 1 and value != np.nan:
+            if len(str(value)) > 1:
                 is_valid = True
 
         return is_valid

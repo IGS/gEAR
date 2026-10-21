@@ -38,6 +38,7 @@ def main():
                  JOIN event_registration er ON er.event_id=e.id
                  JOIN guser u on er.user_id=u.id
            WHERE e.id BETWEEN %s AND %s
+        ORDER BY er.id
     """
 
     qry_args = [min_event_id, max_event_id]
@@ -49,10 +50,10 @@ def main():
         event = events[row[0]]
         event['attendees'] += 1
 
-        ## is it the current user?
+        ## is it the current user?  Registrations are counted in sign-up order, so the
+        #  user has a seat if they are within the first max_attendees, else they're waitlisted
         if registered_user_id == user.id:
-            # else are we already over max & waitlist
-            if event['attendees'] >= event['max_attendees']:
+            if event['attendees'] > event['max_attendees']:
                 event['user_waitlisted'] = 1
             else:
                 event['user_attending'] = 1

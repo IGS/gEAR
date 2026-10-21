@@ -140,3 +140,16 @@ def test_saved_order_with_or_without_na(client, order):
     result = plot(client, x_axis="cluster", order={"cluster": order})
     expected = order if "NA" in order else order + ["NA"]
     assert result["plot_order"]["cluster"] == expected
+
+
+def test_colorblind_mode_uses_colorblind_palette_and_keeps_na_gray(client):
+    from gear.colorblind import categorical_colors
+
+    curator_colors = {"hair": "#00ff00", "support": "#0000ff"}
+    result = plot(client, x_axis="tSNE_1", y_axis="tSNE_2", color_name="cluster",
+                  colors=curator_colors, colorblind_mode=True)
+    colors = trace_colors(result)
+    assert {colors["hair"], colors["support"]} == set(categorical_colors(2))
+    assert colors["NA"] == plotly_data.NA_COLOR
+    # The curator's colors are what gets returned (and could be saved), never the colorblind ones
+    assert result["plot_colors"] == {**curator_colors, "NA": plotly_data.NA_COLOR}

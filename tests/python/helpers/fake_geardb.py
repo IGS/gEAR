@@ -9,10 +9,14 @@ Spec keys (all optional):
     sessions        {session_id: user_id}
     users           {user_id: {email, user_name, ...}}
     datasets        [{id, share_id, owner_id, is_downloadable, is_public, dtype, title, ...,
-                      archive_path, h5ad_path}]
-    layouts         [{id, share_id, user_id, label, is_public}]
+                      archive_path, h5ad_path, owner_display: {plotly_config}, shared_with: [user_id]}]
+                    DatasetCollection.get_public/get_owned_by_user/get_shared_with_user select from these
+                    (is_public defaults to 1; has_h5ad=1 means "not spatial", types filters on dtype)
+    layouts         [{id, share_id, user_id, label, is_public, members: [{dataset_id, ...}]}]
     gene_carts      [{id, share_id, user_id, gctype, label}]
+    genes           [{gene_symbol, organism_id, ...}]   returned by GeneCollection.get_by_gene_symbol()
     metadata        {share_id: csv text}
+    displays        [{id, plot_type, ...}]   returned (as a dict) by get_display_by_id()
     verification_short   value returned by get_verification_code_short_form()
     sql             [{"match": "substring", "rows": [[...], ...] | "echo"}]
                     First matching rule wins. "echo" returns [[first param]].
@@ -92,6 +96,10 @@ def get_user_id_from_session_id(session_id=None):
     return user.id if user else None
 
 
+def get_user_by_id(user_id=None):
+    return _User(user_id) if user_id is not None else None
+
+
 # ---------------------------------------------------------------- layouts (collections)
 
 class _Layout:
@@ -101,7 +109,7 @@ class _Layout:
         self.user_id = spec.get("user_id")
         self.label = spec.get("label", "A collection")
         self.is_public = spec.get("is_public", 0)
-        self.members = []
+        self.members = [types.SimpleNamespace(**m) for m in spec.get("members", [])]
 
     def load(self):
         pass
@@ -170,6 +178,10 @@ class Dataset(types.SimpleNamespace):
     def save_change(self, attribute, value):
         _log("dataset.save_change", dataset=self.id, attribute=attribute, value=value)
 
+    def get_owner_display(self, is_multigene=False):
+        display = getattr(self, "owner_display", None)
+        return types.SimpleNamespace(**display) if display else None
+
     def _serialize_json(self):
         return dict(vars(self))
 
@@ -190,13 +202,32 @@ def get_dataset_by_share_id(share_id, *args, **kwargs):
 
 
 class DatasetCollection:
-    """Returns no datasets; tests of search CGIs assert on the logged SQL instead."""
+    """get_by_dataset_ids() returns no datasets; tests of search CGIs assert on the logged SQL instead."""
 
     def __init__(self, *args, **kwargs):
         self.datasets = []
 
     def get_by_dataset_ids(self, ids=None, **kwargs):
+        _log("dataset_collection.get_by_dataset_ids", ids=list(ids or []))
         return self.datasets
+
+    def _select(self, keep, dtypes):
+        for spec in _SPEC.get("datasets", []):
+            dtype = spec.get("dtype", "single-cell-rnaseq")
+            if ((dtype in dtypes) if dtypes else dtype != "spatial") and keep(spec):
+                self.datasets.append(Dataset(**spec))
+
+    def get_public(self, has_h5ad=None, types=None, **kwargs):
+        self._select(lambda d: d.get("is_public", 1) == 1, types)
+
+    def get_owned_by_user(self, has_h5ad=None, user=None, types=None, **kwargs):
+        self._select(lambda d: user is not None and d.get("owner_id") == user.id, types)
+
+    def get_shared_with_user(self, has_h5ad=None, user=None, types=None, **kwargs):
+        self._select(lambda d: user is not None and user.id in d.get("shared_with", []), types)
+
+    def _serialize_json(self):
+        return {"datasets": self.datasets}
 
 
 def get_metadata_by_share_id(share_id):
@@ -205,6 +236,13 @@ def get_metadata_by_share_id(share_id):
 
 def get_displays_by_user_id(user_id=None, dataset_id=None, **kwargs):
     return []
+
+
+def get_display_by_id(display_id):
+    for spec in _SPEC.get("displays", []):
+        if str(spec.get("id")) == str(display_id):
+            return dict(spec)
+    return {}
 
 
 def get_organism_id_by_taxon_id(taxon_id):
@@ -217,11 +255,43 @@ def get_verification_code_short_form(long_form):
 
 # ---------------------------------------------------------------- gene carts (lists)
 
+class _GeneCart(types.SimpleNamespace):
+    def save_change(self, attribute, value):
+        _log("gene_cart.save_change", gene_cart=self.share_id, attribute=attribute, value=value)
+
+
 def get_gene_cart_by_share_id(share_id, *args, **kwargs):
     for spec in _SPEC.get("gene_carts", []):
         if spec.get("share_id") == share_id:
-            return types.SimpleNamespace(**spec)
+            return _GeneCart(**spec)
     return None
+
+
+# ---------------------------------------------------------------- genes
+
+class _Gene(types.SimpleNamespace):
+    def load_go_terms(self):
+        pass
+
+    def load_dbxref_links(self):
+        pass
+
+    def load_aliases(self):
+        pass
+
+    def _serialize_json(self):
+        return dict(vars(self))
+
+
+class GeneCollection:
+    """get_by_gene_symbol() returns the spec's "genes" (unfiltered) and logs the search."""
+
+    def __init__(self, *args, **kwargs):
+        self.genes = []
+
+    def get_by_gene_symbol(self, gene_symbol=None, exact=None, organism_id=None):
+        _log("gene_collection.get_by_gene_symbol", gene_symbol=gene_symbol, exact=exact)
+        self.genes = [_Gene(**g) for g in _SPEC.get("genes", [])]
 
 
 # ---------------------------------------------------------------- database connection
@@ -281,7 +351,239 @@ class Connection:
         pass
 
 
+# ---------------------------------------------------------------- account, gene list and layout pages
+# Used by test_cgi_account_pages.py, test_cgi_gene_list_edits.py and test_cgi_layout_pages.py. Extra spec keys:
+#     servercfg          merged into servercfg, e.g. {"content": {"default_layout_share_id": "L1"}}
+#     gene_carts[]       also: organism_id, ldesc, is_public, is_domain, genes (symbols), recent (1 = among
+#                        the owner's recent lists), group_user_ids (users who see it as a group list)
+#     layouts[]          also: is_domain, is_current, group_user_ids; members[] may have display_id,
+#                        is_multigene, start_col, start_row, grid_width, grid_height
+#     default_displays   [{user_id, dataset_id, is_multigene, display_id}]   for get_default_display()
+
+servercfg.update(_SPEC.get("servercfg", {}))
+
+_GENE_CART_DEFAULTS = {"id": None, "user_id": None, "gctype": None, "label": None, "ldesc": None,
+                       "organism_id": None, "share_id": None, "is_public": None, "is_domain": None}
+
+
+class Gene(_Gene):
+    """Fake geardb.Gene constructed by a CGI (e.g. Gene(gene_symbol="Sox2"))."""
+
+
+class _AcctGeneCart(_GeneCart):
+    """A gene cart loaded by ID or by a GeneCartCollection method."""
+
+    def add_gene(self, gene):
+        self.genes.append(gene)
+
+    def save_members(self):
+        _log("gene_cart.save_members", gene_cart=self.share_id, genes=[g.gene_symbol for g in self.genes])
+
+    def save_change(self, attribute, value):
+        # Like the real GeneCart.save_change, also updates the object
+        super().save_change(attribute, value)
+        setattr(self, attribute, value)
+
+    def __repr__(self):
+        # Like the real GeneCart (no _serialize_json), json.dumps() turns it into a JSON string
+        return json.dumps(vars(self), default=str)
+
+
+def _acct_gene_cart(spec):
+    return _AcctGeneCart(**{**_GENE_CART_DEFAULTS, "genes": [], **spec})
+
+
+def _gene_cart_get_genes(self):
+    self.genes = list(getattr(self, "genes", []))
+    self.num_genes = len(self.genes)
+
+
+_GeneCart.get_genes = _gene_cart_get_genes
+
+
+class GeneCart(types.SimpleNamespace):
+    """Fake geardb.GeneCart constructed by a CGI; save() logs its fields and assigns the spec's lastrowid."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**{**_GENE_CART_DEFAULTS, **kwargs})
+        if not self.share_id:
+            self.share_id = f"pytest{os.urandom(4).hex()}"
+        self.genes = []
+
+    def add_gene(self, gene):
+        self.genes.append(gene)
+
+    def update_from_json(self, json_obj):
+        """Same as the real GeneCart.update_from_json."""
+        for key in ("label", "organism_id", "gctype", "is_public", "is_domain"):
+            if key in json_obj:
+                setattr(self, key, json_obj[key])
+        if "session_id" in json_obj and not self.user_id:
+            user = get_user_from_session_id(json_obj["session_id"])
+            if user is None:
+                raise Exception(f"Error: No user logged in with session_id {json_obj['session_id']}")
+            self.user_id = user.id
+        if "genes" in json_obj:
+            self.genes = [Gene(gene_symbol=g["gene_symbol"]) for g in json_obj["genes"]]
+
+    def save(self):
+        self.id = _SPEC.get("lastrowid", 1)
+        fields = {k: getattr(self, k) for k in _GENE_CART_DEFAULTS}
+        _log("gene_cart.save", **fields, genes=[g.gene_symbol for g in self.genes])
+
+
+def get_gene_cart_by_id(gc_id):
+    for spec in _SPEC.get("gene_carts", []):
+        if str(spec.get("id")) == str(gc_id):
+            return _acct_gene_cart(spec)
+    return None
+
+
+class GeneCartCollection:
+    """Selects from the spec's gene_carts; each method logs its call (with include_genes)."""
+
+    def __init__(self, include_genes=None, **kwargs):
+        self.include_genes = include_genes
+
+    def _select(self, method, keep):
+        _log(f"gene_cart_collection.{method}", include_genes=self.include_genes)
+        return [_acct_gene_cart(spec) for spec in _SPEC.get("gene_carts", []) if keep(spec)]
+
+    def get_domain(self):
+        return self._select("get_domain", lambda s: s.get("is_domain") == 1)
+
+    def get_public(self):
+        return self._select("get_public", lambda s: s.get("is_public") == 1)
+
+    def get_by_user(self, user=None):
+        return self._select("get_by_user", lambda s: user is not None and s.get("user_id") == user.id)
+
+    def get_by_user_groups(self, user=None):
+        return self._select("get_by_user_groups", lambda s: user is not None and user.id in s.get("group_user_ids", []))
+
+    def get_by_user_recent(self, user=None, n=None):
+        return self._select("get_by_user_recent",
+                            lambda s: user is not None and s.get("user_id") == user.id and s.get("recent"))
+
+    def get_by_share_ids(self, share_ids=None):
+        return self._select("get_by_share_ids", lambda s: s.get("share_id") in (share_ids or []))
+
+
+_MULTIGENE_PLOT_TYPES = ("dotplot", "heatmap", "mg_violin", "quadrant", "volcano", "mg_tsne_static",
+                         "mg_umap_static", "mg_pca_static")
+
+
+class _AcctLayoutMember(types.SimpleNamespace):
+    """A layout member (geardb.LayoutDisplay); save() logs the grid position it would store."""
+
+    def __repr__(self):
+        # Like the real LayoutDisplay (no _serialize_json), json.dumps() turns it into a JSON string
+        return json.dumps(vars(self))
+
+    def save(self, layout=None):
+        _log("layout_member.save", layout=layout.share_id, **vars(self))
+
+
+class LayoutDisplay(_AcctLayoutMember):
+    """Fake geardb.LayoutDisplay; get_is_multigene() looks up the plot type in the spec's displays."""
+
+    def __init__(self, id=None, display_id=None, grid_position=None, start_col=None, grid_width=None,
+                 start_row=None, grid_height=None):
+        super().__init__(id=id, display_id=display_id, dataset_id=None, is_multigene=None,
+                         grid_position=grid_position, start_col=start_col, grid_width=grid_width,
+                         start_row=start_row, grid_height=grid_height)
+
+    def get_is_multigene(self):
+        display = get_display_by_id(self.display_id)
+        self.is_multigene = display.get("plot_type") in _MULTIGENE_PLOT_TYPES if display else None
+
+
+def _layout_all_members(layout):
+    """The layout's spec members as LayoutDisplay-like objects (converted once, so edits stick)."""
+    if "_all_members" not in vars(layout):
+        layout._all_members = [_AcctLayoutMember(**vars(m)) for m in layout.members]
+        layout.members = list(layout._all_members)
+    return layout._all_members
+
+
+def _layout_members_where(layout, multigene):
+    return [m for m in _layout_all_members(layout) if bool(getattr(m, "is_multigene", False)) == multigene]
+
+
+def _layout_get_members(layout, multigene):
+    layout.members = _layout_members_where(layout, multigene)
+    return layout.members
+
+
+def _layout_add_member(self, member):
+    _log("layout.add_member", layout=self.share_id, **vars(member))
+
+
+_Layout.singlegene_members = property(lambda self: _layout_members_where(self, False))
+_Layout.multigene_members = property(lambda self: _layout_members_where(self, True))
+_Layout.get_singlegene_members = lambda self: _layout_get_members(self, False)
+_Layout.get_multigene_members = lambda self: _layout_get_members(self, True)
+_Layout.add_member = _layout_add_member
+
+
+class LayoutCollection:
+    """Selects from the spec's layouts; each method logs its call (with include_datasets)."""
+
+    DEFAULTS = {"id": 1, "share_id": None, "user_id": None, "label": "A collection", "is_public": 0,
+                "is_domain": 0, "is_current": 0}
+
+    def __init__(self, include_datasets=None, **kwargs):
+        self.include_datasets = include_datasets
+
+    def _select(self, method, keep):
+        _log(f"layout_collection.{method}", include_datasets=self.include_datasets)
+        return [types.SimpleNamespace(**{**self.DEFAULTS, **{k: v for k, v in spec.items()
+                                                              if k not in ("members", "group_user_ids")}})
+                for spec in _SPEC.get("layouts", []) if keep(spec)]
+
+    def get_public(self):
+        return self._select("get_public", lambda s: s.get("is_public") == 1)
+
+    def get_domains(self):
+        return self._select("get_domains", lambda s: s.get("is_domain") == 1)
+
+    def get_by_user(self, user=None):
+        return self._select("get_by_user", lambda s: user is not None and s.get("user_id") == user.id)
+
+    def get_by_users_groups(self, user=None, append=True):
+        return self._select("get_by_users_groups",
+                            lambda s: user is not None and user.id in s.get("group_user_ids", []))
+
+    def get_by_share_id(self, share_id=None):
+        return self._select("get_by_share_id", lambda s: bool(share_id) and s.get("share_id") == share_id)
+
+
+def get_default_display(user_id, dataset_id, is_multigene=0):
+    _log("get_default_display", user_id=user_id, dataset_id=dataset_id, is_multigene=is_multigene)
+    for pref in _SPEC.get("default_displays", []):
+        if (pref.get("user_id") == user_id and pref.get("dataset_id") == dataset_id
+                and int(pref.get("is_multigene", 0)) == int(is_multigene)):
+            return pref["display_id"]
+    return None
+
+
 def __getattr__(name):
     raise AttributeError(
         f"fake geardb has no attribute {name!r}; add a stub for it in tests/python/helpers/fake_geardb.py"
     )
+
+
+# ---------------------------------------------------------------- organisms (get_organism_list.cgi)
+
+class OrganismCollection:
+    """get_all() runs the real query, so a test supplies rows with an sql rule matching "FROM organism"."""
+
+    def __init__(self, *args, **kwargs):
+        self.organisms = []
+
+    def get_all(self):
+        cursor = Connection().get_cursor()
+        cursor.execute("SELECT id, label, genus, species, strain, taxon_id FROM organism ORDER BY label")
+        fields = ("id", "label", "genus", "species", "strain", "taxon_id")
+        self.organisms = [types.SimpleNamespace(**dict(zip(fields, row))) for row in cursor.fetchall()]
+        return self.organisms

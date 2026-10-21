@@ -12,6 +12,7 @@ pytestmark = pytest.mark.spatial
 for module in ("datashader", "holoviews", "bokeh", "param", "colorcet", "matplotlib"):
     pytest.importorskip(module)
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 SPATIAL_COMMON = Path(__file__).resolve().parents[2] / "services" / "spatial" / "common.py"
@@ -42,3 +43,18 @@ def test_colorblind_mode_uses_cividis_and_glasbey_cool(spatial_common, df):
     assert expression_cmap.name == colorblind.CONTINUOUS_CMAP
     # Clusters sorted numerically, colored in palette order, matching lib/gear/colorblind.py
     assert cluster_cmap == dict(zip(["1", "2", "10"], colorblind.categorical_colors(3)))
+
+
+@pytest.mark.parametrize("cbar_min, cbar_max, expected", [
+    (None, None, None),     # HoloViews picks the limits
+    (None, 5.0, (0, 5.0)),  # the 98th-percentile default
+    (1.0, 5.0, (1.0, 5.0)),
+])
+def test_expression_clim(spatial_common, cbar_min, cbar_max, expected):
+    """#1166: user-defined bounds for the expression colorbar."""
+    assert spatial_common.expression_clim(cbar_min, cbar_max) == expected
+
+
+def test_expression_clim_without_upper_limit_leaves_it_to_the_data(spatial_common):
+    low, high = spatial_common.expression_clim(2.0, None)
+    assert low == 2.0 and np.isnan(high)

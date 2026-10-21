@@ -49,6 +49,9 @@ Please consult [the R setup](./r_rpy2.md) for packages to install in order to in
 
 Not necessary if you want projectR to run in the Apache environment or do not want to setup the RabbitMQ messaging service (configurable in gear.ini)
 
+`sudo mkdir -p /var/log/gEAR_queue`
+`sudo chown -R www-data:www-data /var/log/gEAR_queue`
+
 Follow instructions in [the RabbitMQ setup](./rabbitmq.md) document
 
 ### Python

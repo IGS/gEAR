@@ -139,7 +139,7 @@
                 <button id="btn-view-unweighted-genes" class="js-view-genes button is-small is-primary is-outlined is-hidden my-3">View list of genes</button>
                 <section id="result-panel" class="p-3">
                   <div id="result-panel-options">
-                    <div id="scoring-method-div">
+                    <div id="scoring-method-div" class="is-hidden">
                       <span class="option-label pr-1">SVG expression scoring method: </span>
                       <div class="control select is-small">
                         <select id="svg-scoring-method" aria-label="SVG expression scoring method">
@@ -152,7 +152,7 @@
                     </div>
                     <!-- other panel options here -->
                   </div>
-                  <hr class="mt-3 mb-3" \>
+                  <hr id="result-panel-options-divider" class="mt-3 mb-3 is-hidden" \>
                   <div id="result-panel-initial-notification" class="notification is-primary has-text-centered">
                     To explore projections in various datasets, please choose a pattern and a dataset collection above and click the magnifying glass
                   </div>

@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import time
 import json
 import os
+import re
 import sys
 import requests
 
@@ -93,6 +94,11 @@ def main():
 
     if not pubmed_id:
         print_json({"error": "No pubmed_id provided"}, status="400 Bad Request")
+        return
+
+    # PubMed IDs are numeric; anything else could add parameters to the upstream request URL
+    if not re.fullmatch(r"[0-9]{1,20}", pubmed_id):
+        print_json({"error": "Invalid pubmed_id"}, status="400 Bad Request")
         return
 
     # Check cache first

@@ -4,62 +4,74 @@ import { convertToFormData, getUrlParameter, initCommonUI, registerPageSpecificL
 
 let helpId = null;
 
-window.onload=function() {
-    // Set the page title
-    document.getElementById('page-header-label').textContent = 'Lost password recovery';
+// This script is added by the page after it loads the domain preferences, so the window "load"
+//  event has usually fired already. Set up the page here instead of in a window.onload handler.
 
-    document.addEventListener('click', async function(e) {
+// Set the page title
+document.getElementById('page-header-label').textContent = 'Lost password recovery';
 
-        if (e.target.id === 'btn-password-update-submit') {
-            e.preventDefault();
+document.addEventListener('click', async (e) => {
 
-            // disable the button so the user doesn't click it again
-            document.getElementById('btn-password-update-submit').classList.add('is-loading');
+    if (e.target.id !== 'btn-password-update-submit') {
+        return;
+    }
+    e.preventDefault();
 
-            // Validate form's completion. Exit if it contains errors and alert user
-            const form_data_valid = await validatePasswordUpdateForm();
-            if (form_data_valid == false){
-                document.getElementById('btn-password-update-submit').classList.remove('is-loading');
-                return false;
-            } else {
-                // Submit the form
-                const {data} = await axios.post('./cgi/update_password.cgi', convertToFormData({
-                    'password': document.getElementById('password1').value,
-                    'help_id': helpId
-                }));
+    // disable the button so the user doesn't click it again
+    document.getElementById('btn-password-update-submit').classList.add('is-loading');
 
-                document.getElementById('btn-password-update-submit').classList.remove('is-loading');
-
-                if (data["success"]) {
-                    document.getElementById('reset-form').classList.add('is-hidden');
-                    document.getElementById('reset-success').classList.remove('is-hidden');
-                } else {
-                    document.getElementById('password-update-status-message').innerHTML = 'There was a problem updating your password. ' + data['error'] + '. Please try again later or contact us.';
-                    document.getElementById('password-update-status-message').classList.remove('is-hidden');
-                }
-
-            }
+    // Validate form's completion. Exit if it contains errors and alert user
+    const form_data_valid = await validatePasswordUpdateForm();
+    if (form_data_valid == false){
+        document.getElementById('btn-password-update-submit').classList.remove('is-loading');
+        return false;
+    } else {
+        // Submit the form
+        let data = {};
+        try {
+            ({data} = await axios.post('./cgi/update_password.cgi', convertToFormData({
+                'password': document.getElementById('password1').value,
+                'help_id': helpId
+            })));
+        } catch (error) {
+            data = {success: 0, error: "The server could not be reached"};
         }
-    });
 
-    document.getElementById('initial-submit').addEventListener('click', function() {
-        document.getElementById('initial-submit').classList.add('is-loading');
-        document.getElementById('initial-submit').disabled = true;
+        document.getElementById('btn-password-update-submit').classList.remove('is-loading');
 
-        // Did they enter a valid email address?
-        if (validateEmail(document.getElementById('email').value)) {
-            sendVerificationEmail();
+        if (data["success"]) {
+            document.getElementById('reset-form').classList.add('is-hidden');
+            document.getElementById('reset-success').classList.remove('is-hidden');
+        } else {
+            // The server's message may already end with a period
+            const reason = String(data['error'] || 'Unknown error').replace(/\.$/, '');
+            document.getElementById('password-update-status-message').textContent = `There was a problem updating your password. ${reason}. Please try again later or contact us.`;
+            document.getElementById('password-update-status-message').classList.remove('is-hidden');
         }
-    });
 
-    document.getElementById('password1').addEventListener('keyup', function() {
-        validatePassword('typing');
-    });
+    }
+});
 
-    document.getElementById('password2').addEventListener('blur', function() {
-        validatePassword2();
-    });
-};
+document.getElementById('initial-submit').addEventListener('click', (e) => {
+    e.preventDefault();
+
+    // Did they enter a valid email address?
+    if (!validateEmail(document.getElementById('email').value)) {
+        return;
+    }
+
+    document.getElementById('initial-submit').classList.add('is-loading');
+    document.getElementById('initial-submit').disabled = true;
+    sendVerificationEmail();
+});
+
+document.getElementById('password1').addEventListener('keyup', () => {
+    validatePassword('typing');
+});
+
+document.getElementById('password2').addEventListener('blur', () => {
+    validatePassword2();
+});
 
 async function sendVerificationEmail(verification_uuid) {
     console.debug("Sending verification email");
@@ -68,11 +80,16 @@ async function sendVerificationEmail(verification_uuid) {
     const current_page = current_url.lastIndexOf("/");
     const destination_page = `${current_url.substring(0, current_page)}/forgot_password.html`;
 
-    const {data} = await axios.post('./cgi/send_email.cgi', convertToFormData({
-        'email': document.getElementById('email').value,
-        'scope': 'forgot_password',
-        'destination_page': destination_page
-    }));
+    let data = {};
+    try {
+        ({data} = await axios.post('./cgi/send_email.cgi', convertToFormData({
+            'email': document.getElementById('email').value,
+            'scope': 'forgot_password',
+            'destination_page': destination_page
+        })));
+    } catch (error) {
+        console.error(error);
+    }
 
     document.getElementById('initial-submit').classList.remove('is-loading');
 
@@ -80,7 +97,7 @@ async function sendVerificationEmail(verification_uuid) {
         document.getElementById('email-success-message').classList.remove('is-hidden');
     } else {
         document.getElementById('email-error-message').innerHTML = 'There was a problem sending the e-mail. Please try again later.';
-        document.getElementById('email').classList.add('is-danger');
+        document.getElementById('email').classList.add('has-text-danger-dark');
         document.getElementById('email-error-message').classList.remove('is-hidden');
         document.getElementById('email-alert-icon').classList.remove('is-hidden');
         document.getElementById('initial-submit').disabled = false;
@@ -95,13 +112,13 @@ const validateEmail = (emailAddress) =>  {
     // see https://github.com/IGS/gEAR/security/code-scanning/201
     const email_regex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
     if (email_regex.test(email) ) {
-        document.getElementById('email').classList.remove('is-danger');
+        document.getElementById('email').classList.remove('has-text-danger-dark');
         document.getElementById('email-error-message').classList.add('is-hidden');
         document.getElementById('email-alert-icon').classList.add('is-hidden');
         return true;
     } else {
         document.getElementById('email-error-message').innerHTML = 'Please enter a valid e-mail address';
-        document.getElementById('email').classList.add('is-danger');
+        document.getElementById('email').classList.add('has-text-danger-dark');
         document.getElementById('email-error-message').classList.remove('is-hidden');
         document.getElementById('email-alert-icon').classList.remove('is-hidden');
         return false;
@@ -156,14 +173,14 @@ function validatePassword(mode) {
     }
 
     if (complexity_met == false) {
-        document.getElementById('password1').classList.add('is-danger');
+        document.getElementById('password1').classList.add('has-text-danger-dark');
         document.getElementById('password1-error-message').innerHTML = 'Password does not meet complexity requirements';
         document.getElementById('password1-error-message').classList.remove('is-hidden');
         document.getElementById('password1-alert-icon').classList.remove('is-hidden');
         return false;
     }
 
-    document.getElementById('password1').classList.remove('is-danger');
+    document.getElementById('password1').classList.remove('has-text-danger-dark');
     document.getElementById('password1-error-message').classList.add('is-hidden');
     document.getElementById('password1-alert-icon').classList.add('is-hidden');
 
@@ -172,8 +189,8 @@ function validatePassword(mode) {
     }
 
     if (password1 != password2) {
-        document.getElementById('password1').classList.add('is-danger');
-        document.getElementById('password2').classList.add('is-danger');
+        document.getElementById('password1').classList.add('has-text-danger-dark');
+        document.getElementById('password2').classList.add('has-text-danger-dark');
         document.getElementById('password1-error-message').innerHTML = 'Passwords do not match';
         document.getElementById('password2-error-message').innerHTML = 'Passwords do not match';
         document.getElementById('password1-error-message').classList.remove('is-hidden');
@@ -182,8 +199,8 @@ function validatePassword(mode) {
         document.getElementById('password2-alert-icon').classList.remove('is-hidden');
         return false;
     }
-    document.getElementById('password1').classList.remove('is-danger');
-    document.getElementById('password2').classList.remove('is-danger');
+    document.getElementById('password1').classList.remove('has-text-danger-dark');
+    document.getElementById('password2').classList.remove('has-text-danger-dark');
     document.getElementById('password1-error-message').classList.add('is-hidden');
     document.getElementById('password2-error-message').classList.add('is-hidden');
     document.getElementById('password1-alert-icon').classList.add('is-hidden');
@@ -195,8 +212,8 @@ function validatePassword2() {
     // Here we only care about if the two passwords match, and we don't want to be
     //  annoying about it while the user is still typing
     if (document.getElementById('password1').value != document.getElementById('password2').value) {
-        document.getElementById('password1').classList.add('is-danger');
-        document.getElementById('password2').classList.add('is-danger');
+        document.getElementById('password1').classList.add('has-text-danger-dark');
+        document.getElementById('password2').classList.add('has-text-danger-dark');
         document.getElementById('password1-error-message').innerHTML = 'Passwords do not match';
         document.getElementById('password2-error-message').innerHTML = 'Passwords do not match';
         document.getElementById('password1-error-message').classList.remove('is-hidden');
@@ -205,8 +222,8 @@ function validatePassword2() {
         document.getElementById('password2-alert-icon').classList.remove('is-hidden');
         return false;
     } else {
-        document.getElementById('password1').classList.remove('is-danger');
-        document.getElementById('password2').classList.remove('is-danger');
+        document.getElementById('password1').classList.remove('has-text-danger-dark');
+        document.getElementById('password2').classList.remove('has-text-danger-dark');
         document.getElementById('password1-error-message').classList.add('is-hidden');
         document.getElementById('password2-error-message').classList.add('is-hidden');
         document.getElementById('password1-alert-icon').classList.add('is-hidden');

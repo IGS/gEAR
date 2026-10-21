@@ -28,7 +28,24 @@ def main():
     # NOTE: Not going to add weighted gene and cart info, but may add subclasses in the future
     gc = geardb.GeneCart()
     data = json.load(sys.stdin)
+
+    # Only logged-in users can create gene lists (checked before any cart file is written)
+    user_logged_in = geardb.get_user_from_session_id(data.get("session_id"))
+    if not user_logged_in:
+        print("Status: 500 Internal Server Error")
+        print("Content-Type: application/json\n")
+        print(json.dumps({"message": "No logged-in user detected"}))
+        sys.exit(1)
+    gc.user_id = user_logged_in.id
+
     gc.update_from_json(data)
+
+    # Domain lists are shown to every user of the site, so only admins may create one
+    #  (update_from_json copies is_domain from the request as-is)
+    if user_logged_in.is_admin and data.get("is_domain") in (1, True, "1", "true"):
+        gc.is_domain = 1
+    else:
+        gc.is_domain = 0
 
     # Weighted carts also get saved to file
     if gc.gctype == 'weighted-list':

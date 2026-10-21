@@ -101,12 +101,26 @@ def try_acquire_lock_file(filepath: "str | Path") -> typing.Optional[typing.Text
     (including an OOM-kill), so this can't be left permanently stuck the way a plain marker file
     (checked with a bare `Path.exists()`) could.
     """
-    fd = open(filepath, "w+")
+    # Open without truncating, so a failed attempt doesn't wipe the holder's PID
+    fd = open(filepath, "a+")
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         fd.close()
         return None
+
+    # The previous holder may have removed the file between our open() and flock(), leaving us
+    # locking a file that no longer exists at this path (and another worker free to create a new one).
+    try:
+        same_file = os.fstat(fd.fileno()).st_ino == os.stat(filepath).st_ino
+    except FileNotFoundError:
+        same_file = False
+    if not same_file:
+        fd.close()
+        return None
+
+    fd.seek(0)
+    fd.truncate()
     fd.write(f"{os.getpid()}\n")
     fd.flush()
     return fd
@@ -114,9 +128,10 @@ def try_acquire_lock_file(filepath: "str | Path") -> typing.Optional[typing.Text
 
 def release_lock_file(fd: typing.TextIO, filepath: "str | Path") -> None:
     """Release a lock acquired via try_acquire_lock_file() and remove the lock file."""
-    fd.close()
+    # Remove the file while still holding the lock, so no other worker can lock it in between
     try:
         Path(filepath).unlink()
     except FileNotFoundError:
         # This is fine, as the lock file may have been removed by another process
         pass
+    fd.close()

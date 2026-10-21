@@ -16,7 +16,7 @@ from flask import request
 from flask_restful import Resource
 from gear.plotting import PlotError
 
-from .common import clip_expression_values, create_projection_adata
+from .common import clip_expression_values, create_projection_adata, parse_color_bounds
 
 
 class SvgData(Resource):
@@ -39,9 +39,17 @@ class SvgData(Resource):
         vmin = request.args.get('vmin', None)
         vmax = request.args.get('vmax', None)
 
-        add_user_defined = False
-        if vmax is not None or vmin is not None:
-            add_user_defined = True
+        # A blank value is the same as not sending it, but a 0 (the client default) still asks for a user-defined range
+        add_user_defined = any(bound not in (None, "") for bound in (vmin, vmax))
+
+        # 0 means "use the default" (0 for vmin, the gene maximum for vmax), so it is unset here
+        try:
+            vmin, vmax = parse_color_bounds(vmin, vmax, zero_is_unset=True)
+        except ValueError as ve:
+            return {
+                "success": -1,
+                "message": str(ve)
+            }
 
         if expression_min_clip is not None:
             try:
@@ -159,15 +167,14 @@ class SvgData(Resource):
             }
 
         if add_user_defined:
-            # If either vmin or vmax is None, set to the min/max of the data
-            # Also check if vmax is 0.0, which is the default value sent from the client
-            if vmin is None or vmin == "0":
+            # If either vmin or vmax is unset (None or 0), set to 0 or the gene's max
+            if vmin is None:
                 vmin = 0.0
-            if vmax is None or vmax == "0":
+            if vmax is None:
                 vmax = scores["gene"]["max"]
             scores["user_defined"] = {
-                "min": float(vmin),
-                "max": float(vmax)
+                "min": vmin,
+                "max": vmax
             }
 
 

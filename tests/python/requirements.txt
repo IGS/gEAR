@@ -19,6 +19,7 @@ requests==2.31.0
 scanpy==1.12.1
 scipy==1.17.1
 shadows==0.1a2       # resources.common (AnnDataShadow)
+tables==3.11.1       # gear.orthology (pandas HDF5 ortholog files)
 
 # Test tooling (not used in production)
 pytest>=8

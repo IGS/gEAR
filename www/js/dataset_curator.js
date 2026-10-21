@@ -52,6 +52,8 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
         , "js-plotly-marker-size": "marker_size"
         , "js-plotly-color-palette": "color_palette"
         , "js-plotly-reverse-palette": "reverse_palette"
+        , "js-plotly-vmin": "vmin"
+        , "js-plotly-vmax": "vmax"
     };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
@@ -367,18 +369,16 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         if (config["colorize_legend_by"]) {
             const series = config["colorize_legend_by"];
-            for (const targetElt of [...plotBySeries, ...hideGroupNonmembers, ...horizontalLegend]) {
-                targetElt.disabled = true;
-                if (catColumns.includes(series)) {
-                    targetElt.disabled = false;
-                }
 
-                // Applies to horizontal legend
+            // Plotting per group (and its column count) works with any colorized series, since the group series is chosen separately.
+            // "Hide group nonmembers" is handled with the "plot_by_group" config below.
+            for (const targetElt of [...plotBySeries, ...maxColumns]) {
+                targetElt.disabled = false;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
 
-            // The "max columns" parameter is only available for categorical series
-            for (const targetElt of [...maxColumns]) {
+            // Only categorical series have a legend to move
+            for (const targetElt of [...horizontalLegend]) {
                 targetElt.disabled = catColumns.includes(series) ? false : true;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
@@ -1207,6 +1207,7 @@ const setupPlotlyOptions = async (datasetId) => {
     const colorSeriesElts = document.getElementsByClassName("js-plotly-color");
     const colorPaletteElts = document.getElementsByClassName("js-plotly-color-palette");
     const reversePaletteElts = document.getElementsByClassName("js-plotly-reverse-palette");
+    const colorBoundElts = [...document.getElementsByClassName("js-plotly-vmin"), ...document.getElementsByClassName("js-plotly-vmax")];
     const hideLegend = document.getElementsByClassName("js-plotly-hide-legend");
     for (const elt of colorSeriesElts) {
         elt.addEventListener("change", (event) => {
@@ -1214,6 +1215,11 @@ const setupPlotlyOptions = async (datasetId) => {
                 curatorCommon.renderColorPicker(event.target.value);
                 for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
                     paletteElt.disabled = true;
+                }
+                // Colorscale bounds only apply to continuous color series. Clear them so they are not saved.
+                for (const boundElt of colorBoundElts) {
+                    boundElt.disabled = true;
+                    boundElt.value = "";
                 }
                 for (const legendElt of hideLegend) {
                     legendElt.disabled = false;
@@ -1228,7 +1234,7 @@ const setupPlotlyOptions = async (datasetId) => {
                 colorsContainer.replaceChildren();
 
                 // Enable the color palette select
-                for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
+                for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts, ...colorBoundElts]) {
                     paletteElt.disabled = false;
                 }
                 for (const legendElt of hideLegend) {
@@ -1387,19 +1393,24 @@ const setupScanpyOptions = async (datasetId) => {
     // Do certain things if the chosen annotation series is categorical or continuous
     for (const elt of colorizeLegendBy) {
         elt.addEventListener("change", (event) => {
-            for (const targetElt of [...plotBySeries, ...horizontalLegend]) {
-                targetElt.disabled = true;
-                // If colorized legend is continuous, we cannot plot by group
-                // So all dependencies need to be disabled.
-                if ((catColumns.includes(event.target.value))) {
-                    targetElt.disabled = false;
-                    curatorCommon.disableCheckboxLabel(targetElt, false);
-                }
+            const series = event.target.value;
+
+            // Plotting per group (and its column count) works with any colorized series, since the group series is chosen separately
+            for (const targetElt of [...plotBySeries, ...maxColumns]) {
+                targetElt.disabled = series ? false : true;
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
 
-            // The "max columns" parameter should only be disabled if the colorized legend is continuous
-            for (const targetElt of [...maxColumns, ...hideGroupNonmembers]) {
-                targetElt.disabled = catColumns.includes(event.target.value) ? false : true;
+            // Only categorical series have a legend to move
+            for (const targetElt of [...horizontalLegend]) {
+                targetElt.disabled = catColumns.includes(series) ? false : true;
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
+            }
+
+            // Hiding group nonmembers only applies when plotting per group
+            const plotByGroup = [...plotBySeries].some((plotByElt) => plotByElt.value);
+            for (const targetElt of [...hideGroupNonmembers]) {
+                targetElt.disabled = (series && plotByGroup) ? false : true;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
         });

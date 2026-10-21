@@ -171,9 +171,19 @@ def _prepare_category_renderers(cmap, registry=None):
     return hook
 
 
+def expression_clim(cbar_min:float|None=None, cbar_max:float|None=None) -> tuple|None:
+    """
+    Colorbar limits for an expression plot, or None to let HoloViews pick them.
+
+    The lower limit defaults to 0, and a missing upper limit (NaN) is left for HoloViews to pick from the data.
+    """
+    if cbar_min is None and cbar_max is None:
+        return None
+    return (0 if cbar_min is None else cbar_min, np.nan if cbar_max is None else cbar_max)
+
 def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatial2', color_col:str='raw_value', cmap="YlOrRd",
                         is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None,
-                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3):
+                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3, cbar_min:float|None=None):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
     plot_kwargs = dict(
@@ -186,7 +196,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
-        clim = (0, cbar_max) if cbar_max is not None else None,
+        clim = expression_clim(cbar_min, cbar_max),
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
@@ -233,7 +243,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         ))
     return plot
 
-def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
+def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15, cbar_min:float|None=None):
     """Generates a Datashaded UMAP."""
 
     color_col_title = title if title else color_col.title()
@@ -249,7 +259,7 @@ def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", 
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
-        clim = (0, cbar_max) if cbar_max is not None else None,
+        clim = expression_clim(cbar_min, cbar_max),
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
@@ -667,6 +677,8 @@ class Settings(param.Parameterized):
     dataset_id = param.String(doc="Dataset ID to display")
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
+    vmin = param.Number(doc="User-defined expression colorbar minimum", allow_None=True)
+    vmax = param.Number(doc="User-defined expression colorbar maximum", allow_None=True)
 
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False

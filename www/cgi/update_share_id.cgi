@@ -175,65 +175,31 @@ def main():
         if gene_cart.gctype == "weighted-list":
             os.chdir(str(CARTS_BASE_DIR))
 
-            for filename in os.listdir("."):
-                if share_id not in filename:
+            for ext in (".h5ad", ".tab"):
+                # Only this cart's own files: another cart's name may contain share_id
+                #  (e.g. cart.<share_id>99.tab), and must not be renamed with it
+                filename = f"cart.{share_id}{ext}"
+                if not os.path.exists(filename):
                     continue
-                if filename.endswith(".h5ad") or filename.endswith(".tab"):
-                    # Replace old_id with new_id in the filename
-                    new_filename = filename.replace(share_id, new_share_id)
+                new_filename = f"cart.{new_share_id}{ext}"
 
-                    # Defense in depth: new_share_id was already validated by is_safe_id(),
-                    # but confirm the resulting path still resolves inside CARTS_BASE_DIR
-                    # before renaming.
-                    resolved_new_filename = (CARTS_BASE_DIR / new_filename).resolve()
-                    if not resolved_new_filename.is_relative_to(CARTS_BASE_DIR.resolve()):
-                        print("Refusing to rename " + filename + " to " + new_filename + ": resolves outside carts directory", file=sys.stderr)
-                        continue
+                # Defense in depth: new_share_id was already validated by is_safe_id(),
+                # but confirm the resulting path still resolves inside CARTS_BASE_DIR
+                # before renaming.
+                resolved_new_filename = (CARTS_BASE_DIR / new_filename).resolve()
+                if not resolved_new_filename.is_relative_to(CARTS_BASE_DIR.resolve()):
+                    print("Refusing to rename " + filename + " to " + new_filename + ": resolves outside carts directory", file=sys.stderr)
+                    continue
 
-                    #! This will not work if not owner or if permissions are not set correctly
-                    os.rename(filename, resolved_new_filename)
-                    # if the old file still exists, log it
-                    if os.path.exists(filename):
-                        print("Could not rename " + filename + " to " + new_filename + " for some reason... skipping", file=sys.stderr)
+                #! This will not work if not owner or if permissions are not set correctly
+                os.rename(filename, resolved_new_filename)
+                # if the old file still exists, log it
+                if os.path.exists(filename):
+                    print("Could not rename " + filename + " to " + new_filename + " for some reason... skipping", file=sys.stderr)
 
         # rename projections
-        # the "by_dataset" directory only needs projections.json files updated
-        os.chdir(str(BY_DATASET_DIR))
-        for root, dirs, files in os.walk("."):
-            for file in files:
-                if not file.endswith("projections.json"):
-                    continue
-                filepath = os.path.join(root, file)
-                with open(filepath, "r") as f:
-                    lines = f.readlines()
-                with open(filepath, "w") as f:
-                    for line in lines:
-                        f.write(line.replace(share_id, new_share_id))
-                break
-
-        # the "by_genecart" directory needs both directory names updated
-        os.chdir(str(BY_GENECART_DIR))
-        for root, dirs, files in os.walk("."):
-            for dirname in dirs:
-                if share_id not in dirname:
-                    continue
-                new_dir = dirname.replace(share_id, new_share_id)
-
-                # Defense in depth: confirm the resulting path still resolves inside
-                # BY_GENECART_DIR before renaming.
-                resolved_new_dir = (BY_GENECART_DIR / new_dir).resolve()
-                if not resolved_new_dir.is_relative_to(BY_GENECART_DIR.resolve()):
-                    print("Refusing to rename " + dirname + " to " + new_dir + ": resolves outside genecart projections directory", file=sys.stderr)
-                    continue
-
-                try:
-                    os.rename(dirname, resolved_new_dir)
-                except FileNotFoundError:
-                    # If the new_dir already exists, we can't rename the directory
-                    # The "by_genecart" directory is not exactly used, so not overly worried.
-                    # But projections.json may need to be merged and files moved.
-                    print("Could not rename " + dirname + " to " + new_dir + " because new_dir was not empty... skipping", file=sys.stderr)
-                break
+        rename_projection_keys(BY_DATASET_DIR, share_id, new_share_id)
+        rename_genecart_projection_dir(BY_GENECART_DIR, share_id, new_share_id)
 
     else:
         error = "Invalid scope. Must be 'dataset', 'layout', or 'genecart'."
@@ -244,6 +210,52 @@ def main():
     # indicate success
     result['success'] = 1
     print(json.dumps(result))
+
+def rename_projection_keys(by_dataset_dir: Path, share_id: str, new_share_id: str) -> None:
+    """
+    Rename the gene cart's key in each dataset's projections.json. Only the key is changed: other
+    gene carts, datasets and projection IDs in the file may contain share_id as a substring.
+    """
+    if not by_dataset_dir.is_dir():
+        return
+
+    old_keys = (share_id, "cart.{}".format(share_id))   # "cart.<id>" is the legacy key
+    for json_file in by_dataset_dir.glob("*/projections.json"):
+        try:
+            with open(json_file) as fh:
+                projections = json.load(fh)
+        except (OSError, json.JSONDecodeError) as e:
+            print("Could not read {}: {}... skipping".format(json_file, e), file=sys.stderr)
+            continue
+
+        if not isinstance(projections, dict) or not any(key in projections for key in old_keys):
+            continue
+
+        for key in old_keys:
+            if key in projections:
+                projections.setdefault(new_share_id, []).extend(projections.pop(key))
+
+        with open(json_file, "w") as fh:
+            json.dump(projections, fh, ensure_ascii=False, indent=4)
+
+def rename_genecart_projection_dir(by_genecart_dir: Path, share_id: str, new_share_id: str) -> None:
+    """Rename the gene cart's own directory under projections/by_genecart, if it has one."""
+    old_dir = by_genecart_dir / share_id
+    if not old_dir.is_dir():
+        return
+
+    new_dir = by_genecart_dir / new_share_id
+    # Defense in depth: new_share_id was already validated by is_safe_id()
+    if not new_dir.resolve().is_relative_to(by_genecart_dir.resolve()):
+        print("Refusing to rename " + str(old_dir) + " to " + str(new_dir) + ": resolves outside genecart projections directory", file=sys.stderr)
+        return
+    if new_dir.exists():
+        # The "by_genecart" directory is not exactly used, so not overly worried.
+        # But projections.json may need to be merged and files moved.
+        print("Could not rename " + str(old_dir) + " to " + str(new_dir) + " because it already exists... skipping", file=sys.stderr)
+        return
+
+    old_dir.rename(new_dir)
 
 if __name__ == '__main__':
     main()

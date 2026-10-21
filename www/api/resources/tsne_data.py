@@ -9,6 +9,7 @@ import base64
 import io
 import os
 import re
+from copy import copy
 from math import ceil
 from pathlib import Path
 
@@ -21,6 +22,7 @@ mpl.use("Agg")  # Prevents the need for a display when plotting, also thread-saf
 import typing
 
 import matplotlib.colors as mcolors
+from matplotlib.collections import PathCollection
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
@@ -28,6 +30,7 @@ import seaborn as sns
 from flask import request
 from flask_restful import Resource, inputs, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
+from gear.colorblind import CONTINUOUS_CMAP, categorical_colors
 from gear.plotting import PlotError
 
 if typing.TYPE_CHECKING:
@@ -41,7 +44,7 @@ if typing.TYPE_CHECKING:
     from matplotlib.colors import Colormap
     from matplotlib.figure import Figure
 
-from .common import clip_expression_values, create_projection_adata
+from .common import clip_expression_values, create_projection_adata, parse_color_bounds
 
 sc.settings.verbosity = 0
 
@@ -59,6 +62,11 @@ PLOT_TYPE_TO_BASIS = {
     "mg_pca_static": "pca",
 }
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
+
+# Colormap for a continuous colorize_by panel, so it does not look like gene expression (issue #1091).
+# Viridis is colorblind-safe and distinct from the colorblind expression scale (cividis_r).
+ANNOTATION_CMAP = "viridis"
+ANNOTATION_CMAP_FALLBACK = "plasma"  # used when the expression palette is already viridis
 
 # Max number of legend items per column allowed in vertical legend
 NUM_LEGENDS_PER_COL = 16
@@ -86,8 +94,9 @@ parser.add_argument("flip_y", type=inputs.boolean, default=False, location="json
 parser.add_argument("horizontal_legend", type=inputs.boolean, default=False, location="json")
 parser.add_argument("marker_size", type=inputs.positive, default=None)
 parser.add_argument("center_around_median", type=inputs.boolean, default=False, location="json")
-parser.add_argument('vmax', type=float, default=None)
-parser.add_argument('vmin', type=float, default=None)
+# Validated by parse_color_bounds, so a bad value gets a clear message instead of a 400
+parser.add_argument('vmax', type=str, default=None)
+parser.add_argument('vmin', type=str, default=None)
 parser.add_argument("make_zero_gray", type=inputs.boolean, default=True, location="json")  # Keep with old plot styles
 parser.add_argument("enforce_equal_aspect", type=inputs.boolean, default=False, location="json")
 parser.add_argument("obs_filters", type=dict, default={}, location="json")  # dict of lists
@@ -115,6 +124,46 @@ single_gene_parser.add_argument(
 
 multi_gene_parser = parser.copy()
 multi_gene_parser.add_argument("gene_symbols", type=str, action="append", default=[], location="json")
+
+
+def annotation_colormap(expression_palette: str) -> str:
+    """
+    Choose the colormap for a continuous colorize_by panel, making sure it differs from the expression palette.
+
+    Args:
+        expression_palette (str): Name of the colormap used for the gene expression panels.
+
+    Returns:
+        str: Name of the colormap to use for the colorize_by panel.
+    """
+    if expression_palette.startswith(ANNOTATION_CMAP):
+        return ANNOTATION_CMAP_FALLBACK
+    return ANNOTATION_CMAP
+
+
+def apply_annotation_colormap(axes: list["Axes"], cmap_name: str, na_color: str) -> None:
+    """
+    Recolor the continuous colorize_by panel (the last plot panel) with its own colormap.
+
+    scanpy's embedding plot applies one colormap to every continuous panel, so the colormap is swapped
+    on the panel's scatter afterwards. The panel's colorbar follows the scatter and updates automatically.
+
+    Args:
+        axes (list[Axes]): All axes of the figure, including colorbar axes.
+        cmap_name (str): Name of the colormap to apply.
+        na_color (str): Color for missing values, as passed to scanpy.
+
+    Returns:
+        None
+    """
+    plot_axes = [a for a in axes if a.get_label() != "<colorbar>"]
+    if not plot_axes:
+        return
+    cmap = copy(mpl.colormaps[cmap_name])
+    cmap.set_bad(na_color)  # scanpy does the same for its colormap
+    for collection in plot_axes[-1].collections:
+        if isinstance(collection, PathCollection):
+            collection.set_cmap(cmap)
 
 
 def calculate_num_legend_cols(group_len: int) -> int:
@@ -257,26 +306,6 @@ def create_two_way_sorting(adata: "AnnData", gene_symbol: str) -> "AnnData":
     sort_order = np.argsort(np.abs(median - x_dense))
     ordered_obs = adata.obs.iloc[sort_order].index
     return adata[ordered_obs, :]  # type: ignore
-
-
-def get_colorblind_scale(n_colors: int) -> list[str]:
-    """
-    Generates a list of colorblind-friendly hex color codes.
-
-    This function uses the 'viridis' colormap from matplotlib, which is designed to be perceptually uniform and colorblind-friendly.
-    It returns a list of hex color strings corresponding to evenly spaced colors from the colormap.
-
-    Args:
-        n_colors (int): The number of distinct colors to generate.
-
-    Returns:
-        list[str]: A list of hex color codes as strings.
-    """
-    cividis = plt.get_cmap("viridis")
-    # max() keeps a single category from dividing by zero
-    colors = [cividis(i / max(n_colors - 1, 1)) for i in range(n_colors)]
-    # convert to hex since I ran into some issues using rpg colors
-    return [mcolors.rgb2hex(color) for color in colors]
 
 
 def is_categorical(series: "pd.Series") -> bool:
@@ -612,6 +641,9 @@ def prepare_adata(
         filters (dict, optional): Dictionary mapping observation column names to a list of values to retain. Only observations matching these values are kept. Defaults to None.
     Returns:
         AnnData: The modified AnnData object with updated embeddings, reordered categories, and/or filtered observations.
+    Raises:
+        PlotError: If a saved order or filter names a column that isn't in adata.obs, or a saved order no longer
+            matches a column's categories (the dataset changed after the display was curated).
     """
     # Flip x or y axis if requested
     for key in ["X_tsne", "X_umap", "X_pca"]:
@@ -624,9 +656,9 @@ def prepare_adata(
     # Reorder the categorical values in the observation dataframe
     # Currently in UI only "plot_by_group" has reordering capabilities
     if order:
-        order = order
-        obs_keys = order.keys()
-        for key in obs_keys:
+        for key in order.keys():
+            if key not in adata.obs:
+                raise PlotError(f"Sort order series {key} not found in observation metadata for dataset. Please update curation.")
             col = adata.obs[key]
             try:
                 # Some columns might be numeric, therefore
@@ -635,10 +667,15 @@ def prepare_adata(
                 adata.obs[key] = reordered_col
             except AttributeError:
                 pass
+            except ValueError:
+                # The saved order lists different categories than the dataset now has
+                raise PlotError(f"Sort order for series {key} does not match the categories in the dataset. Please update curation.")
 
     # Filter by obs filters
     if filters:
         for col, values in filters.items():
+            if col not in adata.obs:
+                raise PlotError(f"Filter series {col} not found in observation metadata for dataset. Please update curation.")
             selected_filter = adata.obs[col].isin(values)
             adata = adata[selected_filter, :]
 
@@ -689,12 +726,9 @@ def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
     # Rename to end the confusion
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-    if isinstance(ana, SpatialAnalysis):
-        dedup_copy = str(ana.dataset_path).replace(".zarr", ".dups_removed.h5ad")
-    else:
-        dedup_copy = str(ana.dataset_path).replace(".h5ad", ".dups_removed.h5ad")
-
-    dedup_copy = Path(dedup_copy)
+    # Swap the suffix rather than replacing ".zarr"/".h5ad": a non-primary SpatialAnalysis is an .h5ad,
+    #  and a copy path equal to the dataset path would delete the dataset during cleanup
+    dedup_copy = Path(ana.dataset_path).with_suffix(".dups_removed.h5ad")
 
     success = 1
     message = ""
@@ -734,8 +768,8 @@ def generate_tsne_figure(
     colors: dict = {},
     colorblind_mode: bool = False,
     center_around_median: bool = False,
-    vmax: float | None = None,
-    vmin: float | None = None,
+    vmax: float | str | None = None,
+    vmin: float | str | None = None,
     expression_palette: str = "viridis",
     reverse_palette: bool = False,
     high_dpi: bool = False,
@@ -782,17 +816,20 @@ def generate_tsne_figure(
     marker_size : int or None
         Size of the markers in the plot.
     colorize_by : str or None
-        Name of the categorical variable to colorize by.
+        Name of the observation column to colorize by. A continuous column gets its own colormap
+        (see annotation_colormap) and is not affected by vmin, vmax, or center_around_median.
     colors : dict or None
         Dictionary mapping category names to colors.
     colorblind_mode : bool
         Whether to use a colorblind-friendly palette.
     center_around_median : bool
         Whether to center the color scale around the median expression.
-    vmax: bool or None
-        Maximum expression value for color scaling.
-    vmin: bool or None
-        Minimum expression value for color scaling.
+    vmax: float, str or None
+        Maximum expression value for color scaling. Applies to expression panels only.
+        A numeric string is accepted; None or "" means unset.
+    vmin: float, str or None
+        Minimum expression value for color scaling. Applies to expression panels only.
+        A numeric string is accepted; None or "" means unset.
     expression_palette : str
         Name of the color palette for gene expression.
     reverse_palette : bool
@@ -833,6 +870,11 @@ def generate_tsne_figure(
         return {"success": -1, "message": "Request needs a dataset id."}
 
     try:
+        vmin, vmax = parse_color_bounds(vmin, vmax)
+    except ValueError as ve:
+        return {"success": -1, "message": str(ve)}
+
+    try:
         selected = filter_adata_genes(adata, gene_symbols)
         selected = validate_analysis_inputs(
             selected, ana.id, dataset_id, x_axis, y_axis
@@ -844,9 +886,12 @@ def generate_tsne_figure(
     if expression_min_clip is not None:
         selected = clip_expression_values(selected, min_clip=expression_min_clip)
 
-    selected = prepare_adata(
-        selected, flip_x=flip_x, flip_y=flip_y, order=order, filters=filters
-    )
+    try:
+        selected = prepare_adata(
+            selected, flip_x=flip_x, flip_y=flip_y, order=order, filters=filters
+        )
+    except PlotError as pe:
+        return {"success": -1, "message": str(pe)}
     selected = modify_genes_found_as_obs_columns(selected, list(gene_symbols))
 
     dedup = dedup_genes(selected, ana)
@@ -884,7 +929,7 @@ def generate_tsne_figure(
         elif expression_palette.startswith("multicolor_diverging"):
             create_projection_colorscale()
 
-    expression_color = "cividis_r" if colorblind_mode else expression_palette
+    expression_color = CONTINUOUS_CMAP if colorblind_mode else expression_palette
     if make_zero_gray:
         # Build from expression_color so colorblind mode keeps cividis with a gray zero
         expression_color = create_colorscale_with_zero_gray(expression_color)
@@ -898,30 +943,20 @@ def generate_tsne_figure(
     if max_columns:
         max_columns = int(max_columns)
 
-    # These work with a string but want to safeguard
-    if vmax:
-        vmax = float(vmax)
-        if plot_vcenter and vmax <= plot_vcenter:
-            return {
-                "success": -1,
-                "message": "Median expression value is equal to maximum cap value. Please disable centering or adjust maximum cap.",
-            }
-
-    if vmin:
-        vmin = float(vmin)
-        if plot_vcenter and vmin >= plot_vcenter:
-            return {
-                "success": -1,
-                "message": "Median expression value is equal to minimum cap value. Please disable centering or adjust minimum cap.",
-            }
-
-    if vmax and vmin and vmax <= vmin:
+    if plot_vcenter and vmax is not None and vmax <= plot_vcenter:
         return {
             "success": -1,
-            "message": "Maximum cap value must be greater than minimum cap value.",
+            "message": "Median expression value is equal to maximum cap value. Please disable centering or adjust maximum cap.",
+        }
+
+    if plot_vcenter and vmin is not None and vmin >= plot_vcenter:
+        return {
+            "success": -1,
+            "message": "Median expression value is equal to minimum cap value. Please disable centering or adjust minimum cap.",
         }
 
     # Colorize logic (shared, but with some differences for single/multi)
+    color_category = False
     if colorize_by:
         num_plots += 1
         color_category = is_categorical(selected.obs[colorize_by])
@@ -945,9 +980,7 @@ def generate_tsne_figure(
                             for k in selected.obs[colorize_by].cat.categories
                         ]
             if colorblind_mode:
-                cb_colors = get_colorblind_scale(
-                    len(selected.obs[colorize_by].unique())
-                )
+                cb_colors = categorical_colors(len(selected.obs[colorize_by].unique()))
                 color_map = {
                     name: cb_colors[idx]
                     for idx, name in enumerate(selected.obs[colorize_by].cat.categories)
@@ -1011,20 +1044,33 @@ def generate_tsne_figure(
         titles.extend(gene_symbols)
         kwargs_ncols = max_columns or num_plots
 
+    # A continuous colorize_by column is a different measurement than expression,
+    # so it gets its own colormap and data range (issue #1091)
+    continuous_colorize = bool(colorize_by) and not color_category
+    plot_vmin, plot_vmax, plot_vcenters = vmin, vmax, plot_vcenter
+    if continuous_colorize:
+        # colorize_by is always the last panel; scanpy takes one value per panel
+        num_expression_panels = len(columns) - 1
+        plot_vmin = [vmin] * num_expression_panels + [None]
+        plot_vmax = [vmax] * num_expression_panels + [None]
+        plot_vcenters = [plot_vcenter] * num_expression_panels + [None]
+
+    na_color = "none" if hide_group_nonmembers else "lightgray"  # "none" is shorthand for completely transparent
+
     # --- Plotting ---
     kwargs = {
         "basis": basis,
         "color": columns,
         "color_map": expression_color,
-        "na_color": "none" if hide_group_nonmembers else "lightgray",  # "none" is shorthand for completely transparent
+        "na_color": na_color,
         "show": False,
         "use_raw": False,
         "title": titles,
         "size": marker_size,
         "sort_order": plot_sort_order,
-        "vcenter": plot_vcenter,
-        "vmax": vmax,
-        "vmin": vmin,
+        "vcenter": plot_vcenters,
+        "vmax": plot_vmax,
+        "vmin": plot_vmin,
         "return_fig": True,
         "ncols": kwargs_ncols,
         "edges": False
@@ -1079,6 +1125,11 @@ def generate_tsne_figure(
 
     #io_fig.set_layout_engine("compressed")
     ax = io_fig.get_axes()
+
+    # Override continuous "colorize" panel to have independent cmap from expression panel
+    if continuous_colorize:
+        shown_palette = CONTINUOUS_CMAP if colorblind_mode else expression_palette
+        apply_annotation_colormap(ax, annotation_colormap(shown_palette), na_color)
 
     # Axes/legend logic (shared)
     if isinstance(ax, list):

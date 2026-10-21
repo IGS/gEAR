@@ -9,9 +9,11 @@ import json
 import shutil
 from pathlib import Path
 
+import h5py
 import numpy as np
 import scanpy as sc
 from anndata import AnnData
+from anndata.io import write_elem
 from scipy.sparse import csr_matrix, issparse
 
 from .analysis import H5adAdapter, ZarrAdapter
@@ -132,9 +134,18 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir, dataset_f
             h5ad_changes_made = True
 
     if h5ad_changes_made:
-        # 482cb81f-4816-e4e3-a3fe-514707b847d8.h5ad
         print("\tWriting new H5AD")
-        adata.write()
+        if adata.isbacked:
+            # adata.write() on a backed object deletes the "raw" group before reading
+            # raw.X back from that same group, failing with "Could not find dataset for
+            # raw X" and leaving the file without raw. The add_* helpers above only
+            # touch obs and obsm, so write just those in place.
+            adata.file.close()
+            with h5py.File(upload_file, "a") as h5:
+                write_elem(h5, "obs", adata.obs)
+                write_elem(h5, "obsm", dict(adata.obsm))
+        else:
+            adata.write()
 
     # Does the JSON need to be updated?
     if json_changes_made:
