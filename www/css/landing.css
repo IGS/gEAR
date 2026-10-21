@@ -1,0 +1,68 @@
+button {
+    font-weight: bold;
+}
+div.card-content,
+div.card-image {
+    background-color: white;
+    color: black;
+}
+div.card-content button {
+
+}
+div.card-content .title {
+    font-size: 24px;
+    font-weight: semi-bold;
+}
+div.card-content .subtitle {
+    font-size: 12px;
+    font-weight: bold;
+    color: #4e5667;
+}
+img#landing-logo {
+    height: 50px;
+}
+section#element-grid-c a.tool-link {
+    font-size: 90%;
+}
+section#element-grid-c p.description {
+    
+}
+section#element-grid-c div.tile p.title {
+    font-size: 16px;
+    font-weight: semi-bold;
+}
+section#banded-section-c {
+    background-color: #f5f3fd;
+}
+section#element-grid-c img {
+    border: 1px solid black;
+}
+section#top-with-background {
+    background-image: url(../img/landing_page_upper_background.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: left top;
+}
+section#justification-c .title,
+section#element-intro-c .title {
+    font-size: 26px;
+    font-weight: semi-bold;
+}
+section#justification-c .subtitle,
+section#element-intro-c .subtitle {
+    font-size: 14px;
+    font-weight: bold;
+    color: #4e5667;
+}
+section#primary-intro-c {
+    min-height: 30em;
+}
+section#primary-intro-c .title {
+    font-size: 34px;
+    font-weight: semi-bold;
+}
+section#primary-intro-c .subtitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #4e5667;
+}
