@@ -36,8 +36,8 @@
                 <a href="/"><img id="landing-logo" class="pt-2 pl-3" src="/img/logos/gear-B-3.png" alt="gEAR home" /></a>
               </div>
               <div class="column is-10 has-text-right">
-                <a href="/index.html" class="button is-small is-ghost">Skip to portal</a>
-                <a href="/create_account.html" class="button is-small is-primary is-outlined is-rounded mr-3">Create account</a>
+                <a id="portal-link" href="/index.html" class="button is-small is-ghost">Skip to portal</a>
+                <a id="header-create-account" href="/create_account.html" class="button is-small is-primary is-outlined is-rounded mr-3">Create account</a>
               </div>
             </div>
           </header>
@@ -224,7 +224,8 @@
                 <p class="subtitle mt-1">Need help? Visit the <a href="https://github.com/IGS/gEAR/wiki">user guide</a> or <a href="/contact.html">contact us</a>.</p>
                 <div class="buttons is-centered">
                   <a class="button is-primary is-rounded" href="/expression.html">Start searching</a>
-                  <a class="button is-primary is-outlined is-rounded" href="/create_account.html">Create an account</a>
+                  <a id="cta-create-account" class="button is-primary is-outlined is-rounded" href="/create_account.html">Create an account</a>
+                  <a class="button is-ghost is-rounded" href="/index.html">Go to the portal</a>
                 </div>
               </div>
               <div class="column is-3">&nbsp;</div>
@@ -241,6 +242,15 @@
       <script>
         // Mark this browser as having seen the landing page so index.html no longer redirects here.
         document.cookie = 'gear_returning_visitor=1; path=/; max-age=31536000; SameSite=Lax';
+
+        // Logged-in users (or anyone who has been here before) get a clear way back instead of sign-up prompts.
+        const hasSession = /(^|;\s*)gear_session_id=/.test(document.cookie);
+        if (hasSession) {
+          document.getElementById('header-create-account').classList.add('is-hidden');
+          document.getElementById('cta-create-account').classList.add('is-hidden');
+          document.getElementById('portal-link').textContent = 'Back to the portal';
+          document.getElementById('portal-link').classList.replace('is-ghost', 'is-primary');
+        }
       </script>
     </body>
 </html>
