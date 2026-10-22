@@ -7,6 +7,8 @@ import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 import { Citation } from "./citation.js";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
+A TileGrid "type" of "dataset" shows a single dataset share ID, and "datasets" arranges a comma-separated
+list of dataset share IDs on the fly using the viewing user's default display for each dataset (or the owner's default).
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
 For the given layout, a single-gene grid and a multi-gene grid are generated.
 */
@@ -14,6 +16,10 @@ For the given layout, a single-gene grid and a multi-gene grid are generated.
 const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  // "tsne_dynamic" is a legacy option
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
 const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
+
+// Auto-arranged tile widths on the 12-column grid: 3 tiles per row for single-gene, 2 for multi-gene
+const AUTO_LAYOUT_SINGLE_WIDTH = 4;
+const AUTO_LAYOUT_MULTI_WIDTH = 6;
 
 export class TileGrid {
 
@@ -186,7 +192,12 @@ export class TileGrid {
      * @throws {Error} If there is an error fetching the dataset list information.
      */
     async getDatasets() {
-        const args = this.type === "dataset" ? {permalink_share_id: this.shareId} : {layout_share_id: this.shareId};
+        let args = {layout_share_id: this.shareId};
+        if (this.type === "dataset") {
+            args = {permalink_share_id: this.shareId};
+        } else if (this.type === "datasets") {
+            args = {permalink_share_ids: this.shareId};   // comma-separated
+        }
 
         try {
             const data = await apiCallsMixin.fetchDatasetListInfo(args);
@@ -202,12 +213,71 @@ export class TileGrid {
      * @throws {Error} If there is an error while fetching the layout.
      */
     async getLayout() {
+        if (this.type === "datasets") {
+            return this.buildAutoLayout();
+        }
+
         try {
             const data = await apiCallsMixin.fetchDatasetCollectionMembers(this.shareId);
             return data["layout_members"];
         } catch (error) {
             throw error;
         }
+    }
+
+    /**
+     * Arranges this.datasets on the fly, with no saved dataset collection behind it.
+     * Each dataset uses the viewing user's default display if they set one, otherwise the dataset owner's,
+     * falling back to the owner's first display when no default exists.  Datasets with no usable display are skipped.
+     * @returns {Promise<{single: string[], multi: string[]}>} A layout in the same shape as a saved collection's members.
+     */
+    async buildAutoLayout() {
+        const layout = {single: [], multi: []};
+
+        const getDisplayId = async (dataset, isMulti) => {
+            try {
+                const {default_display_id: defaultDisplayId} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, isMulti ? 1 : 0);
+                if (defaultDisplayId) {
+                    return defaultDisplayId;
+                }
+            } catch (error) {
+                console.warn(`Could not fetch default display for dataset ${dataset.id}`);
+            }
+
+            const {owner: ownerDisplays} = await apiCallsMixin.fetchDatasetDisplays(dataset.id);
+            const filterKey = isMulti ? "gene_symbols" : "gene_symbol";
+            const fallback = ownerDisplays?.find((d) => d.plotly_config?.hasOwnProperty(filterKey));
+            return fallback?.id;
+        };
+
+        const members = await Promise.all(this.datasets.map(async (dataset) => ({
+            dataset,
+            single: await getDisplayId(dataset, false),
+            multi: await getDisplayId(dataset, true),
+        })));
+
+        for (const [type, width] of [["single", AUTO_LAYOUT_SINGLE_WIDTH], ["multi", AUTO_LAYOUT_MULTI_WIDTH]]) {
+            const perRow = 12 / width;
+            let position = 0;
+            for (const member of members) {
+                if (!member[type]) {
+                    console.warn(`No ${type}-gene display found for dataset '${member.dataset.title}'. Skipping.`);
+                    continue;
+                }
+                layout[type].push(JSON.stringify({
+                    dataset_id: member.dataset.id,
+                    display_id: member[type],
+                    grid_position: position + 1,
+                    grid_width: width,
+                    grid_height: 1,
+                    start_row: Math.floor(position / perRow) + 1,
+                    start_col: (position % perRow) * width + 1,
+                }));
+                position++;
+            }
+        }
+
+        return layout;
     }
 
     /**
