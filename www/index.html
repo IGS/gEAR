@@ -18,10 +18,10 @@
           -->
         <base href="/" />
 
-        <!-- First-time visitors (no returning-visitor or session cookie) are sent to the landing page, which sets the cookie. -->
+        <!-- First-time visitors (no returning-visitor or session cookie) are sent to the intro page, which sets the cookie. -->
         <script>
           if (!/(^|;\s*)(gear_returning_visitor|gear_session_id)=/.test(document.cookie)) {
-            window.location.replace('/landing.html');
+            window.location.replace('/intro.html');
           }
         </script>
 
@@ -55,7 +55,7 @@
                   <button id="onboarding-btn" class="button is-primary is-dark">
                     New to&nbsp;<span id="onboarding-domain-short-label">gEAR</span>? Click for tour.
                   </button>
-                  <a id="intro-screen-link" href="/landing.html" class="button is-primary is-outlined ml-2">
+                  <a id="intro-screen-link" href="/intro.html" class="button is-primary is-outlined ml-2">
                     See intro screen again
                   </a>
                 </div>

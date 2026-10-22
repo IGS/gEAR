@@ -1,4 +1,4 @@
-document.title = 'gEAR landing page';
+document.title = 'gEAR intro page';
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
     

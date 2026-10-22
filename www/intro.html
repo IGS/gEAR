@@ -25,7 +25,7 @@
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
         <!--Page-specific CSS here -->
-        <script>document.write('<link rel="stylesheet" href="css/landing.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/intro.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
       <div id="main-layout-c" class="is-fullheight">
@@ -33,7 +33,7 @@
           <header id="header-c" class="is-fullwidth">
             <div class="columns is-gapless is-vcentered">
               <div class="column is-2">
-                <a href="/"><img id="landing-logo" class="pt-2 pl-3" src="/img/logos/gear-B-3.png" alt="gEAR home" /></a>
+                <a href="/"><img id="intro-logo" class="pt-2 pl-3" src="/img/logos/gear-B-3.png" alt="gEAR home" /></a>
               </div>
               <div class="column is-10 has-text-right">
                 <a id="portal-link" href="/index.html" class="button is-small is-ghost">Skip to portal</a>
@@ -86,7 +86,7 @@
             <section id="card-collection-c" class="columns is-gapless">
               <div class="column is-3">&nbsp;</div>
               <div class="column is-6">
-                <div id="landing-cards" class="columns">
+                <div id="intro-cards" class="columns">
                   <div class="column is-4 mt-6">
                     <div class="card">
                       <div class="card-image">
@@ -240,7 +240,7 @@
         </div>
       </footer>
       <script>
-        // Mark this browser as having seen the landing page so index.html no longer redirects here.
+        // Mark this browser as having seen the intro page so index.html no longer redirects here.
         document.cookie = 'gear_returning_visitor=1; path=/; max-age=31536000; SameSite=Lax';
 
         // Logged-in users (or anyone who has been here before) get a clear way back instead of sign-up prompts.
