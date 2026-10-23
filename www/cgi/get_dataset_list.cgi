@@ -57,6 +57,7 @@ def main():
         search_terms = None
 
     permalink_id = form.getfirst('permalink_share_id')  # dataset permalink
+    permalink_ids_str = form.getfirst('permalink_share_ids')  # comma-separated dataset permalinks
     only_types_str = form.getfirst('only_types')
     sort_order = form.getfirst('order')
     default_domain_label = form.getfirst('default_domain')
@@ -78,6 +79,16 @@ def main():
     # Permalinks only. Get dataset info and return it
     if permalink_id is not None:
         result['datasets'] = get_permalink_dataset(cursor, permalink_id)
+        cursor.close()
+        cnx.close()
+        print(json.dumps(result))
+        return
+
+    # Multiple permalinks. Datasets are returned in the order requested
+    if permalink_ids_str is not None:
+        for share_id in dict.fromkeys(permalink_ids_str.replace(' ', '').split(',')):
+            if share_id:
+                result['datasets'].extend(get_permalink_dataset(cursor, share_id))
         cursor.close()
         cnx.close()
         print(json.dumps(result))
@@ -359,9 +370,12 @@ def get_permalink_dataset(cursor, permalink_id):
         A list containing the dataset, or an empty list if not found.
     """
     dataset_id = geardb.get_dataset_id_from_share_id(permalink_id)
+    datasets = list()
+    if dataset_id is None:
+        return datasets
+
     dsc = geardb.DatasetCollection()
     dsc.get_by_dataset_ids(ids=[dataset_id])
-    datasets = list()
 
     if len(dsc.datasets):
         ds = dsc.datasets[0]

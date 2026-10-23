@@ -4,8 +4,10 @@
 get_default_display.cgi - Get the default display ID for a dataset.
 
 Input: dataset_id, session_id (optional), is_multigene (0/1).
-Output: JSON {default_display_id}; falls back to the dataset owner's default when the
-        user has none set.
+Output: JSON {default_display_id, grid_width, width_rule, width_counts}; falls back to the dataset
+        owner's default when the user has none set. grid_width is the suggested width (of 12) for
+        automatically arranged layouts, or null if there is no basis for one. width_rule says why
+        (see geardb.get_auto_layout_width) and width_counts is how many collections used each width.
 """
 
 import cgi, json
@@ -42,9 +44,18 @@ def main():
         , is_multigene=is_multigene
       )
 
+    grid_width = None
+    width_rule = None
+    width_counts = {}
+    if default_display_id is not None:
+      choice = geardb.get_auto_layout_width(default_display_id)
+      grid_width = choice['width']
+      width_rule = choice['rule']
+      width_counts = {str(width): count for width, count in choice['width_counts'].items()}
+
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
-    print(json.dumps(dict(default_display_id=default_display_id)))
+    print(json.dumps(dict(default_display_id=default_display_id, grid_width=grid_width, width_rule=width_rule, width_counts=width_counts)))
 
 if __name__ == '__main__':
     main()
