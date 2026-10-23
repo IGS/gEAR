@@ -17,7 +17,7 @@ const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
 const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
-// Auto-arranged tile widths on the 12-column grid: 3 tiles per row for single-gene, 2 for multi-gene
+// Auto-arranged tile widths on the 12-column grid, used when a display has no usual width: 3 tiles per row for single-gene, 2 for multi-gene
 const AUTO_LAYOUT_SINGLE_WIDTH = 4;
 const AUTO_LAYOUT_MULTI_WIDTH = 6;
 
@@ -228,17 +228,20 @@ export class TileGrid {
     /**
      * Arranges this.datasets on the fly, with no saved dataset collection behind it.
      * Each dataset uses the viewing user's default display if they set one, otherwise the dataset owner's,
-     * falling back to the owner's first display when no default exists.  Datasets with no usable display are skipped.
+     * falling back to the owner's first display when no default exists. Tile widths come from the server
+     * (geardb.get_auto_layout_width): embedding plots are full width, otherwise the widest width used by a
+     * meaningful share of saved collections.  Anything without a suggested width uses the defaults above.  Datasets with no usable display are skipped.
      * @returns {Promise<{single: string[], multi: string[]}>} A layout in the same shape as a saved collection's members.
      */
     async buildAutoLayout() {
         const layout = {single: [], multi: []};
 
-        const getDisplayId = async (dataset, isMulti) => {
+        // Returns the display to use and its usual width, which is null when it isn't known
+        const getDisplay = async (dataset, isMulti) => {
             try {
-                const {default_display_id: defaultDisplayId} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, isMulti ? 1 : 0);
-                if (defaultDisplayId) {
-                    return defaultDisplayId;
+                const {default_display_id: displayId, grid_width: gridWidth, width_counts: widthCounts, width_rule: widthRule} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, isMulti ? 1 : 0);
+                if (displayId) {
+                    return {displayId, gridWidth, widthCounts, widthRule, source: "default display"};
                 }
             } catch (error) {
                 console.warn(`Could not fetch default display for dataset ${dataset.id}`);
@@ -247,33 +250,53 @@ export class TileGrid {
             const {owner: ownerDisplays} = await apiCallsMixin.fetchDatasetDisplays(dataset.id);
             const filterKey = isMulti ? "gene_symbols" : "gene_symbol";
             const fallback = ownerDisplays?.find((d) => d.plotly_config?.hasOwnProperty(filterKey));
-            return fallback?.id;
+            return {displayId: fallback?.id, gridWidth: null, widthCounts: {}, widthRule: null, source: "owner's first display (no default set)"};
         };
 
         const members = await Promise.all(this.datasets.map(async (dataset) => ({
             dataset,
-            single: await getDisplayId(dataset, false),
-            multi: await getDisplayId(dataset, true),
+            single: await getDisplay(dataset, false),
+            multi: await getDisplay(dataset, true),
         })));
 
-        for (const [type, width] of [["single", AUTO_LAYOUT_SINGLE_WIDTH], ["multi", AUTO_LAYOUT_MULTI_WIDTH]]) {
-            const perRow = 12 / width;
+        for (const [type, defaultWidth] of [["single", AUTO_LAYOUT_SINGLE_WIDTH], ["multi", AUTO_LAYOUT_MULTI_WIDTH]]) {
             let position = 0;
+            let row = 1;
+            let col = 1;    // next free column in the current row
             for (const member of members) {
-                if (!member[type]) {
+                const {displayId, gridWidth, widthCounts, widthRule, source} = member[type];
+                if (!displayId) {
                     console.warn(`No ${type}-gene display found for dataset '${member.dataset.title}'. Skipping.`);
                     continue;
                 }
+
+                // Use the width this display is usually given in collections, kept within the 12-column grid
+                const width = Math.min(Math.max(parseInt(gridWidth) || defaultWidth, 1), 12);
+
+                // Uncomment to explain how each tile's width was chosen
+                // const reason = gridWidth
+                //     ? `${widthRule}; widths used in saved collections: ${JSON.stringify(widthCounts)}`
+                //     : `${widthRule || "no width information"}, so the ${type} default of ${defaultWidth} was used`;
+                // console.info(`[auto-layout:${type}] '${member.dataset.title}' (share_id=${member.dataset.share_id}): display ${displayId} from ${source}; width=${width} (server grid_width=${gridWidth}); ${reason}`);
+
+                // Start a new row if the tile doesn't fit in what remains of this one
+                if (col + width > 13) {
+                    row++;
+                    col = 1;
+                }
+
+                position++;
                 layout[type].push(JSON.stringify({
                     dataset_id: member.dataset.id,
-                    display_id: member[type],
-                    grid_position: position + 1,
+                    display_id: displayId,
+                    grid_position: position,
                     grid_width: width,
                     grid_height: 1,
-                    start_row: Math.floor(position / perRow) + 1,
-                    start_col: (position % perRow) * width + 1,
+                    start_row: row,
+                    start_col: col,
                 }));
-                position++;
+                // console.info(`[auto-layout:${type}]   -> placed at row ${row}, col ${col}-${col + width - 1}`);
+                col += width;
             }
         }
 

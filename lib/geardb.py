@@ -923,6 +923,70 @@ def get_default_display(user_id, dataset_id, is_multigene=0):
     return default_display_id
 
 
+# Embedding plots (tSNE/UMAP/PCA) need room to be readable, so auto-arranged layouts give them the full row
+EMBEDDING_PLOT_TYPES = (
+    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic",
+    "mg_tsne_static", "mg_umap_static", "mg_pca_static",
+)
+AUTO_LAYOUT_EMBEDDING_WIDTH = 12
+
+# Minimum share of a display's uses a width needs to be preferred over the most common one
+AUTO_LAYOUT_WIDTH_THRESHOLD = 0.25
+
+
+def get_auto_layout_width(display_id):
+    """
+    Choose the grid width (out of 12) for a display placed in an automatically arranged layout.
+
+    Rules, in order:
+      1. Embedding plots (see EMBEDDING_PLOT_TYPES) get the full width of 12.
+      2. Otherwise, look at every width this display has been given in saved dataset collections
+         and use the widest one accounting for at least AUTO_LAYOUT_WIDTH_THRESHOLD of those uses.
+         This lets a width people deliberately chose for a wide plot win over many narrow
+         placements in multi-dataset collections, while keeping displays that are almost always
+         narrow narrow.
+      3. If the display is in no collection, return None so the caller uses its own default.
+
+    Returns:
+        dict: {width: int | None, rule: str, width_counts: {width: count}}
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    cursor.execute("SELECT plot_type FROM dataset_display WHERE id = %s", (display_id,))
+    row = cursor.fetchone()
+    plot_type = row[0] if row else None
+
+    cursor.execute("""
+        SELECT grid_width, COUNT(*)
+          FROM layout_displays
+         WHERE display_id = %s
+      GROUP BY grid_width
+      ORDER BY grid_width DESC
+    """, (display_id,))
+    width_counts = {width: count for width, count in cursor.fetchall()}
+    cursor.close()
+    conn.close()
+
+    if plot_type in EMBEDDING_PLOT_TYPES:
+        return dict(width=AUTO_LAYOUT_EMBEDDING_WIDTH, rule=f"embedding plot type '{plot_type}'", width_counts=width_counts)
+
+    if not width_counts:
+        return dict(width=None, rule="display is in no saved collection", width_counts=width_counts)
+
+    total = sum(width_counts.values())
+    for width, count in width_counts.items():   # widest first
+        if count / total >= AUTO_LAYOUT_WIDTH_THRESHOLD:
+            return dict(
+                width=width,
+                rule=f"widest width used by >= {int(AUTO_LAYOUT_WIDTH_THRESHOLD * 100)}% of uses ({count}/{total})",
+                width_counts=width_counts,
+            )
+
+    # Unreachable in practice (the most common width is always >= 1/len), but keep a safe fallback
+    return dict(width=max(width_counts, key=width_counts.get), rule="most common width", width_counts=width_counts)
+
+
 def get_displays_by_user_id(user_id, dataset_id):
     """Given user id, return all datasets representations from dataset display table."""
     conn = Connection()
