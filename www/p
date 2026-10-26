@@ -16,7 +16,7 @@ s = dataset_share_id. Multiple IDs can be passed comma-separated (e.g. s=abc,def
     case the datasets are arranged on the fly on expression.html using the viewer's default display
     for each (or the dataset owner's default if the viewer has none)
 ss = search string (for use in things like dataset/gene cart explorers)
-id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
+id = identifiers.org identifier, in the format gear:d.a59037e8 or gear:p.bfd178f5 or bioregistry.io identifier, in the format d.a59037e8 or p.bfd178f5. The prefix gear: is optional. The first character
 
 '''
 
@@ -25,6 +25,7 @@ import os
 import re
 
 SHARE_ID_PATTERN = re.compile(r'^[A-Za-z0-9_-]+$')
+IDENTIFIERS_ORG_ID_PATTERN = re.compile(r'^(?:gear:)?([dp])\.([A-Za-z0-9_-]+)$', re.IGNORECASE)
 
 
 def check_for_truthy(value):
@@ -143,13 +144,13 @@ def main():
         params["search_string"] = search_string
 
     if identifiers_org_id:
-        (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')
-
-        if id_prefix == 'd':
-            params['share_id'] = identifiers_share_id
-
-        elif id_prefix == 'p':
-            params['layout_id'] = identifiers_share_id
+        identifier_match = IDENTIFIERS_ORG_ID_PATTERN.fullmatch(identifiers_org_id)
+        if identifier_match:
+            id_prefix, identifiers_share_id = identifier_match.groups()
+            if id_prefix.lower() == 'd':
+                params['share_id'] = identifiers_share_id
+            elif id_prefix.lower() == 'p':
+                params['layout_id'] = identifiers_share_id
 
     if len(params) > 0:
         url += '?'
