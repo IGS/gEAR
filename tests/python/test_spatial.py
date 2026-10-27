@@ -175,6 +175,46 @@ def test_cosmx_decompresses_gzipped_members(tmp_path, extract_dir):
     assert not list(files.rglob("*.gz"))
 
 
+COSMX_MEMBERS = {
+    "exprMat_file.csv": b"fov,cell_ID,GeneA\n1,1,3\n",
+    "metadata_file.csv": b"fov,cell_ID\n1,1\n",
+    "fov_positions_file.csv": b"fov,x_global_px,y_global_px\n1,0,0\n",
+    "CellComposite/CellComposite_F001.jpg": b"fake jpg bytes",
+    "CellLabels/CellLabels_F001.tif": b"fake tif bytes",
+}
+
+
+@pytest.mark.parametrize("top_dir", ["", "Run1/"])
+def test_cosmx_accepts_unprefixed_files(tmp_path, extract_dir, top_dir):
+    path = tmp_path / "upload.tar.gz"
+    path.write_bytes(tar_bytes({top_dir + name: data for name, data in COSMX_MEMBERS.items()}, gzipped=True))
+
+    handler = SPATIALTYPE2CLASS["cosmx"]()
+    with pytest.raises(Exception) as excinfo:
+        handler.process_file(str(path), extract_dir=str(extract_dir), organism_id=1)
+    # Fails later on the fake metadata, not because required files or directories were not found
+    assert "RNA_Analysis_Neighborhood" in str(excinfo.value), excinfo.value
+
+    files = extract_dir / "files"
+    for suffix in ["exprMat_file.csv", "metadata_file.csv", "fov_positions_file.csv"]:
+        assert (files / f"spatialdata_{suffix}").is_file()
+    assert (files / "CellComposite" / "CellComposite_F001.jpg").is_file()
+    assert (files / "CellLabels" / "CellLabels_F001.tif").is_file()
+
+
+def test_cosmx_missing_file_error_uses_upload_names(tmp_path, extract_dir):
+    members = {name: data for name, data in COSMX_MEMBERS.items() if name != "metadata_file.csv"}
+    path = tmp_path / "upload.tar.gz"
+    path.write_bytes(tar_bytes(members, gzipped=True))
+
+    handler = SPATIALTYPE2CLASS["cosmx"]()
+    with pytest.raises(Exception) as excinfo:
+        handler.process_file(str(path), extract_dir=str(extract_dir), organism_id=1)
+    message = str(excinfo.value)
+    assert "metadata_file.csv" in message
+    assert "spatialdata_" not in message
+
+
 
 @pytest.mark.parametrize("extension, gzipped", [("tar.gz", True), ("tar", False)])
 def test_truncated_archive_is_reported_as_incomplete(spatial_staging, extension, gzipped):

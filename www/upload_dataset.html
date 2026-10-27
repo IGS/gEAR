@@ -1266,7 +1266,10 @@ Currently Gosling only supports single-organism tracks">
         <li>tx_file.csv</li>
       </ul>
       <br />
-      The filenames for the csv files can have an optional dataset id prefix.
+      The csv filenames may have an optional prefix (e.g. <code>Run1_exprMat_file.csv</code>); <code>exprMat_file.csv</code> with no prefix also works.
+      The csv files may also be gzipped (e.g. <code>exprMat_file.csv.gz</code>).
+      <br /><br />
+      The files and directories may sit at the top of the tarball or inside a single top-level folder.
       <br /><br />
       Gene IDs present in input must associate with an annotation from the source type indicated in the metadata upload.
     </template>

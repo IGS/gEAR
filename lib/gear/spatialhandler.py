@@ -765,7 +765,8 @@ class CosMxHandler(SpatialHandler):
     * 'CellComposite': Directory containing the images.
     * 'CellLabels': Directory containing the labels.
 
-    For the files, a dataset id prefix is optional and will be stripped.
+    For the files, a dataset id prefix is optional and will be stripped. Files may sit at the
+    tarball root or inside a single top-level folder.
     """
 
     @property
@@ -1009,15 +1010,14 @@ class CosMxHandler(SpatialHandler):
                         entry.name = f"{STANDARD_DATASET_ID}_{suffix}"
                         break
 
-                # For files inside a CellComposite or CellLabels directory,
-                # ensure file is still inside that directory post-extraction
-                path_parts = entry.name.split("/", 1)
-                if len(path_parts) == 2:
-                    dirname, rest = path_parts
-                    for standard_name in ["CellComposite", "CellLabels"]:
-                        if standard_name in dirname:
-                            entry.name = f"{standard_name}/{rest}"
-                            break
+                # For files inside a CellComposite or CellLabels directory, ensure file is still inside
+                # that directory post-extraction, even if the tarball wraps everything in a top-level folder
+                path_parts = entry.name.split("/")
+                for i, dirname in enumerate(path_parts[:-1]):
+                    standard_name = next((name for name in [CosmxKeys.IMAGES_DIR, CosmxKeys.LABELS_DIR] if name in dirname), None)
+                    if standard_name:
+                        entry.name = "/".join([standard_name, *path_parts[i + 1:]])
+                        break
 
                 if is_gzipped:
                     _gunzip_member(tf, entry, extract_dir)
@@ -1025,6 +1025,16 @@ class CosMxHandler(SpatialHandler):
 
                 # Extract file into tmp dir
                 tf.extract(entry, path=extract_dir)
+
+        # Report missing inputs by the names users give them. read_cosmx() reports the internal
+        #  STANDARD_DATASET_ID-prefixed names instead, which wrongly suggests that prefix is required.
+        missing = [f"{suffix} (optionally prefixed, e.g. Run1_{suffix})"
+                   for suffix in [CosmxKeys.COUNTS_SUFFIX, CosmxKeys.METADATA_SUFFIX, CosmxKeys.FOV_SUFFIX]
+                   if not os.path.isfile(os.path.join(extract_dir, f"{STANDARD_DATASET_ID}_{suffix}"))]
+        missing.extend(f"'{dirname}' directory" for dirname in [CosmxKeys.IMAGES_DIR, CosmxKeys.LABELS_DIR]
+                       if not os.path.isdir(os.path.join(extract_dir, dirname)))
+        if missing:
+            raise Exception("Required CosMx files not found in tarball: {}.".format(", ".join(missing)))
 
         # Try to get organism id directly or through dataset metadata
         organism_id = kwargs.get("organism_id", None)
