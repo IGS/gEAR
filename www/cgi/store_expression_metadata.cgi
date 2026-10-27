@@ -38,13 +38,14 @@ def main():
         print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
         return
 
-    user_upload_file_base = "../uploads/files/{0}".format(session_id)
+    # Paths are built from the secure_filename() results (identical to the inputs after the checks above)
+    user_upload_file_base = "../uploads/files/{0}".format(safe_session_id)
 
     # make sure the directory exists
     if not os.path.exists(user_upload_file_base):
         os.makedirs(user_upload_file_base)
 
-    user_upload_file_base = os.path.join(user_upload_file_base, share_uid)
+    user_upload_file_base = os.path.join(user_upload_file_base, safe_share_uid)
 
     # make sure the directory exists
     if not os.path.exists(user_upload_file_base):
