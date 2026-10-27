@@ -1278,12 +1278,14 @@ Currently Gosling only supports single-organism tracks">
       A .tar or .tar.gz file containing the following files with these standarized names:
       <ul>
           <li>(Required) 'anndata.h5ad': Counts and metadata file.</li>
-          <li>'cluster_assignment.txt': Cluster assignment file.</li>
-          <li>'Metrics.csv': Metrics file.</li>
-          <li>'variable_features_clusters.txt': Variable features clusters file.</li>
-          <li>'variable_features_spatial_moransi.txt': Variable features Moran’s I file.</li>
+          <li>(Required) 'cluster_assignment.txt': Cluster assignment file.</li>
+          <li>(Required) 'Metrics.csv': Metrics file.</li>
+          <li>(Required) 'variable_features_clusters.txt': Variable features clusters file.</li>
+          <li>(Required) 'variable_features_spatial_moransi.txt': Variable features Moran’s I file.</li>
       </ul>
       <br />
+      The files must sit at the top of the tarball. Their filenames can have an optional prefix (e.g. <code>Run1_anndata.h5ad</code>).
+      <br /><br />
       Gene IDs present in input must associate with an annotation from the source type indicated in the metadata upload.
     </template>
 
@@ -1316,16 +1318,16 @@ Currently Gosling only supports single-organism tracks">
           <li>(Required) 'spatial/tissue_lowres_image.png': Low resolution image.</li>
           <li>(Required) 'spatial/scalefactors_json.json': Scalefactors file.</li>
           <li>(Required) 'spatial/tissue_positions_list.csv' (SpaceRanger 1) or 'spatial/tissue_positions.csv' (SpaceRanger 2): Spots positions file.</li>
-          <li>(Required) 'fullres_image_file': Large microscopy image used as input for space ranger. Not used but needed to not break upload process.</li>
       </ul>
       <br />
       Recommended tar command to create tarball:
       <br />
-      <code>tar cvf spatialdata.tar spatialdata_filtered_feature_bc_matrix.h5 clusters.csv spatial</code>
+      <code>tar cvf spatialdata.tar filtered_feature_bc_matrix.h5 clusters.csv spatial</code>
       <br /><br />
-      For the "filtered_feature_bc_matrix.h5" file, it needs to be prepended with a prefix and underscore.  The prefix "spatialdata_" is used in the example tar command.
+      The "filtered_feature_bc_matrix.h5" filename can have an optional prefix (e.g. <code>Run1_filtered_feature_bc_matrix.h5</code>).
+      The large full-resolution microscopy image used as input for Space Ranger is not needed.
       <br /><br />
-      For the "clusters.csv" file, it is preferable if the"Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
+      For the "clusters.csv" file, it is preferable if the "Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
     </template>
 
     <template id="visiumhd-spatial-reqs">
@@ -1364,7 +1366,7 @@ Currently Gosling only supports single-organism tracks">
           <li>'cell_boundaries.parquet': Polygons of cell boundaries.</li>
           <li>'transcripts.parquet': File containing transcripts.</li>
           <li>'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)</li>
-          <li>'clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
+          <li>(Required) 'clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
       </ul>
       <br />
       More information on Xenium outputs can be found here: https://www.10xgenomics.com/support/software/xenium-ranger/latest/analysis/outputs/XR-output-overview

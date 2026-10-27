@@ -84,6 +84,54 @@ def test_handler_rejects_zip(spatial_type, tmp_path, extract_dir):
         handler.process_file(str(path), extract_dir=str(extract_dir), organism_id=1)
 
 
+@pytest.mark.parametrize("spatial_type, expected_names", [
+    ("cosmx", ["exprMat_file.csv", "metadata_file.csv", "fov_positions_file.csv", "'CellComposite' directory", "'CellLabels' directory"]),
+    ("curio", ["anndata.h5ad", "cluster_assignment.txt", "Metrics.csv", "variable_features_clusters.txt", "variable_features_spatial_moransi.txt"]),
+    ("visium", ["filtered_feature_bc_matrix.h5", "clusters.csv", "spatial/tissue_hires_image.png", "spatial/scalefactors_json.json", "spatial/tissue_positions.csv"]),
+    ("visium_hd", ["clusters.csv", "binned_outputs/feature_slice.h5", "binned_outputs/square_008um/filtered_feature_bc_matrix.h5", "binned_outputs/square_008um/spatial/tissue_hires_image.png"]),
+    ("xenium", ["experiment.xenium", "cell_feature_matrix.h5", "cells.parquet", "morphology_focus.ome.tif", "clusters.csv"]),
+])
+def test_handler_reports_every_missing_input(spatial_type, expected_names, tmp_path, extract_dir):
+    path = tmp_path / "upload.tar"
+    path.write_bytes(README_TAR)
+
+    handler = SPATIALTYPE2CLASS[spatial_type]()
+    with pytest.raises(Exception, match="^Required .* files not found in tarball") as excinfo:
+        handler.process_file(str(path), extract_dir=str(extract_dir), organism_id=1)
+    for name in expected_names:
+        assert name in str(excinfo.value)
+
+
+def test_missing_input_report_skips_inputs_that_are_present(tmp_path, extract_dir):
+    path = tmp_path / "upload.tar"
+    path.write_bytes(tar_bytes({
+        "experiment.xenium": b"{}",
+        "clusters.csv": b"Barcode,Cluster\n",
+        "morphology_focus/morphology_focus_0000.ome.tif": b"fake tif bytes",
+    }))
+
+    handler = SPATIALTYPE2CLASS["xenium"]()
+    with pytest.raises(Exception) as excinfo:
+        handler.process_file(str(path), extract_dir=str(extract_dir), organism_id=1)
+    message = str(excinfo.value)
+    assert "cell_feature_matrix.h5" in message and "cells.parquet" in message
+    assert "experiment.xenium" not in message
+    assert "clusters.csv" not in message
+    assert "morphology_focus" not in message
+
+
+@pytest.mark.parametrize("counts_name", ["filtered_feature_bc_matrix.h5", "Run1_filtered_feature_bc_matrix.h5"])
+def test_visium_counts_file_prefix_is_optional(counts_name, tmp_path, extract_dir):
+    path = tmp_path / "upload.tar"
+    path.write_bytes(tar_bytes({counts_name: b"not really hdf5", "clusters.csv": b"Barcode,Cluster\n"}))
+
+    handler = SPATIALTYPE2CLASS["visium"]()
+    with pytest.raises(Exception, match="^Required Visium files not found") as excinfo:
+        handler.process_file(str(path), extract_dir=str(extract_dir), organism_id=1)
+    assert "filtered_feature_bc_matrix.h5" not in str(excinfo.value)
+    assert "spatial/scalefactors_json.json" in str(excinfo.value)
+
+
 def test_gzipped_readme_tar_is_really_gzipped():
     assert README_TAR_GZ[:2] == b"\x1f\x8b"
     assert README_TAR[:2] != b"\x1f\x8b"
