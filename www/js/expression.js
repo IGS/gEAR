@@ -11,6 +11,7 @@ let tilegrid = null;
 let svgScoringMethod = 'user_defined';
 
 let datasetShareId = null;
+let datasetShareIds = [];  // Multiple datasets, arranged on the fly (no saved collection)
 let layoutShareId = null;
 let shareUsed = false;
 
@@ -119,7 +120,12 @@ document.getElementById('submit-expression-search').addEventListener('click', as
     }
     try {
 
-        const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
+        let setupTileGridFn = setupTileGrid(datasetCollectionState.selectedShareId);
+        if (datasetShareId) {
+            setupTileGridFn = setupTileGrid(datasetShareId, "dataset");
+        } else if (datasetShareIds.length) {
+            setupTileGridFn = setupTileGrid(datasetShareIds.join(","), "datasets");
+        }
 
         const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(searchToken), setupTileGridFn]);
 
@@ -313,6 +319,8 @@ const buildStateURL = () => {
     // add the dataset collections
     if (datasetShareId) {
         url.searchParams.append('share_id', datasetShareId);
+    } else if (datasetShareIds.length) {
+        url.searchParams.append('share_ids', datasetShareIds.join(','));
     } else if (datasetCollectionState.selectedShareId) {
         url.searchParams.append('layout_id', datasetCollectionState.selectedShareId);
     }
@@ -531,6 +539,19 @@ const parseGeneListURLParams = async () => {
 };
 
 /**
+ * Splits a comma-separated list of dataset share IDs, dropping blanks and duplicates.
+ *
+ * @param {string|null} value - The raw URL parameter value.
+ * @returns {string[]} The share IDs, in the order given.
+ */
+const parseShareIdsParam = (value) => {
+    if (!value) {
+        return [];
+    }
+    return [...new Set(value.split(",").map((id) => id.trim()).filter(Boolean))];
+};
+
+/**
  * Parses the URL parameters to handle the passed dataset collection.
  */
 const parseDatasetCollectionURLParams = () => {
@@ -736,7 +757,7 @@ const validateExpressionSearchForm = () => {
     }
 
     // Check if the user has selected any dataset collections or individual datasets
-    if (!(datasetShareId || datasetCollectionState.selectedShareId)) {
+    if (!(datasetShareId || datasetShareIds.length || datasetCollectionState.selectedShareId)) {
         createToast('Please select at least one dataset to proceed');
         return false;
     }
@@ -777,6 +798,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
+    datasetShareIds = parseShareIdsParam(getUrlParameter('share_ids'));
     const cartShareId = getUrlParameter('gene_lists');
     const geneSymbolId = getUrlParameter('gene_symbol');
     shareUsed = getUrlParameter('share_used') === '1';
@@ -803,7 +825,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     parseDatasetCollectionURLParams();
 
     // Trigger the default dataset collection to be selected in the
-    if (datasetShareId) {
+    if (datasetShareId || datasetShareIds.length) {
         selectDatasetCollection(null);  // Clear the label
         urlParamsPassed = true;
     } else if (layoutShareId) {
@@ -817,7 +839,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both genes and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
-        if ((datasetShareId || datasetCollectionState.selectedShareId) && geneCollectionState.selectedGenes.size > 0) {
+        if ((datasetShareId || datasetShareIds.length || datasetCollectionState.selectedShareId) && geneCollectionState.selectedGenes.size > 0) {
             document.getElementById('submit-expression-search').click();
         }
     }
@@ -828,6 +850,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             if (mutation.type === 'childList') {
                 // If the user selects a collection, clear the datasetShareId as scope has changed
                 datasetShareId = null;
+                datasetShareIds = [];
             }
         }
     });
@@ -836,11 +859,15 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // If we entered via a share link, conditionally display the notification
     if (shareUsed) {
-        const shareData = await apiCallsMixin.fetchShareData(datasetShareId, layoutShareId);
+        // For an on-the-fly arrangement, the first dataset supplies the owner/gene information
+        const shareData = await apiCallsMixin.fetchShareData(datasetShareId || datasetShareIds[0] || null, layoutShareId);
         document.getElementById("share-entrance-notification").classList.remove('is-hidden');
 
         // if an individual dataset was shared, show its info
-        if (datasetShareId) {
+        if (datasetShareIds.length) {
+            document.getElementById("share-entrance-datasets-count").textContent = datasetShareIds.length;
+            document.getElementById("share-entrance-datasets").classList.remove('is-hidden');
+        } else if (datasetShareId) {
             document.getElementById("share-entrance-dataset-label").textContent = shareData['dataset_label'];
             document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
 

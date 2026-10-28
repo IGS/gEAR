@@ -5,6 +5,7 @@ Defines the SpatialHandler base class and subclasses (CosMx, Curio, GeoMx, Visiu
 Visium HD, Xenium) that read uploaded files into SpatialData objects.
 """
 
+import glob
 import gzip
 import os
 import shutil
@@ -31,6 +32,7 @@ from spatialdata_io._constants._constants import (
     CosmxKeys,
     CurioKeys,
     VisiumHDKeys,
+    VisiumKeys,
     XeniumKeys,
 )
 from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
@@ -62,6 +64,23 @@ def _gunzip_member(tf: tarfile.TarFile, entry: tarfile.TarInfo, extract_dir: str
     os.makedirs(os.path.dirname(target), exist_ok=True)
     with entry_io, gzip.open(entry_io) as gz_in, open(target, "wb") as out_f:
         shutil.copyfileobj(gz_in, out_f)
+
+def _raise_if_missing_inputs(extract_dir: str, platform: str, required: dict[str, str | list[str]]) -> None:
+    """
+    Raise one exception naming every required input not found after tarball extraction.
+
+    `required` maps the name to report each input by (matching the upload page's requirements
+    modal, never an internal renamed path) to one or more glob patterns relative to extract_dir.
+    An input counts as found if any of its patterns matches.
+    """
+    missing = []
+    for name, patterns in required.items():
+        if isinstance(patterns, str):
+            patterns = [patterns]
+        if not any(glob.glob(os.path.join(glob.escape(extract_dir), pattern), recursive=True) for pattern in patterns):
+            missing.append(name)
+    if missing:
+        raise Exception("Required {} files not found in tarball: {}.".format(platform, ", ".join(missing)))
 
 def _select_pyramid_level(img, max_dim: int = 4000):
     """
@@ -765,7 +784,8 @@ class CosMxHandler(SpatialHandler):
     * 'CellComposite': Directory containing the images.
     * 'CellLabels': Directory containing the labels.
 
-    For the files, a dataset id prefix is optional and will be stripped.
+    For the files, a dataset id prefix is optional and will be stripped. Files may sit at the
+    tarball root or inside a single top-level folder.
     """
 
     @property
@@ -1009,15 +1029,14 @@ class CosMxHandler(SpatialHandler):
                         entry.name = f"{STANDARD_DATASET_ID}_{suffix}"
                         break
 
-                # For files inside a CellComposite or CellLabels directory,
-                # ensure file is still inside that directory post-extraction
-                path_parts = entry.name.split("/", 1)
-                if len(path_parts) == 2:
-                    dirname, rest = path_parts
-                    for standard_name in ["CellComposite", "CellLabels"]:
-                        if standard_name in dirname:
-                            entry.name = f"{standard_name}/{rest}"
-                            break
+                # For files inside a CellComposite or CellLabels directory, ensure file is still inside
+                # that directory post-extraction, even if the tarball wraps everything in a top-level folder
+                path_parts = entry.name.split("/")
+                for i, dirname in enumerate(path_parts[:-1]):
+                    standard_name = next((name for name in [CosmxKeys.IMAGES_DIR, CosmxKeys.LABELS_DIR] if name in dirname), None)
+                    if standard_name:
+                        entry.name = "/".join([standard_name, *path_parts[i + 1:]])
+                        break
 
                 if is_gzipped:
                     _gunzip_member(tf, entry, extract_dir)
@@ -1025,6 +1044,13 @@ class CosMxHandler(SpatialHandler):
 
                 # Extract file into tmp dir
                 tf.extract(entry, path=extract_dir)
+
+        # Report missing inputs by the names users give them. read_cosmx() reports the internal
+        #  STANDARD_DATASET_ID-prefixed names instead, which wrongly suggests that prefix is required.
+        required = {f"{suffix} (optionally prefixed, e.g. Run1_{suffix})": f"{STANDARD_DATASET_ID}_{suffix}"
+                    for suffix in [CosmxKeys.COUNTS_SUFFIX, CosmxKeys.METADATA_SUFFIX, CosmxKeys.FOV_SUFFIX]}
+        required.update({f"'{dirname}' directory": dirname for dirname in [CosmxKeys.IMAGES_DIR, CosmxKeys.LABELS_DIR]})
+        _raise_if_missing_inputs(extract_dir, "CosMx", required)
 
         # Try to get organism id directly or through dataset metadata
         organism_id = kwargs.get("organism_id", None)
@@ -1098,6 +1124,8 @@ class CurioHandler(SpatialHandler):
     * 'spatialdata_Metrics.csv': Metrics file.
     * 'spatialdata_variable_features_clusters.txt': Variable features clusters file.
     * 'spatialdata_variable_features_spatial_moransi.txt': Variable features Moran’s I file.
+
+    All five files are required by sdio.curio() and must sit at the top level of the tarball.
 
     It seems Curio Seeker only provides gene IDs (as indexes to an empty dataframe),
     so you need to modify the included h5ad file to include ensembl IDs in adata.var.
@@ -1175,8 +1203,11 @@ class CurioHandler(SpatialHandler):
         with gene IDs. We need to pull out the original h5ad file and modify the Moran's I-score file to use the ensembl IDs.
         """
 
-        if h5ad_file is None:
-            raise Exception("h5ad file not found in tarball.")
+        # sdio.curio() only looks at the top level of extract_dir and needs all of these (an optional prefix is allowed)
+        _raise_if_missing_inputs(extract_dir, "Curio Seeker", {
+            name: f"*{name}" for name in [CurioKeys.ANNDATA_FILE, CurioKeys.CLUSTER_ASSIGNMENT, CurioKeys.METRICS_FILE,
+                                          CurioKeys.VAR_FEATURES_CLUSTERS, CurioKeys.VAR_FEATURES_MORANSI]
+        })
 
         # Try to get organism id directly or through dataset metadata
         organism_id = kwargs.get("organism_id", None)
@@ -1197,9 +1228,6 @@ class CurioHandler(SpatialHandler):
         # Create mapping dict.
         # Original index name (ensembl_id) was created in add_ensembl_id_to_h5ad_missing_release.py
         gene_symbol_to_ensembl_id = adata.var.reset_index().set_index("gene_symbol").to_dict()["ensembl_id"]
-        if spatial_moransi_file is None:
-            raise Exception("Moran's I score file not found in tarball.")
-
         var_features_moransi = pd.read_csv(spatial_moransi_file, sep="\t", header=0)
 
         # Replace the gene symbols with the ensembl ids
@@ -1394,16 +1422,18 @@ class VisiumHandler(SpatialHandler):
     Factory class for Visium dataset uploads and conversions.
 
     Standardized names for different files:
-    * 'spatialdata_filtered_feature_bc_matrix.h5': Counts and metadata file.
+    * 'filtered_feature_bc_matrix.h5': Counts and metadata file. A prefix (e.g. 'Run1_') is optional.
     * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
     * 'spatial/tissue_hires_image.png': High resolution image.
     * 'spatial/tissue_lowres_image.png': Low resolution image.
     * 'spatial/scalefactors_json.json': Scalefactors file.
     * 'spatial/tissue_positions_list.csv' (SpaceRanger 1) or 'spatial/tissue_positions.csv' (SpaceRanger 2): Spots positions file.
-    * fullres_image_file: (NOT USED) large microscopy image used as input for space ranger.
+
+    The full resolution microscopy image used as input for Space Ranger is not needed, since
+    sdio.visium() is called without fullres_image_file.
 
     Recommended tar command to create tarball:
-    `tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 clusters.csv spatial`
+    `tar cvf <dataset>.tar filtered_feature_bc_matrix.h5 clusters.csv spatial`
     """
 
     @property
@@ -1491,13 +1521,17 @@ class VisiumHandler(SpatialHandler):
                 filepath = "{0}/{1}".format(extract_dir, entry.name)
                 tf.extract(entry, path=extract_dir)
 
-
-        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
-        # If clustering file does not exist, raise an exception
-        if not os.path.exists(clustering_csv_path):
-            raise Exception("clusters.csv file not found in tarball.")
+        _raise_if_missing_inputs(extract_dir, "Visium", {
+            f"{VisiumKeys.FILTERED_COUNTS_FILE} (optionally prefixed, e.g. Run1_{VisiumKeys.FILTERED_COUNTS_FILE})": f"*{VisiumKeys.FILTERED_COUNTS_FILE}",
+            "clusters.csv": "clusters.csv",
+            VisiumKeys.IMAGE_HIRES_FILE: VisiumKeys.IMAGE_HIRES_FILE,
+            VisiumKeys.IMAGE_LOWRES_FILE: VisiumKeys.IMAGE_LOWRES_FILE,
+            f"spatial/{VisiumKeys.SCALEFACTORS_FILE}": f"spatial/{VisiumKeys.SCALEFACTORS_FILE}",
+            f"spatial/{VisiumKeys.SPOTS_FILE_1} or spatial/{VisiumKeys.SPOTS_FILE_2}": [f"spatial/{VisiumKeys.SPOTS_FILE_1}", f"spatial/{VisiumKeys.SPOTS_FILE_2}"],
+        })
 
         # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         with open(clustering_csv_path, 'r') as f:
             first_line = f.readline()
             if "Barcode" not in first_line or "Cluster" not in first_line:
@@ -1628,13 +1662,19 @@ class VisiumHDHandler(SpatialHandler):
 
         binned_outputs_dir = "{}/{}".format(extract_dir, VisiumHDKeys.BINNED_OUTPUTS)
 
-        if not os.path.exists("{}/{}".format(binned_outputs_dir, VisiumHDKeys.FEATURE_SLICE_FILE)):
-            raise Exception(f"{VisiumHDKeys.FEATURE_SLICE_FILE} file not found in /{VisiumHDKeys.BINNED_OUTPUTS} directory in tarball.")
+        bin_dir = f"{VisiumHDKeys.BINNED_OUTPUTS}/{self.table_name}"
+        required = {"clusters.csv": "clusters.csv"}
+        for name in [f"{VisiumHDKeys.BINNED_OUTPUTS}/{VisiumHDKeys.FEATURE_SLICE_FILE}",
+                     f"{bin_dir}/{VisiumHDKeys.FILTERED_COUNTS_FILE}",
+                     f"{bin_dir}/{VisiumHDKeys.SPATIAL}/{VisiumHDKeys.SCALEFACTORS_FILE}",
+                     f"{bin_dir}/{VisiumHDKeys.SPATIAL}/{VisiumHDKeys.TISSUE_POSITIONS_FILE}"]:
+            required[name] = name
+        # sdio.visium_hd() searches all extracted files for the images, so they may sit anywhere under binned_outputs
+        for image_file in [VisiumHDKeys.IMAGE_HIRES_FILE, VisiumHDKeys.IMAGE_LOWRES_FILE]:
+            required[f"{bin_dir}/{VisiumHDKeys.SPATIAL}/{image_file}"] = f"{VisiumHDKeys.BINNED_OUTPUTS}/**/{image_file}"
+        _raise_if_missing_inputs(extract_dir, "Visium HD", required)
 
-        # If clustering file does not exist, raise an exception
         clustering_csv_path = "{}/clusters.csv".format(extract_dir)
-        if not os.path.exists(clustering_csv_path):
-            raise Exception("clusters.csv file not found in tarball.")
 
         # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
         with open(clustering_csv_path, 'r') as f:
@@ -1701,7 +1741,7 @@ class XeniumHandler(SpatialHandler):
     * 'cell_boundaries.parquet': Polygons of cell boundaries.
     * 'transcripts.parquet': File containing transcripts.
     * 'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)
-    * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
+    * (REQ) 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
 
     Currently we are not using the cells.zarr.zip file because of memory issues when converting the resulting cell labels as part of the AnnData conversion process.
 
@@ -1816,10 +1856,15 @@ class XeniumHandler(SpatialHandler):
                 filepath = "{0}/{1}".format(extract_dir, entry.name)
                 tf.extract(entry, path=extract_dir)
 
-        # If clustering file does not exist, raise an exception
+        _raise_if_missing_inputs(extract_dir, "Xenium", {
+            XeniumKeys.XENIUM_SPECS: XeniumKeys.XENIUM_SPECS,
+            XeniumKeys.CELL_FEATURE_MATRIX_FILE: XeniumKeys.CELL_FEATURE_MATRIX_FILE,
+            XeniumKeys.CELL_METADATA_FILE: XeniumKeys.CELL_METADATA_FILE,
+            f"{XeniumKeys.MORPHOLOGY_FOCUS_FILE} or '{XeniumKeys.MORPHOLOGY_FOCUS_DIR}' directory": [XeniumKeys.MORPHOLOGY_FOCUS_FILE, XeniumKeys.MORPHOLOGY_FOCUS_DIR],
+            "clusters.csv": "clusters.csv",
+        })
+
         clustering_csv_path = "{}/clusters.csv".format(extract_dir)
-        if not os.path.exists(clustering_csv_path):
-            raise Exception("clusters.csv file not found in tarball.")
 
         # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
         with open(clustering_csv_path, 'r') as f:

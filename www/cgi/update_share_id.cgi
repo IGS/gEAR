@@ -173,29 +173,32 @@ def main():
 
         # rename carts
         if gene_cart.gctype == "weighted-list":
-            os.chdir(str(CARTS_BASE_DIR))
+            carts_dir = os.path.realpath(CARTS_BASE_DIR)
 
             for ext in (".h5ad", ".tab"):
                 # Only this cart's own files: another cart's name may contain share_id
                 #  (e.g. cart.<share_id>99.tab), and must not be renamed with it
-                filename = f"cart.{share_id}{ext}"
-                if not os.path.exists(filename):
-                    continue
-                new_filename = f"cart.{new_share_id}{ext}"
+                old_path = os.path.realpath(os.path.join(carts_dir, f"cart.{share_id}{ext}"))
+                new_path = os.path.realpath(os.path.join(carts_dir, f"cart.{new_share_id}{ext}"))
 
-                # Defense in depth: new_share_id was already validated by is_safe_id(),
-                # but confirm the resulting path still resolves inside CARTS_BASE_DIR
-                # before renaming.
-                resolved_new_filename = (CARTS_BASE_DIR / new_filename).resolve()
-                if not resolved_new_filename.is_relative_to(CARTS_BASE_DIR.resolve()):
-                    print("Refusing to rename " + filename + " to " + new_filename + ": resolves outside carts directory", file=sys.stderr)
+                # Defense in depth: both IDs were already validated by is_safe_id(), but confirm
+                # the paths still resolve inside the carts directory before touching them
+                # (normalize, then startswith, so CodeQL sees the path guard).
+                if not old_path.startswith(carts_dir + os.sep):
+                    print("Refusing to rename " + old_path + ": resolves outside carts directory", file=sys.stderr)
+                    continue
+                if not new_path.startswith(carts_dir + os.sep):
+                    print("Refusing to rename to " + new_path + ": resolves outside carts directory", file=sys.stderr)
+                    continue
+
+                if not os.path.exists(old_path):
                     continue
 
                 #! This will not work if not owner or if permissions are not set correctly
-                os.rename(filename, resolved_new_filename)
+                os.rename(old_path, new_path)
                 # if the old file still exists, log it
-                if os.path.exists(filename):
-                    print("Could not rename " + filename + " to " + new_filename + " for some reason... skipping", file=sys.stderr)
+                if os.path.exists(old_path):
+                    print("Could not rename " + old_path + " to " + new_path + " for some reason... skipping", file=sys.stderr)
 
         # rename projections
         rename_projection_keys(BY_DATASET_DIR, share_id, new_share_id)

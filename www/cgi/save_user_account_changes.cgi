@@ -18,7 +18,8 @@ sys.path.append(lib_path)
 import geardb
 
 # Same pattern as the email check in www/js/create_account.js
-EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+#  (anchored, so it can't backtrack from every starting position)
+EMAIL_PATTERN = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$")
 
 def main():
     cnx = geardb.Connection()

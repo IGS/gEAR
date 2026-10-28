@@ -24,7 +24,7 @@ Long-form parameter mappings:
     search_string           -> ss  (de/gcm pages only)
 
 Parameters not mapped:
-    identifiers_org_id (id) - This is meant for unpacking identifiers.org URIs.
+    id - identifiers.org identifiers (for example, gear:d.a59037e8) are resolved by www/p.
     page (p) - This is implied by the page filename in the long-form URL.
 
 '''

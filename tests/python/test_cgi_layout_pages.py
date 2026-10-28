@@ -366,19 +366,25 @@ class TestSaveUserChosenLayout:
 # ---------------------------------------------------------------- get_default_display.cgi
 
 class TestGetDefaultDisplay:
-    # Dataset DS1 is owned by user 9, who has set displays 900 (single-gene) and 901 (multigene)
+    # Dataset DS1 is owned by user 9, who has set displays 900 (single-gene) and 901 (multigene).
+    # Display 900 has been placed in saved collections, so it has a suggested auto-layout width.
     DB = {"sessions": SESSIONS, "datasets": [{"id": "DS1", "owner_id": 9}],
           "default_displays": [{"user_id": 9, "dataset_id": "DS1", "is_multigene": 0, "display_id": 900},
                                {"user_id": 9, "dataset_id": "DS1", "is_multigene": 1, "display_id": 901},
-                               {"user_id": 1, "dataset_id": "DS1", "is_multigene": 0, "display_id": 100}]}
+                               {"user_id": 1, "dataset_id": "DS1", "is_multigene": 0, "display_id": 100}],
+          "auto_layout_widths": [{"display_id": 900, "width": 6, "rule": "widest width used by >= 25% of uses (2/3)",
+                                  "width_counts": {6: 2, 4: 1}}]}
+
+    NO_WIDTH = {"grid_width": None, "width_rule": "display is in no saved collection", "width_counts": {}}
 
     def run(self, **query):
         return run_cgi("get_default_display.cgi", db=self.DB, query=query)
 
     def test_users_own_default(self):
         result = self.run(session_id="owner", dataset_id="DS1")
-        assert result.json() == {"default_display_id": 100}
+        assert result.json() == {"default_display_id": 100, **self.NO_WIDTH}
         assert [e["user_id"] for e in result.logged("get_default_display")] == [1]
+        assert [e["display_id"] for e in result.logged("get_auto_layout_width")] == [100]
         assert result.writes() == []
 
     @pytest.mark.parametrize("session", [None, "other"])
@@ -386,15 +392,19 @@ class TestGetDefaultDisplay:
         query = {"dataset_id": "DS1"}
         if session:
             query["session_id"] = session
-        assert self.run(**query).json() == {"default_display_id": 900}
+        assert self.run(**query).json() == {
+            "default_display_id": 900, "grid_width": 6,
+            "width_rule": "widest width used by >= 25% of uses (2/3)", "width_counts": {"6": 2, "4": 1}}
 
     def test_multigene(self):
-        assert self.run(session_id="owner", dataset_id="DS1", is_multigene="1").json() == {"default_display_id": 901}
+        result = self.run(session_id="owner", dataset_id="DS1", is_multigene="1")
+        assert result.json() == {"default_display_id": 901, **self.NO_WIDTH}
 
     def test_unknown_dataset(self):
         result = self.run(session_id="other", dataset_id="NOPE")
         assert_clean_exit(result)
-        assert result.json() == {"default_display_id": None}
+        assert result.json() == {"default_display_id": None, "grid_width": None, "width_rule": None, "width_counts": {}}
+        assert result.logged("get_auto_layout_width") == []
 
 
 # ---------------------------------------------------------------- get_dataset_display.cgi

@@ -359,6 +359,7 @@ class Connection:
 #     layouts[]          also: is_domain, is_current, group_user_ids; members[] may have display_id,
 #                        is_multigene, start_col, start_row, grid_width, grid_height
 #     default_displays   [{user_id, dataset_id, is_multigene, display_id}]   for get_default_display()
+#     auto_layout_widths [{display_id, width, rule, width_counts}]        for get_auto_layout_width()
 
 servercfg.update(_SPEC.get("servercfg", {}))
 
@@ -565,6 +566,15 @@ def get_default_display(user_id, dataset_id, is_multigene=0):
                 and int(pref.get("is_multigene", 0)) == int(is_multigene)):
             return pref["display_id"]
     return None
+
+
+def get_auto_layout_width(display_id):
+    _log("get_auto_layout_width", display_id=display_id)
+    for choice in _SPEC.get("auto_layout_widths", []):
+        if choice.get("display_id") == display_id:
+            return dict(width=choice.get("width"), rule=choice.get("rule"),
+                        width_counts=choice.get("width_counts", {}))
+    return dict(width=None, rule="display is in no saved collection", width_counts={})
 
 
 def __getattr__(name):

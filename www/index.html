@@ -18,6 +18,13 @@
           -->
         <base href="/" />
 
+        <!-- First-time visitors (no returning-visitor or session cookie) are sent to the intro page, which sets the cookie. -->
+        <script>
+          if (!/(^|;\s*)(gear_returning_visitor|gear_session_id)=/.test(document.cookie)) {
+            window.location.replace('/intro.html');
+          }
+        </script>
+
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
         <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css" />
@@ -46,8 +53,11 @@
               <div class="column mt-0 mb-0 pt-0 pb-0 is-narrow has-text-right">
                 <div id="onboarding-c">
                   <button id="onboarding-btn" class="button is-primary is-dark">
-                    New to&nbsp;<span id="onboarding-domain-short-label">gEAR</span>? Click here.
+                    New to&nbsp;<span id="onboarding-domain-short-label">gEAR</span>? Click for tour.
                   </button>
+                  <a id="intro-screen-link" href="/intro.html" class="button is-primary is-outlined ml-2">
+                    See intro screen again
+                  </a>
                 </div>
               </div>
             </div>
