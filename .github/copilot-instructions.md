@@ -92,7 +92,7 @@
 ## Examples
 - To run UI tests: `cd tests && npm test`
 - To build ProjectR service on M1 Mac: `docker build --platform linux/amd64 --no-cache -t projectr_service .`
-- To start a systemd worker: `sudo systemctl start worker@1.service`
+- To restart all RabbitMQ consumer workers after a code update: `sudo systemctl restart gear-consumers.target` (see `docs/developer/services/rabbitmq_consumers.md` "Rolling Out Updates")
 
 ## Key Files & Directories
 - `bin/`: One-off Python utility scripts

@@ -92,16 +92,15 @@ More information about these services can be found in [systemd.md](./systemd.md)
 cd ~/git/gEAR/systemd
 sudo cp *.target *.service *.slice /etc/systemd/system/
 
-echo "**IMPORTANT**: In the *.service files, replace <gear_root> with the gEAR root on this server"
-echo "  (spatial-panel.service also has <domain url> and a Python path to check)"
+# Replace <gear_root> with the gEAR root on this server.
+# spatial-panel.service also has <domain url> and a Python path to check by hand.
+sudo sed -i 's|<gear_root>|/path/to/gEAR|g' /etc/systemd/system/*-consumer@.service /etc/systemd/system/spatial-panel.service
 
 # Reload systemd
 sudo systemctl daemon-reload
 
-# Enable services to start on boot
-sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target anndata-upload-consumer.target spatial-upload-consumer.target
-
-# Enable and start the group of consumers at once
+# Enable and start every consumer at once. gear-consumers.target pulls in each
+# consumer's target, which pulls in its workers.
 sudo systemctl enable gear-consumers.target
 sudo systemctl start gear-consumers.target
 
@@ -110,6 +109,8 @@ sudo systemctl start spatial-panel.service
 
 # <Add more services here>
 ```
+
+To deploy code or unit file changes to the consumers later, follow [Rolling Out Updates](../services/rabbitmq_consumers.md#rolling-out-updates).
 
 ### Data transfer
 

@@ -7,6 +7,9 @@ Description=H5AD (Anndata) RabbitMQ Consumer Workers
 # everything else running on the same VM (see docs/developer/setup/rabbitmq.md "Preventing
 # runaway memory").
 Wants=anndata-upload-consumer@1.service anndata-upload-consumer@2.service
+# Wants= only pulls the workers in on start. PartOf= makes stop/restart of gear-consumers.target
+# cascade down to this target (and from here to the workers, which are PartOf this target).
+PartOf=gear-consumers.target
 
 [Install]
 WantedBy=multi-user.target

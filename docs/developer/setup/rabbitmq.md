@@ -35,7 +35,7 @@ Occasionally you may need to purge a queue, so that zombie jobs will not run and
 
 ## Making changes to the code
 
-In most cases, the executing code is located in the callback function.  If this code is changed, the consumer daemon must be re-deployed.
+In most cases, the executing code is located in the callback function.  If this code is changed, the consumer workers must be restarted. See [Rolling Out Updates](../services/rabbitmq_consumers.md#rolling-out-updates).
 
 ## Preventing runaway memory
 
@@ -107,8 +107,11 @@ MemoryMax=28G
 EOF
 
 sudo systemctl daemon-reload
+# Restarts every worker in these two families so they run with the new limits
 sudo systemctl restart projectr-consumer.target anndata-upload-consumer.target
 ```
+
+These drop-in files are separate from the unit files in `systemd/`, so they are kept when new unit files are copied in during an update.
 
 The anndata figures above are close to the observed single-job peak (~22GB for a 3GB input), not a
 guarantee — a larger upload can plausibly exceed `MemoryMax` and get killed on a *legitimate* single
@@ -146,11 +149,15 @@ job before it alone can consume the *entire* shared budget and starve every othe
 cap is what catches the combined-usage case (e.g. several large, individually-legitimate jobs
 landing across different families at once) that per-service caps structurally can't see. Deploy the
 slice unit and reload before (or alongside) the per-service drop-ins:
+
 ```bash
 sudo cp systemd/gear-consumers.slice /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl restart gear-consumers.slice
+# Workers only move into the slice when they start, so restart them all
+sudo systemctl restart gear-consumers.target
+systemctl show gear-consumers.slice -p MemoryHigh -p MemoryMax
 ```
+
 The `MemoryHigh=44G`/`MemoryMax=48G` in the checked-in unit are illustrative starting points for a
 61GB VM (leaving headroom for Apache/MySQL/OS) — verify against the real non-consumer baseline
 usage on the actual VM and adjust; not a final answer. Confirm it's active and grouping workers with
