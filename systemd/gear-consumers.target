@@ -1,6 +1,9 @@
 [Unit]
 Description=All Upload/Job RabbitMQ Consumer Workers
 Wants=anndata-upload-consumer.target gosling-upload-consumer.target spatial-upload-consumer.target projectr-consumer.target
+# Each target listed above has PartOf=gear-consumers.target, so `systemctl stop` / `restart` of this
+# target cascades to every worker. A new consumer target needs both: listed here AND PartOf= there.
+# See docs/developer/services/rabbitmq_consumers.md "Rolling out updates".
 
 [Install]
 WantedBy=multi-user.target

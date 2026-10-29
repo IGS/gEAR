@@ -106,11 +106,7 @@ The upload consumers read `queue_enabled` / `queue_host` from `[dataset_uploader
 
 1. Install RabbitMQ (see [rabbitmq_consumers.md](./rabbitmq_consumers.md))
 2. Install R and packages for ProjectR (see [../setup/r_rpy2.md](../setup/r_rpy2.md))
-3. Install the unit files, including `gear-consumers.slice`, then start all consumer groups:
-
-   ```bash
-   sudo systemctl start gear-consumers.target
-   ```
+3. Install the unit files and start all consumer groups with `sudo systemctl start gear-consumers.target` (see [Installing Services](./rabbitmq_consumers.md#installing-services))
 
 ### Setting Up Spatial Panel
 
@@ -132,15 +128,14 @@ The upload consumers read `queue_enabled` / `queue_host` from `[dataset_uploader
 ### Monitoring Systemd Services
 
 ```bash
-# Check service status
-sudo systemctl status projectr-consumer@1.service
+# Check status of every consumer worker
+systemctl status '*-consumer@*'
 
-# View logs
+# Follow logs for one worker
 sudo journalctl -u projectr-consumer@1.service -f
-
-# Restart service
-sudo systemctl restart projectr-consumer@1.service
 ```
+
+For restarting consumers after a code update, see [Rolling Out Updates](./rabbitmq_consumers.md#rolling-out-updates).
 
 ### RabbitMQ
 
@@ -162,14 +157,7 @@ sudo rabbitmqctl list_queues
 
 ### Systemd Services
 
-```bash
-# Start additional workers
-sudo systemctl start projectr-consumer@2.service
-sudo systemctl start projectr-consumer@3.service
-
-# Or use target to manage all at once
-sudo systemctl start projectr-consumer.target
-```
+The worker count for each consumer is set in its `.target` file. See [Scaling Workers](./rabbitmq_consumers.md#scaling-workers).
 
 ## Troubleshooting
 

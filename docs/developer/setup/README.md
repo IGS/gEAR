@@ -148,13 +148,12 @@ cd /path/to/gEAR
 git pull origin devel
 # Restart services (if needed)
 sudo systemctl restart apache2
-sudo systemctl restart 'projectr-consumer@*' 'anndata-upload-consumer@*' \
-    'spatial-upload-consumer@*' 'gosling-upload-consumer@*'
+sudo systemctl restart gear-consumers.target
 sudo systemctl restart spatial-panel.service
 ```
 
 - Apache2 - if API/CGI code in `www/` or `lib/` was updated
-- RabbitMQ consumers - if code in `listeners/`, `lib/`, or the API code they import (e.g. `www/api/resources/projectr.py`) was updated
+- RabbitMQ consumers - if code in `listeners/`, `lib/`, or the API code they import (e.g. `www/api/resources/projectr.py`) was updated. A restart kills any job in progress, so check for running jobs first. If anything in `systemd/` changed, the unit files must also be copied in. See [Rolling Out Updates](../services/rabbitmq_consumers.md#rolling-out-updates).
 - Spatial Panel daemon - if code in `services/spatial/` was updated
 
 The database name (`gear_portal` in `gear.ini.template`) is whatever `[database] name` is set to in your `gear.ini`.
