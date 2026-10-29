@@ -571,9 +571,10 @@ const checkForLogin = async () => {
             if (data.success) {
                 CURRENT_USER = new User({session_id, ...data});
                 document.getElementById('current-user-name').textContent = data.user_name;
-                handleLoginUIUpdates();
 
+                // Set before the page-specific login updates run, since they may request plots
                 apiCallsMixin.colorblindMode = CURRENT_USER.colorblind_mode;
+                handleLoginUIUpdates();
 
             } else {
                 // session_id is invalid, so remove cookie
@@ -1313,6 +1314,37 @@ const apiCallsMixin = {
         };
 		const {data} = await axios.post("cgi/get_dataset_comparison.cgi", convertToFormData(payload));
 		return data;
+    },
+    /**
+     * Fetches the available DominoSignal output files, and the selectable parameters for one of them.
+     * @param {string|null} filename - The DominoSignal .parquet file to get parameter options for (optional).
+     * @returns {Promise<Object>} - A promise that resolves to the file list and parameter options.
+     */
+    async fetchDominoOptions(filename=null) {
+        const payload = filename ? {filename} : {};
+        const {data} = await axios.post("cgi/get_domino_options.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches DominoSignal cell-cell communication plots (Plotly JSON) for the given parameters.
+     * @param {Object} params - The filename, selections, thresholds and requested plots.
+     * @returns {Promise<Object>} - A promise that resolves to the plots, keyed by plot type.
+     */
+    async fetchDominoPlots(params) {
+        // Sent as 1/0 since FormData would otherwise stringify the flag (including null for logged-out users)
+        const payload = { ...params, colorblind_mode: apiCallsMixin.colorblindMode ? 1 : 0 };
+        const {data} = await axios.post("cgi/get_domino_plots.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches a single DominoSignal plot as an image file (e.g. PDF), rendered on the server.
+     * @param {Object} params - The plot parameters, with a single plot in "plots" and "image_format" set.
+     * @returns {Promise<{data: Blob, headers: Object}>} - The image file (or a JSON error, as a Blob) and response headers.
+     */
+    async fetchDominoPlotImage(params) {
+        const payload = { ...params, colorblind_mode: apiCallsMixin.colorblindMode ? 1 : 0 };
+        const {data, headers} = await axios.post("cgi/get_domino_plots.cgi", convertToFormData(payload), { responseType: "blob" });
+        return {data, headers};
     },
     /**
      * Fetches dataset information from the server.
