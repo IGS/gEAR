@@ -6,7 +6,7 @@
 }
 
 #dataset-info-details {
-    background-color: #EFEDF7;
+    background-color: #FBEAF4;
     color: #000000;
 }
 
@@ -40,8 +40,8 @@
 /* reflecting gEAR "select" form CSS to "nice-select" elements (as in curator_common.css) */
 #parameters-c .nice-select {
     width: 100%;
-    background-color: #EFEDF7;
-    border-color: #544A8E;
+    background-color: #FBEAF4;
+    border-color: #505250;
     border-radius: 5px;
     color: #363636;
 }
@@ -82,7 +82,7 @@
 #parameters-c .nice-select.has-multiple .multiple-options .current {
     display: inline-block;
     background-color: #FFFFFF;
-    border: 1px solid #544A8E;
+    border: 1px solid #505250;
     border-radius: 4px;
     padding: 0 0.4em;
     font-size: 0.85em;
@@ -92,7 +92,7 @@
 /* Remove ("x") button on each selected item chip */
 #parameters-c .chip-remove {
     margin-left: 0.3em;
-    color: #544A8E;
+    color: #505250;
     cursor: pointer;
 }
 
@@ -113,7 +113,7 @@
     width: 14px;
     height: 14px;
     margin-right: 0.5em;
-    border: 1px solid #544A8E;
+    border: 1px solid #505250;
     border-radius: 50%;
     background-color: #FFFFFF;
     font-family: "Material Design Icons";
@@ -125,7 +125,7 @@
 
 #parameters-c .nice-select .option.selected::before {
     background-color: #FFFFFF;
-    box-shadow: inset 0 0 0 3px #FFFFFF, inset 0 0 0 7px #544A8E;
+    box-shadow: inset 0 0 0 3px #FFFFFF, inset 0 0 0 7px #505250;
 }
 
 #parameters-c .nice-select.has-multiple .option::before {
@@ -134,7 +134,7 @@
 
 #parameters-c .nice-select.has-multiple .option.selected::before {
     content: "\F012C";  /* mdi-check */
-    background-color: #544A8E;
+    background-color: #505250;
     box-shadow: none;
 }
 
@@ -155,7 +155,7 @@
 }
 
 #parameters-c .section-toggle {
-    color: #544A8E;
+    color: #505250;
 }
 
 /* Match the (single-line) multiple select height either side of it */
@@ -166,7 +166,7 @@
 /* Advanced plotting options */
 #parameters-c .dot-size-slider {
     flex-grow: 1;
-    accent-color: #544A8E;
+    accent-color: #505250;
     cursor: pointer;
 }
 
