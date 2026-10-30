@@ -1331,7 +1331,7 @@ class HiCViewSpec(ViewSpec):
             raise ValueError("HiCViewSpec requires a hic_obj to render.")
 
         # Use "width" as "height" to maintain square aspect ratio
-        hic_track = hic_obj.get_encoding(width=self.width, height=self.width, is_child=True)
+        hic_track = hic_obj.get_encoding(width=self.width, height=self.width, prefix=prefix, is_child=True)
 
         if position_str == "NA":
             return hic_track

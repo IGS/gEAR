@@ -235,6 +235,7 @@ There is no separate `[rabbitmq]` section.
   - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
   - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
   - [Inflammation gEAR](https://inflammation.umgear.org) - Portal for inflammation research
+  - [NODE from CMTRF](https://node.cmtrf.org/) - Portal for neuropathy research
 
 ## Getting Help
 
