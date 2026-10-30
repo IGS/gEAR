@@ -26,6 +26,7 @@ from common import (
     create_umap_plot,
     create_umap_sample,
     create_violin_plot,
+    downsample_image,
     get_color_maps,
     link_crosshairs,
     link_ranges,
@@ -44,11 +45,15 @@ pn.extension(loading_indicator=True, defer_load=True, nthreads=4)  # type: ignor
 MAX_CARD_WIDTH = 1800
 EXPANDED_PLOT_MIN_HEIGHT = 380
 EXPANDED_PLOT_MIN_WIDTH = 320
+DIMMED_IMAGE_ALPHA = 0.3    # Opacity of the background image under the expression and cluster plots
 
 class BaseSpatialViewer(pn.viewable.Viewer):
     """
     Base Viewer component. Handles state and linking.
     """
+
+    # Longest side (in pixels) of the background image sent to the browser. None keeps the full cached resolution.
+    MAX_DISPLAY_IMAGE_DIM = None
 
     def __init__(self, **params):
         # Override session_args if provided, otherwise use the default.
@@ -201,6 +206,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         elif self.image_array is not None:
             self.img_height, self.img_width = self.image_array.shape[0], self.image_array.shape[1]
 
+        # Downsample after the dimensions are set. The image bounds use the original dimensions, so it still lines up with the markers.
+        self.image_array = downsample_image(self.image_array, self.MAX_DISPLAY_IMAGE_DIM)
+
         self.bg_image = None
         self.bg_image_dimmed = None
         if self.image_array is not None:
@@ -216,10 +224,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                         hooks=[autohide_toolbar]
                     )
 
-            # Create a more opaque version of the image.
-            dimmed_array = self._build_dimmed_array(self.image_array)
-
-            self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
+            # Dimmed version for under the expression and cluster plots.
+            # Uses the same array; the dimming is applied in _track_image_renderers so all plots can share one copy of the image.
+            self.bg_image_dimmed = hv.RGB(self.image_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None, responsive=True,
                         # No tools or toolbar as the composite plot takes care of this
                         tools=[], default_tools=[],
@@ -449,50 +456,32 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         range_source_fig.y_range.js_on_change('start', force_redraw)
         range_source_fig.y_range.js_on_change('end', force_redraw)
 
-    def _build_dimmed_array(self, array):
-        """
-        Creates a dimmed version of the image array by adding an alpha channel.
-        """
-        opacity_value = int(255 * 0.3)  # Adjust the multiplier to set the desired opacity level
-        alpha_channel = np.full((array.shape[0], array.shape[1], 1), opacity_value, dtype=np.uint8)
-
-        # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
-        if array.shape[-1] == 3:
-            dimmed_array = np.concatenate([array, alpha_channel], axis=-1)
-        else:
-            dimmed_array = array.copy()
-
-            # SAdkins note - '...' means all rows in this case.
-            dimmed_array[..., 3] = opacity_value
-        return dimmed_array
-
     def _on_channel_change(self, event):
         """
         Callback function to handle image channel changes.
 
-        This function retrieves the new image array for the selected channel,
-        creates both an opaque and a dimmed version of the image, and updates
-        the image renderers.
+        This function retrieves the new image array for the selected channel
+        and updates the image data source shared by all image renderers.
         """
         new_array = retrieve_image_array(self.settings.dataset_id, channel_name=event.new)
+        new_array = downsample_image(new_array, self.MAX_DISPLAY_IMAGE_DIM)
         bounds = (0, 0, self.img_width, self.img_height)
 
-        opaque_packed = hv.render(hv.RGB(new_array, bounds=bounds), backend='bokeh').renderers[0].data_source.data['image']
-        dimmed_array = self._build_dimmed_array(new_array)
-        dimmed_packed = hv.render(hv.RGB(dimmed_array, bounds=bounds), backend='bokeh').renderers[0].data_source.data['image']
+        packed = hv.render(hv.RGB(new_array, bounds=bounds), backend='bokeh').renderers[0].data_source.data['image']
 
         assert len(self.image_renderers) >= 1, "No ImageRGBA renderers found to update."
 
         # Apply the mutation to the Bokeh document to ensure thread safety
         def _apply():
-            self.image_renderers[0].data_source.data['image'] = opaque_packed
-            for r in self.image_renderers[1:]:
-                r.data_source.data['image'] = dimmed_packed
+            self.image_renderers[0].data_source.data['image'] = packed
         pn.state.execute(_apply)
 
     def _track_image_renderers(self, bokeh_master, bokeh_expr, bokeh_cluster):
         """
-        Store the ImageRGBA renderers for each figure so we can update their data when the channel changes
+        Store the ImageRGBA renderers for each figure so we can update their data when the channel changes.
+
+        The expression and cluster renderers are pointed at the master renderer's data source and dimmed with
+        global_alpha, so the image is only sent to the browser once instead of once per figure.
         """
         self.image_renderers = []
         for fig in (bokeh_master, bokeh_expr, bokeh_cluster):
@@ -501,6 +490,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             image_r = next((r for r in fig.renderers if type(r.glyph).__name__ == 'ImageRGBA'), None)
             if image_r is not None:
                 self.image_renderers.append(image_r)
+
+        if not self.image_renderers:
+            return
+        shared_source = self.image_renderers[0].data_source
+        for r in self.image_renderers[1:]:
+            r.data_source = shared_source
+            r.glyph.global_alpha = DIMMED_IMAGE_ALPHA
 
     def _generate_spatial_plots(self):
         """
@@ -545,6 +541,9 @@ class CondensedSpatialViewer(BaseSpatialViewer):
     """
     The specific component for your panel_app.py
     """
+
+    # The condensed plots are small, so a smaller image is enough here.
+    MAX_DISPLAY_IMAGE_DIM = 2000
 
     def _build_layout(self):
         """Builds the 3-panel condensed row."""
