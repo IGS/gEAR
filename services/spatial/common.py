@@ -18,6 +18,7 @@ import pandas as pd
 import param
 from bokeh.models import CustomJS, CustomJSHover, HoverTool, Span
 from holoviews.operation.datashader import spread
+from PIL import Image
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
@@ -620,6 +621,26 @@ def retrieve_image_array(dataset_id, channel_name=None) -> np.ndarray | None:
     if not candidates:
         raise FileNotFoundError(f"No spatial image files found in {img_dir}")
     return np.load(candidates[0]) if candidates else None
+
+def downsample_image(arr: np.ndarray | None, max_dim: int | None) -> np.ndarray | None:
+    """
+    Shrink an image so its longest side is at most max_dim, keeping the aspect ratio.
+
+    The whole image is sent to the browser, so a smaller array means a much smaller payload.
+    Callers should plot it with the original image bounds so it still lines up with the markers.
+
+    Args:
+        arr (np.ndarray | None): Image array of shape (H, W, C) in uint8.
+        max_dim (int | None): Maximum length of the longest side. If None, the image is returned unchanged.
+
+    Returns:
+        np.ndarray | None: The downsampled image array, or the input if no downsampling was needed.
+    """
+    if arr is None or max_dim is None or max(arr.shape[0], arr.shape[1]) <= max_dim:
+        return arr
+    img = Image.fromarray(arr)
+    img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+    return np.asarray(img)
 
 def retrieve_image_dims(dataset_id) -> tuple[int, int] | None:
     """
