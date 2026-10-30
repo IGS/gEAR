@@ -1,0 +1,194 @@
+/* Styles for the cell-cell communication (DominoSignal) viewer */
+
+/* Details of the paper and dataset behind the chosen DominoSignal output */
+#dataset-info-c {
+    font-size: 0.9rem;
+}
+
+#dataset-info-details {
+    background-color: #FBEAF4;
+    color: #000000;
+}
+
+#dataset-info-details strong {
+    color: inherit;
+}
+
+#dataset-info-details .card-content {
+    padding: 0.75rem 1rem;
+}
+
+/* Stretch the explainer to the height of the file selector (plus dataset details) beside it */
+#cell-cell-explainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#cell-cell-explainer .message-body {
+    flex-grow: 1;
+}
+
+#dataset-info-details p:not(:last-child) {
+    margin-bottom: 0.25rem;
+}
+
+#dataset-info-citation {
+    font-weight: 600;
+}
+
+/* reflecting gEAR "select" form CSS to "nice-select" elements (as in curator_common.css) */
+#parameters-c .nice-select {
+    width: 100%;
+    background-color: #FBEAF4;
+    border-color: #505250;
+    border-radius: 5px;
+    color: #363636;
+}
+
+#parameters-c .nice-select-dropdown {
+    width: 100%;    /* Override auto-width setting by nice-select */
+}
+
+#parameters-c .nice-select .list {
+    max-height: 300px;
+    overflow-y: scroll; /* Make it apparent that there are more options */
+    overflow-x: hidden;
+}
+
+/* NiceSelect hides the native select; keep it (and its border) from taking up any space */
+#parameters-c select {
+    display: block;
+    border: 0;
+}
+
+/* Let multiple selections wrap onto several lines instead of overflowing */
+#parameters-c .nice-select.has-multiple {
+    height: auto;
+    min-height: 42px;   /* also the swap clusters button's height, so they line up */
+    line-height: normal;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    white-space: normal;
+}
+
+#parameters-c .nice-select.has-multiple .multiple-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-right: 1rem;    /* clear the dropdown arrow */
+}
+
+#parameters-c .nice-select.has-multiple .multiple-options .current {
+    display: inline-block;
+    background-color: #FFFFFF;
+    border: 1px solid #505250;
+    border-radius: 4px;
+    padding: 0 0.4em;
+    font-size: 0.85em;
+    line-height: 1.8;
+}
+
+/* Remove ("x") button on each selected item chip */
+#parameters-c .chip-remove {
+    margin-left: 0.3em;
+    color: #505250;
+    cursor: pointer;
+}
+
+#parameters-c .chip-remove:hover {
+    color: #E74C3C;
+}
+
+/* Checkbox (multiple selects) or radio (single selects) markers beside each dropdown option */
+#parameters-c .nice-select .option {
+    display: flex;
+    align-items: center;
+}
+
+#parameters-c .nice-select .option::before {
+    content: "";
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 14px;
+    height: 14px;
+    margin-right: 0.5em;
+    border: 1px solid #505250;
+    border-radius: 50%;
+    background-color: #FFFFFF;
+    font-family: "Material Design Icons";
+    font-size: 12px;
+    line-height: 12px;
+    text-align: center;
+    color: #FFFFFF;
+}
+
+#parameters-c .nice-select .option.selected::before {
+    background-color: #FFFFFF;
+    box-shadow: inset 0 0 0 3px #FFFFFF, inset 0 0 0 7px #505250;
+}
+
+#parameters-c .nice-select.has-multiple .option::before {
+    border-radius: 3px;
+}
+
+#parameters-c .nice-select.has-multiple .option.selected::before {
+    content: "\F012C";  /* mdi-check */
+    background-color: #505250;
+    box-shadow: none;
+}
+
+/* Section title on the left, actions (e.g. copy clusters, collapse toggle) on the right */
+#parameters-c .section-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#parameters-c .section-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+#parameters-c .section-toggle {
+    color: #505250;
+}
+
+/* Match the (single-line) multiple select height either side of it */
+#parameters-c #swap-dot-clusters {
+    height: 42px;
+}
+
+/* Advanced plotting options */
+#parameters-c .dot-size-slider {
+    flex-grow: 1;
+    accent-color: #505250;
+    cursor: pointer;
+}
+
+#parameters-c .checkbox.is-block {
+    margin-bottom: 0.25rem;
+}
+
+#parameters-c .input.is-small {
+    max-width: 8rem;
+}
+
+/* Plot tabs sit directly on top of the selected plot's card */
+#plot-tab-panes .plot-card {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+#plot-tabs .plot-tab-warning {
+    color: #946C00;
+}
+
+/* Tall or wide plots scroll within their card rather than overflowing the page */
+.plot-card .plot-card-plot {
+    overflow-x: auto;
+}
