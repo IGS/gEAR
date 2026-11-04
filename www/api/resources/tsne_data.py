@@ -189,7 +189,9 @@ def calculate_num_legend_cols(group_len: int) -> int:
     return ceil(group_len / NUM_LEGENDS_PER_COL)
 
 
-def compute_panel_figsize(num_plots_wide: int, num_plots_high: int, num_panels: int) -> tuple[float, float]:
+def compute_panel_figsize(
+    num_plots_wide: int, num_plots_high: int, num_panels: int, data_aspect: float | None = None
+) -> tuple[float, float]:
     """
     Computes the figsize to pass to scanpy for an embedding plot.
 
@@ -198,23 +200,55 @@ def compute_panel_figsize(num_plots_wide: int, num_plots_high: int, num_panels: 
     chosen so the whole figure matches REFERENCE_FIGURE_ASPECT, then clamped so that panels stay
     within PANEL_ASPECT_MIN..PANEL_ASPECT_MAX. A single panel is the whole figure and stays square.
 
+    If `data_aspect` is given (the embedding's x range / y range, used when equal axis scaling is
+    enforced), panels take that shape instead, clamped to the same limits. Then the embedding
+    mostly fills each panel instead of leaving empty space beside or above it.
+
     Args:
         num_plots_wide (int): Number of panel columns.
         num_plots_high (int): Number of panel rows.
         num_panels (int): Total number of panels.
+        data_aspect (float | None): Width/height of the embedding's data range, or None.
 
     Returns:
         tuple[float, float]: (width, height) in inches for one panel.
     """
     # Give subplots with more columns a bit more breathing room
     width = 10 if num_plots_wide < 5 else 15
-    if num_panels <= 1:
-        return (width, width)
 
-    wspace = 0.75 / width + 0.02  # scanpy's default spacing between panels
-    panel_aspect = REFERENCE_FIGURE_ASPECT * num_plots_high / (num_plots_wide * (1 + wspace))
+    if data_aspect is not None:
+        panel_aspect = data_aspect
+    elif num_panels <= 1:
+        return (width, width)
+    else:
+        wspace = 0.75 / width + 0.02  # scanpy's default spacing between panels
+        panel_aspect = REFERENCE_FIGURE_ASPECT * num_plots_high / (num_plots_wide * (1 + wspace))
+
     panel_aspect = min(PANEL_ASPECT_MAX, max(PANEL_ASPECT_MIN, panel_aspect))
     return (width, width / panel_aspect)
+
+
+def embedding_data_aspect(coords: "np.ndarray") -> float | None:
+    """
+    Returns the width/height of an embedding's data range, or None if it cannot be computed.
+
+    Args:
+        coords (np.ndarray): An (n_cells, >=2) array of embedding coordinates.
+
+    Returns:
+        float | None: (max x - min x) / (max y - min y), or None for empty, non-finite or flat data.
+    """
+    coords = np.asarray(coords, dtype=float)
+    if coords.ndim != 2 or coords.shape[1] < 2:
+        return None
+    xy = coords[:, :2]
+    xy = xy[np.isfinite(xy).all(axis=1)]  # cells without both coordinates are not plotted
+    if xy.shape[0] == 0:
+        return None
+    x_range, y_range = np.ptp(xy, axis=0)
+    if x_range <= 0 or y_range <= 0:
+        return None
+    return float(x_range / y_range)
 
 
 def fit_legend_columns(fig: "Figure", ax: "Axes", num_items: int, num_cols: int) -> int:
@@ -1153,7 +1187,11 @@ def generate_tsne_figure(
 
     num_plots_wide = kwargs_ncols
     num_plots_high = ceil(len(columns) / num_plots_wide)
-    (width, height) = compute_panel_figsize(num_plots_wide, num_plots_high, len(columns))
+    # With equal axis scaling, shape the panels like the embedding so it fills them (issue #1358)
+    data_aspect = None
+    if enforce_equal_aspect and f"X_{basis}" in selected.obsm:
+        data_aspect = embedding_data_aspect(selected.obsm[f"X_{basis}"])
+    (width, height) = compute_panel_figsize(num_plots_wide, num_plots_high, len(columns), data_aspect)
     dpi=150
 
     if high_dpi:
@@ -1221,9 +1259,10 @@ def generate_tsne_figure(
                 continue
             rename_axes_labels(f, x_axis, y_axis)
 
-            # Ensure axes are square
+            # Use equal x/y scaling. "datalim" widens the axis limits instead of shrinking the axes
+            # box, so the axes keep their slot and stay level with the colorbar (issue #1358).
             if enforce_equal_aspect:
-                f.set_aspect("equal", adjustable="box")
+                f.set_aspect("equal", adjustable="datalim")
             f.margins(0.02) # Reduce from the default margins
 
         last_ax = ax[-1]  # color axes
@@ -1277,9 +1316,9 @@ def generate_tsne_figure(
         else:
             rename_axes_labels(ax, x_axis, y_axis)
 
-            # Ensure axes are square
+            # Use equal x/y scaling without shrinking the axes box (see the multi-panel case above)
             if enforce_equal_aspect:
-                ax.set_aspect("equal", adjustable="box")
+                ax.set_aspect("equal", adjustable="datalim")
             ax.margins(0.02)
 
     # Clean up

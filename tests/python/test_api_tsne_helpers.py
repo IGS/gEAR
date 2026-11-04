@@ -92,6 +92,36 @@ def test_compute_panel_figsize_clamps_panel_aspect(wide, high, panels, expected_
     assert width / height == pytest.approx(expected_panel_aspect)
 
 
+@pytest.mark.parametrize(
+    "panels, wide, data_aspect, expected_panel_aspect",
+    [
+        (2, 2, 1.5, 1.5),                           # equal scaling: panels follow the embedding's shape
+        (1, 1, 1.5, 1.5),                           # also for a single panel, instead of square
+        (2, 2, 3.0, tsne_data.PANEL_ASPECT_MAX),    # very wide embedding; clamped
+        (2, 2, 0.5, tsne_data.PANEL_ASPECT_MIN),    # tall embedding; clamped
+    ],
+)
+def test_compute_panel_figsize_uses_data_aspect(panels, wide, data_aspect, expected_panel_aspect):
+    width, height = tsne_data.compute_panel_figsize(wide, 1, panels, data_aspect)
+    assert width / height == pytest.approx(expected_panel_aspect)
+
+
+@pytest.mark.parametrize(
+    "coords, expected",
+    [
+        ([[0, 0], [4, 2], [2, 1]], 2.0),
+        ([[0, 0], [1, 2]], 0.5),
+        ([[0, 0], [np.nan, 5], [2, 1]], 2.0),       # NaN coordinates are ignored
+        ([[0, 0], [3, 0]], None),                   # flat in y
+        (np.empty((0, 2)), None),
+        ([[1], [2]], None),                         # not two-dimensional
+    ],
+)
+def test_embedding_data_aspect(coords, expected):
+    result = tsne_data.embedding_data_aspect(np.array(coords, dtype=float))
+    assert result == (pytest.approx(expected) if expected is not None else None)
+
+
 def _axes_with_legend(num_items, num_cols, fig_height):
     fig, ax = plt.subplots(figsize=(6, fig_height), layout="constrained")
     for i in range(num_items):
