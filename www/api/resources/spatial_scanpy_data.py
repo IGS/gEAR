@@ -272,11 +272,11 @@ class SpatialScanpyData(Resource):
             # Set the saved figure dpi based on the number of observations in the dataset after filtering
             if high_dpi:
                 dpi = max(150, int(adata.shape[0] / 100))
-                sc.settings.set_figure_params(dpi_save=dpi)
+                sc.settings.set_figure_params(dpi_save=dpi, scanpy=False)  # scanpy=True would change global rcParams for later plots
                 io_fig.savefig(io_pic, format='png', bbox_inches="tight")
             else:
                 # Moved this to the end to prevent any issues with the dpi setting
-                sc.settings.set_figure_params(dpi_save=150)
+                sc.settings.set_figure_params(dpi_save=150, scanpy=False)
                 io_fig.savefig(io_pic, format='webp', bbox_inches="tight")
             io_pic.seek(0)
             plt.close() # Prevent zombie plots, which can cause issues

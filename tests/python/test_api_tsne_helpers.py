@@ -65,6 +65,100 @@ def test_calculate_num_legend_cols(groups, expected):
     assert tsne_data.calculate_num_legend_cols(groups) == expected
 
 
+def test_compute_panel_figsize_single_panel_is_square():
+    assert tsne_data.compute_panel_figsize(1, 1, 1) == (10, 10)
+
+
+def test_compute_panel_figsize_reference_layout_matches_reference_aspect():
+    # 1 row x 2 panels (expression + annotation). scanpy treats figsize as per panel, and
+    # builds a figure of about cols * width * (1 + wspace) by rows * height.
+    width, height = tsne_data.compute_panel_figsize(2, 1, 2)
+    wspace = 0.75 / width + 0.02
+    figure_aspect = (2 * width * (1 + wspace)) / height
+    assert figure_aspect == pytest.approx(tsne_data.REFERENCE_FIGURE_ASPECT)
+
+
+@pytest.mark.parametrize(
+    "wide, high, panels, expected_panel_aspect",
+    [
+        (4, 1, 4, tsne_data.PANEL_ASPECT_MIN),   # 1x4 would need tall panels; clamped
+        (6, 1, 6, tsne_data.PANEL_ASPECT_MIN),
+        (2, 2, 4, tsne_data.PANEL_ASPECT_MAX),   # 2x2 would need very flat panels; clamped
+        (1, 4, 4, tsne_data.PANEL_ASPECT_MAX),
+    ],
+)
+def test_compute_panel_figsize_clamps_panel_aspect(wide, high, panels, expected_panel_aspect):
+    width, height = tsne_data.compute_panel_figsize(wide, high, panels)
+    assert width / height == pytest.approx(expected_panel_aspect)
+
+
+@pytest.mark.parametrize(
+    "panels, wide, data_aspect, expected_panel_aspect",
+    [
+        (2, 2, 1.5, 1.5),                           # equal scaling: panels follow the embedding's shape
+        (1, 1, 1.5, 1.5),                           # also for a single panel, instead of square
+        (2, 2, 3.0, tsne_data.PANEL_ASPECT_MAX),    # very wide embedding; clamped
+        (2, 2, 0.5, tsne_data.PANEL_ASPECT_MIN),    # tall embedding; clamped
+    ],
+)
+def test_compute_panel_figsize_uses_data_aspect(panels, wide, data_aspect, expected_panel_aspect):
+    width, height = tsne_data.compute_panel_figsize(wide, 1, panels, data_aspect)
+    assert width / height == pytest.approx(expected_panel_aspect)
+
+
+@pytest.mark.parametrize(
+    "coords, expected",
+    [
+        ([[0, 0], [4, 2], [2, 1]], 2.0),
+        ([[0, 0], [1, 2]], 0.5),
+        ([[0, 0], [np.nan, 5], [2, 1]], 2.0),       # NaN coordinates are ignored
+        ([[0, 0], [3, 0]], None),                   # flat in y
+        (np.empty((0, 2)), None),
+        ([[1], [2]], None),                         # not two-dimensional
+    ],
+)
+def test_embedding_data_aspect(coords, expected):
+    result = tsne_data.embedding_data_aspect(np.array(coords, dtype=float))
+    assert result == (pytest.approx(expected) if expected is not None else None)
+
+
+def _axes_with_legend(num_items, num_cols, fig_height):
+    fig, ax = plt.subplots(figsize=(6, fig_height), layout="constrained")
+    for i in range(num_items):
+        ax.scatter([0], [0], label=f"group {i}")
+    ax.legend(ncol=num_cols, loc="upper left", bbox_to_anchor=[1, 1])
+    return fig, ax
+
+
+def test_fit_legend_columns_keeps_columns_when_legend_fits():
+    fig, ax = _axes_with_legend(num_items=4, num_cols=1, fig_height=5)
+    try:
+        assert tsne_data.fit_legend_columns(fig, ax, 4, 1) == 1
+    finally:
+        plt.close(fig)
+
+
+def test_fit_legend_columns_adds_columns_until_legend_fits_axes():
+    fig, ax = _axes_with_legend(num_items=15, num_cols=1, fig_height=2.5)
+    try:
+        num_cols = tsne_data.fit_legend_columns(fig, ax, 15, 1)
+        assert num_cols > 1
+        ax.legend(ncol=num_cols, loc="upper left", bbox_to_anchor=[1, 1])
+        fig.draw_without_rendering()
+        renderer = fig.canvas.get_renderer()
+        assert ax.get_legend().get_window_extent(renderer).height <= ax.get_window_extent(renderer).height
+    finally:
+        plt.close(fig)
+
+
+def test_fit_legend_columns_without_legend_is_unchanged():
+    fig, ax = plt.subplots()
+    try:
+        assert tsne_data.fit_legend_columns(fig, ax, 15, 1) == 1
+    finally:
+        plt.close(fig)
+
+
 @pytest.mark.parametrize(
     "series, expected",
     [
@@ -455,3 +549,21 @@ def test_endpoint_returns_image(client, route, body):
     assert data["success"] == 1, data
     assert data["image_format"] == "webp"
     assert data["image"]
+
+
+def test_max_columns_above_panel_count_does_not_change_figure_size(client):
+    # 2 panels (gene + colorize). scanpy draws min(max_columns, panels) columns, so a larger
+    # max_columns must not size the panels for a 1x3 grid (issue #1358).
+    Image = pytest.importorskip("PIL.Image")
+    import base64
+    import io
+
+    sizes = []
+    for max_columns in (None, "3"):
+        body = {"gene_symbol": "G1", "colorize_legend_by": "cluster"}
+        if max_columns:
+            body["max_columns"] = max_columns
+        data = post(client, "tsne", **body)
+        assert data["success"] == 1, data
+        sizes.append(Image.open(io.BytesIO(base64.b64decode(data["image"]))).size)
+    assert sizes[0] == sizes[1]

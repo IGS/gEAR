@@ -162,6 +162,13 @@ ul#go-terms li {
     object-fit: contain;
 }
 
+/* The grid row grows to fit its content, so max-height: 100% alone does not stop a tall image
+   from stretching the row. Cap images at 360px (400px row minus the ~40px title) so the tile keeps
+   its height and the image is pillarboxed instead. The zoomed view is not capped. (issue #1358) */
+#result-panel-grid .js-tile .card-image img {
+    max-height: 360px;
+}
+
 /* This is the main svg image */
 .js-tile .card-image .svg svg {
     height: inherit;    /* match the height set by the SVG container (after legend applied) */
