@@ -549,3 +549,21 @@ def test_endpoint_returns_image(client, route, body):
     assert data["success"] == 1, data
     assert data["image_format"] == "webp"
     assert data["image"]
+
+
+def test_max_columns_above_panel_count_does_not_change_figure_size(client):
+    # 2 panels (gene + colorize). scanpy draws min(max_columns, panels) columns, so a larger
+    # max_columns must not size the panels for a 1x3 grid (issue #1358).
+    Image = pytest.importorskip("PIL.Image")
+    import base64
+    import io
+
+    sizes = []
+    for max_columns in (None, "3"):
+        body = {"gene_symbol": "G1", "colorize_legend_by": "cluster"}
+        if max_columns:
+            body["max_columns"] = max_columns
+        data = post(client, "tsne", **body)
+        assert data["success"] == 1, data
+        sizes.append(Image.open(io.BytesIO(base64.b64decode(data["image"]))).size)
+    assert sizes[0] == sizes[1]

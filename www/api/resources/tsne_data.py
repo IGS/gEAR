@@ -1185,7 +1185,9 @@ def generate_tsne_figure(
         "edges": False
     }
 
-    num_plots_wide = kwargs_ncols
+    # scanpy uses min(ncols, number of panels) columns, so a max_columns larger than the number of
+    # panels must not make the sizing assume extra (empty) columns (issue #1358)
+    num_plots_wide = min(kwargs_ncols, len(columns))
     num_plots_high = ceil(len(columns) / num_plots_wide)
     # With equal axis scaling, shape the panels like the embedding so it fills them (issue #1358)
     data_aspect = None
