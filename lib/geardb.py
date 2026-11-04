@@ -376,73 +376,78 @@ def get_dtype_by_share_id(share_id=None):
 
 def get_metadata_by_share_id(share_id=None):
     """
-    Given a dataset share ID string this returns a Dataset object with all attributes
-    populated which come directly from the table.
+    Given a dataset share ID string this returns the dataset's metadata as CSV text
+    (field,value rows), for downloading alongside the data.
 
     Returns None if no dataset of that shareID is found.
     """
 
     conn = Connection()
-    cursor = conn.get_cursor()
+    cursor = conn.get_cursor(use_dict=True)
 
     qry = """
-         SELECT title, organism_id, pubmed_id, geo_id, ldesc, dtype, share_id, platform_id, instrument_model,
+         SELECT id, title, organism_id, pubmed_id, geo_id, ldesc, dtype, share_id, platform_id, instrument_model,
                 library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name,
-                annotation_source, annotation_release
+                annotation_source, annotation_release, repository_accession, device, assay, library_cons_method,
+                rna_extraction_method, microarray_hybridization_protocol, normalization_method, log_transformation,
+                primary_analysis_completed, file_format
            FROM dataset
           WHERE share_id = %s
     """
 
     cursor.execute(qry, (share_id,))
-    metadata = None
-
     row = cursor.fetchone()
-    if row:
-        (
-            title,
-            organism_id,
-            pubmed_id,
-            geo_id,
-            ldesc,
-            dtype,
-            share_id,
-            platform_id,
-            instrument_model,
-            library_selection,
-            library_source,
-            library_strategy,
-            contact_email,
-            contact_institute,
-            contact_name,
-            annotation_source,
-            annotation_release
-        ) = row
+    if not row:
+        cursor.close()
+        conn.close()
+        return None
 
-        metadata = {
-            "title": title,
-            "organism": get_organism_label(organism_id),
-            "pubmed_id": pubmed_id,
-            "geo_id": geo_id,
-            "description": ldesc,
-            "datatype": dtype,
-            "permalink": f"{this.domain_url}/p?s={share_id}",
-            "platform_id": platform_id,
-            "instrument_model": instrument_model,
-            "library_selection": library_selection,
-            "library_source": library_source,
-            "library_strategy": library_strategy,
-            "contact_email": contact_email,
-            "contact_institute": contact_institute,
-            "contact_name": contact_name,
-            "annotation_source": annotation_source,
-            "annotation_release": annotation_release
-        }
-
+    terms = get_dataset_ontology_terms(row["id"], cursor=cursor)
+    ontology_labels = get_ontology_term_labels([row["device"], row["assay"]] + [t for ts in terms.values() for t in ts],
+                                               cursor=cursor)
     cursor.close()
     conn.close()
 
-    if not metadata:
-        return None
+    def with_label(term_id):
+        if not term_id:
+            return None
+        label = ontology_labels.get(term_id)
+        return f"{term_id} ({label})" if label else term_id
+
+    primary_analysis = {1: "Yes", 0: "No"}.get(row["primary_analysis_completed"])
+
+    metadata = {
+        "title": row["title"],
+        "organism": get_organism_label(row["organism_id"]),
+        "pubmed_id": row["pubmed_id"],
+        "geo_id": row["geo_id"],
+        "repository_accession": row["repository_accession"],
+        "description": row["ldesc"],
+        "datatype": row["dtype"],
+        "permalink": f"{this.domain_url}/p?s={row['share_id']}",
+        "contact_email": row["contact_email"],
+        "contact_institute": row["contact_institute"],
+        "contact_name": row["contact_name"],
+        "annotation_source": row["annotation_source"],
+        "annotation_release": row["annotation_release"],
+        "assay": with_label(row["assay"]),
+        "device": with_label(row["device"]),
+        "library_cons_method": row["library_cons_method"],
+        "rna_extraction_method": row["rna_extraction_method"],
+        "microarray_hybridization_protocol": row["microarray_hybridization_protocol"],
+        "normalization_method": row["normalization_method"],
+        "log_transformation": row["log_transformation"],
+        "primary_analysis_completed": primary_analysis,
+        "file_format": row["file_format"],
+        "tissue_type": "; ".join(with_label(t) for t in terms.get("tissue_type", [])) or None,
+        "cell_type": "; ".join(with_label(t) for t in terms.get("cell_type", [])) or None,
+        # Fields of the v1 metadata template, kept for older datasets
+        "platform_id": row["platform_id"],
+        "instrument_model": row["instrument_model"],
+        "library_selection": row["library_selection"],
+        "library_source": row["library_source"],
+        "library_strategy": row["library_strategy"],
+    }
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -451,6 +456,53 @@ def get_metadata_by_share_id(share_id=None):
         writer.writerow([key, "N/A" if value is None else value])
 
     return output.getvalue()
+
+
+def get_dataset_ontology_terms(dataset_id, cursor=None) -> dict:
+    """
+    Return a dataset's ontology terms from dataset_ontology_term, like
+    {'tissue_type': ['UBERON:0002227'], 'cell_type': ['CL:0000601', ...]}.
+    """
+    conn = None
+    if cursor is None:
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+    cursor.execute("SELECT field, term_id FROM dataset_ontology_term WHERE dataset_id = %s ORDER BY field, term_id",
+                   (dataset_id,))
+    terms = defaultdict(list)
+    for row in cursor.fetchall():
+        field_name, term_id = (row["field"], row["term_id"]) if isinstance(row, dict) else row
+        terms[field_name].append(term_id)
+
+    if conn:
+        cursor.close()
+        conn.close()
+    return dict(terms)
+
+
+def get_ontology_term_labels(term_ids, cursor=None) -> dict:
+    """Return {term_id: label} for the given term IDs that are in the ontology_term cache."""
+    term_ids = sorted({t for t in term_ids if t})
+    if not term_ids:
+        return {}
+
+    conn = None
+    if cursor is None:
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+    placeholders = ", ".join(["%s"] * len(term_ids))
+    cursor.execute(f"SELECT term_id, label FROM ontology_term WHERE term_id IN ({placeholders})", tuple(term_ids))
+    labels = {}
+    for row in cursor.fetchall():
+        term_id, label = (row["term_id"], row["label"]) if isinstance(row, dict) else row
+        labels[term_id] = label
+
+    if conn:
+        cursor.close()
+        conn.close()
+    return labels
 
 def get_dataset_collection(ids=None):
     """
@@ -2385,7 +2437,22 @@ class Dataset:
     contact_name: str | None = None
     annotation_source: str | None = None
     plot_default: str | None = None
-    annotation_release: int | None = None
+    annotation_release: str | None = None
+    user_pii_affirmed: int | None = None
+    # v2 metadata template fields (#390), see lib/gear/metadata_fields.py
+    repository_accession: str | None = None
+    device: str | None = None
+    assay: str | None = None
+    library_cons_method: str | None = None
+    rna_extraction_method: str | None = None
+    microarray_hybridization_protocol: str | None = None
+    normalization_method: str | None = None
+    log_transformation: str | None = None
+    primary_analysis_completed: int | None = None
+    file_format: str | None = None
+    metadata_version: str | None = None
+    metadata_source: str | None = None
+    curation_flags: str | None = None
     # derived, here for convenience
     gene_count: int | None = None
     obs_count: int | None = None

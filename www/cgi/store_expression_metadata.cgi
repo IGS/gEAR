@@ -14,6 +14,9 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear import metadata_fields as mf
+from gear.metadata import find_curation_flags
+from gear.metadatavalidator import MetadataValidator
 from werkzeug.utils import secure_filename
 
 def main():
@@ -51,34 +54,34 @@ def main():
     if not os.path.exists(user_upload_file_base):
         os.makedirs(user_upload_file_base)
 
-    result = {'success': 0, 'error': None}
+    result = {'success': 0, 'error': None, 'errors': {}, 'warnings': {}}
 
-    # names are changed here so the files are compatible with the legacy ones
+    # Fields of the metadata template (see lib/gear/metadata_fields.py), stored in their canonical form
+    values = {f.name: mf.normalize_value(f.name, form.getfirst(f.name)) for f in mf.FIELDS}
+
+    errors, _warnings = MetadataValidator.validate_values(values)
+    if errors:
+        result['errors'] = errors
+        print(json.dumps(result))
+        return
+
+    taxon_id = mf.parse_taxon_id(values['sample_taxid'])
+    if geardb.get_organism_id_by_taxon_id(taxon_id) is None:
+        result['errors'] = {'sample_taxid': "gEAR doesn't support this organism yet. Please contact the gEAR team to request it."}
+        print(json.dumps(result))
+        return
+
+    # Things the gEAR team follows up on (#421). The upload continues, and curators are e-mailed
+    #  when it is finalized.
+    result['warnings'] = find_curation_flags(values)
+
     formdata = {
+            **values,
             'owner_id': user.id,
             'dataset_uid': form.getfirst('dataset_uid'),
             'share_uid': form.getfirst('share_uid'),
-            'title': form.getfirst('title'),
-            'summary': form.getfirst('summary'),
-            'dataset_type': form.getfirst('dataset_type'),
-            'annotation_source': form.getfirst('annotation_source'),
-            'annotation_release_number': form.getfirst('annotation_version'),
-            'geo_accession': form.getfirst('geo_id'),
-            'contact_name': form.getfirst('contact_name'),
-            'contact_email': form.getfirst('contact_email'),
-            'contact_institute': form.getfirst('contact_institute'),
-            'sample_taxid': form.getfirst('taxon_id'),
-            'sample_organism': form.getfirst('organism'),
-            'platform_id': form.getfirst('platform_id'),
-            'instrument_model': form.getfirst('instrument'),
-            'library_selection': form.getfirst('library_selection'),
-            'library_source': form.getfirst('library_source'),
-            'library_strategy': form.getfirst('library_strategy'),
-            'pubmed_id': form.getfirst('pubmed_id'),
             'user_pii_affirmed': form.getfirst('user_pii_affirmed'),
-            # These needed to be added/supported for real
-            'expression_unit': 'normalized log count',
-            'tags': None,
+            'metadata_version': mf.METADATA_VERSION,
             'default_plot_type': None,
             'schematic_image': None
     }

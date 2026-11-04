@@ -218,8 +218,24 @@ CREATE TABLE dataset (
        contact_name             VARCHAR(100),
        annotation_source        VARCHAR(20),
        plot_default             VARCHAR(50), -- options: 'bar', 'line', 'violin'
-       annotation_release       INT,
+       annotation_release       VARCHAR(50), -- Ensembl release number, or GenBank/RefSeq assembly accession
        user_pii_affirmed        TINYINT DEFAULT 0,
+       -- Fields below were added for the v2 metadata template (#390).  New columns go at the end so
+       --  table column order stays the same on every server (bin/migrate_datasets_across_vms.sh uses SELECT *)
+       repository_accession     VARCHAR(100), -- prefixed, e.g. 'GEO:GSE168901', 'ArrayExpress:E-MTAB-11634'
+       device                   VARCHAR(30), -- OBI term ID
+       assay                    VARCHAR(30), -- OBI term ID
+       library_cons_method      TEXT,
+       rna_extraction_method    TEXT,
+       microarray_hybridization_protocol TEXT,
+       normalization_method     VARCHAR(100),
+       log_transformation       VARCHAR(30), -- options: 'No Transformation', 'log2 transformation', 'log10 transformation'
+       primary_analysis_completed TINYINT,
+       file_format              VARCHAR(30), -- format of the uploaded file, e.g. 'h5ad', 'mex', '3tab', 'excel'
+       metadata_version         VARCHAR(10), -- version of the metadata template the row was filled from
+       metadata_source          VARCHAR(30), -- options: 'uploader', 'curator', 'backfill-llm'
+       curation_flags           TEXT, -- JSON list of issues a curator should follow up on
+
        FULLTEXT                 text_idx (title, ldesc),
        FULLTEXT                 text_with_geo_idx (title, ldesc, geo_id),
        FULLTEXT                 text_with_geo_pubmed_idx (title, ldesc, geo_id, pubmed_id),
@@ -264,6 +280,27 @@ CREATE TABLE dataset_preference (
    FOREIGN KEY (display_id)
       REFERENCES dataset_display(id)
       ON DELETE CASCADE
+) ENGINE=INNODB;
+
+-- Cache of ontology term labels (CL, UBERON, OBI, ...) looked up from the EBI OLS service
+CREATE TABLE ontology_term (
+       term_id                  VARCHAR(30) PRIMARY KEY, -- CURIE, e.g. 'CL:0000601'
+       ontology                 VARCHAR(20) NOT NULL,    -- e.g. 'cl', 'uberon', 'obi'
+       label                    VARCHAR(255),
+       date_fetched             DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=INNODB;
+
+-- Multi-valued ontology annotations of a dataset, rolled up from its sample-level metadata
+CREATE TABLE dataset_ontology_term (
+       id                       INT PRIMARY KEY AUTO_INCREMENT,
+       dataset_id               VARCHAR(50) NOT NULL,
+       field                    VARCHAR(30) NOT NULL, -- options: 'cell_type', 'tissue_type'
+       term_id                  VARCHAR(30) NOT NULL,
+       UNIQUE KEY uk_dataset_field_term (dataset_id, field, term_id),
+       INDEX idx_term (term_id),
+       FOREIGN KEY (dataset_id)
+          REFERENCES dataset(id)
+          ON DELETE CASCADE
 ) ENGINE=INNODB;
 
 -- Stores custom external URLs to be displayed with each dataset

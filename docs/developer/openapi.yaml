@@ -6500,12 +6500,14 @@ paths:
       operationId: cgiStoreExpressionMetadata
       tags:
       - Uploads
-      summary: Save the uploader's metadata form to metadata.json
+      summary: Validate the uploader's metadata form and save it to metadata.json
       description: 'Requires a logged-in user. session_id and share_uid must be plain file names (unchanged by
         secure_filename), otherwise "Invalid session_id" / "Invalid share_uid" (they are refused, not rewritten).
-        After the user check, creates `uploads/files/<session_id>/<share_uid>/` and writes the form fields to metadata.json
-        using legacy key names (e.g. geo_id to geo_accession, taxon_id to sample_taxid). Errors use HTTP 200 and
-        `success: 0`.'
+        The fields of the metadata template (lib/gear/metadata_fields.py) are normalized (e.g. 10090 to NCBI:txid10090)
+        and validated. Invalid fields, or a taxon that is not a gEAR organism, give `success: 0` and `errors`, and
+        nothing is written. Otherwise creates `uploads/files/<session_id>/<share_uid>/`, writes the fields to
+        metadata.json under their template names, and returns `warnings` for things the gEAR team follows up on
+        (reference annotation not loaded, OBI root terms). Errors use HTTP 200 and `success: 0`.'
       requestBody:
         required: true
         content:
@@ -6523,47 +6525,67 @@ paths:
                   type: string
                 dataset_uid:
                   type: string
-                title:
+                user_pii_affirmed:
                   type: string
-                summary:
-                  type: string
-                dataset_type:
-                  type: string
-                annotation_source:
-                  type: string
-                annotation_version:
-                  type: string
-                  description: Saved as annotation_release_number.
-                geo_id:
-                  type: string
-                  description: Saved as geo_accession.
                 contact_name:
                   type: string
                 contact_email:
                   type: string
                 contact_institute:
                   type: string
-                taxon_id:
+                title:
                   type: string
-                  description: Saved as sample_taxid.
-                organism:
+                summary:
                   type: string
-                  description: Saved as sample_organism.
-                platform_id:
+                dataset_type:
                   type: string
-                instrument:
+                  enum:
+                  - single-cell-rnaseq
+                  - bulk-rnaseq
+                  - microarray
+                  - spatial
+                  - gosling
+                reference_annot_id:
                   type: string
-                  description: Saved as instrument_model.
-                library_selection:
+                  description: Like Ensembl:93, GenBank:GCA_000001635.9 or RefSeq:GCF_000001635.27.
+                repository_accession:
                   type: string
-                library_source:
+                  description: Like GEO:GSE168901 or ArrayExpress:E-MTAB-11634. Optional.
+                sample_taxid:
                   type: string
-                library_strategy:
-                  type: string
+                  description: Like NCBI:txid10090 (a bare number is accepted).
                 pubmed_id:
                   type: string
-                user_pii_affirmed:
+                  description: Like PMID:25855195. Optional.
+                keywords:
                   type: string
+                  description: Up to 6, comma-separated. Optional.
+                device:
+                  type: string
+                  description: OBI term ID, like OBI:0002630.
+                assay:
+                  type: string
+                  description: OBI term ID, like OBI:0002631.
+                library_cons_method:
+                  type: string
+                rna_extraction_method:
+                  type: string
+                microarray_hybridization_protocol:
+                  type: string
+                  description: Required when dataset_type is microarray.
+                normalization_method:
+                  type: string
+                log_transformation:
+                  type: string
+                  enum:
+                  - No Transformation
+                  - log2 transformation
+                  - log10 transformation
+                primary_analysis_completed:
+                  type: string
+                  enum:
+                  - 'Yes'
+                  - 'No'
       responses:
         '200':
           description: Result (errors also use HTTP 200).
@@ -6580,6 +6602,16 @@ paths:
                   error:
                     type: string
                     nullable: true
+                  errors:
+                    type: object
+                    description: Invalid fields, as field name -> message.
+                    additionalProperties:
+                      type: string
+                  warnings:
+                    type: object
+                    description: Issues the gEAR team will follow up on, as flag -> message (e.g. annotation_not_loaded).
+                    additionalProperties:
+                      type: string
   /cgi/test.cgi:
     get:
       operationId: cgiTestGet

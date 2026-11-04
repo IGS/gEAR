@@ -185,6 +185,29 @@ def test_threetab_decompressed_plain_tar(staging, example_3tab_tar_gz):
     assert read_h5ad(staging).shape == (24, 31407)
 
 
+def test_threetab_ontology_names_added(staging, example_3tab_tar_gz, monkeypatch):
+    """Ontology term IDs in the observations get a name column, and are listed in metadata.json (#422)."""
+    from gear import ontology
+    monkeypatch.setattr(ontology, "_read_cache", lambda term_ids: {})
+    monkeypatch.setattr(ontology, "_write_cache", lambda labels: None)
+    monkeypatch.setattr(ontology, "_fetch_from_ols", lambda term_ids: {"UBERON:0002227": "spiral organ of cochlea"})
+    monkeypatch.setattr(ontology, "get_recommended_obs_columns", lambda: ["tissue_ontology", "age_value"])
+
+    with tarfile.open(example_3tab_tar_gz) as tf:
+        members = {m.name: tf.extractfile(m).read() for m in tf.getmembers() if m.isfile()}
+    lines = members["observations.tab"].decode().splitlines()
+    lines = [lines[0] + "\ttissue_ontology"] + [line + "\tUBERON:0002227" for line in lines[1:]]
+    members["observations.tab"] = ("\n".join(lines) + "\n").encode()
+    write_tar(staging / "SHARE.tar.gz", members, gzipped=True)
+
+    assert_success(run(staging), staging)
+    adata = read_h5ad(staging)
+    assert set(adata.obs["tissue_ontology_name"]) == {"spiral organ of cochlea"}
+    metadata = json.loads((staging / "metadata.json").read_text())
+    assert metadata["ontology_terms"] == {"tissue_type": ["UBERON:0002227"]}
+    assert len(metadata["sample_metadata_warnings"]) == 1 and "age_value" in metadata["sample_metadata_warnings"][0]
+
+
 # ---------------------------------------------------------------------------
 # Bad or missing archives
 # ---------------------------------------------------------------------------

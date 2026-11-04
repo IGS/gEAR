@@ -7,6 +7,13 @@ name = gear_portal
 [email_sender]
 address = [gear_email]
 password = [pass]
+;; optional, host:port of the SMTP server (default smtp.gmail.com:587)
+;smtp_server = smtp.gmail.com:587
+
+[curation]
+;; comma-separated addresses e-mailed when an upload needs curator follow-up
+;;  (e.g. a reference annotation not yet loaded, or an OBI root term given)
+notify_emails =
 
 [github]
 access_token=
@@ -67,6 +74,8 @@ queue_host = localhost
 [dataset_uploader]
 queue_enabled = 1
 queue_host = localhost
+;; sample metadata (obs) columns users are warned about when missing. Uploads are not blocked.
+recommended_obs_columns = tissue_ontology,treatment,age_value,age_unit,sex_assigned_at_birth
 
 [higlass]
 admin_user = [user]

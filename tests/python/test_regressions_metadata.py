@@ -115,3 +115,89 @@ def test_get_value_from_df():
     assert md.get_value_from_df(df, "wrapped") == "GSE1"
     assert md.get_value_from_df(df, "plain") == "GSE2"
     assert md.get_value_from_df(df, "dataset_type") == "single-cell-rnaseq"
+
+
+# ---------------------------------------------------------------- v2 metadata template (#390)
+
+
+def test_v2_fields_are_saved(tmp_path, cursor):
+    """Prefixed template values are split/stripped into the dataset columns."""
+    row = save(tmp_path, cursor, sample_taxid="NCBI:txid10090", reference_annot_id="RefSeq:GCF_000001635.27",
+               repository_accession="GEO:GSE168901", pubmed_id="PMID:25855195", device="OBI:0002630",
+               assay="OBI:0002631", log_transformation="log2 transformation", primary_analysis_completed="Yes",
+               dataset_format="h5ad")
+    assert row["annotation_source"] == "RefSeq"
+    assert row["annotation_release"] == "GCF_000001635.27"
+    assert row["repository_accession"] == "GEO:GSE168901"
+    assert row["geo_id"] == "GSE168901"
+    assert row["pubmed_id"] == "25855195"
+    assert row["device"] == "OBI:0002630" and row["assay"] == "OBI:0002631"
+    assert row["log_transformation"] == "log2 transformation"
+    assert row["primary_analysis_completed"] == 1
+    assert row["file_format"] == "h5ad"
+    assert row["metadata_version"] == "2"
+    assert row["metadata_source"] == "uploader"
+
+
+def test_non_geo_repository_has_no_geo_id(tmp_path, cursor):
+    row = save(tmp_path, cursor, repository_accession="ArrayExpress:E-MTAB-11634")
+    assert row["repository_accession"] == "ArrayExpress:E-MTAB-11634"
+    assert row["geo_id"] is None
+
+
+def test_v1_fields_still_saved(tmp_path, cursor):
+    """Uploads staged with the v1 form (annotation_source / annotation_release_number) still save."""
+    row = save(tmp_path, cursor, annotation_source="Ensembl", annotation_release_number="93")
+    assert (row["annotation_source"], row["annotation_release"]) == ("Ensembl", "93")
+
+
+def test_root_term_is_a_curation_flag(tmp_path, cursor):
+    row = save(tmp_path, cursor, device="OBI:0000968")
+    assert "device_root_term" in json.loads(row["curation_flags"])
+
+
+def test_ontology_terms_and_keywords_are_saved(tmp_path, cursor):
+    cursor.fetchall.return_value = []
+    save(tmp_path, cursor, keywords="Atoh1 knockout, hair cells",
+         ontology_terms={"tissue_type": ["UBERON:0002227"], "cell_type": ["CL:0000601", "CL:0011113"]})
+    inserted = [c.args[1] for c in cursor.execute.call_args_list if "INSERT INTO dataset_ontology_term" in c.args[0]]
+    assert inserted == [("DS1", "tissue_type", "UBERON:0002227"),
+                        ("DS1", "cell_type", "CL:0000601"), ("DS1", "cell_type", "CL:0011113")]
+    tags = [c.args[1] for c in cursor.execute.call_args_list if "INSERT INTO tag " in c.args[0]]
+    assert tags == [("Atoh1 knockout",), ("hair cells",)]
+
+
+# ---------------------------------------------------------------- update_dataset_metadata
+
+
+def test_update_changes_only_given_fields(cursor):
+    cursor.fetchone.return_value = (1, None)
+    result = md.update_dataset_metadata("DS1", {"title": "New title", "pubmed_id": "PMID:123456"}, source="curator")
+    assert result == {"errors": {}, "curation_flags": {}}
+
+    (sql, params), = [c.args for c in cursor.execute.call_args_list if c.args[0].startswith("UPDATE dataset")]
+    columns = [a.split(" = ")[0] for a in sql.removeprefix("UPDATE dataset SET ").split(" WHERE")[0].split(", ")]
+    assert dict(zip(columns, params)) == {"title": "New title", "pubmed_id": "123456",
+                                          "metadata_source": "curator", "curation_flags": None}
+    assert params[-1] == "DS1"
+
+
+def test_update_rejects_invalid_values_without_writing(cursor):
+    result = md.update_dataset_metadata("DS1", {"device": "HiSeq", "cell_type": ["hair cell"], "bogus": 1}, source="curator")
+    assert set(result["errors"]) == {"device", "cell_type", "bogus"}
+    assert not any(c.args[0].startswith("UPDATE") for c in cursor.execute.call_args_list)
+
+
+def test_update_keeps_flags_for_fields_not_changed(cursor):
+    cursor.fetchone.return_value = (1, json.dumps({"annotation_not_loaded": "old", "device_root_term": "old"}))
+    result = md.update_dataset_metadata("DS1", {"device": "OBI:0002630"}, source="backfill-llm")
+    assert result["curation_flags"] == {"annotation_not_loaded": "old"}
+
+
+def test_update_replaces_ontology_terms(cursor):
+    cursor.fetchone.return_value = (1, None)
+    md.update_dataset_metadata("DS1", {"cell_type": ["CL:0000601"]}, source="curator")
+    statements = [c.args for c in cursor.execute.call_args_list]
+    assert ("DELETE FROM dataset_ontology_term WHERE dataset_id = %s AND field = %s", ("DS1", "cell_type")) in statements
+    assert any("INSERT INTO dataset_ontology_term" in sql and params == ("DS1", "cell_type", "CL:0000601")
+               for sql, params in statements)

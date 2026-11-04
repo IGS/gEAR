@@ -18,6 +18,26 @@ SHARE_UID = "pytestshare"
 
 BAD_IDS = ["..", ".", "../escape", "a/b", "x y", "/tmp/abs"]
 
+# A complete, valid submission of the v2 metadata form (lib/gear/metadata_fields.py)
+V2_FORM = {
+    "title": "My dataset",
+    "summary": "What was done",
+    "dataset_type": "single-cell-rnaseq",
+    "contact_name": "Jane Doe",
+    "contact_email": "jane@example.org",
+    "contact_institute": "IGS",
+    "sample_taxid": "NCBI:txid10090",
+    "reference_annot_id": "Ensembl:93",
+    "device": "OBI:0002630",
+    "assay": "OBI:0002631",
+    "library_cons_method": "Kit A",
+    "rna_extraction_method": "Kit B",
+    "normalization_method": "TPM",
+    "log_transformation": "No Transformation",
+    "primary_analysis_completed": "No",
+    "user_pii_affirmed": "1",
+}
+
 
 @pytest.fixture
 def share_dir(upload_session):
@@ -82,13 +102,31 @@ class TestStoreExpressionMetadata:
 
     def test_metadata_is_saved(self, upload_session):
         session_id, path = upload_session
-        result = self.run(session_id, SHARE_UID, dataset_uid="DS-1", title="My dataset", taxon_id="10090")
-        assert result.json() == {"success": 1, "error": None}
+        result = self.run(session_id, SHARE_UID, dataset_uid="DS-1", **{**V2_FORM, "sample_taxid": "10090"})
+        body = result.json()
+        assert body["success"] == 1 and body["error"] is None and body["errors"] == {}
         saved = json.loads((path / SHARE_UID / "metadata.json").read_text())
         assert saved["owner_id"] == 1
         assert saved["dataset_uid"] == "DS-1" and saved["share_uid"] == SHARE_UID
-        assert saved["title"] == "My dataset" and saved["sample_taxid"] == "10090"
+        # Saved in canonical form
+        assert saved["title"] == "My dataset" and saved["sample_taxid"] == "NCBI:txid10090"
+        assert saved["metadata_version"] == "2"
         assert result.writes() == []
+
+    def test_invalid_metadata_is_not_saved(self, upload_session):
+        session_id, path = upload_session
+        form = {**V2_FORM, "device": "HiSeq", "contact_email": ""}
+        body = self.run(session_id, SHARE_UID, dataset_uid="DS-1", **form).json()
+        assert body["success"] == 0
+        assert set(body["errors"]) == {"device", "contact_email"}
+        assert not (path / SHARE_UID / "metadata.json").exists()
+
+    def test_obi_root_terms_are_warnings(self, upload_session):
+        session_id, path = upload_session
+        form = {**V2_FORM, "device": "OBI:0000968", "assay": "OBI:0000070"}
+        body = self.run(session_id, SHARE_UID, dataset_uid="DS-1", **form).json()
+        assert body["success"] == 1
+        assert {"device_root_term", "assay_root_term"} <= set(body["warnings"])
 
     @pytest.mark.parametrize("share_uid", BAD_IDS)
     def test_odd_share_uid_is_refused(self, upload_session, share_uid):

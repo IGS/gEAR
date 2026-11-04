@@ -18,18 +18,76 @@ let trackContainer;
 let processingStatus = null;
 const processingStatusCheckInterval = 10; // seconds
 
-const requiredMetadataFields = ['metadata-title', 'metadata-summary', 'metadata-dataset-type',
-    'metadata-contact-name', 'metadata-annotation-source', 'metadata-annotation-version',
-    'metadata-contact-name', 'metadata-contact-email',
-    'metadata-taxon-id', 'metadata-organism'
-];
-
-const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform-id',
-    'metadata-instrument', 'metadata-library-selection', 'metadata-library-source',
-    'metadata-geo-id', 'metadata-library-strategy', 'metadata-pubmed-id'
-];
+// Metadata template field rules, built from lib/gear/metadata_fields.py by bin/build_metadata_templates.py
+let metadataFields = [];
+let maxKeywords = null;
 
 /* --- Functions and Classes --- */
+
+/**
+ * Returns the form element for a metadata template field, e.g. 'contact_name' -> #metadata-contact-name
+ *
+ * @param {string} fieldName - The template field name.
+ * @returns {HTMLElement} The form element.
+ */
+const metadataElement = (fieldName) => {
+    return document.getElementsByName(`metadata-${fieldName.replaceAll('_', '-')}`)[0];
+}
+
+/**
+ * Returns the form value for a metadata template field. Yes/No fields shown as checkboxes give 'Yes' or 'No'.
+ *
+ * @param {string} fieldName - The template field name.
+ * @returns {string} The field's value.
+ */
+const getMetadataValue = (fieldName) => {
+    const element = metadataElement(fieldName);
+    if (element.type === 'checkbox') return element.checked ? 'Yes' : 'No';
+    return element.value;
+}
+
+/**
+ * Sets the form value for a metadata template field. A checkbox is checked for 'Yes' (any case).
+ *
+ * @param {string} fieldName - The template field name.
+ * @param {string} value - The value to set.
+ */
+const setMetadataValue = (fieldName, value) => {
+    const element = metadataElement(fieldName);
+    if (element.type === 'checkbox') {
+        element.checked = String(value).trim().toLowerCase() === 'yes';
+        return;
+    }
+    element.value = value;
+}
+
+/**
+ * Returns true if a metadata field is required, given the values currently in the form.
+ *
+ * @param {Object} field - A field from metadata_fields.json.
+ * @returns {boolean}
+ */
+const isMetadataFieldRequired = (field) => {
+    if (field.required) return true;
+    return Object.entries(field.required_if).some(([other, wanted]) => getMetadataValue(other) === wanted);
+}
+
+/**
+ * Loads the metadata template field rules used to validate the metadata form.
+ */
+const loadMetadataFields = async () => {
+    const {data} = await axios.get('./user_templates/metadata_fields.json');
+    metadataFields = data.fields;
+    maxKeywords = data.max_keywords;
+}
+
+/**
+ * The microarray hybridization protocol is only asked for with microarray datasets.
+ */
+const toggleMicroarrayFields = () => {
+    const isMicroarray = metadataElement('dataset_type').value === 'microarray';
+    document.getElementById('metadata-microarray-hybridization-protocol-c').classList.toggle('is-hidden', !isMicroarray);
+}
 
 /**
  * Checks the current processing status of the dataset by making an asynchronous request
@@ -227,32 +285,14 @@ const populateMetadataFormFromFile = async () => {
 
     // Fill out the form with the data
     if (data.success) {
-        document.getElementsByName('metadata-title')[0].value = data.metadata.title.value;
-        document.getElementsByName('metadata-summary')[0].value = data.metadata.summary.value;
-        document.getElementsByName('metadata-annotation-source')[0].value = data.metadata.annotation_source.value;
-        document.getElementsByName('metadata-annotation-version')[0].value = data.metadata.annotation_release_number.value;
-        document.getElementsByName('metadata-geo-id')[0].value = data.metadata.geo_accession.value;
-
-        document.getElementsByName('metadata-contact-name')[0].value = data.metadata.contact_name.value;
-        document.getElementsByName('metadata-contact-email')[0].value = data.metadata.contact_email.value;
-        document.getElementsByName('metadata-contact-institute')[0].value = data.metadata.contact_institute.value;
-        document.getElementsByName('metadata-taxon-id')[0].value = data.metadata.sample_taxid.value;
-        document.getElementsByName('metadata-organism')[0].value = data.metadata.sample_organism.value;
-        document.getElementsByName('metadata-platform-id')[0].value = data.metadata.platform_id.value;
-        document.getElementsByName('metadata-instrument')[0].value = data.metadata.instrument_model.value;
-        document.getElementsByName('metadata-library-selection')[0].value = data.metadata.library_selection.value;
-        document.getElementsByName('metadata-library-source')[0].value = data.metadata.library_source.value;
-        document.getElementsByName('metadata-library-strategy')[0].value = data.metadata.library_strategy.value;
-        document.getElementsByName('metadata-pubmed-id')[0].value = data.metadata.pubmed_id.value;
-
-        // Handle the metadata-dataset-type select box
-        const datasetTypeSelect = document.getElementsByName('metadata-dataset-type')[0];
-        for (let i = 0; i < datasetTypeSelect.options.length; i++) {
-            if (datasetTypeSelect.options[i].value === data.metadata.dataset_type.value) {
-                datasetTypeSelect.selectedIndex = i;
-                break;
-            }
+        for (const field of metadataFields) {
+            const value = data.metadata[field.name]?.value;
+            // Leave fields the spreadsheet doesn't have (or has blank) as they are
+            if (value === undefined || value === null || value === '') continue;
+            setMetadataValue(field.name, value);
         }
+
+        const datasetTypeSelect = metadataElement('dataset_type');
         // Fire the change listener so spatial gets auto-checked/enabled same as a manual selection
         datasetTypeSelect.dispatchEvent(new Event('change'));
 
@@ -414,24 +454,26 @@ const populateTracks = async (hubContainer, trackContainer, isFileSource, hubUrl
  * @returns {Promise<void>} Resolves when the GEO data has been fetched and the form updated.
  */
 const getGeoData = async () => {
-    const geoId = document.getElementsByName('metadata-geo-id')[0].value;
+    // Accept 'GEO:GSEnnnn' or a bare 'GSEnnnn'
+    const geoId = metadataElement('repository_accession').value.trim().replace(/^GEO:\s*/i, '');
     const geoData = await apiCallsMixin.fetchGeoData(geoId);
 
     if (Object.keys(geoData).length === 0) {
         document.getElementById('metadata-geo-lookup-status').classList.remove('is-hidden');
     } else {
         document.getElementById('metadata-geo-lookup-status').classList.add('is-hidden');
-        document.getElementsByName('metadata-contact-name')[0].value = geoData.contact_name;
-        document.getElementsByName('metadata-contact-email')[0].value = geoData.contact_email;
-        document.getElementsByName('metadata-contact-institute')[0].value = geoData.contact_institute;
-        document.getElementsByName('metadata-taxon-id')[0].value = geoData.taxid_ch1;
-        document.getElementsByName('metadata-organism')[0].value = geoData.organism_ch1;
-        document.getElementsByName('metadata-platform-id')[0].value = geoData.platform_id;
-        document.getElementsByName('metadata-instrument')[0].value = geoData.instrument_model;
-        document.getElementsByName('metadata-library-selection')[0].value = geoData.library_selection;
-        document.getElementsByName('metadata-library-source')[0].value = geoData.library_source;
-        document.getElementsByName('metadata-library-strategy')[0].value = geoData.library_strategy;
-        document.getElementsByName('metadata-pubmed-id')[0].value = geoData.pubmed_id;
+        metadataElement('repository_accession').value = `GEO:${geoId}`;
+
+        const geoValues = {
+            contact_name: geoData.contact_name,
+            contact_email: geoData.contact_email,
+            contact_institute: geoData.contact_institute,
+            sample_taxid: geoData.taxid_ch1 ? `NCBI:txid${geoData.taxid_ch1}` : null,
+            pubmed_id: geoData.pubmed_id ? `PMID:${geoData.pubmed_id}` : null
+        };
+        for (const [fieldName, value] of Object.entries(geoValues)) {
+            if (value) metadataElement(fieldName).value = value;
+        }
     }
 
     const button = document.getElementById('metadata-geo-lookup');
@@ -697,6 +739,28 @@ const prettifyMetadataFieldName = (field) => {
 }
 
 /**
+ * Lists metadata form errors next to the submit button.
+ *
+ * @param {Object} erroredFields - Form element names mapped to error messages.
+ */
+const showMetadataFormErrors = (erroredFields) => {
+    const erroredFieldsUl = document.getElementById('errored-field-list');
+    erroredFieldsUl.innerHTML = '';
+
+    // iterate over the errored fields and display them
+    for (const field in erroredFields) {
+        const fieldLabel = prettifyMetadataFieldName(field);
+        const fieldMsg = erroredFields[field];
+
+        const li = document.createElement('li');
+        li.textContent = `${fieldLabel}: ${fieldMsg}`;
+        erroredFieldsUl.appendChild(li);
+    };
+
+    document.getElementById('errored-field-list-c').classList.remove('is-hidden');
+}
+
+/**
  * Asynchronously collects metadata from form fields, sends it to the server for storage,
  * and updates the UI based on the server response.
  *
@@ -709,40 +773,39 @@ const prettifyMetadataFieldName = (field) => {
  * @returns {Promise<void>} Resolves when the operation is complete.
  */
 const storeMetadata = async () => {
-    const {data} = await axios.post('./cgi/store_expression_metadata.cgi', convertToFormData({
+    const payload = {
         dataset_uid: datasetUid,
         share_uid: shareUid,
         session_id: getCurrentUser()?.session_id,
-        title: document.getElementsByName('metadata-title')[0].value,
-        summary: document.getElementsByName('metadata-summary')[0].value,
-        dataset_type: document.getElementsByName('metadata-dataset-type')[0].value,
-        annotation_source: document.getElementsByName('metadata-annotation-source')[0].value,
-        annotation_version: document.getElementsByName('metadata-annotation-version')[0].value,
-        geo_id: document.getElementsByName('metadata-geo-id')[0].value,
-        contact_name: document.getElementsByName('metadata-contact-name')[0].value,
-        contact_email: document.getElementsByName('metadata-contact-email')[0].value,
-        contact_institute: document.getElementsByName('metadata-contact-institute')[0].value,
-        taxon_id: document.getElementsByName('metadata-taxon-id')[0].value,
-        organism: document.getElementsByName('metadata-organism')[0].value,
-        platform_id: document.getElementsByName('metadata-platform-id')[0].value,
-        instrument: document.getElementsByName('metadata-instrument')[0].value,
-        library_selection: document.getElementsByName('metadata-library-selection')[0].value,
-        library_source: document.getElementsByName('metadata-library-source')[0].value,
-        library_strategy: document.getElementsByName('metadata-library-strategy')[0].value,
-        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value,
         user_pii_affirmed: document.getElementsByName('metadata-no-pii')[0].checked ? 1 : 0
-    }));
+    };
+    for (const field of metadataFields) {
+        payload[field.name] = getMetadataValue(field.name);
+    }
+
+    const {data} = await axios.post('./cgi/store_expression_metadata.cgi', convertToFormData(payload));
 
     if (data.success) {
+        // Things the gEAR team will follow up on, like a reference annotation that isn't loaded yet
+        for (const message of Object.values(data.warnings || {})) {
+            createToast(message, 'is-warning', true);
+        }
 
         stepTo('upload-dataset');
 
         // Scroll to the top of the page
         window.scrollTo(0, 0);
 
+    } else if (data.errors && Object.keys(data.errors).length) {
+        const erroredFields = {};
+        for (const [fieldName, message] of Object.entries(data.errors)) {
+            metadataElement(fieldName)?.classList.add('is-danger');
+            erroredFields[`metadata-${fieldName.replaceAll('_', '-')}`] = message;
+        }
+        showMetadataFormErrors(erroredFields);
     } else {
         // Show error with a toast
-        createToast('Error saving metadata', data.message, 'is-warning');
+        createToast(`Error saving metadata: ${data.error || data.message || 'unknown error'}`, 'is-warning');
     }
 }
 
@@ -907,10 +970,13 @@ const processDataset = async () => {
 // Catch-all for any post-processing steps that need to be done before finalizing the dataset.
 const renderPostProcessingOptions = async() => {
 
-    const doSomethingObs = await renderAmbiguousObsColumns();
+    // One request returns the results for every review substep
+    const data = await fetchPostProcessingReview();
 
     // doSomething should be true if any "doSomething" substeps are true
-    const doSomething = [doSomethingObs].some(Boolean);
+    const doSomething = data
+        ? [renderAmbiguousObsColumns(data), renderSampleMetadataReview(data)].some(Boolean)
+        : false;
 
     if (!doSomething) {
         stepTo("finalize-dataset");
@@ -918,8 +984,13 @@ const renderPostProcessingOptions = async() => {
     }
 }
 
-const renderAmbiguousObsColumns = async () => {
-    let doSomething;
+/**
+ * Fetches what the processor wrote to metadata.json for the post-processing review: ambiguous
+ * obs columns, sample metadata warnings and ontology terms. Returns null on failure.
+ *
+ * @returns {Promise<Object|null>} The get_ambiguous_obs_columns.cgi response.
+ */
+const fetchPostProcessingReview = async () => {
     const formData = new FormData();
     formData.append('share_uid', shareUid);
     formData.append('session_id', getCurrentUser()?.session_id);
@@ -930,81 +1001,123 @@ const renderAmbiguousObsColumns = async () => {
             body: formData,
         });
         const data = await response.json();
-
         if (!data?.success) {
             throw new Error(data?.message || 'Unknown error');
         }
+        return data;
+    } catch (error) {
+        console.error(error);
+        createToast('Error processing dataset');
+        return null;
+    }
+}
 
-        // If the dataset has already been reviewed or has nothing questionable, we can skip this step
-        doSomething = !data?.reviewed;
+/**
+ * Shows the ontology terms found in the sample metadata and any warnings about it (missing
+ * recommended columns, unknown terms). Returns true if there is something to show.
+ *
+ * @param {Object} data - The get_ambiguous_obs_columns.cgi response.
+ * @returns {boolean}
+ */
+const renderSampleMetadataReview = (data) => {
+    const warnings = data.sample_metadata_warnings || [];
+    const terms = data.ontology_terms || {};
 
-        if (!doSomething) {
-            document.getElementById("ambiguous-cols-dtypes-c").classList.add("is-hidden");
-            return doSomething;
+    const summaryParts = [];
+    if (terms.tissue_type?.length) summaryParts.push(`${terms.tissue_type.length} tissue term(s)`);
+    if (terms.cell_type?.length) summaryParts.push(`${terms.cell_type.length} cell type term(s)`);
+    document.getElementById('sample-metadata-terms-summary').textContent = summaryParts.length
+        ? `Found ${summaryParts.join(' and ')}. Their names were added to your observations, and the dataset will be searchable by them.`
+        : 'No tissue or cell type ontology terms were found in your observations.';
+
+    const warningsList = document.getElementById('sample-metadata-warnings');
+    warningsList.innerHTML = '';
+    for (const warning of warnings) {
+        const li = document.createElement('li');
+        li.textContent = warning;
+        warningsList.appendChild(li);
+    }
+    document.getElementById('sample-metadata-warnings-c').classList.toggle('is-hidden', !warnings.length);
+
+    const doSomething = warnings.length > 0;
+    document.getElementById('sample-metadata-review-c').classList.toggle('is-hidden', !doSomething);
+    return doSomething;
+}
+
+/**
+ * Shows the obs columns that may have the wrong data type, with a choice for each.
+ * Returns true if there is something for the user to review.
+ *
+ * @param {Object} data - The get_ambiguous_obs_columns.cgi response.
+ * @returns {boolean}
+ */
+const renderAmbiguousObsColumns = (data) => {
+    // If the dataset has already been reviewed or has nothing questionable, we can skip this step
+    const doSomething = !data.reviewed;
+
+    if (!doSomething) {
+        document.getElementById("ambiguous-cols-dtypes-c").classList.add("is-hidden");
+        return doSomething;
+    }
+
+    // Render the ambiguous columns for user review
+    const ambiguousColumns = data.questionable_columns;
+    if (!ambiguousColumns) {
+        console.error('No ambiguous columns found');
+        createToast('Error processing dataset');
+        return false;
+    }
+
+    /* Example key
+            Keyed by column name, e.g.:
+        {
+          "replicate": {
+              "current_dtype": "int64",
+              "n_unique": 3,
+              "sample_values": [1, 2, 3],
+              "suggested_type": "categorical",
+          }
         }
+    */
 
-        // Render the ambiguous columns for user review
-        const ambiguousColumns = data?.questionable_columns;
-        if (!ambiguousColumns) {
-            throw new Error('No ambiguous columns found');
-        }
+    document.getElementById("ambiguous-cols-dtypes-c").classList.remove("is-hidden");
 
-        /* Example key
-                Keyed by column name, e.g.:
-            {
-              "replicate": {
-                  "current_dtype": "int64",
-                  "n_unique": 3,
-                  "sample_values": [1, 2, 3],
-                  "suggested_type": "categorical",
-              }
-            }
-        */
+    const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+    reviewContainer.innerHTML = '';
 
-        document.getElementById("ambiguous-cols-dtypes-c").classList.remove("is-hidden");
-
-        const reviewContainer = document.getElementById('ambiguous-cols-review-c');
-        reviewContainer.innerHTML = '';
-
-        for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
-            const colDiv = document.createElement('div');
-            colDiv.className = 'box mb-4 column is-4';
-            colDiv.innerHTML = `
-                <h5 class="subtitle is-5">Column: ${colName}</h5>
-                <p>Current data type: ${colInfo.current_dtype}</p>
-                <p>Number of unique values: ${colInfo.n_unique}</p>
-                <p>Sample values: ${colInfo.sample_values.join(', ')}</p>
-                <br>
-                <p class=mb-2><strong>Suggested data type:</strong> ${colInfo.suggested_type}</p>
-                <div class="field">
-                    <div class="control">
-                        <div class="select">
-                            <select name="ambiguous-col-${colName}">
-                                <option value="categorical" ${colInfo.suggested_type === 'categorical' ? 'selected' : ''}>Categorical</option>
-                                <option value="continuous" ${colInfo.suggested_type === 'continuous' ? 'selected' : ''}>Continuous</option>
-                            </select>
-                        </div>
+    for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
+        const colDiv = document.createElement('div');
+        colDiv.className = 'box mb-4 column is-4';
+        colDiv.innerHTML = `
+            <h5 class="subtitle is-5">Column: ${colName}</h5>
+            <p>Current data type: ${colInfo.current_dtype}</p>
+            <p>Number of unique values: ${colInfo.n_unique}</p>
+            <p>Sample values: ${colInfo.sample_values.join(', ')}</p>
+            <br>
+            <p class=mb-2><strong>Suggested data type:</strong> ${colInfo.suggested_type}</p>
+            <div class="field">
+                <div class="control">
+                    <div class="select">
+                        <select name="ambiguous-col-${colName}">
+                            <option value="categorical" ${colInfo.suggested_type === 'categorical' ? 'selected' : ''}>Categorical</option>
+                            <option value="continuous" ${colInfo.suggested_type === 'continuous' ? 'selected' : ''}>Continuous</option>
+                        </select>
                     </div>
                 </div>
-            `;
-            reviewContainer.appendChild(colDiv);
-        }
-
-        return doSomething;
-
-    } catch (error) {
-        // axios throws on non-2xx status codes
-        const message = error.response?.data?.message ?? 'Unknown error occurred';
-        console.error(`Error ${error.response?.status}: ${message}`);
-        createToast('Error processing dataset');
+            </div>
+        `;
+        reviewContainer.appendChild(colDiv);
     }
+
+    return doSomething;
 }
 
 const applyPostProcessingOptions = async () => {
 
     // For all post-processing steps, run in parallel, then step to "finalize-dataset"
     const stepsToApply = []
-    if (!document.getElementById('ambiguous-cols-review-c').classList.contains('is-hidden')) {
+    // The step may be shown only for sample metadata warnings, with no column types to apply
+    if (!document.getElementById('ambiguous-cols-dtypes-c').classList.contains('is-hidden')) {
         stepsToApply.push(applyAmbiguousObsColumns());
     }
     await Promise.all(stepsToApply);
@@ -1209,16 +1322,30 @@ const updateAllTrackStatusesInProcessStep = (trackContainer, trackStatuses) => {
 const validateMetadataForm = () => {
     const erroredFields = {};
 
-    // Each element with a name in required_metadata_fields must have a value
-    for (const field of requiredMetadataFields) {
-        const element = document.getElementsByName(field)[0];
+    for (const field of metadataFields) {
+        const element = metadataElement(field.name);
+        const value = getMetadataValue(field.name).trim();
+        element.classList.remove('is-danger');
 
-        if (element.value) {
-            element.classList.remove('is-danger');
-        } else {
-            element.classList.add('is-danger');
-            erroredFields[field] = 'Requires a value';
+        if (!value) {
+            if (isMetadataFieldRequired(field)) {
+                element.classList.add('is-danger');
+                erroredFields[element.name] = 'Requires a value';
+            }
+            continue;
         }
+
+        // Column length limits in the database. Prefix/format checks are done by the server.
+        if (field.max_length && value.length > field.max_length) {
+            element.classList.add('is-danger');
+            erroredFields[element.name] = `Exceeds ${field.max_length} character limit`;
+        }
+    }
+
+    const keywords = metadataElement('keywords').value.split(',').filter((k) => k.trim());
+    if (maxKeywords && keywords.length > maxKeywords) {
+        metadataElement('keywords').classList.add('is-danger');
+        erroredFields['metadata-keywords'] = `Provide at most ${maxKeywords} keywords`;
     }
 
     // Check that the personal data affirmation checkbox is checked
@@ -1228,34 +1355,6 @@ const validateMetadataForm = () => {
         erroredFields['metadata-no-pii'] = 'You must affirm that the dataset contains no personally identifiable information';
     } else {
         document.getElementsByName('metadata-no-pii')[0].classList.remove('is-danger');
-    }
-
-    // Check SQL length limitations
-    const fieldCharacterLimits = {
-        'metadata-title': 255,
-        'metadata-summary': 65535,
-        'metadata-annotation-source': 20,
-        //'metadata-annotation-version': int,
-        'metadata-contact-name': 100,
-        'metadata-contact-email': 100,
-        'metadata-contact-institute': 255,
-        'metadata-platform-id': 255,
-        'metadata-instrument': 255,
-        'metadata-library-selection': 255,
-        'metadata-library-source': 255,
-        'metadata-geo-id': 50,
-        'metadata-library-strategy': 65535,
-        'metadata-pubmed-id': 20
-    };
-
-    for (const field in fieldCharacterLimits) {
-        const element = document.getElementsByName(field)[0];
-        if (element.value.length > fieldCharacterLimits[field]) {
-            element.classList.add('is-danger');
-            erroredFields[field] = `Exceeds ${fieldCharacterLimits[field]} character limit`;
-        } else {
-            element.classList.remove('is-danger');
-        }
     }
 
     return erroredFields;
@@ -1364,6 +1463,8 @@ const initPage = () => {
 
 await initCommonUI();
 await initPage();
+await loadMetadataFields();
+toggleMicroarrayFields();
 
 /* --- Event listeners --- */
 
@@ -1416,20 +1517,7 @@ document.getElementById('metadata-form-submit').addEventListener('click', (event
         return;
 
     }
-    const erroredFieldsUl = document.getElementById('errored-field-list');
-    erroredFieldsUl.innerHTML = '';
-
-    // iterate over the errored fields and display them
-    for (const field in erroredFields) {
-        const fieldLabel = prettifyMetadataFieldName(field);
-        const fieldMsg = erroredFields[field];
-
-        const li = document.createElement('li');
-        li.textContent = `${fieldLabel}: ${fieldMsg}`;
-        erroredFieldsUl.appendChild(li);
-    };
-
-    document.getElementById('errored-field-list-c').classList.remove('is-hidden');
+    showMetadataFormErrors(erroredFields);
 });
 
 document.getElementById('dataset-file-input').addEventListener('change', (event) => {
@@ -1607,7 +1695,8 @@ document.getElementById('metadata-geo-lookup').addEventListener('click', (event)
     const getData = getGeoData();
 });
 
-document.getElementsByName('metadata-dataset-type')[0].addEventListener('change', (e) => {
+metadataElement('dataset_type').addEventListener('change', (e) => {
+    toggleMicroarrayFields();
     document.getElementById("btn-spatial-format-selector").disabled = true;
     if (e.target.value === 'spatial') {
         document.getElementById("btn-spatial-format-selector").disabled = false;

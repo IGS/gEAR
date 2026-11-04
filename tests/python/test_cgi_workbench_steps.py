@@ -612,7 +612,17 @@ class TestGetAmbiguousObsColumns:
     def test_returns_flagged_columns(self, staged):
         session_id, _ = staged
         assert self.run(session_id).json() == {"success": 1, "message": "", "questionable_columns": QUESTIONABLE,
-                                                "reviewed": False}
+                                                "reviewed": False, "sample_metadata_warnings": [], "ontology_terms": {}}
+
+    def test_returns_sample_metadata_results(self, staged):
+        session_id, share = staged
+        metadata = json.loads((share / "metadata.json").read_text())
+        metadata["sample_metadata_warnings"] = ["These recommended sample metadata columns are missing: age_value."]
+        metadata["ontology_terms"] = {"cell_type": ["CL:0000601"]}
+        (share / "metadata.json").write_text(json.dumps(metadata))
+        body = self.run(session_id).json()
+        assert body["sample_metadata_warnings"] == metadata["sample_metadata_warnings"]
+        assert body["ontology_terms"] == {"cell_type": ["CL:0000601"]}
 
     @pytest.mark.parametrize("share_uid, logged_in, message", [
         ("", True, "session_id and share_uid are required."),
