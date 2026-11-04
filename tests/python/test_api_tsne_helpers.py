@@ -65,6 +65,70 @@ def test_calculate_num_legend_cols(groups, expected):
     assert tsne_data.calculate_num_legend_cols(groups) == expected
 
 
+def test_compute_panel_figsize_single_panel_is_square():
+    assert tsne_data.compute_panel_figsize(1, 1, 1) == (10, 10)
+
+
+def test_compute_panel_figsize_reference_layout_matches_reference_aspect():
+    # 1 row x 2 panels (expression + annotation). scanpy treats figsize as per panel, and
+    # builds a figure of about cols * width * (1 + wspace) by rows * height.
+    width, height = tsne_data.compute_panel_figsize(2, 1, 2)
+    wspace = 0.75 / width + 0.02
+    figure_aspect = (2 * width * (1 + wspace)) / height
+    assert figure_aspect == pytest.approx(tsne_data.REFERENCE_FIGURE_ASPECT)
+
+
+@pytest.mark.parametrize(
+    "wide, high, panels, expected_panel_aspect",
+    [
+        (4, 1, 4, tsne_data.PANEL_ASPECT_MIN),   # 1x4 would need tall panels; clamped
+        (6, 1, 6, tsne_data.PANEL_ASPECT_MIN),
+        (2, 2, 4, tsne_data.PANEL_ASPECT_MAX),   # 2x2 would need very flat panels; clamped
+        (1, 4, 4, tsne_data.PANEL_ASPECT_MAX),
+    ],
+)
+def test_compute_panel_figsize_clamps_panel_aspect(wide, high, panels, expected_panel_aspect):
+    width, height = tsne_data.compute_panel_figsize(wide, high, panels)
+    assert width / height == pytest.approx(expected_panel_aspect)
+
+
+def _axes_with_legend(num_items, num_cols, fig_height):
+    fig, ax = plt.subplots(figsize=(6, fig_height), layout="constrained")
+    for i in range(num_items):
+        ax.scatter([0], [0], label=f"group {i}")
+    ax.legend(ncol=num_cols, loc="upper left", bbox_to_anchor=[1, 1])
+    return fig, ax
+
+
+def test_fit_legend_columns_keeps_columns_when_legend_fits():
+    fig, ax = _axes_with_legend(num_items=4, num_cols=1, fig_height=5)
+    try:
+        assert tsne_data.fit_legend_columns(fig, ax, 4, 1) == 1
+    finally:
+        plt.close(fig)
+
+
+def test_fit_legend_columns_adds_columns_until_legend_fits_axes():
+    fig, ax = _axes_with_legend(num_items=15, num_cols=1, fig_height=2.5)
+    try:
+        num_cols = tsne_data.fit_legend_columns(fig, ax, 15, 1)
+        assert num_cols > 1
+        ax.legend(ncol=num_cols, loc="upper left", bbox_to_anchor=[1, 1])
+        fig.draw_without_rendering()
+        renderer = fig.canvas.get_renderer()
+        assert ax.get_legend().get_window_extent(renderer).height <= ax.get_window_extent(renderer).height
+    finally:
+        plt.close(fig)
+
+
+def test_fit_legend_columns_without_legend_is_unchanged():
+    fig, ax = plt.subplots()
+    try:
+        assert tsne_data.fit_legend_columns(fig, ax, 15, 1) == 1
+    finally:
+        plt.close(fig)
+
+
 @pytest.mark.parametrize(
     "series, expected",
     [

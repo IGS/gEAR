@@ -10,7 +10,7 @@ import io
 import os
 import re
 from copy import copy
-from math import ceil
+from math import ceil, floor
 from pathlib import Path
 
 import geardb
@@ -70,6 +70,16 @@ ANNOTATION_CMAP_FALLBACK = "plasma"  # used when the expression palette is alrea
 
 # Max number of legend items per column allowed in vertical legend
 NUM_LEGENDS_PER_COL = 16
+
+# Figure sizing (issue #1358). The reference layout is the most common scanpy display:
+# 1 row x 2 panels (expression + cell annotation) with a legend on the right, shown in a
+# 12-column tile on an HD (1920x1080) desktop, where the image is capped at 360px tall.
+# REFERENCE_FIGURE_ASPECT is the whole-image width/height that fills that tile.
+REFERENCE_FIGURE_ASPECT = 4.0
+# Per-panel width/height limits, so panels do not become very flat or very tall
+# when the grid has many more columns than rows (or the reverse).
+PANEL_ASPECT_MIN = 1.0
+PANEL_ASPECT_MAX = 2.0
 
 parser = reqparse.RequestParser(bundle_errors=True)
 
@@ -177,6 +187,71 @@ def calculate_num_legend_cols(group_len: int) -> int:
         int: The number of columns required to display all legend items, based on the maximum number of legends per column.
     """
     return ceil(group_len / NUM_LEGENDS_PER_COL)
+
+
+def compute_panel_figsize(num_plots_wide: int, num_plots_high: int, num_panels: int) -> tuple[float, float]:
+    """
+    Computes the figsize to pass to scanpy for an embedding plot.
+
+    When there is more than one panel, scanpy treats figsize as the size of each panel, and
+    builds a figure of about (cols * width * (1 + wspace)) x (rows * height). The panel aspect is
+    chosen so the whole figure matches REFERENCE_FIGURE_ASPECT, then clamped so that panels stay
+    within PANEL_ASPECT_MIN..PANEL_ASPECT_MAX. A single panel is the whole figure and stays square.
+
+    Args:
+        num_plots_wide (int): Number of panel columns.
+        num_plots_high (int): Number of panel rows.
+        num_panels (int): Total number of panels.
+
+    Returns:
+        tuple[float, float]: (width, height) in inches for one panel.
+    """
+    # Give subplots with more columns a bit more breathing room
+    width = 10 if num_plots_wide < 5 else 15
+    if num_panels <= 1:
+        return (width, width)
+
+    wspace = 0.75 / width + 0.02  # scanpy's default spacing between panels
+    panel_aspect = REFERENCE_FIGURE_ASPECT * num_plots_high / (num_plots_wide * (1 + wspace))
+    panel_aspect = min(PANEL_ASPECT_MAX, max(PANEL_ASPECT_MIN, panel_aspect))
+    return (width, width / panel_aspect)
+
+
+def fit_legend_columns(fig: "Figure", ax: "Axes", num_items: int, num_cols: int) -> int:
+    """
+    Returns the number of columns a right-side legend needs so that it is no taller than its axes.
+
+    A legend taller than its axes hangs below the plot. That adds whitespace under the image, and
+    constrained layout may also flatten the panels to make room for it. The legend must already be
+    on `ax` with `num_cols` columns.
+
+    Args:
+        fig (Figure): The figure containing the axes.
+        ax (Axes): The axes the legend is attached to.
+        num_items (int): Number of legend entries.
+        num_cols (int): Number of columns the legend currently has.
+
+    Returns:
+        int: `num_cols` if the legend already fits, otherwise the number of columns needed to fit.
+    """
+    legend = ax.get_legend()
+    if legend is None or num_items == 0:
+        return num_cols
+
+    # Measure the axes as if the legend took no room, then run the layout without rendering pixels
+    legend.set_in_layout(False)
+    fig.draw_without_rendering()
+    renderer = fig.canvas.get_renderer()
+    axes_height = ax.get_window_extent(renderer).height
+    legend_height = legend.get_window_extent(renderer).height
+    legend.set_in_layout(True)
+
+    if legend_height <= axes_height:
+        return num_cols
+
+    num_rows = ceil(num_items / num_cols)
+    rows_that_fit = max(1, floor(num_rows * axes_height / legend_height))
+    return ceil(num_items / rows_that_fit)
 
 
 def create_bluered_colorscale() -> None:
@@ -1078,10 +1153,7 @@ def generate_tsne_figure(
 
     num_plots_wide = kwargs_ncols
     num_plots_high = ceil(len(columns) / num_plots_wide)
-    aspect_ratio = num_plots_wide / num_plots_high
-    # Give subplots with more columns a bit more breathing room
-    width = 10 if num_plots_wide < 5 else 15
-    height = width / aspect_ratio
+    (width, height) = compute_panel_figsize(num_plots_wide, num_plots_high, len(columns))
     dpi=150
 
     if high_dpi:
@@ -1172,13 +1244,19 @@ def generate_tsne_figure(
             (handles, labels) = sort_legend(
                 last_ax, colorize_by_order, num_horizontal_cols, horizontal_legend
             )
-            last_ax.legend(
-                ncol=num_cols,
-                bbox_to_anchor=[1, 1],
-                frameon=False,
-                handles=handles,
-                labels=labels,
-            )
+            legend_kwargs = {
+                "loc": "upper left",    # top-left corner of the legend at the top-right corner of the axes
+                "bbox_to_anchor": [1, 1],
+                "frameon": False,
+                "handles": handles,
+                "labels": labels,
+            }
+            last_ax.legend(ncol=num_cols, **legend_kwargs)
+            if not horizontal_legend:
+                # Add columns if the legend is taller than the plot (issue #1358)
+                fitted_cols = fit_legend_columns(io_fig, last_ax, len(labels), num_cols)
+                if fitted_cols != num_cols:
+                    last_ax.legend(ncol=fitted_cols, **legend_kwargs)
             if horizontal_legend:
                 last_ax.get_legend()
                 if last_ax.get_legend() is not None:
