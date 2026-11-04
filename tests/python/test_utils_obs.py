@@ -4,7 +4,10 @@ import numpy as np
 import pandas as pd
 import pytest
 from gear.utils.obs import (
+    VALID_TSNE_PAIRS,
+    VALID_UMAP_PAIRS,
     apply_obs_dtype_choices,
+    find_column_pair,
     flag_ambiguous_obs_columns,
     sanitize_obs_for_h5ad,
 )
@@ -102,3 +105,16 @@ def test_sanitized_obs_round_trips_through_h5ad(tmp_path, messy_obs):
     assert obs["mixed"].tolist() == ["1", "a", ""]
     assert obs["whole"].tolist()[:2] == [1, 2] and pd.isna(obs["whole"].iloc[2])
     assert obs["fraction"].tolist() == [1.5, 2.0, 3.0]
+
+
+@pytest.mark.parametrize("cols, pairs, expected", [
+    (["tSNE_1", "tSNE_2", "cluster"], VALID_TSNE_PAIRS, ["tSNE_1", "tSNE_2"]),
+    # Written by the Seurat (RDS) uploader
+    (["tsne_1", "tsne_2"], VALID_TSNE_PAIRS, ["tsne_1", "tsne_2"]),
+    (["umap_1", "umap_2"], VALID_UMAP_PAIRS, ["umap_1", "umap_2"]),
+    # Both columns of a pair are needed
+    (["tSNE_1", "UMAP_2"], VALID_TSNE_PAIRS, None),
+    (["UMAP_1", "UMAP_2"], VALID_TSNE_PAIRS, None),
+])
+def test_find_column_pair(cols, pairs, expected):
+    assert find_column_pair(cols, pairs) == expected

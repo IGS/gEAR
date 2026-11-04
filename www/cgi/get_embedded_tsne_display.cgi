@@ -28,13 +28,8 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.analysis import get_analysis
+from gear.utils.obs import VALID_TSNE_PAIRS, find_cluster_column, find_column_pair
 
-# These should match in bin/add_primary_analyses_to_datasets.py
-VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'subclass_label', 'cluster_label', 'subclass_label', 'joint_cluster_round4_annot']
-VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined'],
-                    # These are all carlo's custom ones.  Need to resolve this a different way later
-                    ['PC1%var6.14', 'PC2%var1.79']
-]
 
 def main():
     original_stdout = sys.stdout
@@ -87,16 +82,12 @@ def main():
 
     cols = adata.obs.columns.tolist()
 
-    for vname in VALID_CLUSTER_COLUMN_NAMES:
-        if vname in cols:
-            results['plotly_config']['colorize_legend_by'] = vname # type: ignore
-            break
+    # Same column names the uploader's primary analysis recognizes
+    results['plotly_config']['colorize_legend_by'] = find_cluster_column(cols) # type: ignore
 
-    for pair in VALID_TSNE_PAIRS:
-        if pair[0] in cols and pair[1] in cols:
-            results['plotly_config']['x_axis'] = pair[0] # type: ignore
-            results['plotly_config']['y_axis'] = pair[1] # type: ignore
-            break
+    tsne_pair = find_column_pair(cols, VALID_TSNE_PAIRS)
+    if tsne_pair:
+        results['plotly_config']['x_axis'], results['plotly_config']['y_axis'] = tsne_pair # type: ignore
 
     respond(results)
 

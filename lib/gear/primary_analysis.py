@@ -6,7 +6,6 @@ Module centered around adding a primary analysis to a dataset.  This includes:
 """
 
 import json
-import re
 import shutil
 from pathlib import Path
 
@@ -18,24 +17,14 @@ from anndata.io import write_elem
 from scipy.sparse import csr_matrix, issparse
 
 from .analysis import H5adAdapter, ZarrAdapter
+from .utils.obs import (
+    VALID_PCA_PAIRS,
+    VALID_TSNE_PAIRS,
+    VALID_UMAP_PAIRS,
+    find_cluster_column,
+)
 
 gear_root_path = Path(__file__).resolve().parents[2]
-
-# Checked in order; the first one found is copied to obs['louvain']. Includes the sample metadata
-# template's cell_clusters, and the names scanpy (leiden) and Seurat (seurat_clusters) use.
-# Seurat's orig.ident is left out: it holds the sample or project name, not a cell grouping.
-VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass_label', 'joint_cluster_round4_annot',
-                              'cell_clusters', 'clusters', 'seurat_clusters', 'leiden', 'louvain']
-# Seurat's FindClusters also writes one column per resolution, e.g. RNA_snn_res.0.8
-SEURAT_CLUSTER_COLUMN_PATTERN = re.compile(r".+_snn_res\.[\d.]+")
-
-# Lowercase pairs are what the Seurat (RDS) uploader writes, from reductions named tsne, umap and pca
-VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined'], ['tsne_1', 'tsne_2'],
-                    # These are all carlo's custom ones.  Need to resolve this a different way later
-                    ['PC1%var6.14', 'PC2%var1.79']]
-VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
-                    ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2'], ['umap_1', 'umap_2']]
-VALID_PCA_PAIRS = [['PCA_1', 'PCA_2'], ['PC_1', 'PC_2'], ['PC1', 'PC2'], ['pca_1', 'pca_2']]
 
 sc.settings.verbosity = 0
 sc.settings.autosave = True
@@ -381,18 +370,3 @@ def has_pca(adata: "AnnData") -> bool:
         pass
 
     return False
-
-def find_cluster_column(cols: list) -> str | None:
-    """
-    Return the first column in VALID_CLUSTER_COLUMN_NAMES found in cols, else the first Seurat
-    resolution column (e.g. RNA_snn_res.0.8), else None.
-    """
-    for vname in VALID_CLUSTER_COLUMN_NAMES:
-        if vname in cols:
-            return vname
-
-    for col in cols:
-        if SEURAT_CLUSTER_COLUMN_PATTERN.fullmatch(str(col)):
-            return col
-
-    return None
