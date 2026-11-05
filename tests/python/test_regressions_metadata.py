@@ -115,3 +115,23 @@ def test_get_value_from_df():
     assert md.get_value_from_df(df, "wrapped") == "GSE1"
     assert md.get_value_from_df(df, "plain") == "GSE2"
     assert md.get_value_from_df(df, "dataset_type") == "single-cell-rnaseq"
+
+
+@pytest.mark.parametrize("label, expected", [
+    ("single-nucleus-rnaseq", "single-nucleus-rnaseq"),
+    ("Single-nucleus RNA-Seq", "single-nucleus-rnaseq"),
+    ("Single nuclei RNA-seq", "single-nucleus-rnaseq"),
+    ("snRNA-seq", "single-nucleus-rnaseq"),
+    ("single-cell-rnaseq", "single-cell-rnaseq"),
+    ("Single cell RNA-Seq", "single-cell-rnaseq"),
+])
+def test_dataset_type_single_nucleus_is_kept_apart(label, expected):
+    """Regression for #1345: single-nucleus labels are no longer folded into single-cell-rnaseq."""
+    df = pd.DataFrame({"value": [label]}, index=["dataset_type"])
+    assert md.get_value_from_df(df, "dataset_type") == expected
+
+
+def test_single_nucleus_dtype_is_saved(tmp_path, cursor):
+    """Regression for #1345: an upload typed as single-nucleus is saved with that dtype."""
+    row = save(tmp_path, cursor, dataset_type="single-nucleus-rnaseq")
+    assert row["dtype"] == "single-nucleus-rnaseq"

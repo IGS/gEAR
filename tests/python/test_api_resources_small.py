@@ -123,13 +123,14 @@ def test_analyses_unknown_dataset_is_error_with_200(analyses_client):
 
 @pytest.fixture
 def tools_client(monkeypatch):
-    dtypes = {"S-SC": "single-cell-rnaseq", "S-BULK": "bulk-rnaseq", "S-SVG": "svg-expression", "S-ODD": "epiviz"}
+    dtypes = {"S-SC": "single-cell-rnaseq", "S-SN": "single-nucleus-rnaseq", "S-BULK": "bulk-rnaseq", "S-SVG": "svg-expression", "S-ODD": "epiviz"}
     monkeypatch.setattr(available_analysis_tools.geardb, "get_dtype_by_share_id", lambda share_id: dtypes.get(share_id))
     return make_client(available_analysis_tools.AvailableAnalysisTools, "/h5ad/<share_uid>/availableAnalysisTools")
 
 
 @pytest.mark.parametrize("share_id, expected", [
     ("S-SC", {"dataset-curator": True, "multigene-viewer": True, "compare-tool": True, "sc-workbench": True}),
+    ("S-SN", {"dataset-curator": True, "multigene-viewer": True, "compare-tool": True, "sc-workbench": True}),
     ("S-BULK", {"dataset-curator": True, "multigene-viewer": True, "compare-tool": True, "sc-workbench": False}),
     ("S-SVG", {"dataset-curator": True, "multigene-viewer": False, "compare-tool": False, "sc-workbench": False}),
     ("S-ODD", {"dataset-curator": False, "multigene-viewer": False, "compare-tool": False, "sc-workbench": False}),

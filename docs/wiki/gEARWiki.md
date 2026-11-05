@@ -76,7 +76,7 @@ For more information about searching for genes of interest and other basic funct
 
 If you wish to look at results for a particular dataset or explore what datasets are available, click the "Datasets" tab in the search area of the My Workspace dashboard, or click "Datasets" in the navigation panel to open the Dataset Explorer.
 
-In the Dataset Explorer you can narrow the list with the "Filter controls" on the left: "Search by keyword", "Ownership", "Organism", "Dataset type" (Bulk RNASeq, Epigenetic, Microarray, Single-cell RNASeq, Spatial Transcriptomics) and "Date added". Use the "View:" buttons at the top of the page to switch between "Table view", "List view - Compact" and "List view - Expanded", and "Sort by" to change the order.
+In the Dataset Explorer you can narrow the list with the "Filter controls" on the left: "Search by keyword", "Ownership", "Organism", "Dataset type" (Bulk RNASeq, Epigenetic, Microarray, Single-cell RNASeq, Single-nucleus RNASeq, Spatial Transcriptomics) and "Date added". Use the "View:" buttons at the top of the page to switch between "Table view", "List view - Compact" and "List view - Expanded", and "Sort by" to change the order.
 
 "Search by keyword" finds datasets whose title, description, GEO ID or PubMed ID contain any of the words you enter. A hyphenated name such as `Garcia-Añoveros` is matched as that name, and a word ending in `*` matches any word starting with it (for example `cochlea*` also finds "cochlear"). The Gene List Manager's keyword search works the same way.
 
