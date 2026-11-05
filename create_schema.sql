@@ -188,7 +188,8 @@ CREATE TABLE anatomy (
           ON DELETE CASCADE
 ) ENGINE=INNODB;
 
--- Any changes to lengths here need to be also changed in form validation of upload_dataset.js
+-- Any changes to column lengths here need to be also changed in lib/gear/metadata_fields.py, which the uploader
+--  form and server-side validation read (tests/python/test_metadata_fields.py checks they match)
 CREATE TABLE dataset (
        id                       VARCHAR(50) PRIMARY KEY,
        owner_id                 INT NOT NULL,

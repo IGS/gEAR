@@ -91,7 +91,7 @@
       "example": "Ensembl:93",
       "required": true,
       "required_if": {},
-      "max_length": 70,
+      "max_length": 58,
       "pattern": "(Ensembl|GenBank|RefSeq):\\S+",
       "pattern_hint": "Ensembl:<release>, GenBank:<accession> or RefSeq:<accession>",
       "choices": [],
@@ -113,7 +113,7 @@
     },
     {
       "name": "sample_taxid",
-      "instructions": "NCBI taxonomy ID of the species studied, e.g. human NCBI:txid9606, mouse NCBI:txid10090, rat NCBI:txid10116, zebrafish NCBI:txid7955. Submit each species as a separate dataset.",
+      "instructions": "NCBI taxonomy ID of the one species the samples come from, e.g. human NCBI:txid9606, mouse NCBI:txid10090, rat NCBI:txid10116, zebrafish NCBI:txid7955. A gEAR dataset can only hold one species. If your study has samples from more than one species, split the data by species and submit each as its own dataset.",
       "example": "NCBI:txid10090",
       "required": true,
       "required_if": {},
@@ -265,5 +265,7 @@
     }
   ],
   "max_keywords": 6,
-  "max_keyword_length": 55
+  "max_keyword_length": 55,
+  "annotation_release_max_length": 50,
+  "geo_id_max_length": 50
 }

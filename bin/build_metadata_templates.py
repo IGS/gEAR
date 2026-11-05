@@ -109,6 +109,9 @@ def write_fields_json(path: str) -> None:
         "fields": [f.to_json() for f in mf.FIELDS],
         "max_keywords": mf.MAX_KEYWORDS,
         "max_keyword_length": mf.MAX_KEYWORD_LENGTH,
+        # Widths of the dataset columns that hold only part of a field's value
+        "annotation_release_max_length": mf.ANNOTATION_RELEASE_MAX_LENGTH,
+        "geo_id_max_length": mf.GEO_ID_MAX_LENGTH,
     }
     with open(path, "w") as fh:
         json.dump(data, fh, indent=2)

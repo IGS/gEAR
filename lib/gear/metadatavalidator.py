@@ -56,6 +56,14 @@ class MetadataValidator:
         elif any(len(k) > mf.MAX_KEYWORD_LENGTH for k in keywords):
             errors["keywords"] = f"Each keyword must be {mf.MAX_KEYWORD_LENGTH} characters or fewer."
 
+        # Parts of these values are stored in their own, narrower columns
+        _, release = mf.parse_reference_annotation(values.get("reference_annot_id"))
+        if "reference_annot_id" not in errors and release and len(release) > mf.ANNOTATION_RELEASE_MAX_LENGTH:
+            errors["reference_annot_id"] = f"The version after the source must be {mf.ANNOTATION_RELEASE_MAX_LENGTH} characters or fewer."
+        repository, accession = mf.parse_repository_accession(values.get("repository_accession"))
+        if "repository_accession" not in errors and repository == "GEO" and len(accession) > mf.GEO_ID_MAX_LENGTH:
+            errors["repository_accession"] = f"GEO accessions must be {mf.GEO_ID_MAX_LENGTH} characters or fewer."
+
         if values.get("device") == mf.OBI_DEVICE_ROOT:
             warnings["device"] = "The OBI 'device' root term was given. The gEAR team will contact you to find a more specific term."
         if values.get("assay") == mf.OBI_ASSAY_ROOT:

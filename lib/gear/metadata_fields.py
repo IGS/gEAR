@@ -46,6 +46,13 @@ MAX_KEYWORDS = 6
 # tag.label is VARCHAR(55)
 MAX_KEYWORD_LENGTH = 55
 
+# Some fields are split up, and only part of the value is stored in a dataset column. These are
+#  the widths of those columns (see create_schema.sql), so values that won't fit are rejected at the
+#  metadata step instead of failing when the dataset is saved (GitHub #1323, #340).
+ANNOTATION_RELEASE_MAX_LENGTH = 50  # dataset.annotation_release, the part after "Ensembl:", "RefSeq:", ...
+GEO_ID_MAX_LENGTH = 50              # dataset.geo_id, the part of a GEO accession after "GEO:"
+PUBMED_ID_MAX_LENGTH = 20           # dataset.pubmed_id, the part after "PMID:"
+
 
 @dataclass(frozen=True)
 class MetadataField:
@@ -117,7 +124,7 @@ FIELDS = (
         name="reference_annot_id",
         instructions="Reference annotation the data were aligned to, as source:version. Supported sources are Ensembl, GenBank and RefSeq. For Ensembl give the release number; for GenBank and RefSeq give the assembly accession. Examples: Ensembl:93, RefSeq:GCF_000001635.27, GenBank:GCA_000001635.9. If your reference is not yet loaded into gEAR you can still upload, and the gEAR team will contact you about loading it.",
         example="Ensembl:93",
-        required=True, max_length=70,
+        required=True, max_length=len("GenBank:") + ANNOTATION_RELEASE_MAX_LENGTH,
         pattern=r"(Ensembl|GenBank|RefSeq):\S+", pattern_hint="Ensembl:<release>, GenBank:<accession> or RefSeq:<accession>",
     ),
     MetadataField(
@@ -129,7 +136,7 @@ FIELDS = (
     ),
     MetadataField(
         name="sample_taxid",
-        instructions="NCBI taxonomy ID of the species studied, e.g. human NCBI:txid9606, mouse NCBI:txid10090, rat NCBI:txid10116, zebrafish NCBI:txid7955. Submit each species as a separate dataset.",
+        instructions="NCBI taxonomy ID of the one species the samples come from, e.g. human NCBI:txid9606, mouse NCBI:txid10090, rat NCBI:txid10116, zebrafish NCBI:txid7955. A gEAR dataset can only hold one species. If your study has samples from more than one species, split the data by species and submit each as its own dataset.",
         example="NCBI:txid10090",
         required=True,
         pattern=r"NCBI:txid\d+", pattern_hint="NCBI:txid followed by the numeric taxon ID",
@@ -138,7 +145,7 @@ FIELDS = (
         name="pubmed_id", filled_by_geo=True,
         instructions='PubMed ID of the publication describing the data, with "PMID:" prefix.',
         example="PMID:25855195",
-        max_length=25,
+        max_length=len("PMID:") + PUBMED_ID_MAX_LENGTH,
         pattern=r"PMID:\d+", pattern_hint="PMID: followed by the numeric PubMed ID",
     ),
     MetadataField(

@@ -21,6 +21,9 @@ const processingStatusCheckInterval = 10; // seconds
 // Metadata template field rules, built from lib/gear/metadata_fields.py by bin/build_metadata_templates.py
 let metadataFields = [];
 let maxKeywords = null;
+let maxKeywordLength = null;
+let annotationReleaseMaxLength = null;
+let geoIdMaxLength = null;
 
 /* --- Functions and Classes --- */
 
@@ -79,6 +82,18 @@ const loadMetadataFields = async () => {
     const {data} = await axios.get('./user_templates/metadata_fields.json');
     metadataFields = data.fields;
     maxKeywords = data.max_keywords;
+    maxKeywordLength = data.max_keyword_length;
+    annotationReleaseMaxLength = data.annotation_release_max_length;
+    geoIdMaxLength = data.geo_id_max_length;
+
+    // Stop typing past the database column widths (GitHub #1323). Values filled in from a
+    // spreadsheet can still be longer, and validateMetadataForm reports those.
+    for (const field of metadataFields) {
+        const element = metadataElement(field.name);
+        if (field.max_length && field.max_length < 65535 && element && 'maxLength' in element) {
+            element.maxLength = field.max_length;
+        }
+    }
 }
 
 /**
@@ -1335,17 +1350,39 @@ const validateMetadataForm = () => {
             continue;
         }
 
-        // Column length limits in the database. Prefix/format checks are done by the server.
+        // Column length limits in the database (create_schema.sql). Prefix/format checks are done by the server.
         if (field.max_length && value.length > field.max_length) {
             element.classList.add('is-danger');
             erroredFields[element.name] = `Exceeds ${field.max_length} character limit`;
         }
     }
 
-    const keywords = metadataElement('keywords').value.split(',').filter((k) => k.trim());
+    // Each keyword is saved as a tag
+    const keywords = metadataElement('keywords').value.split(',').map((k) => k.trim()).filter((k) => k);
     if (maxKeywords && keywords.length > maxKeywords) {
         metadataElement('keywords').classList.add('is-danger');
         erroredFields['metadata-keywords'] = `Provide at most ${maxKeywords} keywords`;
+    } else if (maxKeywordLength && keywords.some((k) => k.length > maxKeywordLength)) {
+        metadataElement('keywords').classList.add('is-danger');
+        erroredFields['metadata-keywords'] = `Each keyword must be ${maxKeywordLength} characters or fewer`;
+    }
+
+    // Parts of these values are saved in their own, narrower database columns (GitHub #1323)
+    const partAfterPrefix = (value) => value.slice(value.indexOf(':') + 1).trim();
+
+    const referenceAnnotation = getMetadataValue('reference_annot_id').trim();
+    if (annotationReleaseMaxLength && !erroredFields['metadata-reference-annot-id'] && referenceAnnotation.includes(':')
+        && partAfterPrefix(referenceAnnotation).length > annotationReleaseMaxLength) {
+        metadataElement('reference_annot_id').classList.add('is-danger');
+        erroredFields['metadata-reference-annot-id'] = `The version after the source must be ${annotationReleaseMaxLength} characters or fewer`;
+    }
+
+    // GEO accessions may be given without the "GEO:" prefix
+    const repositoryAccession = getMetadataValue('repository_accession').trim();
+    if (geoIdMaxLength && !erroredFields['metadata-repository-accession'] && /^(GEO:|GSE)/i.test(repositoryAccession)
+        && partAfterPrefix(repositoryAccession).length > geoIdMaxLength) {
+        metadataElement('repository_accession').classList.add('is-danger');
+        erroredFields['metadata-repository-accession'] = `GEO accessions must be ${geoIdMaxLength} characters or fewer`;
     }
 
     // Check that the personal data affirmation checkbox is checked

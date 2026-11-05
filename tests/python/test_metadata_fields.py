@@ -1,5 +1,8 @@
 """gear.metadata_fields and MetadataValidator.validate_values: the v2 dataset metadata template (#390)."""
 
+import re
+from pathlib import Path
+
 import pytest
 from gear import metadata_fields as mf
 from gear.metadatavalidator import MetadataValidator
@@ -122,6 +125,10 @@ def test_shortcuts_are_accepted():
     ("log_transformation", "ln"),
     ("primary_analysis_completed", "maybe"),
     ("title", "x" * 256),
+    ("reference_annot_id", "RefSeq:" + "x" * 51),
+    ("reference_annot_id", "Ensembl:" + "x" * 51),
+    ("repository_accession", "GEO:GSE" + "1" * 48),
+    ("pubmed_id", "PMID:" + "1" * 21),
 ])
 def test_invalid_values_are_errors(field, value):
     errors, _ = MetadataValidator.validate_values({**VALID, field: value})
@@ -154,3 +161,39 @@ def test_obi_root_terms_are_warnings_not_errors():
     errors, warnings = MetadataValidator.validate_values({**VALID, "device": mf.OBI_DEVICE_ROOT, "assay": mf.OBI_ASSAY_ROOT})
     assert errors == {}
     assert set(warnings) == {"device", "assay"}
+
+
+def test_long_values_that_fit_their_columns_are_accepted():
+    errors, _ = MetadataValidator.validate_values({**VALID, "reference_annot_id": "GenBank:" + "x" * 50,
+                                                   "repository_accession": "ArrayExpress:E-" + "x" * 80,
+                                                   "pubmed_id": "PMID:" + "1" * 20})
+    assert errors == {}
+
+
+def _schema_column_widths(table: str) -> dict:
+    """{column: width} for a table in create_schema.sql. TEXT columns get 65535."""
+    schema = (Path(__file__).resolve().parents[2] / "create_schema.sql").read_text()
+    body = re.search(rf"CREATE TABLE {table} \((.*?)\) ENGINE", schema, re.S).group(1)
+    widths = {}
+    for name, column_type, width in re.findall(r"^\s*(\w+)\s+(VARCHAR|TEXT)\b(?:\((\d+)\))?", body, re.M | re.I):
+        widths[name] = 65535 if column_type.upper() == "TEXT" else int(width)
+    return widths
+
+
+def test_field_limits_fit_the_database_columns():
+    """Values that pass validation must fit their columns, so saving the dataset can't fail on length (#1323, #340)."""
+    widths = _schema_column_widths("dataset")
+    for f in mf.FIELDS:
+        if f.column not in widths:
+            continue
+        longest_choice = max((len(c) for c in f.choices), default=0)
+        if f.max_length or longest_choice:
+            assert (f.max_length or longest_choice) <= widths[f.column], f.name
+        else:
+            # Fixed-format values like OBI:0002630
+            assert f.pattern and len(f.example) <= widths[f.column], f"{f.name} has no length limit"
+
+    assert mf.ANNOTATION_RELEASE_MAX_LENGTH == widths["annotation_release"]
+    assert mf.GEO_ID_MAX_LENGTH == widths["geo_id"]
+    assert mf.PUBMED_ID_MAX_LENGTH == widths["pubmed_id"]
+    assert mf.MAX_KEYWORD_LENGTH == _schema_column_widths("tag")["label"]
