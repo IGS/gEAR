@@ -10,6 +10,7 @@ from flask_restful import Resource
 tools = {
     "dataset-curator": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "bulk-rnaseq",
         "bargraph-standard",
         "microarray",
@@ -22,6 +23,7 @@ tools = {
     ],
     "multigene-viewer": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "bulk-rnaseq",
         "bargraph-standard",
         "microarray",
@@ -33,6 +35,7 @@ tools = {
     ],
     "compare-tool": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "bulk-rnaseq",
         "bargraph-standard",
         "microarray",
@@ -44,6 +47,7 @@ tools = {
     ],
     "sc-workbench": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "atac-seq",
         "spatial",
         "sc-rna-seq"
