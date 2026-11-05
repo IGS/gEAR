@@ -124,7 +124,7 @@ def main() -> tuple:
 
         # Determine if primary analysis should be performed
         perform_primary_analysis = (
-            dataset_type in ['single-cell-rnaseq', 'spatial'] and
+            dataset_type in ['single-cell-rnaseq', 'single-nucleus-rnaseq', 'spatial'] and
             dataset_format != 'spatial'  # Exclude spatial from anndata processor
         )
 

@@ -35,6 +35,7 @@ const getAnalysisTools = dtype => {
     const dict =  {
         "dataset-curator": [
             "single-cell-rnaseq",
+            "single-nucleus-rnaseq",
             "bulk-rnaseq",
             "bargraph-standard",
             "microarray",
@@ -47,6 +48,7 @@ const getAnalysisTools = dtype => {
         ],
         "multigene-viewer": [
             "single-cell-rnaseq",
+            "single-nucleus-rnaseq",
             "bulk-rnaseq",
             "bargraph-standard",
             "microarray",
@@ -58,6 +60,7 @@ const getAnalysisTools = dtype => {
         ],
         "compare-tool": [
             "single-cell-rnaseq",
+            "single-nucleus-rnaseq",
             "bulk-rnaseq",
             "bargraph-standard",
             "microarray",
@@ -69,6 +72,7 @@ const getAnalysisTools = dtype => {
         ],
         "sc-workbench": [
             "single-cell-rnaseq",
+            "single-nucleus-rnaseq",
             "atac-seq",
             "spatial",
             "sc-rna-seq"
