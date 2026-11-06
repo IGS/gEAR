@@ -9,7 +9,7 @@ term IDs. After an upload is converted to H5AD/Zarr, annotate_sample_metadata():
     datasets can be searched by tissue and cell type
   - warns about IDs that couldn't be resolved and recommended columns that are missing
   - accepts the missing value words in gear.metadata_fields.MISSING_VALUES (like "not applicable")
-    in place of a value, and notes columns that hold nothing else
+    in place of a value, and warns about other ways of writing one (like N/A)
 
 Term names come from the EBI Ontology Lookup Service (OLS4) and are cached in the
 ontology_term table. Lookups never fail an upload: unresolved terms only produce warnings.
@@ -214,12 +214,9 @@ def annotate_sample_metadata(obs: pd.DataFrame, recommended_columns=None) -> tup
     Returns (obs, summary) where summary is:
         {
             "ontology_terms": {"tissue_type": [term IDs], "cell_type": [term IDs]},
-            "missing_value_columns": {column: [missing value words]},
             "warnings": [messages for the user],
         }
-    Only fields with a term ID column in obs appear in ontology_terms. missing_value_columns lists the
-    recommended and term ID columns holding only missing value words (gear.metadata_fields.MISSING_VALUES),
-    meaning the uploader said the data doesn't apply or wasn't recorded. Column names in the warnings are
+    Only fields with a term ID column in obs appear in ontology_terms. Column names in the warnings are
     wrapped in backticks, which the uploader shows in bold.
     """
     if recommended_columns is None:
@@ -271,8 +268,8 @@ def annotate_sample_metadata(obs: pd.DataFrame, recommended_columns=None) -> tup
             warnings.append(f"Column `{column}`: these terms could not be found in the ontology, so their names "
                             f"weren't added: {_preview(unresolved)}")
 
-    # Check for columns that hold only missing value words, e.g. an age_value column of "not applicable"
-    missing_value_columns = {}
+    # Suggest the missing value words in place of N/A, unknown, etc. Columns of only missing values aren't
+    #  recorded here: gear.metadata_fields.holds_only_missing_values checks the data when it's needed.
     for standard_name in dict.fromkeys([*recommended_columns, *OBS_ONTOLOGY_COLUMNS]):
         column = find_obs_column(obs, standard_name)
         if column is None:
@@ -282,16 +279,13 @@ def annotate_sample_metadata(obs: pd.DataFrame, recommended_columns=None) -> tup
         if stand_ins:
             warnings.append(f"Column `{column}`: to say a value is missing, use one of {', '.join(MISSING_VALUES)} "
                             f"instead of: {_preview(stand_ins)}")
-        if values and all(is_missing_value(v) for v in values):
-            missing_value_columns[str(column)] = sorted({v.strip().lower() for v in values})
 
     missing = [c for c in recommended_columns if find_obs_column(obs, c) is None]
     if missing:
         warnings.append("These recommended sample metadata columns are missing: {0}.".format(
             ", ".join(f"`{c}`" for c in missing)))
 
-    return obs, {"ontology_terms": ontology_terms, "missing_value_columns": missing_value_columns,
-                 "warnings": warnings}
+    return obs, {"ontology_terms": ontology_terms, "warnings": warnings}
 
 
 def _preview(values: list, limit: int = 5) -> str:
@@ -306,7 +300,6 @@ def annotate_upload_obs(adata, metadata: dict) -> None:
     Run annotate_sample_metadata() on the obs table of an upload being processed (adata.obs is
     replaced), recording the results in its metadata.json contents (metadata, updated in place):
         ontology_terms              saved to dataset_ontology_term when the upload is finalized
-        sample_metadata_missing_values  columns the uploader filled with missing value words
         sample_metadata_warnings    shown to the user by the uploader
     Also warns when the metadata says primary analysis is included but gEAR's primary analysis
     won't find any clusters or coordinates, and saves find_standard_obs_columns() in
@@ -316,7 +309,7 @@ def annotate_upload_obs(adata, metadata: dict) -> None:
         adata.obs, summary = annotate_sample_metadata(adata.obs)
     except Exception as e:
         print(f"Could not annotate sample metadata: {e}", file=sys.stderr)
-        summary = {"ontology_terms": {}, "missing_value_columns": {}, "warnings": ["Tissue and cell type ontology terms could not be processed. "
+        summary = {"ontology_terms": {}, "warnings": ["Tissue and cell type ontology terms could not be processed. "
                                                       "Please contact the gEAR team if you need them."]}
 
     try:
@@ -333,5 +326,4 @@ def annotate_upload_obs(adata, metadata: dict) -> None:
         print(f"Could not record the standard obs columns: {e}", file=sys.stderr)
 
     metadata["ontology_terms"] = summary["ontology_terms"]
-    metadata["sample_metadata_missing_values"] = summary["missing_value_columns"]
     metadata["sample_metadata_warnings"] = summary["warnings"]
