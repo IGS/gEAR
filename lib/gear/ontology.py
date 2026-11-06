@@ -208,7 +208,8 @@ def annotate_sample_metadata(obs: pd.DataFrame, recommended_columns=None) -> tup
             "ontology_terms": {"tissue_type": [term IDs], "cell_type": [term IDs]},
             "warnings": [messages for the user],
         }
-    Only fields with a term ID column in obs appear in ontology_terms.
+    Only fields with a term ID column in obs appear in ontology_terms. Column names in the warnings are
+    wrapped in backticks, which the uploader shows in bold.
     """
     if recommended_columns is None:
         recommended_columns = get_recommended_obs_columns()
@@ -249,19 +250,19 @@ def annotate_sample_metadata(obs: pd.DataFrame, recommended_columns=None) -> tup
         obs[name_column] = pd.Categorical(names)
 
         if invalid:
-            warnings.append(f"Column '{column}': these values are not {prefix} term IDs (like {prefix}:0000000): {_preview(invalid)}")
+            warnings.append(f"Column `{column}`: these values are not {prefix} term IDs (like {prefix}:0000000): {_preview(invalid)}")
         if wrong_prefix:
-            warnings.append(f"Column '{column}': expected {prefix} terms, but found: {_preview(wrong_prefix)}")
+            warnings.append(f"Column `{column}`: expected {prefix} terms, but found: {_preview(wrong_prefix)}")
         if unresolved:
-            warnings.append(f"Column '{column}': these terms could not be found in the ontology, so their names "
+            warnings.append(f"Column `{column}`: these terms could not be found in the ontology, so their names "
                             f"weren't added: {_preview(unresolved)}")
 
     lowered = {str(c).lower() for c in obs.columns}
     missing = [c for c in recommended_columns
                if c.lower() not in lowered and not (c in OBS_ONTOLOGY_COLUMNS and find_obs_column(obs, c))]
     if missing:
-        warnings.append("These recommended sample metadata columns are missing: {0}. See the sample metadata "
-                        "template for details.".format(", ".join(missing)))
+        warnings.append("These recommended sample metadata columns are missing: {0}.".format(
+            ", ".join(f"`{c}`" for c in missing)))
 
     return obs, {"ontology_terms": ontology_terms, "warnings": warnings}
 
@@ -293,8 +294,8 @@ def annotate_upload_obs(adata, metadata: dict) -> None:
     try:
         if parse_yes_no(metadata.get("primary_analysis_completed")) and not detect_primary_analysis(adata):
             summary["warnings"].append(
-                "The metadata says primary analysis is included, but no cluster column (like cell_clusters or "
-                "seurat_clusters) or UMAP, tSNE or PCA coordinate columns (like UMAP_1 and UMAP_2) were found.")
+                "The metadata says primary analysis is included, but no cluster column (like `cell_clusters` or "
+                "`seurat_clusters`) or UMAP, tSNE or PCA coordinate columns (like `UMAP_1` and `UMAP_2`) were found.")
     except Exception as e:
         print(f"Could not check for primary analysis results: {e}", file=sys.stderr)
 

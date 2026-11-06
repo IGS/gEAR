@@ -132,8 +132,7 @@ def test_missing_recommended_columns(fake_lookup):
     _, summary = ontology.annotate_sample_metadata(
         obs, recommended_columns=["tissue_ontology", "treatment", "age_value", "sex_assigned_at_birth"])
     assert summary["warnings"] == [
-        "These recommended sample metadata columns are missing: age_value, sex_assigned_at_birth. "
-        "See the sample metadata template for details."
+        "These recommended sample metadata columns are missing: `age_value`, `sex_assigned_at_birth`."
     ]
 
 

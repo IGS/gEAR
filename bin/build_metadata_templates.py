@@ -7,7 +7,7 @@ lib/gear/metadata_fields.py. Re-run this after changing those definitions.
 Writes, to www/user_templates/ by default:
     metadata_template.xlsx          dataset-level metadata, for users to fill in
     metadata_example.xlsx           the same, filled in with the example values
-    sample_metadata_template.xlsx   sample-level (observation) metadata columns, with instructions
+    sample_metadata_template.xlsx   sample-level (observation) metadata columns, with requirements and descriptions
     metadata_fields.json            field rules read by the uploader form (www/js/upload_dataset.js)
 """
 
@@ -17,7 +17,7 @@ import os
 import sys
 
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
 lib_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'lib')
@@ -72,23 +72,35 @@ def write_dataset_workbook(path: str, filled: bool) -> None:
 
 
 def write_sample_workbook(path: str) -> None:
-    """Sheet 'sample_metadata' with one column per field and example rows, plus an 'instructions' sheet."""
+    """
+    Sheet 'sample_metadata' with one column per field. Under the column names are a row saying
+    whether each column is required, a row describing it and a row with an example value.
+    """
+    columns = [(f.name, f.requirement, f.instructions, f.example) for f in mf.SAMPLE_FIELDS]
+    columns.append(("(other columns)", "Optional", mf.SAMPLE_FIELD_NOTE, ""))
+
     wb = Workbook()
     ws = wb.active
     ws.title = "sample_metadata"
-    ws.append([f.name for f in mf.SAMPLE_FIELDS])
-    ws.append([f.example for f in mf.SAMPLE_FIELDS])
+    for row in zip(*columns):
+        ws.append(list(row))
+
+    # The required and description rows are guidance, so set them apart from the example row
+    guidance_fill = PatternFill(fill_type="solid", start_color="F2F2F2", end_color="F2F2F2")
     for cell in ws[1]:
         cell.font = Font(bold=True)
+    for cell in ws[2]:
+        cell.fill = guidance_fill
+        cell.font = Font(bold=cell.value == "Required")
+    for cell in ws[3]:
+        cell.fill = guidance_fill
+        cell.font = Font(italic=True)
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
     for col_cells in ws.columns:
-        ws.column_dimensions[col_cells[0].column_letter].width = max(14, len(str(col_cells[0].value)) + 4)
-
-    instructions = wb.create_sheet("instructions")
-    instructions.append(["column", "requirement", "instructions", "example"])
-    for f in mf.SAMPLE_FIELDS:
-        instructions.append([f.name, f.requirement, f.instructions, f.example])
-    instructions.append(["(other columns)", "Optional", mf.SAMPLE_FIELD_NOTE, ""])
-    format_sheet(instructions, widths={"A": 24, "B": 30, "C": 90, "D": 20})
+        ws.column_dimensions[col_cells[0].column_letter].width = 32
+    ws.freeze_panes = "A4"
     wb.save(path)
 
 

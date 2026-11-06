@@ -250,7 +250,7 @@
                       <p class="mt-2">
                         Sample-level information (tissue, cell type, treatment, age, sex, ...) does not go in this form. It belongs in the observation
                         metadata of the dataset file you upload in the next step. The <a href="./user_templates/sample_metadata_template.xlsx">sample metadata template</a>
-                        lists the columns to add there (it is a reference and is not uploaded). Tissue and cell type ontology IDs in those columns
+                        lists the columns to add there, whether each is required and what goes in it (it is a reference and is not uploaded). Tissue and cell type ontology IDs in those columns
                         are looked up automatically and made searchable.
                       </p>
                       <div id="metadata-form-c" class="mt-5">
@@ -938,14 +938,15 @@
                       </div>
                     </div>
                   </div>
+                  <!-- Shown by showDatasetUploadStatus() while uploading, or for upload messages -->
                   <div id="dataset-upload-status" class="is-hidden">
                     <p class="mt-2 mb-0 pt-2 pb-0 icon-text">
                       <span class="icon">
-                        <i class="mdi mdi-information"></i>
+                        <i id="dataset-upload-status-icon" class="mdi mdi-progress-upload"></i>
                       </span>
                       <span id="dataset-upload-status-message"></span>
                     </p>
-                    <div class="field">
+                    <div id="dataset-upload-progress-c" class="field">
                       <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
                     </div>
                   </div>

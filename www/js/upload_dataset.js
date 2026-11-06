@@ -873,6 +873,34 @@ const buildTrackhub = async () => {
 }
 
 /**
+ * Shows a message below the "Upload dataset" button. The progress bar is shown while the file is
+ * uploading and once it has finished, but not with error messages. The icon reflects the state
+ * (rather than reusing the "i" icon used for tooltips).
+ *
+ * @param {string} message - The message to show.
+ * @param {'uploading'|'success'|'error'} state - What the message is about.
+ */
+const showDatasetUploadStatus = (message, state) => {
+    const icons = {uploading: 'mdi-progress-upload', success: 'mdi-check-circle', error: 'mdi-alert-circle'};
+    const colors = {uploading: '', success: 'has-text-success-dark', error: 'has-text-danger-dark'};
+
+    const icon = document.getElementById('dataset-upload-status-icon');
+    icon.className = `mdi ${icons[state]}`;
+    icon.parentElement.className = `icon ${colors[state]}`.trim();
+
+    document.getElementById('dataset-upload-status-message').textContent = message;
+    document.getElementById('dataset-upload-progress-c').classList.toggle('is-hidden', state === 'error');
+    document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+}
+
+/**
+ * Hides the message and progress bar below the "Upload dataset" button.
+ */
+const hideDatasetUploadStatus = () => {
+    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+}
+
+/**
  * Handles uploading a dataset file to the server using XMLHttpRequest.
  * Collects form data including dataset identifiers, user session, format, and file input,
  * then sends it to the backend endpoint. Updates the UI to reflect upload progress,
@@ -920,13 +948,10 @@ const uploadDataset = () => {
     xhr.onload = () => {
         const response = JSON.parse(xhr.responseText);
 
-        document.getElementById('dataset-upload-status-message').textContent = '';
         document.getElementById('dataset-upload-submit').classList.remove('is-loading');
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
 
         if (response.success) {
-            document.getElementById('dataset-upload-status-message').textContent = 'Dataset uploaded successfully. Processing beginning momentarily ...';
-            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+            showDatasetUploadStatus('Dataset uploaded successfully. Processing beginning momentarily ...', 'success');
 
             processDataset();
 
@@ -938,10 +963,18 @@ const uploadDataset = () => {
             return;
 
         }
-        document.getElementById('dataset-upload-status-message').textContent = response.message;
+        showDatasetUploadStatus(response.message, 'error');
         document.getElementById('dataset-upload-submit').disabled = false;
     };
 
+    xhr.onerror = () => {
+        document.getElementById('dataset-upload-submit').classList.remove('is-loading');
+        document.getElementById('dataset-upload-submit').disabled = false;
+        showDatasetUploadStatus('The upload was interrupted. Please check your connection and try again.', 'error');
+    };
+
+    document.getElementById('dataset-upload-progress').value = 0;
+    showDatasetUploadStatus(`Uploading ${datasetFile.name} ...`, 'uploading');
     xhr.send(formData);
 }
 
@@ -1049,7 +1082,18 @@ const renderSampleMetadataReview = (data) => {
     warningsList.innerHTML = '';
     for (const warning of warnings) {
         const li = document.createElement('li');
-        li.textContent = warning;
+        // Column names are wrapped in backticks (see gear.ontology); show them in bold.
+        // Built with text nodes, so nothing in the message is treated as HTML.
+        warning.split('`').forEach((part, i) => {
+            if (!part) return;
+            if (i % 2) {
+                const strong = document.createElement('strong');
+                strong.textContent = part;
+                li.appendChild(strong);
+            } else {
+                li.appendChild(document.createTextNode(part));
+            }
+        });
         warningsList.appendChild(li);
     }
     document.getElementById('sample-metadata-warnings-c').classList.toggle('is-hidden', !warnings.length);
@@ -1406,7 +1450,7 @@ const adjustUIForGosling = () => {
     // Gosling has special uploader
     if (datasetFormat === "gosling") {
         document.getElementById("dataset-upload-c").classList.add("is-hidden");
-        document.getElementById("dataset-upload-status").classList.add("is-hidden");
+        hideDatasetUploadStatus();
         document.getElementById("dataset-curate-div").classList.add("is-hidden");
 
         document.getElementById("step-build-trackhub").classList.remove("is-hidden");
@@ -1418,7 +1462,7 @@ const adjustUIForGosling = () => {
         return;
     }
     document.getElementById("dataset-upload-c").classList.remove("is-hidden");
-    document.getElementById("dataset-upload-status").classList.remove("is-hidden");
+    hideDatasetUploadStatus();
     document.getElementById("dataset-curate-div").classList.remove("is-hidden");
 
     document.getElementById("step-build-trackhub").classList.add("is-hidden");
@@ -1642,16 +1686,14 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     event.preventDefault();
     // make sure they chose a format (sanity check)
     if (!datasetFormat) {
-        document.getElementById('dataset-upload-status-message').textContent = 'Please choose a format above first.';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        showDatasetUploadStatus('Please choose a format above first.', 'error');
         return;
     }
 
     if (datasetFormat === "spatial") {
         const spatialFormatSelect = document.getElementById('select-spatial-platform');
         if (spatialFormatSelect.value === '') {
-            document.getElementById('dataset-upload-status-message').textContent = 'Please choose a spatial platform above first.';
-            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+            showDatasetUploadStatus('Please choose a spatial platform above first.', 'error');
             return;
         }
         spatialFormat = spatialFormatSelect.value;
@@ -1663,7 +1705,7 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     const button = event.currentTarget;
     button.disabled = true;
     button.classList.add('is-loading');
-    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+    hideDatasetUploadStatus();
 
     if (datasetFormat === "gosling") {
         throw new Error("Gosling should be handled separately and should not reach this point. Please contact a gEAR developer.");
@@ -1675,8 +1717,7 @@ document.getElementById('configure-trackhub-submit').addEventListener('click', (
     event.preventDefault();
     // make sure they chose a format (sanity check)
     if (datasetFormat !== "gosling") {
-        document.getElementById('dataset-upload-status-message').textContent = 'Please choose the Gosling format above first.';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        showDatasetUploadStatus('Please choose the Gosling format above first.', 'error');
         return;
     }
 
@@ -1686,7 +1727,7 @@ document.getElementById('configure-trackhub-submit').addEventListener('click', (
     const button = event.currentTarget;
     button.disabled = true;
     button.classList.add('is-loading');
-    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+    hideDatasetUploadStatus();
 
     buildTrackhub();
 });
@@ -1695,8 +1736,7 @@ document.getElementById("build-trackhub-submit").addEventListener("click", async
     event.preventDefault();
 
     if (!hubContainer || !trackContainer) {
-        document.getElementById('dataset-upload-status-message').textContent = 'Error: Hub and track information not found. Please try again.';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        showDatasetUploadStatus('Error: Hub and track information not found. Please try again.', 'error');
         return;
     }
 
