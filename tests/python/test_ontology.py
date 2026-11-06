@@ -202,3 +202,38 @@ def test_annotate_upload_obs_never_raises(monkeypatch):
     ontology.annotate_upload_obs(adata, metadata)
     assert list(adata.obs.columns) == ["cell_ontology"]
     assert metadata["ontology_terms"] == {} and len(metadata["sample_metadata_warnings"]) == 1
+
+
+def test_find_standard_obs_columns():
+    obs = pd.DataFrame({
+        "Tissue_Ontology_ID": ["UBERON:0002227"], "SEX_ASSIGNED_AT_BIRTH": ["female"], "treatment": ["ctr"],
+        "seurat_clusters": ["0"], "UMAP_1": [1.0], "UMAP_2": [2.0], "pca_1": [0.1], "pca_2": [0.2],
+        "orig.ident": ["sample1"], "batch": ["a"],
+    })
+    assert ontology.find_standard_obs_columns(obs) == {
+        "tissue_ontology": "Tissue_Ontology_ID",
+        "treatment": "treatment",
+        "sex_assigned_at_birth": "SEX_ASSIGNED_AT_BIRTH",
+        "cell_clusters": "seurat_clusters",
+        "umap": ["UMAP_1", "UMAP_2"],
+        "pca": ["pca_1", "pca_2"],
+    }
+    assert ontology.find_standard_obs_columns(pd.DataFrame({"batch": ["a"]})) == {}
+
+
+def test_annotate_upload_obs_saves_column_map(fake_lookup, monkeypatch, tmp_path):
+    """The column map lands in adata.uns, names columns gEAR added, and survives writing the H5AD."""
+    monkeypatch.setattr(ontology, "get_recommended_obs_columns", lambda: [])
+    obs = pd.DataFrame({"cell_type_ontology_term_id": ["CL:0000601"], "leiden": ["1"],
+                        "tSNE_1": [1.0], "tSNE_2": [2.0]}, index=["c1"])
+    adata = anndata.AnnData(obs=obs)
+    ontology.annotate_upload_obs(adata, {"primary_analysis_completed": "Yes"})
+
+    expected = {"cell_ontology": "cell_type_ontology_term_id", "cell_ontology_name": "cell_ontology_name",
+                "cell_clusters": "leiden", "tsne": ["tSNE_1", "tSNE_2"]}
+    assert adata.uns[ontology.OBS_COLUMN_MAP_KEY] == expected
+
+    path = tmp_path / "test.h5ad"
+    adata.write_h5ad(path)
+    saved = anndata.read_h5ad(path).uns[ontology.OBS_COLUMN_MAP_KEY]
+    assert {key: value if isinstance(value, str) else list(value) for key, value in saved.items()} == expected

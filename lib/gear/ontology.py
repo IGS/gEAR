@@ -19,9 +19,16 @@ import sys
 import geardb
 import pandas as pd
 import requests
-from gear.metadata_fields import parse_yes_no
+from gear.metadata_fields import SAMPLE_FIELDS, parse_yes_no
 from gear.primary_analysis import detect_primary_analysis
 from gear.serverconfig import ServerConfig
+from gear.utils.obs import (
+    VALID_PCA_PAIRS,
+    VALID_TSNE_PAIRS,
+    VALID_UMAP_PAIRS,
+    find_cluster_column,
+    find_column_pair,
+)
 
 OLS_API_URL = "https://www.ebi.ac.uk/ols4/api"
 OLS_TIMEOUT = 10   # seconds
@@ -43,7 +50,11 @@ DEFAULT_RECOMMENDED_OBS_COLUMNS = ("tissue_ontology", "treatment", "age_value", 
 
 TERM_ID_PATTERN = re.compile(r"([A-Za-z]+)[:_](\d+)")
 
-# Embedding coordinates, e.g. UMAP_1 / tSNE_2, and cluster columns, for the primary analysis check
+# adata.uns key holding which obs column holds each standard sample metadata field (see find_standard_obs_columns)
+OBS_COLUMN_MAP_KEY = "gear_obs_columns"
+
+# Embedding name in the column map -> obs column pairs recognized for it
+EMBEDDING_COLUMN_PAIRS = {"umap": VALID_UMAP_PAIRS, "tsne": VALID_TSNE_PAIRS, "pca": VALID_PCA_PAIRS}
 
 
 def normalize_term_id(value) -> str | None:
@@ -155,6 +166,39 @@ def find_obs_column(obs: pd.DataFrame, standard_name: str) -> str | None:
     return None
 
 
+def find_standard_obs_columns(obs: pd.DataFrame) -> dict:
+    """
+    Return which obs column holds each standard sample metadata field that is present, without renaming
+    anything, e.g.
+        {"tissue_ontology": "Tissue_Ontology_ID", "tissue_ontology_name": "tissue_ontology_name",
+         "cell_clusters": "seurat_clusters", "umap": ["UMAP_1", "UMAP_2"]}
+
+    Keys are the sample metadata template's column names (gear.metadata_fields.SAMPLE_FIELDS), the term
+    name columns gEAR adds, "cell_clusters" for the cluster column, and "umap", "tsne" and "pca" for
+    coordinate column pairs. Saved in adata.uns so later steps (and a future column picker in the
+    uploader) can find these columns without guessing again.
+    """
+    columns = {}
+    embedding_fields = {"UMAP_1", "UMAP_2", "cell_clusters"}
+    names = [f.name for f in SAMPLE_FIELDS if f.name not in embedding_fields]
+    names += [name_column for _, name_column, _ in OBS_ONTOLOGY_COLUMNS.values()]
+    for name in names:
+        column = find_obs_column(obs, name)
+        if column is not None:
+            columns[name] = str(column)
+
+    obs_columns = obs.columns.tolist()
+    cluster_column = find_cluster_column(obs_columns)
+    if cluster_column is not None:
+        columns["cell_clusters"] = cluster_column
+    for embedding, pairs in EMBEDDING_COLUMN_PAIRS.items():
+        pair = find_column_pair(obs_columns, pairs)
+        if pair is not None:
+            columns[embedding] = list(pair)
+
+    return columns
+
+
 def annotate_sample_metadata(obs: pd.DataFrame, recommended_columns=None) -> tuple[pd.DataFrame, dict]:
     """
     Add ontology term name columns to an obs table and check it against the sample metadata template.
@@ -236,7 +280,8 @@ def annotate_upload_obs(adata, metadata: dict) -> None:
         ontology_terms              saved to dataset_ontology_term when the upload is finalized
         sample_metadata_warnings    shown to the user by the uploader
     Also warns when the metadata says primary analysis is included but gEAR's primary analysis
-    won't find any clusters or coordinates. Never raises: a problem here shouldn't fail the upload.
+    won't find any clusters or coordinates, and saves find_standard_obs_columns() in
+    adata.uns["gear_obs_columns"]. Never raises: a problem here shouldn't fail the upload.
     """
     try:
         adata.obs, summary = annotate_sample_metadata(adata.obs)
@@ -252,6 +297,11 @@ def annotate_upload_obs(adata, metadata: dict) -> None:
                 "seurat_clusters) or UMAP, tSNE or PCA coordinate columns (like UMAP_1 and UMAP_2) were found.")
     except Exception as e:
         print(f"Could not check for primary analysis results: {e}", file=sys.stderr)
+
+    try:
+        adata.uns[OBS_COLUMN_MAP_KEY] = find_standard_obs_columns(adata.obs)
+    except Exception as e:
+        print(f"Could not record the standard obs columns: {e}", file=sys.stderr)
 
     metadata["ontology_terms"] = summary["ontology_terms"]
     metadata["sample_metadata_warnings"] = summary["warnings"]
