@@ -108,6 +108,16 @@ def test_no_filters(client):
     assert client.loader_calls == ["get_adata_shadow"]
 
 
+def test_columns_of_only_missing_values_are_left_out(client, aggregations_module, monkeypatch):
+    """A column that only says the data is missing (like "not applicable") isn't offered as a filter."""
+    adata = make_adata()
+    adata.obs["treatment"] = pd.Categorical(["not applicable"] * 6)
+    adata.obs["sex"] = pd.Categorical(["female"] * 3 + ["not collected"] * 3)
+    monkeypatch.setattr(aggregations_module, "get_adata_shadow", lambda *args, **kwargs: adata)
+    body = post(client)
+    assert {a["name"] for a in body["aggregations"]} == {"cell_type", "age", "sex"}
+
+
 def test_filter_by_age_counts_filtered_cells_and_keeps_zero_categories(client):
     body = post(client, {"age": ["P7"]})
     assert body["total_count"] == 3

@@ -246,6 +246,20 @@ def test_h5ad_without_replicates_or_embeddings(h5ad_client, monkeypatch):
     assert result["has_replicates"] == 0
 
 
+def test_h5ad_hides_columns_of_only_missing_values(h5ad_client, monkeypatch):
+    """A column saying only that the data is missing (like "not applicable") has nothing to plot."""
+    obs = pd.DataFrame({
+        "age_value": pd.Categorical(["not applicable", "Not Applicable"]),
+        "treatment": ["not collected", ""],
+        "sex_assigned_at_birth": pd.Categorical(["female", "not collected"]),
+        "cluster": pd.Categorical(["a", "b"]),
+    }, index=["c0", "c1"])
+    record_loaders(monkeypatch, h5ad, anndata.AnnData(X=np.ones((2, 1), dtype=np.float32), obs=obs))
+    result = ok_json(h5ad_client.get("/h5ad/DS1"))
+    assert result["obs_columns"] == ["sex_assigned_at_birth", "cluster"]
+    assert set(result["obs_levels"]) == {"sex_assigned_at_birth", "cluster"}
+
+
 def test_h5ad_spatial_uses_spatial_loader(h5ad_client, monkeypatch):
     calls = record_loaders(monkeypatch, h5ad, obs_adata())
     ok_json(h5ad_client.get("/h5ad/SP1"))

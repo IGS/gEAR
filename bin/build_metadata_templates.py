@@ -78,6 +78,7 @@ def write_sample_workbook(path: str) -> None:
     """
     columns = [(f.name, f.requirement, f.instructions, f.example) for f in mf.SAMPLE_FIELDS]
     columns.append(("(other columns)", "Optional", mf.SAMPLE_FIELD_NOTE, ""))
+    columns.append(("(missing values)", "", mf.MISSING_VALUE_NOTE, mf.MISSING_VALUES[0]))
 
     wb = Workbook()
     ws = wb.active

@@ -217,7 +217,16 @@ class SampleField:
     example: str = ""
 
 
-SEX_VALUES = ("male", "female", "intersex", "indeterminate", "Not Applicable", "Unavailable")
+# What to write in a sample metadata cell that has no value, and why: the INSDC missing value
+#  vocabulary (https://www.insdc.org/technical-specifications/missing-value-reporting/), plus "unavailable"
+#  from the sample metadata template's sex values. Matched ignoring case.
+MISSING_VALUES = ("not applicable", "not collected", "not provided", "restricted access", "missing", "unavailable")
+
+# Other ways people write a missing value. These get a warning suggesting MISSING_VALUES instead.
+#  ("none" is left out: it's a real value for treatment.)
+MISSING_VALUE_STAND_INS = ("n/a", "na", "n.a.", "not available", "unknown", "null", "-", "?")
+
+SEX_VALUES = ("male", "female", "intersex", "indeterminate")
 
 # Columns users provide in their observation metadata. gEAR adds tissue_ontology_name and
 #  cell_ontology_name itself, from the term IDs (see gear.ontology).
@@ -247,11 +256,26 @@ SAMPLE_FIELDS = (
     SampleField("age_unit", "Required",
                 "Unit of a numeric age, e.g. hours, days, months, years, Carnegie, or postnatal stage.", "days"),
     SampleField("age_order", "Required if age is not numeric", "The order in which age values are displayed (1, 2, 3, ...).", "1"),
-    SampleField("sex_assigned_at_birth", "Required", "One of: " + ", ".join(SEX_VALUES) + ".", "female"),
+    SampleField("sex_assigned_at_birth", "Required",
+                "One of: " + ", ".join(SEX_VALUES) + ", or a missing value (see the last column).", "female"),
 )
 
 SAMPLE_FIELD_NOTE = ("Any number of optional columns can be added, such as current medications, disease at time of "
                      "sampling or genotype. If you use abbreviations in them, include the full name in a separate column.")
+
+MISSING_VALUE_NOTE = ("If a sample has no value for a column, because it doesn't apply or wasn't recorded, enter one "
+                      "of: " + ", ".join(MISSING_VALUES) + ". This tells curators the value is missing on purpose. "
+                      "Use it in a whole column if your study has no such data, rather than leaving the column out.")
+
+
+def is_missing_value(value) -> bool:
+    """True for the words in MISSING_VALUES, ignoring case and surrounding spaces."""
+    return isinstance(value, str) and value.strip().lower() in MISSING_VALUES
+
+
+def is_missing_value_stand_in(value) -> bool:
+    """True for other ways of writing a missing value, like N/A or unknown (see MISSING_VALUE_STAND_INS)."""
+    return isinstance(value, str) and value.strip().lower() in MISSING_VALUE_STAND_INS
 
 
 def is_blank(value) -> bool:
@@ -261,6 +285,22 @@ def is_blank(value) -> bool:
     if isinstance(value, float) and value != value:   # NaN
         return True
     return str(value).strip() in ("", "nan", "None")
+
+
+def holds_only_missing_values(series) -> bool:
+    """
+    True for an obs column (pandas Series) whose values are all missing value words like "not applicable",
+    or other ways of writing them like N/A, apart from blanks. Such a column only says the data is missing,
+    so there's nothing in it to plot.
+    """
+    if hasattr(series, "cat"):
+        values = series.cat.categories
+    elif series.dtype == object or str(series.dtype) == "string":
+        values = series.dropna().unique()
+    else:
+        return False   # numbers
+    values = [v for v in values if not is_blank(v)]
+    return bool(values) and all(is_missing_value(v) or is_missing_value_stand_in(v) for v in values)
 
 
 def normalize_value(name: str, value):

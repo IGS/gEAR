@@ -3,6 +3,7 @@
 import re
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from gear import metadata_fields as mf
 from gear.metadatavalidator import MetadataValidator
@@ -64,6 +65,43 @@ def test_parsers():
     assert mf.parse_reference_annotation(None) == (None, None)
     assert mf.parse_repository_accession("GEO:GSE1") == ("GEO", "GSE1")
     assert mf.parse_yes_no("Yes") == 1 and mf.parse_yes_no("no") == 0 and mf.parse_yes_no(None) is None
+
+
+@pytest.mark.parametrize("value, missing, stand_in", [
+    ("not applicable", True, False),
+    (" Not Collected ", True, False),
+    ("restricted access", True, False),
+    ("Unavailable", True, False),
+    ("N/A", False, True),
+    ("unknown", False, True),
+    ("none", False, False),
+    ("P7", False, False),
+    (None, False, False),
+    (float("nan"), False, False),
+])
+def test_missing_values(value, missing, stand_in):
+    assert mf.is_missing_value(value) is missing
+    assert mf.is_missing_value_stand_in(value) is stand_in
+
+
+@pytest.mark.parametrize("series, expected", [
+    (pd.Series(pd.Categorical(["not applicable", "Not applicable"])), True),
+    (pd.Series(["not collected", "", None]), True),
+    (pd.Series(["not collected", "P7"]), False),
+    # Datasets uploaded before MISSING_VALUES, or with the upload warning ignored
+    (pd.Series(pd.Categorical(["N/A", "unknown", "not applicable"])), True),
+    (pd.Series(["NA", "female"]), False),
+    (pd.Series(pd.Categorical(["female", "not collected"])), False),
+    (pd.Series(["", ""]), False),
+    (pd.Series([1, 2]), False),
+])
+def test_holds_only_missing_values(series, expected):
+    assert mf.holds_only_missing_values(series) is expected
+
+
+def test_sample_template_describes_missing_values():
+    assert all(v in mf.MISSING_VALUE_NOTE for v in mf.MISSING_VALUES)
+    assert not set(mf.MISSING_VALUES) & set(mf.MISSING_VALUE_STAND_INS)
 
 
 def test_split_keywords_dedupes_case_insensitively():

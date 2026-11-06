@@ -203,7 +203,8 @@ paths:
                       items:
                         type: string
                       description: obs columns, plus X_tsne_1/2, X_umap_1/2, X_pca_1/2 when present in obsm; excludes
-                        replicate, BioRep, TechRep and time_point_order.
+                        replicate, BioRep, TechRep, time_point_order and columns holding only missing value words
+                        like "not applicable" or "N/A".
                     obs_levels:
                       type: object
                       additionalProperties:
@@ -231,7 +232,8 @@ paths:
       tags:
       - H5AD
       summary: Count observations per category for each categorical obs column, optionally filtered.
-      description: Returns per-category counts for every categorical obs column (excluding replicate and *_colors).
+      description: Returns per-category counts for every categorical obs column (excluding replicate, *_colors and
+        columns holding only missing value words like "not applicable" or "N/A").
         Categories with zero observations are kept and "nan" is renamed "Data not available". Filters on non-categorical
         columns are ignored. Called by apiCallsMixin.fetchAggregations in www/js/common.v2.js.
       security:

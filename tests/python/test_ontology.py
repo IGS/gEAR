@@ -101,6 +101,7 @@ def test_names_are_added_for_term_ids(fake_lookup):
     assert summary == {
         "ontology_terms": {"tissue_type": ["UBERON:0000178", "UBERON:0002227"],
                            "cell_type": ["CL:0000601", "CL:0011113"]},
+        "missing_value_columns": {},
         "warnings": [],
     }
     # Each distinct term is looked up once
@@ -134,6 +135,45 @@ def test_missing_recommended_columns(fake_lookup):
     assert summary["warnings"] == [
         "These recommended sample metadata columns are missing: `age_value`, `sex_assigned_at_birth`."
     ]
+
+
+def test_missing_values_are_accepted(fake_lookup):
+    """Missing value words like "not applicable" stand in for a value, and aren't looked up as terms."""
+    obs = pd.DataFrame({
+        "tissue_ontology": ["UBERON:0000178", "not collected"],
+        "cell_ontology": ["Not Applicable", "not applicable"],
+        "age_value": ["not applicable", "not applicable"],
+        "treatment": ["ctl", "not provided"],
+    })
+    obs, summary = ontology.annotate_sample_metadata(obs, recommended_columns=["tissue_ontology", "treatment",
+                                                                               "age_value"])
+    assert summary["warnings"] == []
+    assert summary["ontology_terms"] == {"tissue_type": ["UBERON:0000178"], "cell_type": []}
+    assert summary["missing_value_columns"] == {"cell_ontology": ["not applicable"], "age_value": ["not applicable"]}
+    assert obs["tissue_ontology_name"].tolist() == ["blood", "not collected"]
+    assert "UBERON:0000178" in fake_lookup and not any("not" in t for t in fake_lookup)
+
+
+def test_missing_value_stand_ins_are_warnings(fake_lookup):
+    obs = pd.DataFrame({"tissue_ontology": ["UBERON:0000178", "N/A"], "Age_Value": ["P7", "unknown"],
+                        "notes": ["n/a", "n/a"]})
+    obs, summary = ontology.annotate_sample_metadata(obs, recommended_columns=["tissue_ontology", "age_value"])
+    # Only recommended and term ID columns are checked, and each problem is reported once
+    accepted = "not applicable, not collected, not provided, restricted access, missing, unavailable"
+    assert summary["warnings"] == [
+        f"Column `tissue_ontology`: to say a value is missing, use one of {accepted} instead of: N/A",
+        f"Column `Age_Value`: to say a value is missing, use one of {accepted} instead of: unknown",
+    ]
+    assert summary["missing_value_columns"] == {}
+    assert obs["tissue_ontology_name"].tolist() == ["blood", "N/A"]
+
+
+def test_annotate_upload_obs_saves_missing_value_columns(fake_lookup, monkeypatch):
+    monkeypatch.setattr(ontology, "get_recommended_obs_columns", lambda: ["age_value"])
+    metadata = {}
+    ontology.annotate_upload_obs(anndata.AnnData(obs=pd.DataFrame({"age_value": ["not collected"]})), metadata)
+    assert metadata["sample_metadata_missing_values"] == {"age_value": ["not collected"]}
+    assert metadata["sample_metadata_warnings"] == []
 
 
 @pytest.mark.parametrize("columns, warned", [

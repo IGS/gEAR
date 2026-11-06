@@ -183,6 +183,7 @@ The [sample metadata template](https://umgear.org/user_templates/sample_metadata
 
 - **Ontology terms.** Give tissues as [Uberon](https://www.ebi.ac.uk/ols4/ontologies/uberon) term IDs in `tissue_ontology` (like `UBERON:0002227`) and cell types as [Cell Ontology](https://www.ebi.ac.uk/ols4/ontologies/cl) term IDs in `cell_ontology` (like `CL:0000601`); a cell may hold several comma-separated IDs. The CELLxGENE names `tissue_ontology_term_id` and `cell_type_ontology_term_id` work too. During processing gEAR looks up each term's name and adds it as `tissue_ontology_name` / `cell_ontology_name`, and records the dataset's tissues and cell types so it can be found by them.
 - **Missing columns.** Which columns each gEAR portal asks for can differ. Missing ones only produce a warning.
+- **Missing values.** If a sample has no value for a column, because it doesn't apply or wasn't recorded, write one of `not applicable`, `not collected`, `not provided`, `restricted access`, `missing` or `unavailable` (in any case) instead of leaving it blank or writing N/A. If your study has no data for a column at all, such as age, fill the whole column this way rather than leaving it out: curators can then tell the data is missing on purpose. A column holding only these words, or stand-ins like N/A and unknown, isn't offered as a plot or filter option in the curators.
 
 ## Microarray data
 
