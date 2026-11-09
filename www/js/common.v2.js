@@ -1279,10 +1279,16 @@ const apiCallsMixin = {
     },
     /**
      * Fetches all datasets asynchronously.
+     * @param {string|null} shareId - Share ID of a dataset to include even if the user can't otherwise see it.
+     * @param {string|null} [tool=null] - Analysis tool name (e.g. "sc-workbench", see lib/gear/analysis_tools.py);
+     *        only dataset types that tool supports are returned. Omit to get every type.
      * @returns {Promise<any>} The fetched data.
      */
-    async fetchAllDatasets(shareId) {
+    async fetchAllDatasets(shareId, tool=null) {
         const payload = {session_id: apiCallsMixin.sessionId, share_id: shareId};
+        if (tool) {
+            payload.tool = tool;
+        }
         const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
         return data;
     },

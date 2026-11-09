@@ -360,6 +360,37 @@ class TestH5adDatasetListShareId:
         assert self.ids(result.json()) == {"user": [], "public": ["PUB"], "shared_with_user": []}
 
 
+class TestH5adDatasetListTypes:
+    """Each tool passes its name so only the dataset types it supports are listed (lib/gear/analysis_tools.py)."""
+    DB = {"sessions": SESSIONS, "datasets": [
+        {"id": "SC", "owner_id": 1, "dtype": "single-cell-rnaseq"},
+        {"id": "SPATIAL", "owner_id": 1, "dtype": "spatial"},
+        {"id": "BULK", "share_id": "SBULK", "owner_id": 1, "dtype": "bulk-rnaseq"},
+        {"id": "SVG", "owner_id": 2, "dtype": "svg-expression", "is_public": 0, "shared_with": [1]},
+    ]}
+
+    def ids(self, **query):
+        body = run_cgi("get_h5ad_dataset_list.cgi", db=self.DB, query=query).json()
+        return {key: sorted(d["id"] for d in body[key]["datasets"]) for key in ("user", "public", "shared_with_user")}
+
+    @pytest.mark.parametrize("tool, user, shared", [
+        ("sc-workbench", ["SC", "SPATIAL"], []),
+        ("compare-tool", ["BULK", "SC", "SPATIAL"], []),
+        ("dataset-curator", ["BULK", "SC", "SPATIAL"], ["SVG"]),
+        (None, ["BULK", "SC", "SPATIAL"], ["SVG"]),
+        ("unknown-tool", ["BULK", "SC", "SPATIAL"], ["SVG"]),
+    ])
+    def test_only_the_tools_types_are_listed(self, tool, user, shared):
+        query = {"session_id": "owner"}
+        if tool:
+            query["tool"] = tool
+        assert self.ids(**query) == {"user": user, "public": user, "shared_with_user": shared}
+
+    def test_share_id_does_not_add_an_unsupported_type(self):
+        assert self.ids(session_id="other", share_id="SBULK", tool="sc-workbench") == \
+            {"user": [], "public": ["SC", "SPATIAL"], "shared_with_user": []}
+
+
 # ---------------------------------------------------------------- search_datasets.cgi / search_gene_carts.cgi
 
 GROUP_SUBQUERY = re.compile(
