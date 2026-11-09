@@ -34,7 +34,7 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
 
-    # GROUP BY ignores case (table collation), so differently-cased duplicates come back as one name
+    # GROUP BY ignores case and accents (column collation), so such variants of a name come back as one
     qry = """
         SELECT pi_name, contact_institute, COUNT(*) AS dataset_count
           FROM dataset

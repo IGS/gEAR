@@ -27,12 +27,13 @@ ALTER TABLE dataset
     ADD COLUMN pi_name VARCHAR(100),
     ADD INDEX idx_pi_name (pi_name);
 
+-- Term labels can hold Greek letters and other characters latin1 can't store
 CREATE TABLE ontology_term (
        term_id                  VARCHAR(30) PRIMARY KEY,
        ontology                 VARCHAR(20) NOT NULL,
        label                    VARCHAR(255),
        date_fetched             DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Foreign keys need matching character sets, and the existing dataset table is latin1
 CREATE TABLE dataset_ontology_term (
@@ -46,3 +47,32 @@ CREATE TABLE dataset_ontology_term (
           REFERENCES dataset(id)
           ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1;
+
+-- Store any character users type or paste into the metadata, such as the β in "β cell" (GitHub #59, #633).
+--  The dataset table is latin1, which can't, so the upload failed when it was saved, after all the processing.
+--  Only the columns holding user text are converted. dataset.id stays latin1 because the foreign keys of
+--  other (latin1) tables point at it. TEXT columns become MEDIUMTEXT, since a utf8mb4 character can take
+--  up to 4 bytes and TEXT holds 65535 bytes. The columns of each FULLTEXT index (title, ldesc, geo_id,
+--  pubmed_id) must share a character set, so they are converted in one statement. Safe to run on servers
+--  where #633 already converted title.
+ALTER TABLE dataset
+    MODIFY title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    MODIFY ldesc MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY geo_id VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY pubmed_id VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY platform_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY instrument_model VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY library_selection VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY library_source VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY library_strategy MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY contact_email VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY contact_institute VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY contact_name VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY library_cons_method MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY rna_extraction_method MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY microarray_hybridization_protocol MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY normalization_method VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    MODIFY pi_name VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Keywords are stored as tags
+ALTER TABLE tag MODIFY label VARCHAR(55) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

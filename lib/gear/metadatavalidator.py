@@ -65,9 +65,9 @@ class MetadataValidator:
             errors["repository_accession"] = f"GEO accessions must be {mf.GEO_ID_MAX_LENGTH} characters or fewer."
 
         if values.get("device") == mf.OBI_DEVICE_ROOT:
-            warnings["device"] = "The OBI 'device' root term was given. The gEAR team will contact you to find a more specific term."
+            warnings["device"] = "The OBI 'device' root term was given. The curator team will contact you to find a more specific term."
         if values.get("assay") == mf.OBI_ASSAY_ROOT:
-            warnings["assay"] = "The OBI 'assay' root term was given. The gEAR team will contact you to find a more specific term."
+            warnings["assay"] = "The OBI 'assay' root term was given. The curator team will contact you to find a more specific term."
 
         return errors, warnings
 

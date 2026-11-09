@@ -190,16 +190,19 @@ CREATE TABLE anatomy (
 
 -- Any changes to column lengths here need to be also changed in lib/gear/metadata_fields.py, which the uploader
 --  form and server-side validation read (tests/python/test_metadata_fields.py checks they match)
+-- Columns holding user text are utf8mb4 whatever the database default, so they can store any character
+--  (e.g. Greek letters, GitHub #59, #633). Databases created before this were latin1, and on those the other
+--  columns, including id, stay latin1 to match the foreign keys pointing at them (see bin/migrations/390_*).
 CREATE TABLE dataset (
        id                       VARCHAR(50) PRIMARY KEY,
        owner_id                 INT NOT NULL,
-       title                    VARCHAR(255) NOT NULL,
+       title                    VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
        organism_id              INT NOT NULL,
-       pubmed_id                VARCHAR(20),
-       geo_id                   VARCHAR(50),
+       pubmed_id                VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       geo_id                   VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
        is_public                TINYINT DEFAULT 0,
        is_downloadable          TINYINT DEFAULT 1,
-       ldesc                    TEXT,
+       ldesc                    MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
        date_added               DATETIME,
        dtype                    VARCHAR(50) NOT NULL DEFAULT 'svg-expression',
        -- paths are relative to the root, so probably like datasets_uploaded/{dataset_id}.jpg
@@ -209,14 +212,14 @@ CREATE TABLE dataset (
        marked_for_removal       TINYINT DEFAULT 0,
        load_status              VARCHAR(20), -- options: 'pending', 'loading', 'completed', 'failed',
        has_h5ad                 TINYINT DEFAULT 0,
-       platform_id              VARCHAR(255),
-       instrument_model         VARCHAR(255),
-       library_selection        VARCHAR(255),
-       library_source           VARCHAR(255),
-       library_strategy         TEXT,
-       contact_email            VARCHAR(100),
-       contact_institute        VARCHAR(255),
-       contact_name             VARCHAR(100),
+       platform_id              VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       instrument_model         VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       library_selection        VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       library_source           VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       library_strategy         MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       contact_email            VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       contact_institute        VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       contact_name             VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
        annotation_source        VARCHAR(20),
        plot_default             VARCHAR(50), -- options: 'bar', 'line', 'violin'
        annotation_release       VARCHAR(50), -- Ensembl release number, or GenBank/RefSeq assembly accession
@@ -226,17 +229,17 @@ CREATE TABLE dataset (
        repository_accession     VARCHAR(100), -- prefixed, e.g. 'GEO:GSE168901', 'ArrayExpress:E-MTAB-11634'
        device                   VARCHAR(30), -- OBI term ID
        assay                    VARCHAR(30), -- OBI term ID
-       library_cons_method      TEXT,
-       rna_extraction_method    TEXT,
-       microarray_hybridization_protocol TEXT,
-       normalization_method     VARCHAR(100),
+       library_cons_method      MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       rna_extraction_method    MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       microarray_hybridization_protocol MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+       normalization_method     VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
        log_transformation       VARCHAR(30), -- options: 'No Transformation', 'log2 transformation', 'log10 transformation'
        primary_analysis_completed TINYINT,
        file_format              VARCHAR(30), -- format of the uploaded file, e.g. 'h5ad', 'mex', '3tab', 'excel'
        metadata_version         VARCHAR(10), -- version of the metadata template the row was filled from
        metadata_source          VARCHAR(30), -- options: 'uploader', 'curator', 'backfill-llm'
        curation_flags           TEXT, -- JSON list of issues a curator should follow up on
-       pi_name                  VARCHAR(100), -- principal investigator (lab head), for finding a lab's datasets
+       pi_name                  VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci, -- principal investigator (lab head), for finding a lab's datasets
 
        FULLTEXT                 text_idx (title, ldesc),
        FULLTEXT                 text_with_geo_idx (title, ldesc, geo_id),
@@ -291,7 +294,7 @@ CREATE TABLE ontology_term (
        ontology                 VARCHAR(20) NOT NULL,    -- e.g. 'cl', 'uberon', 'obi'
        label                    VARCHAR(255),
        date_fetched             DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Multi-valued ontology annotations of a dataset, rolled up from its sample-level metadata
 CREATE TABLE dataset_ontology_term (
@@ -469,7 +472,7 @@ CREATE TABLE supplemental_images (
 
 CREATE TABLE tag (
 	id		INT PRIMARY KEY AUTO_INCREMENT,
-	label	VARCHAR(55)
+	label	VARCHAR(55) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 ) ENGINE=INNODB;
 
 CREATE TABLE comment (

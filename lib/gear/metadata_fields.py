@@ -12,6 +12,7 @@ Fields that gEAR fills in itself (cell_type, tissue_type, file_format) are not l
 """
 
 import re
+import unicodedata
 from dataclasses import asdict, dataclass, field
 
 METADATA_VERSION = "2"
@@ -309,17 +310,29 @@ def holds_only_missing_values(series) -> bool:
     return bool(values) and all(is_missing_value(v) or is_missing_value_stand_in(v) for v in values)
 
 
+def remove_invisible_characters(value: str) -> str:
+    """
+    Remove the invisible characters that come along with text pasted from Word, Excel or web pages
+    (GitHub #59): control characters, zero-width spaces and joiners, byte order marks, soft hyphens and
+    other formatting marks. Tabs and line breaks are kept, and non-breaking spaces become plain spaces.
+    """
+    value = value.replace("\u00a0", " ").replace("\u2028", "\n").replace("\u2029", "\n")
+    return "".join(ch for ch in value if ch in "\t\n\r" or unicodedata.category(ch) not in ("Cc", "Cf"))
+
+
 def normalize_value(name: str, value):
     """
     Return a value in its canonical form, accepting the common shortcuts people type
     (bare numbers for taxon and PubMed IDs, missing or differently-cased prefixes).
-    Blank values become None. Values that can't be interpreted are returned unchanged,
-    stripped, so validation can report them.
+    Invisible characters are removed, and blank values become None. Values that can't be
+    interpreted are returned unchanged, stripped, so validation can report them.
     """
     if is_blank(value):
         return None
 
-    value = str(value).strip()
+    value = remove_invisible_characters(str(value)).strip()
+    if not value:
+        return None
 
     if name == "sample_taxid":
         m = re.fullmatch(r"(?:NCBI:)?(?:txid)?\s*(\d+)", value, re.IGNORECASE)

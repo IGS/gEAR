@@ -1,3 +1,6 @@
+-- Emergency rollback of bin/migrations/390_dataset_metadata_v2.sql.
+-- The utf8mb4 columns are left as they are: the code from before 390 works with them, and converting
+--  back to latin1 would fail (or lose characters) once any text latin1 can't store has been saved.
 DROP TABLE dataset_ontology_term, ontology_term;
 ALTER TABLE dataset
   DROP COLUMN repository_accession,

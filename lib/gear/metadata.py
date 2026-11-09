@@ -506,8 +506,8 @@ def find_curation_flags(values: dict, organism_id: int | None = None) -> dict:
 
     source, release = mf.parse_reference_annotation(values.get('reference_annot_id'))
     if source and not is_reference_annotation_loaded(source, release, organism_id):
-        flags['annotation_not_loaded'] = ("The reference annotation {0}:{1} is not loaded in gEAR yet. You can continue "
-                                          "with the upload, and the gEAR team will look into adding it.").format(source, release)
+        flags['annotation_not_loaded'] = ("The reference annotation {0}:{1} is not loaded in the portal yet. You can continue "
+                                          "with the upload, and the curator team will look into adding it.").format(source, release)
 
     _errors, warnings = mdv.validate_values(values)
     for field in ('device', 'assay'):
@@ -522,8 +522,8 @@ def match_known_pi_name(cursor, pi_name: str | None, dataset_id: str) -> str | N
     Return the spelling another dataset already uses for this PI name, so "jane doe" is saved as
     "Jane Doe" if that's how it was entered before. Otherwise return the name as given.
 
-    The match ignores case because the dataset table's collation does. dataset_id is left out of the
-    search, so a dataset's own old spelling doesn't win over a correction to it.
+    The match ignores case and accents ("zoe doe" matches "Zoë Doe") because the column's collation does.
+    dataset_id is left out of the search, so a dataset's own old spelling doesn't win over a correction to it.
     """
     if not pi_name:
         return pi_name
@@ -622,7 +622,7 @@ def update_dataset_metadata(dataset_id: str, values: dict, source: str) -> dict:
         if name == 'sample_taxid':
             organism_id = geardb.get_organism_id_by_taxon_id(mf.parse_taxon_id(value))
             if organism_id is None:
-                return {'errors': {name: f"No organism in gEAR has taxon ID {value}."}, 'curation_flags': {}}
+                return {'errors': {name: f"No organism in the portal has taxon ID {value}."}, 'curation_flags': {}}
             columns['organism_id'] = organism_id
         elif name == 'reference_annot_id':
             columns['annotation_source'], columns['annotation_release'] = mf.parse_reference_annotation(value)

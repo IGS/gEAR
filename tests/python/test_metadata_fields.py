@@ -49,6 +49,10 @@ VALID = {
     ("primary_analysis_completed", "yes", "Yes"),
     ("pi_name", "  Jane   Doe ", "Jane Doe"),
     ("title", "  padded  ", "padded"),
+    # Invisible characters pasted from Word, Excel or the web (#59)
+    ("title", "\ufeffRNA\u200b-seq\x07 of \u03b2 cells", "RNA-seq of \u03b2 cells"),
+    ("summary", "Line one.\r\nLine\u00a0two.\u2028Line three.", "Line one.\r\nLine two.\nLine three."),
+    ("title", "\u200b\u00ad", None),
     ("title", "", None),
     ("title", float("nan"), None),
     ("title", "None", None),
@@ -210,12 +214,19 @@ def test_long_values_that_fit_their_columns_are_accepted():
 
 
 def _schema_column_widths(table: str) -> dict:
-    """{column: width} for a table in create_schema.sql. TEXT columns get 65535."""
+    """
+    {column: width in characters} for a table in create_schema.sql. TEXT and MEDIUMTEXT widths are in bytes,
+    so a utf8mb4 column, at up to 4 bytes a character, holds a quarter as many characters.
+    """
     schema = (Path(__file__).resolve().parents[2] / "create_schema.sql").read_text()
     body = re.search(rf"CREATE TABLE {table} \((.*?)\) ENGINE", schema, re.S).group(1)
     widths = {}
-    for name, column_type, width in re.findall(r"^\s*(\w+)\s+(VARCHAR|TEXT)\b(?:\((\d+)\))?", body, re.M | re.I):
-        widths[name] = 65535 if column_type.upper() == "TEXT" else int(width)
+    text_bytes = {"TEXT": 65535, "MEDIUMTEXT": 16777215}
+    for name, column_type, width, rest in re.findall(r"^\s*(\w+)\s+(VARCHAR|MEDIUMTEXT|TEXT)\b(?:\((\d+)\))?(.*)$", body, re.M | re.I):
+        if column_type.upper() == "VARCHAR":
+            widths[name] = int(width)
+        else:
+            widths[name] = text_bytes[column_type.upper()] // (4 if "utf8mb4" in rest else 1)
     return widths
 
 

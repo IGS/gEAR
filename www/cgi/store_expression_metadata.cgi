@@ -67,7 +67,7 @@ def main():
 
     taxon_id = mf.parse_taxon_id(values['sample_taxid'])
     if geardb.get_organism_id_by_taxon_id(taxon_id) is None:
-        result['errors'] = {'sample_taxid': "gEAR doesn't support this organism yet. Please contact the gEAR team to request it."}
+        result['errors'] = {'sample_taxid': "This portal doesn't support this organism yet. Please contact the curator team to request it."}
         print(json.dumps(result))
         return
 

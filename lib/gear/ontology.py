@@ -311,7 +311,7 @@ def annotate_upload_obs(adata, metadata: dict) -> None:
     except Exception as e:
         print(f"Could not annotate sample metadata: {e}", file=sys.stderr)
         summary = {"ontology_terms": {}, "warnings": ["Tissue and cell type ontology terms could not be processed. "
-                                                      "Please contact the gEAR team if you need them."]}
+                                                      "Please contact the curator team if you need them."]}
 
     try:
         if parse_yes_no(metadata.get("primary_analysis_completed")) and not detect_primary_analysis(adata):
