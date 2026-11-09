@@ -562,7 +562,7 @@ const loadDatasetTree = async (shareId) => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId);
+        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId, "compare-tool");
 
         let counter = 0;
 

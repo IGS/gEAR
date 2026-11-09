@@ -361,25 +361,34 @@ class TestH5adDatasetListShareId:
 
 
 class TestH5adDatasetListTypes:
-    """The single-cell workbench only lists dataset types it supports; bulk RNA-seq has too few observations."""
+    """Each tool passes its name so only the dataset types it supports are listed (lib/gear/analysis_tools.py)."""
     DB = {"sessions": SESSIONS, "datasets": [
         {"id": "SC", "owner_id": 1, "dtype": "single-cell-rnaseq"},
         {"id": "SPATIAL", "owner_id": 1, "dtype": "spatial"},
         {"id": "BULK", "share_id": "SBULK", "owner_id": 1, "dtype": "bulk-rnaseq"},
-        {"id": "ARRAY", "owner_id": 2, "dtype": "microarray", "shared_with": [1]},
+        {"id": "SVG", "owner_id": 2, "dtype": "svg-expression", "is_public": 0, "shared_with": [1]},
     ]}
 
-    def ids(self, body):
+    def ids(self, **query):
+        body = run_cgi("get_h5ad_dataset_list.cgi", db=self.DB, query=query).json()
         return {key: sorted(d["id"] for d in body[key]["datasets"]) for key in ("user", "public", "shared_with_user")}
 
-    def test_unsupported_types_are_not_listed(self):
-        result = run_cgi("get_h5ad_dataset_list.cgi", db=self.DB, query={"session_id": "owner"})
-        assert self.ids(result.json()) == {"user": ["SC", "SPATIAL"], "public": ["SC", "SPATIAL"],
-                                           "shared_with_user": []}
+    @pytest.mark.parametrize("tool, user, shared", [
+        ("sc-workbench", ["SC", "SPATIAL"], []),
+        ("compare-tool", ["BULK", "SC", "SPATIAL"], []),
+        ("dataset-curator", ["BULK", "SC", "SPATIAL"], ["SVG"]),
+        (None, ["BULK", "SC", "SPATIAL"], ["SVG"]),
+        ("unknown-tool", ["BULK", "SC", "SPATIAL"], ["SVG"]),
+    ])
+    def test_only_the_tools_types_are_listed(self, tool, user, shared):
+        query = {"session_id": "owner"}
+        if tool:
+            query["tool"] = tool
+        assert self.ids(**query) == {"user": user, "public": user, "shared_with_user": shared}
 
     def test_share_id_does_not_add_an_unsupported_type(self):
-        result = run_cgi("get_h5ad_dataset_list.cgi", db=self.DB, query={"session_id": "other", "share_id": "SBULK"})
-        assert self.ids(result.json()) == {"user": [], "public": ["SC", "SPATIAL"], "shared_with_user": []}
+        assert self.ids(session_id="other", share_id="SBULK", tool="sc-workbench") == \
+            {"user": [], "public": ["SC", "SPATIAL"], "shared_with_user": []}
 
 
 # ---------------------------------------------------------------- search_datasets.cgi / search_gene_carts.cgi

@@ -286,7 +286,7 @@ const loadDatasetTree = async (shareId) => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId);
+        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId, "sc-workbench");
 
         let counter = 0;
 

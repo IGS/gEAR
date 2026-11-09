@@ -302,7 +302,8 @@ const curatorApiCallsMixin = {
      */
     async fetchAllDatasets(shareId) {
         try {
-            return await super.fetchAllDatasets(shareId);
+            const tool = isMultigene ? "multigene-viewer" : "dataset-curator";
+            return await super.fetchAllDatasets(shareId, tool);
         } catch (error) {
             logErrorInConsole(error);
             const msg = "Could not fetch datasets. Please contact the gEAR team."

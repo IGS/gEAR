@@ -1,8 +1,9 @@
 """
 analysis_tools.py - Which gEAR analysis tools support which dataset types (dtype).
 
-Used by the availableAnalysisTools API (dataset explorer links) and by the single-cell workbench's
-dataset list, so both agree on which datasets a tool can open.
+Used by the availableAnalysisTools API (dataset explorer links) and by get_h5ad_dataset_list.cgi
+(each tool's dataset list), so both agree on which datasets a tool can open. The lists keep legacy
+dtypes (e.g. "sc-rna-seq") that older datasets still use.
 """
 
 ANALYSIS_TOOL_DTYPES = {
@@ -48,8 +49,3 @@ ANALYSIS_TOOL_DTYPES = {
         "sc-rna-seq"
     ]
 }
-
-
-def tool_supports_dtype(tool, dtype):
-    """True if the named analysis tool can open a dataset of this dtype."""
-    return dtype in ANALYSIS_TOOL_DTYPES.get(tool, [])
