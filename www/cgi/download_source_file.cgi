@@ -42,13 +42,15 @@ def download_file(file_path, file_name):
 
 def to_file(content, prefix='', suffix=''):
     """
-    Write string content to a named temporary file.
+    Write string content to a named temporary file, as UTF-8 with a byte order mark. The mark is how
+    Excel knows a CSV is UTF-8; without it, characters like the β in "β cell" show up garbled.
 
     Returns:
         Path to the temporary file (caller is responsible for deleting it).
     """
     import tempfile
-    temp = tempfile.NamedTemporaryFile(delete=False, prefix=prefix, suffix=suffix, mode='w')
+    temp = tempfile.NamedTemporaryFile(delete=False, prefix=prefix, suffix=suffix, mode='w',
+                                       encoding='utf-8-sig')
     temp.write(content)
     temp.close()
     return temp.name
