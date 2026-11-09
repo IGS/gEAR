@@ -261,11 +261,11 @@ def annotate_sample_metadata(obs: pd.DataFrame, recommended_columns=None) -> tup
         obs[name_column] = pd.Categorical(names)
 
         if invalid:
-            warnings.append(f"Column `{column}`: these values are not {prefix} term IDs (like {prefix}:0000000): {_preview(invalid)}")
+            warnings.append(f"Column `{column}`: the following values are not {prefix} term IDs (like {prefix}:0000000): {_preview(invalid)}")
         if wrong_prefix:
             warnings.append(f"Column `{column}`: expected {prefix} terms, but found: {_preview(wrong_prefix)}")
         if unresolved:
-            warnings.append(f"Column `{column}`: these terms could not be found in the ontology, so their names "
+            warnings.append(f"Column `{column}`: the following terms could not be found in the ontology, so their names "
                             f"weren't added: {_preview(unresolved)}")
 
     # Suggest the missing value words in place of N/A, unknown, etc. Columns of only missing values aren't
