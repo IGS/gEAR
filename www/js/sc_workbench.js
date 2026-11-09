@@ -175,7 +175,8 @@ const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
         datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
         datasetId = linkedDatasetId;
     } catch (error) {
-        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+        // The workbench dataset list only has the dataset types it supports (single-cell, not bulk RNA-seq, etc.)
+        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset, or its type is not supported by the single-cell workbench`);
         throw new Error(error);
     }
 }

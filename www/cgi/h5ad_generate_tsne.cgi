@@ -5,7 +5,8 @@ h5ad_generate_tsne.cgi - Compute neighbors/tSNE/UMAP for an analysis and render 
 
 Input: analysis_id, analysis_type, dataset_id, session_id, n_pcs, n_neighbors, random_state, genes_to_color,
        use_scaled, compute_neighbors, compute_tsne, compute_umap, plot_tsne, plot_umap (0/1 flags).
-Output: JSON {success, missing_gene}; writes tSNE/UMAP PNGs.
+Output: JSON {success, missing_gene} plus "error" when a computation fails and "warning" when the
+        tSNE perplexity was lowered to fit a small dataset; writes tSNE/UMAP PNGs.
 """
 
 import cgi
@@ -13,6 +14,7 @@ import json
 import os
 import re
 import sys
+import traceback
 
 import matplotlib
 import scanpy as sc
@@ -31,6 +33,30 @@ from gear.colorblind import CONTINUOUS_CMAP, is_enabled, remove_colorblind_copie
 matplotlib.use('Agg')
 
 sc.settings.verbosity = 0
+
+# scanpy's (and scikit-learn's) default tSNE perplexity
+DEFAULT_TSNE_PERPLEXITY = 30
+
+
+def respond(result):
+    sys.stdout = original_stdout
+    print('Content-Type: application/json\n\n')
+    print(json.dumps(result))
+
+
+def tsne_perplexity(n_obs):
+    """scikit-learn requires perplexity < n_samples, so lower the default for very small datasets (e.g. bulk)."""
+    return min(DEFAULT_TSNE_PERPLEXITY, max(n_obs - 1, 1))
+
+
+def compute_error_message(step, n_obs, err):
+    """User-facing message for a failed neighbors/tSNE/UMAP computation."""
+    message = f"Could not compute {step} for this dataset ({n_obs} observations): {err}"
+    if n_obs <= DEFAULT_TSNE_PERPLEXITY:
+        message += (" tSNE and UMAP are meant for single-cell data with many cells, and may not work on"
+                    " datasets with only a few samples, such as bulk RNA-seq.")
+    return message
+
 
 def normalize_genes_to_color(gene_list, chosen_genes):
     """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
@@ -64,10 +90,7 @@ def main():
     ds = geardb.get_dataset_by_id(dataset_id)
     if not ds:
         print("No dataset found with that ID.", file=sys.stderr)
-        result['success'] = 0
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(result))
+        respond(result)
         return
     is_spatial = ds.dtype == "spatial"
 
@@ -82,10 +105,7 @@ def main():
         ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
         print("Analysis for this dataset is unavailable.", file=sys.stderr)
-        result['success'] = 0
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(result))
+        respond(result)
         return
 
     if genes_to_color:
@@ -105,14 +125,29 @@ def main():
 
     dest_datafile_path = ana.dataset_path
 
-    if compute_neighbors == 1:
-        sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=n_neighbors)
+    warning = None
+    step = None
+    try:
+        if compute_neighbors == 1:
+            step = "neighbors"
+            sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=n_neighbors)
 
-    if compute_tsne == 1:
-        sc.tl.tsne(adata, n_pcs=n_pcs, random_state=random_state)
+        if compute_tsne == 1:
+            step = "tSNE"
+            perplexity = tsne_perplexity(adata.n_obs)
+            if perplexity < DEFAULT_TSNE_PERPLEXITY:
+                warning = (f"tSNE perplexity was lowered from {DEFAULT_TSNE_PERPLEXITY} to {perplexity} because"
+                           f" this dataset only has {adata.n_obs} observations.")
+            sc.tl.tsne(adata, n_pcs=n_pcs, random_state=random_state, perplexity=perplexity)
 
-    if compute_umap == 1:
-        sc.tl.umap(adata, maxiter=500)
+        if compute_umap == 1:
+            step = "UMAP"
+            sc.tl.umap(adata, maxiter=500)
+    except Exception as err:
+        traceback.print_exc(file=sys.stderr)
+        result['error'] = compute_error_message(step, adata.n_obs, err)
+        respond(result)
+        return
 
     # If any of the above steps were done, save the adata object
     if compute_neighbors == 1 or compute_tsne == 1 or compute_umap == 1:
@@ -185,9 +220,10 @@ def main():
     else:
         result = {'success': 0, 'missing_gene': missing_gene}
 
-    sys.stdout = original_stdout
-    print('Content-Type: application/json\n\n')
-    print(json.dumps(result))
+    if warning:
+        result['warning'] = warning
+
+    respond(result)
 
 
 if __name__ == '__main__':

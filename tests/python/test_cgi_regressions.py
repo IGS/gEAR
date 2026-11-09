@@ -360,6 +360,28 @@ class TestH5adDatasetListShareId:
         assert self.ids(result.json()) == {"user": [], "public": ["PUB"], "shared_with_user": []}
 
 
+class TestH5adDatasetListTypes:
+    """The single-cell workbench only lists dataset types it supports; bulk RNA-seq has too few observations."""
+    DB = {"sessions": SESSIONS, "datasets": [
+        {"id": "SC", "owner_id": 1, "dtype": "single-cell-rnaseq"},
+        {"id": "SPATIAL", "owner_id": 1, "dtype": "spatial"},
+        {"id": "BULK", "share_id": "SBULK", "owner_id": 1, "dtype": "bulk-rnaseq"},
+        {"id": "ARRAY", "owner_id": 2, "dtype": "microarray", "shared_with": [1]},
+    ]}
+
+    def ids(self, body):
+        return {key: sorted(d["id"] for d in body[key]["datasets"]) for key in ("user", "public", "shared_with_user")}
+
+    def test_unsupported_types_are_not_listed(self):
+        result = run_cgi("get_h5ad_dataset_list.cgi", db=self.DB, query={"session_id": "owner"})
+        assert self.ids(result.json()) == {"user": ["SC", "SPATIAL"], "public": ["SC", "SPATIAL"],
+                                           "shared_with_user": []}
+
+    def test_share_id_does_not_add_an_unsupported_type(self):
+        result = run_cgi("get_h5ad_dataset_list.cgi", db=self.DB, query={"session_id": "other", "share_id": "SBULK"})
+        assert self.ids(result.json()) == {"user": [], "public": ["SC", "SPATIAL"], "shared_with_user": []}
+
+
 # ---------------------------------------------------------------- search_datasets.cgi / search_gene_carts.cgi
 
 GROUP_SUBQUERY = re.compile(
