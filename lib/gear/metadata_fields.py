@@ -88,7 +88,7 @@ class MetadataField:
 FIELDS = (
     MetadataField(
         name="contact_name", filled_by_geo=True,
-        instructions="First and last name of the contact person for the dataset. Typically this is the principal investigator of the study.",
+        instructions="First and last name of the person to contact about the dataset. This can be the principal investigator, or the lab member who prepared the data.",
         required=True, max_length=100, column="contact_name",
     ),
     MetadataField(
@@ -101,6 +101,12 @@ FIELDS = (
         name="contact_institute", filled_by_geo=True,
         instructions="Name of institution under which the contact person is employed.",
         required=True, max_length=255, column="contact_institute",
+    ),
+    MetadataField(
+        name="pi_name",
+        instructions="First and last name of the principal investigator (lab head) responsible for the dataset, used to find a lab's datasets. The uploader form suggests PI names already on this portal; choose one if it matches, so each PI is spelled one way. If the study has more than one PI, give the lead PI. Leave blank if there is no single PI, e.g. for a consortium dataset.",
+        example="Jane Doe",
+        max_length=100, column="pi_name",
     ),
     MetadataField(
         name="title",
@@ -116,13 +122,13 @@ FIELDS = (
     ),
     MetadataField(
         name="dataset_type",
-        instructions="Directs data to the correct part of gEAR. If your study has more than one type of data, submit each type as a separate dataset. If you are doing single-nucleus RNA-seq or SMART-seq, use single-cell-rnaseq. Use spatial for spatial transcriptomics, and epigenome for epigenome tracks (e.g. ChIP-seq or ATAC-seq).",
+        instructions="Directs data to the correct part of the portal. If your study has more than one type of data, submit each type as a separate dataset. If you are doing single-nucleus RNA-seq or SMART-seq, use single-cell-rnaseq. Use spatial for spatial transcriptomics, and epigenome for epigenome tracks (e.g. ChIP-seq or ATAC-seq).",
         example="single-cell-rnaseq",
         required=True, choices=DATASET_TYPES + GEAR_ONLY_DATASET_TYPES, column="dtype",
     ),
     MetadataField(
         name="reference_annot_id",
-        instructions="Reference annotation the data were aligned to, as source:version. Supported sources are Ensembl, GenBank and RefSeq. For Ensembl give the release number; for GenBank and RefSeq give the assembly accession. Examples: Ensembl:93, RefSeq:GCF_000001635.27, GenBank:GCA_000001635.9. If your reference is not yet loaded into gEAR you can still upload, and the gEAR team will contact you about loading it.",
+        instructions="Reference annotation the data were aligned to, as source:version. Supported sources are Ensembl, GenBank and RefSeq. For Ensembl give the release number; for GenBank and RefSeq give the assembly accession. Examples: Ensembl:93, RefSeq:GCF_000001635.27, GenBank:GCA_000001635.9. If your reference is not yet loaded into this portal you can still upload, and the curator team will contact you about loading it.",
         example="Ensembl:93",
         required=True, max_length=len("GenBank:") + ANNOTATION_RELEASE_MAX_LENGTH,
         pattern=r"(Ensembl|GenBank|RefSeq):\S+", pattern_hint="Ensembl:<release>, GenBank:<accession> or RefSeq:<accession>",
@@ -136,7 +142,7 @@ FIELDS = (
     ),
     MetadataField(
         name="sample_taxid",
-        instructions="NCBI taxonomy ID of the one species the samples come from, e.g. human NCBI:txid9606, mouse NCBI:txid10090, rat NCBI:txid10116, zebrafish NCBI:txid7955. A gEAR dataset can only hold one species. If your study has samples from more than one species, split the data by species and submit each as its own dataset.",
+        instructions="NCBI taxonomy ID of the one species the samples come from, e.g. human NCBI:txid9606, mouse NCBI:txid10090, rat NCBI:txid10116, zebrafish NCBI:txid7955. A dataset can only hold one species. If your study has samples from more than one species, split the data by species and submit each as its own dataset.",
         example="NCBI:txid10090",
         required=True,
         pattern=r"NCBI:txid\d+", pattern_hint="NCBI:txid followed by the numeric taxon ID",
@@ -155,7 +161,7 @@ FIELDS = (
     ),
     MetadataField(
         name="device",
-        instructions=f"Term ID from the Ontology for Biomedical Investigations (OBI) 'device' branch for the device used to generate the primary data, e.g. Illumina NovaSeq 6000 OBI:0002630, Illumina HiSeq 2500 OBI:0002002. If you can't find the term you need, use the branch root term {OBI_DEVICE_ROOT} and the gEAR team will follow up with you.",
+        instructions=f"Term ID from the Ontology for Biomedical Investigations (OBI) 'device' branch for the device used to generate the primary data, e.g. Illumina NovaSeq 6000 OBI:0002630, Illumina HiSeq 2500 OBI:0002002. If you can't find the term you need, use the branch root term {OBI_DEVICE_ROOT} and the curator team will follow up with you.",
         example="OBI:0002048",
         required=True, column="device",
         pattern=r"OBI:\d{7}", pattern_hint="OBI: followed by the 7-digit term number",
@@ -180,7 +186,7 @@ FIELDS = (
     ),
     MetadataField(
         name="assay",
-        instructions=f"Term ID from the OBI 'assay' branch for the technique used to generate the primary data, e.g. bulk RNA-seq assay OBI:0003090, single-cell RNA sequencing assay OBI:0002631, single-nucleus RNA sequencing assay OBI:0003109, microarray OBI:0400147. If you can't find the term you need, use the branch root term {OBI_ASSAY_ROOT} and the gEAR team will follow up with you.",
+        instructions=f"Term ID from the OBI 'assay' branch for the technique used to generate the primary data, e.g. bulk RNA-seq assay OBI:0003090, single-cell RNA sequencing assay OBI:0002631, single-nucleus RNA sequencing assay OBI:0003109, microarray OBI:0400147. If you can't find the term you need, use the branch root term {OBI_ASSAY_ROOT} and the curator team will follow up with you.",
         example="OBI:0002631",
         required=True, column="assay",
         pattern=r"OBI:\d{7}", pattern_hint="OBI: followed by the 7-digit term number",
@@ -199,7 +205,7 @@ FIELDS = (
     ),
     MetadataField(
         name="primary_analysis_completed",
-        instructions="A primary analysis is the clustering and dimensionality reduction (UMAP, tSNE or PCA) run on the data before uploading, for example in Seurat or Scanpy. Choose Yes if the observation (sample) metadata includes its cluster assignments or coordinates; gEAR then checks that it can find them. Otherwise No.",
+        instructions="A primary analysis is the clustering and dimensionality reduction (UMAP, tSNE or PCA) run on the data before uploading, for example in Seurat or Scanpy. Choose Yes if the observation (sample) metadata includes its cluster assignments or coordinates; the portal then checks that it can find them. Otherwise No.",
         example="No",
         required=True, choices=YES_NO,
     ),
@@ -244,7 +250,7 @@ SAMPLE_FIELDS = (
                 "The treatment or condition the sample was exposed to. Provide a brief but descriptive name.", "Control"),
     SampleField("treatment_label", "Optional", "Shortened treatment label for displays. Maximum 20 characters.", "ctr"),
     SampleField("UMAP_1", "Required if primary analysis is completed",
-                "Dimensionality reduction coordinates, one column per component. gEAR recognizes UMAP_1/UMAP_2, "
+                "Dimensionality reduction coordinates, one column per component. The portal recognizes UMAP_1/UMAP_2, "
                 "tSNE_1/tSNE_2 and PCA_1/PCA_2 (or PC_1/PC_2). Coordinates from other methods (e.g. SWNE) can be "
                 "included, but must be chosen by hand in the dataset curator to be plotted.", "1.234"),
     SampleField("UMAP_2", "Required if primary analysis is completed", "Second component; see UMAP_1.", "-0.567"),
@@ -323,6 +329,9 @@ def normalize_value(name: str, value):
         m = re.fullmatch(r"(?:PMID:?)?\s*(\d+)", value, re.IGNORECASE)
         if m:
             return f"PMID:{m.group(1)}"
+    elif name == "pi_name":
+        # Runs of spaces would make the same name look like a different PI
+        return re.sub(r"\s+", " ", value)
     elif name in ("device", "assay"):
         m = re.fullmatch(r"OBI[:_]\s*(\d{7})", value, re.IGNORECASE)
         if m:

@@ -81,7 +81,7 @@ def split_term_ids(value) -> list[str]:
 
 
 def get_recommended_obs_columns() -> list[str]:
-    """Sample metadata columns this portal asks for, from gear.ini [dataset_uploader] recommended_obs_columns."""
+    """Sample metadata columns the portal asks for, from gear.ini [dataset_uploader] recommended_obs_columns."""
     config = ServerConfig().parse()
     value = config.get("dataset_uploader", "recommended_obs_columns", fallback=None)
     if value is None:
@@ -277,8 +277,9 @@ def annotate_sample_metadata(obs: pd.DataFrame, recommended_columns=None) -> tup
         values = [part for value in obs[column].astype(object).unique() for part in split_term_ids(value)]
         stand_ins = sorted({v for v in values if is_missing_value_stand_in(v)})
         if stand_ins:
-            warnings.append(f"Column `{column}`: to say a value is missing, use one of {', '.join(MISSING_VALUES)} "
-                            f"instead of: {_preview(stand_ins)}")
+            accepted = ", ".join(f'"{v}"' for v in MISSING_VALUES)
+            used = _preview([f'"{v}"' for v in stand_ins])
+            warnings.append(f"Column `{column}`: to say a value is missing, use one of {accepted} instead of: {used}")
 
     missing = [c for c in recommended_columns if find_obs_column(obs, c) is None]
     if missing:

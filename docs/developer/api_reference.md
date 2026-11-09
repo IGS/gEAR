@@ -431,6 +431,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `get_citation_from_pubmed_id.cgi` | Fetch a formatted citation for a PubMed ID (cached, throttled); HTTP 400 for a missing or non-numeric ID | pubmed_id |
 | `get_event_registration_list.cgi` | Report event attendance and the user's registration/waitlist status | session_id, min_event_id, max_event_id |
 | `get_organism_list.cgi` | List organisms in the database | (none) |
+| `get_pi_names.cgi` | PI names already given for public datasets and the user's own, each with its most common institute, for the uploader's PI suggestions | session_id (optional) |
 | `get_tag_list.cgi` | Return tags for comment-form autocomplete | (none) |
 | `load_comment.cgi` | Store a user question/comment and tags in the database | submitter_firstname, submitter_lastname, submitter_email, comment_title, comment, comment_tag, super_impressive_security_check |
 | `process_contact.py` | Save a contact-form submission to a file | submitterName, InputEmail, keep_updated, super_impressive_security_check, comments |

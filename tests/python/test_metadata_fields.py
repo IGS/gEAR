@@ -47,6 +47,7 @@ VALID = {
     ("dataset_type", "gosling", "gosling"),
     ("log_transformation", "log2 TRANSFORMATION", "log2 transformation"),
     ("primary_analysis_completed", "yes", "Yes"),
+    ("pi_name", "  Jane   Doe ", "Jane Doe"),
     ("title", "  padded  ", "padded"),
     ("title", "", None),
     ("title", float("nan"), None),

@@ -390,7 +390,7 @@ def get_metadata_by_share_id(share_id=None):
                 library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name,
                 annotation_source, annotation_release, repository_accession, device, assay, library_cons_method,
                 rna_extraction_method, microarray_hybridization_protocol, normalization_method, log_transformation,
-                primary_analysis_completed, file_format
+                primary_analysis_completed, file_format, pi_name
            FROM dataset
           WHERE share_id = %s
     """
@@ -428,6 +428,7 @@ def get_metadata_by_share_id(share_id=None):
         "contact_email": row["contact_email"],
         "contact_institute": row["contact_institute"],
         "contact_name": row["contact_name"],
+        "pi_name": row["pi_name"],
         "annotation_source": row["annotation_source"],
         "annotation_release": row["annotation_release"],
         "assay": with_label(row["assay"]),
@@ -2453,6 +2454,7 @@ class Dataset:
     metadata_version: str | None = None
     metadata_source: str | None = None
     curation_flags: str | None = None
+    pi_name: str | None = None
     # derived, here for convenience
     gene_count: int | None = None
     obs_count: int | None = None

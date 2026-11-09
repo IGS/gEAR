@@ -105,6 +105,33 @@ const toggleMicroarrayFields = () => {
 }
 
 /**
+ * Fills the principal investigator suggestions with PI names already in gEAR, so a PI is chosen
+ * instead of typed again with a different spelling. Each is shown with its institute, to tell
+ * apart PIs who share a name. The field still takes a new name.
+ */
+const loadPiNameOptions = async () => {
+    let piNames = [];
+    try {
+        const {data} = await axios.post('./cgi/get_pi_names.cgi', convertToFormData({
+            session_id: getCurrentUser()?.session_id
+        }));
+        piNames = data.pi_names || [];
+    } catch (error) {
+        // Suggestions are a convenience; the field works without them
+        console.error('Could not load PI names', error);
+        return;
+    }
+
+    const datalist = document.getElementById('metadata-pi-name-options');
+    datalist.replaceChildren(...piNames.map(({name, institute}) => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.label = institute ? `${name} (${institute})` : name;
+        return option;
+    }));
+}
+
+/**
  * Checks the current processing status of the dataset by making an asynchronous request
  * to the server. Updates the UI elements to reflect the current status, message, and progress.
  * If processing is complete, enables the dataset processing submit button.
@@ -1559,6 +1586,7 @@ await initCommonUI();
 await initPage();
 await loadMetadataFields();
 toggleMicroarrayFields();
+loadPiNameOptions();   // not awaited; the form doesn't need the suggestions to load
 
 /* --- Event listeners --- */
 
@@ -1783,6 +1811,11 @@ document.getElementById('metadata-geo-lookup').addEventListener('click', (event)
     button.disabled = true;
     button.classList.add('is-loading');
     const getData = getGeoData();
+});
+
+document.getElementById('metadata-pi-name-use-contact').addEventListener('click', (e) => {
+    e.preventDefault();
+    setMetadataValue('pi_name', getMetadataValue('contact_name').trim());
 });
 
 metadataElement('dataset_type').addEventListener('change', (e) => {

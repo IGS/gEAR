@@ -12,5 +12,6 @@ ALTER TABLE dataset
   DROP COLUMN file_format,
   DROP COLUMN metadata_version,
   DROP COLUMN metadata_source,
-  DROP COLUMN curation_flags;
+  DROP COLUMN curation_flags,
+  DROP COLUMN pi_name;
 ALTER TABLE dataset MODIFY annotation_release VARCHAR(25);

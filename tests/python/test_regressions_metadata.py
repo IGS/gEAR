@@ -167,6 +167,26 @@ def test_ontology_terms_and_keywords_are_saved(tmp_path, cursor):
     assert tags == [("Atoh1 knockout",), ("hair cells",)]
 
 
+def test_pi_name_takes_known_spelling(tmp_path, cursor):
+    """A PI name another dataset already has, typed differently, is saved with that dataset's spelling."""
+    cursor.fetchone.return_value = ("Jane Doe",)
+    row = save(tmp_path, cursor, pi_name=" jane   doe ")
+    assert row["pi_name"] == "Jane Doe"
+    lookup, = [c.args for c in cursor.execute.call_args_list if c.args[0].startswith("SELECT pi_name")]
+    assert lookup[1] == ("jane doe", "DS1")
+
+
+def test_new_pi_name_is_kept(tmp_path, cursor):
+    cursor.fetchone.return_value = None
+    assert save(tmp_path, cursor, pi_name="Jane Doe")["pi_name"] == "Jane Doe"
+
+
+def test_blank_pi_name_is_null(tmp_path, cursor):
+    row = save(tmp_path, cursor, pi_name="  ")
+    assert row["pi_name"] is None
+    assert not any(c.args[0].startswith("SELECT pi_name") for c in cursor.execute.call_args_list)
+
+
 # ---------------------------------------------------------------- update_dataset_metadata
 
 
@@ -201,3 +221,11 @@ def test_update_replaces_ontology_terms(cursor):
     assert ("DELETE FROM dataset_ontology_term WHERE dataset_id = %s AND field = %s", ("DS1", "cell_type")) in statements
     assert any("INSERT INTO dataset_ontology_term" in sql and params == ("DS1", "cell_type", "CL:0000601")
                for sql, params in statements)
+
+
+def test_update_pi_name_takes_known_spelling(cursor):
+    cursor.fetchone.side_effect = [(1, None), ("Jane Doe",)]
+    md.update_dataset_metadata("DS1", {"pi_name": "jane doe"}, source="backfill-llm")
+    (sql, params), = [c.args for c in cursor.execute.call_args_list if c.args[0].startswith("UPDATE dataset")]
+    columns = [a.split(" = ")[0] for a in sql.removeprefix("UPDATE dataset SET ").split(" WHERE")[0].split(", ")]
+    assert dict(zip(columns, params))["pi_name"] == "Jane Doe"

@@ -236,10 +236,12 @@ CREATE TABLE dataset (
        metadata_version         VARCHAR(10), -- version of the metadata template the row was filled from
        metadata_source          VARCHAR(30), -- options: 'uploader', 'curator', 'backfill-llm'
        curation_flags           TEXT, -- JSON list of issues a curator should follow up on
+       pi_name                  VARCHAR(100), -- principal investigator (lab head), for finding a lab's datasets
 
        FULLTEXT                 text_idx (title, ldesc),
        FULLTEXT                 text_with_geo_idx (title, ldesc, geo_id),
        FULLTEXT                 text_with_geo_pubmed_idx (title, ldesc, geo_id, pubmed_id),
+       INDEX                    idx_pi_name (pi_name),
        FOREIGN KEY (owner_id)
           REFERENCES guser(id)
           ON DELETE CASCADE,

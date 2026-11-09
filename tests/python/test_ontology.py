@@ -157,10 +157,10 @@ def test_missing_value_stand_ins_are_warnings(fake_lookup):
                         "notes": ["n/a", "n/a"]})
     obs, summary = ontology.annotate_sample_metadata(obs, recommended_columns=["tissue_ontology", "age_value"])
     # Only recommended and term ID columns are checked, and each problem is reported once
-    accepted = "not applicable, not collected, not provided, restricted access, missing, unavailable"
+    accepted = '"not applicable", "not collected", "not provided", "restricted access", "missing", "unavailable"'
     assert summary["warnings"] == [
-        f"Column `tissue_ontology`: to say a value is missing, use one of {accepted} instead of: N/A",
-        f"Column `Age_Value`: to say a value is missing, use one of {accepted} instead of: unknown",
+        f'Column `tissue_ontology`: to say a value is missing, use one of {accepted} instead of: "N/A"',
+        f'Column `Age_Value`: to say a value is missing, use one of {accepted} instead of: "unknown"',
     ]
     assert obs["tissue_ontology_name"].tolist() == ["blood", "N/A"]
 

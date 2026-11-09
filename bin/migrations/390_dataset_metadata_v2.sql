@@ -23,7 +23,9 @@ ALTER TABLE dataset
     ADD COLUMN file_format VARCHAR(30),
     ADD COLUMN metadata_version VARCHAR(10),
     ADD COLUMN metadata_source VARCHAR(30),
-    ADD COLUMN curation_flags TEXT;
+    ADD COLUMN curation_flags TEXT,
+    ADD COLUMN pi_name VARCHAR(100),
+    ADD INDEX idx_pi_name (pi_name);
 
 CREATE TABLE ontology_term (
        term_id                  VARCHAR(30) PRIMARY KEY,

@@ -382,6 +382,7 @@ class Metadata:
         contact_email = get_value_from_df(df, 'contact_email')
         contact_institute = get_value_from_df(df, 'contact_institute')
         contact_name = get_value_from_df(df, 'contact_name')
+        pi_name = match_known_pi_name(cursor, mf.normalize_value('pi_name', get_value_from_df(df, 'pi_name')), dataset_uid)
         annotation_source, annotation_release = mf.parse_reference_annotation(get_value_from_df(df, 'reference_annot_id'))
         default_plot_type = get_value_from_df(df, 'default_plot_type')
         user_pii_affirmed = get_value_from_df(df, 'user_pii_affirmed')
@@ -404,8 +405,8 @@ class Metadata:
         curation_flags = json.dumps(self.curation_flags) if self.curation_flags else None
 
         add_dataset_sql = """
-        REPLACE INTO dataset (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added, dtype, schematic_image, share_id, math_default, load_status, has_h5ad, platform_id, instrument_model, library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name, annotation_source, annotation_release, plot_default, user_pii_affirmed, repository_accession, device, assay, library_cons_method, rna_extraction_method, microarray_hybridization_protocol, normalization_method, log_transformation, primary_analysis_completed, file_format, metadata_version, metadata_source, curation_flags)
-        VALUES              (%s, %s,       %s,    %s,          %s,        %s,     %s,        %s,    NOW(),      %s,    %s,              %s,       %s,           %s,          %s,       %s,          %s,               %s,                %s,             %s,               %s,            %s,                %s,           %s,                %s,                 %s,           %s,                %s,                   %s,     %s,    %s,                  %s,                    %s,                                %s,                   %s,                 %s,                         %s,          %s,               %s,              %s)
+        REPLACE INTO dataset (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added, dtype, schematic_image, share_id, math_default, load_status, has_h5ad, platform_id, instrument_model, library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name, annotation_source, annotation_release, plot_default, user_pii_affirmed, repository_accession, device, assay, library_cons_method, rna_extraction_method, microarray_hybridization_protocol, normalization_method, log_transformation, primary_analysis_completed, file_format, metadata_version, metadata_source, curation_flags, pi_name)
+        VALUES              (%s, %s,       %s,    %s,          %s,        %s,     %s,        %s,    NOW(),      %s,    %s,              %s,       %s,           %s,          %s,       %s,          %s,               %s,                %s,             %s,               %s,            %s,                %s,           %s,                %s,                 %s,           %s,                %s,                   %s,     %s,    %s,                  %s,                    %s,                                %s,                   %s,                 %s,                         %s,          %s,               %s,              %s,             %s)
         """
 
         # Insert dataset info to database
@@ -417,7 +418,7 @@ class Metadata:
                                              contact_institute, contact_name, annotation_source, annotation_release, default_plot_type,
                                              user_pii_affirmed, repository_accession, device, assay, library_cons_method,
                                              rna_extraction_method, microarray_hybridization_protocol, normalization_method, log_transformation, primary_analysis_completed,
-                                             file_format, mf.METADATA_VERSION, source, curation_flags,))
+                                             file_format, mf.METADATA_VERSION, source, curation_flags, pi_name,))
             cnx.commit()
         except mysql.connector.Error as err:
             raise Exception("Failed to insert metadata: {0}".format(err))
@@ -514,6 +515,21 @@ def find_curation_flags(values: dict, organism_id: int | None = None) -> dict:
             flags[f'{field}_root_term'] = warnings[field]
 
     return flags
+
+
+def match_known_pi_name(cursor, pi_name: str | None, dataset_id: str) -> str | None:
+    """
+    Return the spelling another dataset already uses for this PI name, so "jane doe" is saved as
+    "Jane Doe" if that's how it was entered before. Otherwise return the name as given.
+
+    The match ignores case because the dataset table's collation does. dataset_id is left out of the
+    search, so a dataset's own old spelling doesn't win over a correction to it.
+    """
+    if not pi_name:
+        return pi_name
+    cursor.execute("SELECT pi_name FROM dataset WHERE pi_name = %s AND id != %s LIMIT 1", (pi_name, dataset_id))
+    row = cursor.fetchone()
+    return row[0] if row and row[0] else pi_name
 
 
 def save_dataset_keywords(cursor, cnx, dataset_id: str, keywords: list[str]) -> None:
@@ -640,6 +656,9 @@ def update_dataset_metadata(dataset_id: str, values: dict, source: str) -> dict:
                 existing_flags.pop(flag, None)
         curation_flags = {**existing_flags, **curation_flags}
         columns['curation_flags'] = json.dumps(curation_flags) if curation_flags else None
+
+        if 'pi_name' in columns:
+            columns['pi_name'] = match_known_pi_name(cursor, columns['pi_name'], dataset_id)
 
         # Column names come from gear.metadata_fields, never from the caller
         assignments = ", ".join(f"{column} = %s" for column in columns)

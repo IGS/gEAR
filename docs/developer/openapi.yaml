@@ -3919,6 +3919,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cgi1TagList'
+  /cgi/get_pi_names.cgi:
+    post:
+      operationId: cgiGetPiNames
+      tags:
+      - Datasets
+      summary: List PI names already given for datasets (uploader suggestions)
+      description: Distinct pi_name values from public datasets and the user's own, ignoring case, each with the contact institute most often given with it. Without a valid session_id only public datasets are used.
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+      responses:
+        '200':
+          description: PI names.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: integer
+                  pi_names:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        institute:
+                          type: string
   /cgi/get_unweighted_gene_cart_preview.cgi:
     post:
       operationId: cgiGetUnweightedGeneCartPreview
@@ -6535,6 +6569,9 @@ paths:
                   type: string
                 contact_institute:
                   type: string
+                pi_name:
+                  type: string
+                  description: Principal investigator (optional). Saved with the spelling another dataset already uses for the name, ignoring case.
                 title:
                   type: string
                 summary:

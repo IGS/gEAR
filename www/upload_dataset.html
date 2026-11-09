@@ -374,6 +374,25 @@
                             </div>
                           </div>
                         </div>
+                        <div class="columns">
+                          <div class="column is-4">
+                            <div class="field">
+                              <label class="label" for="metadata-pi-name">
+                                Principal investigator
+                                <span class="icon has-tooltip-right has-tooltip-arrow has-tooltip-multiline"
+                                      data-tooltip="First and last name of the lab head responsible for the dataset, used to find a lab's datasets. For more than one PI, give the lead PI. Leave blank if there is no single PI.">
+                                    <i class="mdi mdi-information"></i>
+                                </span>
+                              </label>
+                              <div class="control">
+                                <input class="input" type="text" id="metadata-pi-name" name="metadata-pi-name" placeholder="Ex: Jane Doe" list="metadata-pi-name-options" autocomplete="off">
+                                <datalist id="metadata-pi-name-options"></datalist>
+                              </div>
+                              <p class="help">Please check whether the PI is already listed before adding a new name. Start typing and choose from the suggestions, so all of a lab's datasets are found under one name.</p>
+                              <p class="help"><a id="metadata-pi-name-use-contact" href="#">Same as contact name</a></p>
+                            </div>
+                          </div>
+                        </div>
                         <hr />
                         <h3>Publication and repository</h3>
                         <div class="columns">
@@ -418,7 +437,7 @@
                               <label class="label" for="metadata-sample-taxid">
                                 Taxonomy ID <span class="has-text-danger-dark">*</span>
                                 <span class="icon has-tooltip-right has-tooltip-arrow has-tooltip-multiline"
-                                      data-tooltip="NCBI taxonomy ID of the one species the samples come from, e.g. human NCBI:txid9606, mouse NCBI:txid10090, rat NCBI:txid10116, zebrafish NCBI:txid7955. gEAR datasets can only hold one species. If your study has samples from more than one species, split the data by species and upload each as its own dataset.">
+                                      data-tooltip="NCBI taxonomy ID of the one species the samples come from, e.g. human NCBI:txid9606, mouse NCBI:txid10090, rat NCBI:txid10116, zebrafish NCBI:txid7955. A dataset can only hold one species. If your study has samples from more than one species, split the data by species and upload each as its own dataset.">
                                     <i class="mdi mdi-information"></i>
                                 </span>
                                 <span class="is-pulled-right">
@@ -436,7 +455,7 @@
                               <label class="label" for="metadata-reference-annot-id">
                                 Reference annotation <span class="has-text-danger-dark">*</span>
                                 <span class="icon has-tooltip-right has-tooltip-arrow has-tooltip-multiline"
-                                      data-tooltip="The genome annotation your data were aligned to, written as source:version. For Ensembl, give the release number (Ensembl:93). For GenBank or RefSeq, give the assembly ID (RefSeq:GCF_000001635.27). If gEAR doesn&#x27;t have it yet, you can still upload and the gEAR team will follow up.">
+                                      data-tooltip="The genome annotation your data were aligned to, written as source:version. For Ensembl, give the release number (Ensembl:93). For GenBank or RefSeq, give the assembly ID (RefSeq:GCF_000001635.27). If this portal doesn&#x27;t have it yet, you can still upload and the curator team will follow up.">
                                     <i class="mdi mdi-information"></i>
                                 </span>
                               </label>
@@ -454,7 +473,7 @@
                               <label class="label" for="metadata-assay">
                                 Assay (OBI term) <span class="has-text-danger-dark">*</span>
                                 <span class="icon has-tooltip-right has-tooltip-arrow has-tooltip-multiline"
-                                      data-tooltip="OBI &#x27;assay&#x27; term for the technique used, e.g. bulk RNA-seq assay OBI:0003090, single-cell RNA sequencing assay OBI:0002631, single-nucleus RNA sequencing assay OBI:0003109, microarray OBI:0400147. If you can&#x27;t find your term, use OBI:0000070 and the gEAR team will follow up.">
+                                      data-tooltip="OBI &#x27;assay&#x27; term for the technique used, e.g. bulk RNA-seq assay OBI:0003090, single-cell RNA sequencing assay OBI:0002631, single-nucleus RNA sequencing assay OBI:0003109, microarray OBI:0400147. If you can&#x27;t find your term, use OBI:0000070 and the curator team will follow up.">
                                     <i class="mdi mdi-information"></i>
                                 </span>
                                 <span class="is-pulled-right">
@@ -472,7 +491,7 @@
                               <label class="label" for="metadata-device">
                                 Device (OBI term) <span class="has-text-danger-dark">*</span>
                                 <span class="icon has-tooltip-right has-tooltip-arrow has-tooltip-multiline"
-                                      data-tooltip="OBI &#x27;device&#x27; term for the instrument used, e.g. Illumina NovaSeq 6000 OBI:0002630, Illumina HiSeq 2500 OBI:0002002, PacBio Sequel II OBI:0002633. If you can&#x27;t find your term, use OBI:0000968 and the gEAR team will follow up.">
+                                      data-tooltip="OBI &#x27;device&#x27; term for the instrument used, e.g. Illumina NovaSeq 6000 OBI:0002630, Illumina HiSeq 2500 OBI:0002002, PacBio Sequel II OBI:0002633. If you can&#x27;t find your term, use OBI:0000968 and the curator team will follow up.">
                                     <i class="mdi mdi-information"></i>
                                 </span>
                                 <span class="is-pulled-right">
@@ -583,7 +602,7 @@
                               <p class="label">
                                 Primary analysis
                                 <span class="icon has-tooltip-left has-tooltip-arrow has-tooltip-multiline"
-                                      data-tooltip="A primary analysis is the clustering and dimensionality reduction (UMAP, tSNE or PCA) you ran on your data before uploading, for example in Seurat or Scanpy. Check this if your cell metadata includes cluster assignments or embedding coordinates. gEAR will look for them and let you know if it can't find them.">
+                                      data-tooltip="A primary analysis is the clustering and dimensionality reduction (UMAP, tSNE or PCA) you ran on your data before uploading, for example in Seurat or Scanpy. Check this if your cell metadata includes cluster assignments or embedding coordinates. The portal will look for them and let you know if it can't find them.">
                                     <i class="mdi mdi-information"></i>
                                 </span>
                               </p>
@@ -1109,7 +1128,7 @@ Currently Gosling only supports single-organism tracks">
                 <div id="step-post-process-dataset-c" class="step-c is-hidden">
                   <h1>Step - Dataset Post-Processing</h1>
                   <p>
-                    Your dataset has been converted into a format that can be used by the gEAR platform. This step is optional, but asks questions that may clear up various issues, such as ambiguous data types.
+                    Your dataset has been converted into a format that can be used by the portal. This step is optional, but asks questions that may clear up various issues, such as ambiguous data types.
                   </p>
                   <hr />
 
