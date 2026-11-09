@@ -284,6 +284,20 @@ const finalizeUpload = async () => {
 }
 
 /**
+ * Shows the result of filling in the metadata form from a spreadsheet, with a green check or a red alert icon.
+ *
+ * @param {string} message - The message to show.
+ * @param {boolean} succeeded - Whether the form was filled in.
+ */
+const showMetadataUploadStatus = (message, succeeded) => {
+    const icon = document.getElementById('metadata-upload-status-icon');
+    icon.className = `mdi ${succeeded ? 'mdi-check-circle' : 'mdi-alert-circle'}`;
+    icon.parentElement.className = `icon ${succeeded ? 'has-text-success-dark' : 'has-text-danger-dark'}`;
+    document.getElementById('metadata-upload-status-message').textContent = message;
+    document.getElementById('metadata-upload-status').classList.remove('is-hidden');
+}
+
+/**
  * Asynchronously populates the metadata form fields with values parsed from an uploaded metadata file.
  * Utilizes the `apiCallsMixin.parseMetadataFile` method to extract metadata from the uploaded file,
  * and fills the corresponding form fields if parsing is successful. Handles both success and error states,
@@ -311,17 +325,16 @@ const populateMetadataFormFromFile = async () => {
         // Fire the change listener so spatial gets auto-checked/enabled same as a manual selection
         datasetTypeSelect.dispatchEvent(new Event('change'));
 
-        document.getElementById('metadata-upload-status-message').textContent = "Form populated with uploaded metadata";
+        showMetadataUploadStatus("Form populated with uploaded metadata", true);
         button.disabled = false;
 
     } else {
         // Display error message, and clear out the file selected
-        document.getElementById('metadata-upload-status-message').textContent = data.message;
+        showMetadataUploadStatus(data.message, false);
         document.getElementById('metadata-file-name').textContent = 'No file selected';
     }
 
     // change spinner back to submit button
-    document.getElementById('metadata-upload-status').classList.remove('is-hidden');
     button.classList.remove('is-loading');
 }
 
