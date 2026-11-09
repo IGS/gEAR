@@ -697,9 +697,10 @@ class Settings(param.Parameterized):
     filename = param.String(doc="Filename for the dataframe to retrieve")
     dataset_id = param.String(doc="Dataset ID to display")
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
-    expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
-    vmin = param.Number(doc="User-defined expression colorbar minimum", allow_None=True)
-    vmax = param.Number(doc="User-defined expression colorbar maximum", allow_None=True)
+    # NOTE: param.Number defaults to 0.0 even with allow_None=True, so default=None must be explicit
+    expression_min_clip = param.Number(doc="Minimum expression value to clip", default=None, allow_None=True)
+    vmin = param.Number(doc="User-defined expression colorbar minimum", default=None, allow_None=True)
+    vmax = param.Number(doc="User-defined expression colorbar maximum", default=None, allow_None=True)
 
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False
