@@ -256,8 +256,10 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if self.expression_98 == 0:
             self.expression_98 = None
 
-        # Expression colorbar limits. User-defined bounds take priority over 0 and the 98th-percentile.
-        self.cbar_min = self.settings.vmin
+        # Expression colorbar limits. User-defined bounds take priority over the defaults.
+        # The minimum defaults to 0, or the data minimum if there are negative values (e.g. log-transformed data).
+        data_min = float(self.df["raw_value"].min())
+        self.cbar_min = self.settings.vmin if self.settings.vmin is not None else min(0.0, data_min)
         self.cbar_max = self.settings.vmax if self.settings.vmax is not None else self.expression_98
         if self.settings.vmax is None and self.cbar_min is not None \
             and self.cbar_max is not None and self.cbar_min >= self.cbar_max:

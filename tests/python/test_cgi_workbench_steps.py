@@ -237,6 +237,58 @@ class TestGeneratePca:
         assert (figures / "pca.png").exists()
 
 
+
+# ---------------------------------------------------------------- h5ad_generate_tsne.cgi
+
+class TestGenerateTsne:
+    @pytest.fixture(autouse=True)
+    def needs_scanpy(self):
+        pytest.importorskip("scanpy")
+
+    @staticmethod
+    def analysis_with_pca(tmp_path, adata_builder, n_obs):
+        """Store the first n_obs cells, with a PCA, as the user's unsaved analysis (as the PCA step leaves it);
+        return the number of PCs."""
+        import scanpy as sc
+        adata = adata_builder()[:n_obs].copy()
+        sc.pp.pca(adata, n_comps=min(n_obs - 1, 10))
+        write_analysis(tmp_path, adata, "user_unsaved", "owner", "A1")
+        return adata.obsm["X_pca"].shape[1]
+
+    def run(self, tmp_path, n_pcs, **query):
+        query = {"dataset_id": "DS1", "analysis_id": "A1", "analysis_type": "user_unsaved", "session_id": "owner",
+                 "n_pcs": str(n_pcs), "n_neighbors": "15", "random_state": "2", "genes_to_color": "",
+                 "use_scaled": "false", "compute_neighbors": "1", "compute_tsne": "1", "compute_umap": "0",
+                 "plot_tsne": "1", "plot_umap": "0", **query}
+        result = run_step(tmp_path, "h5ad_generate_tsne.cgi", **query)
+        assert result.returncode == 0, result.stderr[-3000:]
+        return result.json()
+
+    def test_default_perplexity(self, tmp_path, adata_builder):
+        n_pcs = self.analysis_with_pca(tmp_path, adata_builder, 60)
+        assert self.run(tmp_path, n_pcs) == {"success": 1, "missing_gene": ""}
+
+    def test_perplexity_lowered_for_few_observations(self, tmp_path, adata_builder):
+        import anndata
+        # scikit-learn's default perplexity (30) must be less than the number of observations
+        n_pcs = self.analysis_with_pca(tmp_path, adata_builder, 4)
+        body = self.run(tmp_path, n_pcs)
+        assert body["success"] == 1
+        assert body["warning"] == ("tSNE perplexity was lowered from 30 to 3 because this dataset only has"
+                                   " 4 observations.")
+        assert "X_tsne" in anndata.read_h5ad(unsaved_dir(tmp_path) / "DS1.h5ad").obsm
+
+    def test_failed_computation_returns_error(self, tmp_path, adata_builder):
+        import anndata
+        # UMAP's spectral layout fails on three observations
+        n_pcs = self.analysis_with_pca(tmp_path, adata_builder, 3)
+        body = self.run(tmp_path, n_pcs, compute_tsne="0", plot_tsne="0", compute_umap="1", plot_umap="1")
+        assert body["success"] == 0
+        assert body["error"].startswith("Could not compute UMAP for this dataset (3 observations): ")
+        assert "bulk RNA-seq" in body["error"]
+        # Nothing is saved over the stored analysis
+        assert "neighbors" not in anndata.read_h5ad(unsaved_dir(tmp_path) / "DS1.h5ad").uns
+
 def _load_cgi(name):
     """Import a CGI as a module, restoring sys.stdout (step CGIs redirect it to /dev/null on import)."""
     stdout = sys.stdout

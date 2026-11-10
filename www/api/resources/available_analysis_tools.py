@@ -6,53 +6,8 @@ Serves /h5ad/<share_uid>/availableAnalysisTools in www/api/api.py.
 
 import geardb
 from flask_restful import Resource
+from gear.analysis_tools import ANALYSIS_TOOL_DTYPES
 
-tools = {
-    "dataset-curator": [
-        "single-cell-rnaseq",
-        "single-nucleus-rnaseq",
-        "bulk-rnaseq",
-        "bargraph-standard",
-        "microarray",
-        "svg-expression",
-        "atac-seq",
-        "violin-standard",
-        "spatial",
-        "sc-rna-seq",
-        "linegraph-standard"
-    ],
-    "multigene-viewer": [
-        "single-cell-rnaseq",
-        "single-nucleus-rnaseq",
-        "bulk-rnaseq",
-        "bargraph-standard",
-        "microarray",
-        "atac-seq",
-        "violin-standard",
-        "spatial",
-        "sc-rna-seq",
-        "linegraph-standard"
-    ],
-    "compare-tool": [
-        "single-cell-rnaseq",
-        "single-nucleus-rnaseq",
-        "bulk-rnaseq",
-        "bargraph-standard",
-        "microarray",
-        "atac-seq",
-        "violin-standard",
-        "spatial",
-        "sc-rna-seq",
-        "linegraph-standard"
-    ],
-    "sc-workbench": [
-        "single-cell-rnaseq",
-        "single-nucleus-rnaseq",
-        "atac-seq",
-        "spatial",
-        "sc-rna-seq"
-    ]
-}
 
 class AvailableAnalysisTools(Resource):
     """Available Analysis Tools
@@ -75,7 +30,7 @@ class AvailableAnalysisTools(Resource):
 
         # return dict with [tool_name]: <boolean> indicating availability
         available_tools = {}
-        for tool_name, dtypes in tools.items():
+        for tool_name, dtypes in ANALYSIS_TOOL_DTYPES.items():
             available_tools[tool_name] = dtype in dtypes
 
         return {
