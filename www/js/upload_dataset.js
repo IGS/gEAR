@@ -1247,6 +1247,8 @@ const ambiguousColumnName = (select) => select.dataset.column;
 // Primary variable candidates from the last review response (#435), keyed by column name
 let primaryVariableCandidates = {};
 let primaryVariableReviewed = false;
+// The most values a primary variable can have (gear.utils.obs.MAX_CATEGORIES)
+let primaryVariableMaxValues = Infinity;
 
 /**
  * Shows a choice of the column the dataset is mainly about (its primary variable), used to build
@@ -1260,6 +1262,7 @@ const renderPrimaryVariablePicker = (data) => {
     // Nothing to offer once the choice has been saved (e.g. the user came back to this upload)
     primaryVariableReviewed = Boolean(data.primary_variable_reviewed);
     primaryVariableCandidates = data.primary_variable_candidates || {};
+    primaryVariableMaxValues = data.primary_variable_max_values ?? Infinity;
     document.getElementById('primary-variable-select').value = '';
     return refreshPrimaryVariableOptions();
 }
@@ -1278,12 +1281,15 @@ const refreshPrimaryVariableOptions = () => {
 
     const columns = primaryVariableReviewed ? []
         : Object.entries(primaryVariableCandidates).map(([name, info]) => [name, info.n_unique]);
-    // Ambiguous numeric columns can be chosen once the user marks them categorical
+    // Ambiguous numeric columns can be chosen once the user marks them categorical, if they have
+    // few enough values (columns named like "cluster" are flagged even with more)
     if (!primaryVariableReviewed && !document.getElementById('ambiguous-cols-dtypes-c').classList.contains('is-hidden')) {
         for (const ambiguousSelect of document.getElementById('ambiguous-cols-review-c').querySelectorAll('select')) {
             const colName = ambiguousColumnName(ambiguousSelect);
-            if (ambiguousSelect.value === 'categorical' && !(colName in primaryVariableCandidates)) {
-                columns.push([colName, Number(ambiguousSelect.dataset.nUnique)]);
+            const nUnique = Number(ambiguousSelect.dataset.nUnique);
+            if (ambiguousSelect.value === 'categorical' && !(colName in primaryVariableCandidates)
+                && !(nUnique > primaryVariableMaxValues)) {
+                columns.push([colName, nUnique]);
             }
         }
     }

@@ -22,6 +22,7 @@ from pathlib import Path
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.utils.obs import MAX_CATEGORIES
 from werkzeug.utils import secure_filename
 
 user_upload_file_base = '../uploads/files'
@@ -78,6 +79,9 @@ def main():
     result['primary_variable_candidates'] = metadata.get('primary_variable_candidates', {})
     result['primary_variable'] = metadata.get('primary_variable')
     result['primary_variable_reviewed'] = metadata.get('primary_variable_reviewed', False)
+    # The most values a primary variable can have; flagged columns marked categorical are only
+    # offered within it (columns named like "cluster" are flagged even with more values)
+    result['primary_variable_max_values'] = MAX_CATEGORIES
     print(json.dumps(result))
 
 

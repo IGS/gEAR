@@ -22,7 +22,8 @@ Expects a POST with:
     share_uid
     choices           -- optional JSON string, e.g. '{"replicate": "categorical", "slide_id": "categorical"}'
     primary_variable  -- optional obs column name; an empty value removes the primary variable.
-                         Must be a categorical column once the choices are applied.
+                         Must be a categorical column once the choices are applied, with at most
+                         MAX_CATEGORIES (30) values.
 At least one of choices and primary_variable must be given.
 
 Updates the staged dataset file in:
@@ -41,7 +42,7 @@ sys.path.append(str(lib_path))
 import geardb
 from gear.analysis import ZarrAdapter
 from gear.ontology import OBS_COLUMN_MAP_KEY
-from gear.utils.obs import apply_obs_dtype_choices, is_categorical_obs_column
+from gear.utils.obs import MAX_CATEGORIES, apply_obs_dtype_choices, is_categorical_obs_column
 from werkzeug.utils import secure_filename
 
 user_upload_file_base = '../uploads/files'
@@ -57,6 +58,10 @@ def primary_variable_error(obs, primary_variable):
         return f'The primary variable "{primary_variable}" is not a column in the dataset.'
     if not is_categorical_obs_column(obs[primary_variable]):
         return f'The primary variable "{primary_variable}" must be a categorical column.'
+    n_values = int(obs[primary_variable].nunique(dropna=True))
+    if n_values > MAX_CATEGORIES:
+        return (f'The primary variable "{primary_variable}" has {n_values} values. '
+                f'Choose a column with at most {MAX_CATEGORIES}, so the default displays stay readable.')
     return None
 
 

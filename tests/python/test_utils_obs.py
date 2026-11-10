@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from gear.utils.obs import (
+    MAX_CATEGORIES,
     VALID_TSNE_PAIRS,
     VALID_UMAP_PAIRS,
     apply_obs_dtype_choices,
@@ -145,5 +146,13 @@ def test_primary_variable_candidates_limits():
     obs = pd.DataFrame({"many": [f"v{i % 50}" for i in range(100)],
                         "with_missing": ["a", None, "b"] * 33 + ["a"]})
     assert list(find_primary_variable_candidates(obs, max_unique=40)) == ["with_missing"]
-    assert find_primary_variable_candidates(obs)["many"]["sample_values"] == ["v0", "v1", "v10", "v11", "v12", "v13"]
+    assert find_primary_variable_candidates(obs, max_unique=50)["many"]["sample_values"] == ["v0", "v1", "v10", "v11", "v12", "v13"]
     assert find_primary_variable_candidates(obs)["with_missing"]["n_unique"] == 2
+
+
+def test_primary_variable_candidates_default_limit():
+    """By default a primary variable has at most 30 values, so the displays grouped by it stay readable."""
+    obs = pd.DataFrame({"thirty": [f"v{i % 30}" for i in range(60)],
+                        "thirty_one": [f"v{i % 31}" for i in range(60)]})
+    assert MAX_CATEGORIES == 30
+    assert list(find_primary_variable_candidates(obs)) == ["thirty"]

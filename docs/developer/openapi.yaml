@@ -1884,7 +1884,7 @@ paths:
                 primary_variable:
                   type: string
                   description: The obs column the dataset is mainly about, saved as uns["gear_obs_columns"]["primary_variable"].
-                    Must be categorical once the choices are applied. An empty value removes it.
+                    Must be categorical once the choices are applied, with at most 30 values. An empty value removes it.
       responses:
         '200':
           description: Result of applying the dtype choices.
@@ -2758,6 +2758,9 @@ paths:
                   primary_variable_reviewed:
                     type: boolean
                     description: metadata.json primary_variable_reviewed
+                  primary_variable_max_values:
+                    type: integer
+                    description: The most values a primary variable can have (gear.utils.obs.MAX_CATEGORIES, 30)
   /cgi/get_analysis_image.cgi:
     post:
       operationId: cgiGetAnalysisImage

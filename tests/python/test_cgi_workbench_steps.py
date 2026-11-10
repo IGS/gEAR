@@ -671,7 +671,7 @@ class TestGetAmbiguousObsColumns:
         assert self.run(session_id).json() == {"success": 1, "message": "", "questionable_columns": QUESTIONABLE,
                                                 "reviewed": False, "sample_metadata_warnings": [], "ontology_terms": {},
                                                 "primary_variable_candidates": {}, "primary_variable": None,
-                                                "primary_variable_reviewed": False}
+                                                "primary_variable_reviewed": False, "primary_variable_max_values": 30}
 
     def test_returns_primary_variable_choices(self, staged):
         session_id, share = staged
@@ -811,6 +811,21 @@ class TestApplyObsDtypeChoices:
         assert body == {"success": 0, "message": message}
         assert (share / "pytestshare.h5ad").read_bytes() == before
         assert (share / "metadata.json").read_text() == metadata_before
+
+    def test_primary_variable_with_too_many_values_changes_nothing(self, staged):
+        """A primary variable has at most 30 values, so the default displays grouped by it stay readable."""
+        anndata = pytest.importorskip("anndata")
+        import numpy as np
+        import pandas as pd
+        session_id, share = staged
+        obs = pd.DataFrame({"sample": pd.Categorical([f"s{i % 31}" for i in range(40)])},
+                           index=[f"c{i}" for i in range(40)])
+        anndata.AnnData(X=np.ones((40, 2), dtype=np.float32), obs=obs).write_h5ad(share / "pytestshare.h5ad")
+        before = (share / "pytestshare.h5ad").read_bytes()
+        body = self.run(session_id, None, primary_variable="sample").json()
+        assert body == {"success": 0, "message": 'The primary variable "sample" has 31 values. '
+                                                 'Choose a column with at most 30, so the default displays stay readable.'}
+        assert (share / "pytestshare.h5ad").read_bytes() == before
 
     @pytest.mark.parametrize("choices, logged_in, message", [
         (None, True, "session_id, share_uid, and choices or primary_variable are required."),

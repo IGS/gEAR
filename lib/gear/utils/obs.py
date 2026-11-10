@@ -30,6 +30,12 @@ VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
                     ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2'], ['umap_1', 'umap_2']]
 VALID_PCA_PAIRS = [['PCA_1', 'PCA_2'], ['PC_1', 'PC_2'], ['PC1', 'PC2'], ['pca_1', 'pca_2']]
 
+# The most values an obs column can have and still be treated as a set of groups: numeric columns
+# with more are assumed continuous (flag_ambiguous_obs_columns), and a primary variable can have no
+# more (find_primary_variable_candidates, apply_obs_dtype_choices.cgi), so the default displays
+# grouped by it (e.g. a heatmap, or a UMAP colored by it) stay readable.
+MAX_CATEGORIES = 30
+
 
 def find_cluster_column(cols: list) -> str | None:
     """
@@ -58,7 +64,7 @@ def find_column_pair(cols: list, pairs: list) -> list | None:
     return None
 
 
-def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
+def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = MAX_CATEGORIES) -> dict:
     """
     Identify obs columns whose current dtype looks questionable: numeric,
     but with few enough unique values that they're plausibly mislabeled
@@ -78,7 +84,7 @@ def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
     ----------
     obs : pd.DataFrame
         The obs dataframe to inspect.
-    max_unique : int, optional (default: 30)
+    max_unique : int, optional (default: MAX_CATEGORIES, 30)
         Columns with more unique values than this are assumed to be
         genuinely continuous and are not flagged.
 
@@ -136,13 +142,14 @@ def is_categorical_obs_column(series: pd.Series) -> bool:
             or pd.api.types.is_bool_dtype(series) or pd.api.types.is_string_dtype(series))
 
 
-def find_primary_variable_candidates(obs: pd.DataFrame, max_unique: int = 200) -> dict:
+def find_primary_variable_candidates(obs: pd.DataFrame, max_unique: int = MAX_CATEGORIES) -> dict:
     """
     Find the obs columns a user could choose as the dataset's primary variable (#435): the column
     the dataset is mainly about, like a condition or cell type, used to build default displays.
 
-    Only categorical columns with 2 to max_unique values are offered. Columns with one value,
-    or a different value for every observation (like cell barcodes), can't group anything.
+    Only categorical columns with 2 to max_unique values are offered (default MAX_CATEGORIES, 30),
+    so the displays grouped by the column stay readable. Columns with one value, or a different
+    value for every observation (like cell barcodes), can't group anything.
     Numeric columns are left out; the uploader offers the ambiguous ones from
     flag_ambiguous_obs_columns when the user marks them categorical.
 
