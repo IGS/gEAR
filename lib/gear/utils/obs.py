@@ -130,6 +130,43 @@ def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
     return questionable
 
 
+def is_categorical_obs_column(series: pd.Series) -> bool:
+    """True if an obs column holds categories (categorical, string or boolean) rather than numbers."""
+    return (isinstance(series.dtype, pd.CategoricalDtype) or series.dtype == object
+            or pd.api.types.is_bool_dtype(series) or pd.api.types.is_string_dtype(series))
+
+
+def find_primary_variable_candidates(obs: pd.DataFrame, max_unique: int = 200) -> dict:
+    """
+    Find the obs columns a user could choose as the dataset's primary variable (#435): the column
+    the dataset is mainly about, like a condition or cell type, used to build default displays.
+
+    Only categorical columns with 2 to max_unique values are offered. Columns with one value,
+    or a different value for every observation (like cell barcodes), can't group anything.
+    Numeric columns are left out; the uploader offers the ambiguous ones from
+    flag_ambiguous_obs_columns when the user marks them categorical.
+
+    Returns a dict keyed by column name, e.g.
+        {"condition": {"n_unique": 2, "sample_values": ["control", "treated"]}}
+    """
+    max_sample_values = 6
+    candidates = {}
+
+    for col in obs.columns:
+        series = obs[col]
+        if not is_categorical_obs_column(series):
+            continue
+
+        n_unique = int(series.nunique(dropna=True))
+        if n_unique < 2 or n_unique > max_unique or n_unique >= len(obs):
+            continue
+
+        values = sorted(str(v) for v in series.dropna().unique())
+        candidates[str(col)] = {"n_unique": n_unique, "sample_values": values[:max_sample_values]}
+
+    return candidates
+
+
 def apply_obs_dtype_choices(obs: pd.DataFrame, choices: dict) -> pd.DataFrame:
     """
     Apply user-chosen dtypes to obs columns flagged by flag_ambiguous_obs_columns.

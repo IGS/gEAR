@@ -83,6 +83,7 @@ def assert_success(result: dict, staging: Path) -> None:
     metadata = json.loads((staging / "metadata.json").read_text())
     assert "questionable_obs_columns" in metadata
     assert "obs_dtype_reviewed" in metadata
+    assert isinstance(metadata["primary_variable_candidates"], dict)
 
 
 def assert_mex_example(adata: anndata.AnnData) -> None:

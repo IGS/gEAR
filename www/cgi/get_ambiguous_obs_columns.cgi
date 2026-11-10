@@ -74,6 +74,10 @@ def main():
     # Written alongside by gear.ontology.annotate_upload_obs during processing
     result['sample_metadata_warnings'] = metadata.get('sample_metadata_warnings', [])
     result['ontology_terms'] = metadata.get('ontology_terms', {})
+    # Columns the user can choose as the dataset's primary variable, and the choice so far (#435)
+    result['primary_variable_candidates'] = metadata.get('primary_variable_candidates', {})
+    result['primary_variable'] = metadata.get('primary_variable')
+    result['primary_variable_reviewed'] = metadata.get('primary_variable_reviewed', False)
     print(json.dumps(result))
 
 

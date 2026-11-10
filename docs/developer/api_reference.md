@@ -403,11 +403,11 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 
 | Script | Purpose | Key parameters |
 |---|---|---|
-| `apply_obs_dtype_choices.cgi` | Apply user-chosen categorical/continuous dtypes to flagged obs columns of a staged upload | session_id, share_uid, choices (JSON) |
+| `apply_obs_dtype_choices.cgi` | Apply user-chosen categorical/continuous dtypes to flagged obs columns of a staged upload, and set its primary variable | session_id, share_uid, choices (JSON) and/or primary_variable |
 | `check_dataset_processing_status.cgi` | Report processing status/progress of an uploading dataset. Not used by the frontend; kept for manual checks because it takes `session_id` as a parameter instead of a cookie, e.g. `curl "https://<host>/cgi/check_dataset_processing_status.cgi?session_id=$SID&share_uid=$SHARE"` | session_id, share_uid |
 | `delete_upload_in_progress.cgi` | Delete a user's in-progress upload directory | session_id, share_uid, dataset_id |
 | `finalize_uploaded_expression_dataset.cgi` | Finalize an upload: load metadata to MySQL and migrate H5AD/source files | session_id, share_uid, dataset_uid, dataset_format, dataset_visibility, user_pii_affirmed, perform_analysis_migration |
-| `get_ambiguous_obs_columns.cgi` | Return obs columns flagged as possibly mis-typed for the upload review step | session_id, share_uid |
+| `get_ambiguous_obs_columns.cgi` | Return obs columns flagged as possibly mis-typed, sample metadata results and primary variable candidates for the upload review step | session_id, share_uid |
 | `get_metadata_from_geo.cgi` | Fetch series metadata from GEO for a GEO ID | geo_id |
 | `get_uploads_in_progress.cgi` | List the user's incomplete uploads | session_id |
 | `process_uploaded_expression_dataset.cgi` | Queue an uploaded expression dataset for processing via RabbitMQ | session_id, share_uid, dataset_uid, dataset_format, spatial_format, dataset_type |

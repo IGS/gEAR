@@ -1854,11 +1854,13 @@ paths:
       operationId: cgiApplyObsDtypeChoices
       tags:
       - Uploads
-      summary: Apply user-chosen dtypes to flagged obs columns of a staged upload
-      description: Used by the uploader's "Review column types" step. Requires a valid session. Rewrites only the
-        obs of the staged H5AD (or the 'table' group of a spatial Zarr store) under uploads/files/<session_id>/<share_uid>/,
-        then sets obs_dtype_reviewed=true and clears questionable_obs_columns in metadata.json. Errors are returned
-        with HTTP 200 and success 0.
+      summary: Apply user-chosen dtypes to flagged obs columns of a staged upload, and set its primary variable
+      description: Used by the uploader's post-processing review step. Requires a valid session. Rewrites only the
+        obs and uns gear_obs_columns of the staged H5AD (or the 'table' group of a spatial Zarr store) under
+        uploads/files/<session_id>/<share_uid>/. If choices was sent, sets obs_dtype_reviewed=true and clears
+        questionable_obs_columns in metadata.json; if primary_variable was sent, saves it there as primary_variable
+        with primary_variable_reviewed=true. At least one of choices and primary_variable is required. Errors
+        are returned with HTTP 200 and success 0, and nothing is written.
       requestBody:
         required: true
         content:
@@ -1868,7 +1870,6 @@ paths:
               required:
               - session_id
               - share_uid
-              - choices
               properties:
                 session_id:
                   type: string
@@ -1880,6 +1881,10 @@ paths:
                   type: string
                   description: 'JSON object mapping obs column name to ''categorical'' or ''continuous'', e.g. {"replicate":
                     "categorical"}'
+                primary_variable:
+                  type: string
+                  description: The obs column the dataset is mainly about, saved as uns["gear_obs_columns"]["primary_variable"].
+                    Must be categorical once the choices are applied. An empty value removes it.
       responses:
         '200':
           description: Result of applying the dtype choices.
@@ -2733,6 +2738,26 @@ paths:
                   reviewed:
                     type: boolean
                     description: metadata.json obs_dtype_reviewed
+                  sample_metadata_warnings:
+                    type: array
+                    items:
+                      type: string
+                    description: metadata.json sample_metadata_warnings
+                  ontology_terms:
+                    type: object
+                    additionalProperties: true
+                    description: metadata.json ontology_terms
+                  primary_variable_candidates:
+                    type: object
+                    additionalProperties: true
+                    description: metadata.json primary_variable_candidates, keyed by obs column (n_unique, sample_values)
+                  primary_variable:
+                    type: string
+                    nullable: true
+                    description: metadata.json primary_variable
+                  primary_variable_reviewed:
+                    type: boolean
+                    description: metadata.json primary_variable_reviewed
   /cgi/get_analysis_image.cgi:
     post:
       operationId: cgiGetAnalysisImage

@@ -650,9 +650,14 @@ def stage_h5ad(share):
     anndata = pytest.importorskip("anndata")
     import numpy as np
     import pandas as pd
-    obs = pd.DataFrame({"replicate": [1, 2, 1, 2], "dose": ["0.5", "1", "2", "x"]},
+    obs = pd.DataFrame({"replicate": [1, 2, 1, 2], "dose": ["0.5", "1", "2", "x"],
+                        "condition": pd.Categorical(["control", "treated", "control", "treated"]),
+                        "depth": [1.5, 2.5, 3.5, 4.5]},
                        index=[f"c{i}" for i in range(4)])
-    anndata.AnnData(X=np.ones((4, 3), dtype=np.float32), obs=obs).write_h5ad(share / f"{share.name}.h5ad")
+    adata = anndata.AnnData(X=np.ones((4, 3), dtype=np.float32), obs=obs)
+    adata.raw = adata.copy()
+    adata.uns["gear_obs_columns"] = {"cell_clusters": "replicate", "umap": ["UMAP_1", "UMAP_2"]}
+    adata.write_h5ad(share / f"{share.name}.h5ad")
 
 
 class TestGetAmbiguousObsColumns:
@@ -664,7 +669,20 @@ class TestGetAmbiguousObsColumns:
     def test_returns_flagged_columns(self, staged):
         session_id, _ = staged
         assert self.run(session_id).json() == {"success": 1, "message": "", "questionable_columns": QUESTIONABLE,
-                                                "reviewed": False, "sample_metadata_warnings": [], "ontology_terms": {}}
+                                                "reviewed": False, "sample_metadata_warnings": [], "ontology_terms": {},
+                                                "primary_variable_candidates": {}, "primary_variable": None,
+                                                "primary_variable_reviewed": False}
+
+    def test_returns_primary_variable_choices(self, staged):
+        session_id, share = staged
+        metadata = json.loads((share / "metadata.json").read_text())
+        candidates = {"condition": {"n_unique": 2, "sample_values": ["control", "treated"]}}
+        metadata.update(primary_variable_candidates=candidates, primary_variable="condition",
+                        primary_variable_reviewed=True)
+        (share / "metadata.json").write_text(json.dumps(metadata))
+        body = self.run(session_id).json()
+        assert body["primary_variable_candidates"] == candidates
+        assert body["primary_variable"] == "condition" and body["primary_variable_reviewed"] is True
 
     def test_returns_sample_metadata_results(self, staged):
         session_id, share = staged
@@ -695,12 +713,19 @@ class TestGetAmbiguousObsColumns:
 
 
 class TestApplyObsDtypeChoices:
-    def run(self, session_id, choices, share_uid="pytestshare", logged_in=True):
+    def run(self, session_id, choices, share_uid="pytestshare", logged_in=True, primary_variable=None):
         db = {"sessions": {session_id: 1}} if logged_in else {}
         form = {"session_id": session_id, "share_uid": share_uid}
         if choices is not None:
             form["choices"] = choices if isinstance(choices, str) else json.dumps(choices)
+        if primary_variable is not None:
+            form["primary_variable"] = primary_variable
         return run_cgi("apply_obs_dtype_choices.cgi", db=db, form=form)
+
+    @staticmethod
+    def read_h5ad(share):
+        import anndata
+        return anndata.read_h5ad(share / "pytestshare.h5ad")
 
     def test_applies_choices_and_marks_reviewed(self, staged):
         session_id, share = staged
@@ -716,9 +741,79 @@ class TestApplyObsDtypeChoices:
         assert obs["dose"].iloc[:3].tolist() == [0.5, 1.0, 2.0] and pd.isna(obs["dose"].iloc[3])
         metadata = json.loads((share / "metadata.json").read_text())
         assert metadata["obs_dtype_reviewed"] is True and metadata["questionable_obs_columns"] == {}
+        assert "primary_variable_reviewed" not in metadata
+
+    def test_choices_keep_raw_and_uns(self, staged):
+        """The obs rewrite leaves the rest of the file alone; a backed adata.write() used to delete raw."""
+        session_id, share = staged
+        stage_h5ad(share)
+        assert self.run(session_id, {"replicate": "categorical"}).json()["success"] == 1
+        adata = self.read_h5ad(share)
+        assert adata.raw is not None and adata.raw.shape == (4, 3)
+        assert adata.uns["gear_obs_columns"]["cell_clusters"] == "replicate"
+
+    def test_sets_primary_variable_with_choices(self, staged):
+        """#435: the primary variable is saved in uns["gear_obs_columns"], and may be a column made categorical in the same request."""
+        session_id, share = staged
+        stage_h5ad(share)
+        body = self.run(session_id, {"replicate": "categorical"}, primary_variable="replicate").json()
+        assert body == {"success": 1, "message": "Column types updated."}
+        adata = self.read_h5ad(share)
+        assert adata.uns["gear_obs_columns"]["primary_variable"] == "replicate"
+        assert list(adata.uns["gear_obs_columns"]["umap"]) == ["UMAP_1", "UMAP_2"]
+        assert adata.raw is not None
+        metadata = json.loads((share / "metadata.json").read_text())
+        assert metadata["primary_variable"] == "replicate" and metadata["primary_variable_reviewed"] is True
+        assert metadata["obs_dtype_reviewed"] is True
+
+    def test_sets_primary_variable_without_choices(self, staged):
+        session_id, share = staged
+        stage_h5ad(share)
+        assert self.run(session_id, None, primary_variable="condition").json()["success"] == 1
+        assert self.read_h5ad(share).uns["gear_obs_columns"]["primary_variable"] == "condition"
+        metadata = json.loads((share / "metadata.json").read_text())
+        assert metadata["primary_variable"] == "condition"
+        # The column types weren't reviewed in this request
+        assert metadata["questionable_obs_columns"] == QUESTIONABLE and "obs_dtype_reviewed" not in metadata
+
+    def test_primary_variable_without_existing_column_map(self, staged):
+        """Uploads staged before gear_obs_columns was written still get the primary variable."""
+        anndata = pytest.importorskip("anndata")
+        import numpy as np
+        import pandas as pd
+        session_id, share = staged
+        obs = pd.DataFrame({"condition": pd.Categorical(["a", "b"])}, index=["c0", "c1"])
+        anndata.AnnData(X=np.ones((2, 2), dtype=np.float32), obs=obs).write_h5ad(share / "pytestshare.h5ad")
+        assert self.run(session_id, None, primary_variable="condition").json()["success"] == 1
+        assert self.read_h5ad(share).uns["gear_obs_columns"] == {"primary_variable": "condition"}
+
+    def test_empty_primary_variable_removes_it(self, staged):
+        session_id, share = staged
+        stage_h5ad(share)
+        self.run(session_id, None, primary_variable="condition")
+        assert self.run(session_id, None, primary_variable="").json()["success"] == 1
+        column_map = self.read_h5ad(share).uns["gear_obs_columns"]
+        assert "primary_variable" not in column_map and column_map["cell_clusters"] == "replicate"
+        metadata = json.loads((share / "metadata.json").read_text())
+        assert metadata["primary_variable"] is None and metadata["primary_variable_reviewed"] is True
+
+    @pytest.mark.parametrize("choices, primary_variable, message", [
+        (None, "missing", 'The primary variable "missing" is not a column in the dataset.'),
+        (None, "depth", 'The primary variable "depth" must be a categorical column.'),
+        ({"replicate": "continuous"}, "replicate", 'The primary variable "replicate" must be a categorical column.'),
+    ])
+    def test_bad_primary_variable_changes_nothing(self, staged, choices, primary_variable, message):
+        session_id, share = staged
+        stage_h5ad(share)
+        before = (share / "pytestshare.h5ad").read_bytes()
+        metadata_before = (share / "metadata.json").read_text()
+        body = self.run(session_id, choices, primary_variable=primary_variable).json()
+        assert body == {"success": 0, "message": message}
+        assert (share / "pytestshare.h5ad").read_bytes() == before
+        assert (share / "metadata.json").read_text() == metadata_before
 
     @pytest.mark.parametrize("choices, logged_in, message", [
-        (None, True, "session_id, share_uid, and choices are required."),
+        (None, True, "session_id, share_uid, and choices or primary_variable are required."),
         ({"replicate": "categorical"}, False, "Invalid session_id."),
         ("{bad", True, "Invalid choices JSON"),
     ])

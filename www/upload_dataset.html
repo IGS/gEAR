@@ -1155,12 +1155,34 @@ Currently Gosling only supports single-organism tracks">
                   </div>
 
                   <div id="ambiguous-cols-dtypes-c" class="is-hidden">
-                    <h3>Resolve ambiguous column data types</h1>
+                    <h3>Resolve ambiguous column data types</h3>
                     <p>
                       The following columns have ambiguous data types and need to be resolved as "continuous" or "categorical" data.
                     </p>
                     <div id="ambiguous-cols-review-c" class="field columns is-multiline">
                       <!-- Select dropdowns are rendered here -->
+                    </div>
+                  </div>
+
+                  <div id="primary-variable-c" class="is-hidden mt-3 mb-5">
+                    <h3>Primary variable (optional)</h3>
+                    <!-- Same width as the column type boxes above, so the help text wraps near the select -->
+                    <div class="columns">
+                      <div class="field column is-4">
+                        <label class="label" for="primary-variable-select">Which column is your study mainly about?</label>
+                        <div class="control">
+                          <div class="select">
+                            <select id="primary-variable-select">
+                              <option value="">None</option>
+                            </select>
+                          </div>
+                        </div>
+                        <p class="help">
+                          Choose the main condition or grouping of your study, such as treatment or cell type. The portal
+                          uses it to build default displays (for example, a multigene heatmap grouped by this column) if
+                          you don't make your own.
+                        </p>
+                      </div>
                     </div>
                   </div>
 

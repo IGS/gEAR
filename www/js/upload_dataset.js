@@ -1061,9 +1061,10 @@ const renderPostProcessingOptions = async() => {
     // One request returns the results for every review substep
     const data = await fetchPostProcessingReview();
 
-    // doSomething should be true if any "doSomething" substeps are true
+    // doSomething should be true if any "doSomething" substeps are true.
+    // The primary variable picker goes after the ambiguous columns, since it reads their selects.
     const doSomething = data
-        ? [renderAmbiguousObsColumns(data), renderSampleMetadataReview(data)].some(Boolean)
+        ? [renderAmbiguousObsColumns(data), renderSampleMetadataReview(data), renderPrimaryVariablePicker(data)].some(Boolean)
         : false;
 
     if (!doSomething) {
@@ -1184,60 +1185,159 @@ const renderAmbiguousObsColumns = (data) => {
     const reviewContainer = document.getElementById('ambiguous-cols-review-c');
     reviewContainer.innerHTML = '';
 
+    // Column names and values come from the user's file, so the boxes are built without innerHTML
+    const textElement = (tag, text, className = '') => {
+        const el = document.createElement(tag);
+        el.textContent = text;
+        if (className) el.className = className;
+        return el;
+    };
+
     for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
         const colDiv = document.createElement('div');
         colDiv.className = 'box mb-4 column is-4';
-        colDiv.innerHTML = `
-            <h5 class="subtitle is-5">Column: ${colName}</h5>
-            <p>Current data type: ${colInfo.current_dtype}</p>
-            <p>Number of unique values: ${colInfo.n_unique}</p>
-            <p>Sample values: ${colInfo.sample_values.join(', ')}</p>
-            <br>
-            <p class=mb-2><strong>Suggested data type:</strong> ${colInfo.suggested_type}</p>
-            <div class="field">
-                <div class="control">
-                    <div class="select">
-                        <select name="ambiguous-col-${colName}">
-                            <option value="categorical" ${colInfo.suggested_type === 'categorical' ? 'selected' : ''}>Categorical</option>
-                            <option value="continuous" ${colInfo.suggested_type === 'continuous' ? 'selected' : ''}>Continuous</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        `;
+
+        const suggested = document.createElement('p');
+        suggested.className = 'mb-2';
+        suggested.append(textElement('strong', 'Suggested data type:'), ` ${colInfo.suggested_type}`);
+
+        // The column name is read back from data-column (see ambiguousColumnName)
+        const select = document.createElement('select');
+        select.dataset.column = colName;
+        select.dataset.nUnique = colInfo.n_unique;
+        for (const [value, label] of [['categorical', 'Categorical'], ['continuous', 'Continuous']]) {
+            const option = textElement('option', label);
+            option.value = value;
+            option.selected = colInfo.suggested_type === value;
+            select.appendChild(option);
+        }
+        const selectWrapper = document.createElement('div');
+        selectWrapper.className = 'select';
+        selectWrapper.appendChild(select);
+        const control = document.createElement('div');
+        control.className = 'control';
+        control.appendChild(selectWrapper);
+        const field = document.createElement('div');
+        field.className = 'field';
+        field.appendChild(control);
+
+        colDiv.append(
+            textElement('h5', `Column: ${colName}`, 'subtitle is-5'),
+            textElement('p', `Current data type: ${colInfo.current_dtype}`),
+            textElement('p', `Number of unique values: ${colInfo.n_unique}`),
+            textElement('p', `Sample values: ${colInfo.sample_values.join(', ')}`),
+            document.createElement('br'),
+            suggested,
+            field,
+        );
         reviewContainer.appendChild(colDiv);
     }
 
     return doSomething;
 }
 
-const applyPostProcessingOptions = async () => {
+/**
+ * Returns the obs column name an ambiguous-column type select is for.
+ *
+ * @param {HTMLSelectElement} select - A select in #ambiguous-cols-review-c.
+ * @returns {string}
+ */
+const ambiguousColumnName = (select) => select.dataset.column;
 
-    // For all post-processing steps, run in parallel, then step to "finalize-dataset"
-    const stepsToApply = []
-    // The step may be shown only for sample metadata warnings, with no column types to apply
-    if (!document.getElementById('ambiguous-cols-dtypes-c').classList.contains('is-hidden')) {
-        stepsToApply.push(applyAmbiguousObsColumns());
-    }
-    await Promise.all(stepsToApply);
-    stepTo('finalize-dataset');
+// Primary variable candidates from the last review response (#435), keyed by column name
+let primaryVariableCandidates = {};
+let primaryVariableReviewed = false;
+
+/**
+ * Shows a choice of the column the dataset is mainly about (its primary variable), used to build
+ * default displays. Offers the categorical columns the processor found, plus any ambiguous columns
+ * the user marks categorical. Returns true if there is something to choose from.
+ *
+ * @param {Object} data - The get_ambiguous_obs_columns.cgi response.
+ * @returns {boolean}
+ */
+const renderPrimaryVariablePicker = (data) => {
+    // Nothing to offer once the choice has been saved (e.g. the user came back to this upload)
+    primaryVariableReviewed = Boolean(data.primary_variable_reviewed);
+    primaryVariableCandidates = data.primary_variable_candidates || {};
+    document.getElementById('primary-variable-select').value = '';
+    return refreshPrimaryVariableOptions();
 }
 
-const applyAmbiguousObsColumns = async () => {
+/**
+ * Rebuilds the primary variable options from the candidates and the ambiguous columns currently
+ * marked categorical, keeping the current choice if it is still offered. Hides the picker when
+ * there is nothing to offer. Returns true if the picker is shown.
+ *
+ * @returns {boolean}
+ */
+const refreshPrimaryVariableOptions = () => {
+    const container = document.getElementById('primary-variable-c');
+    const select = document.getElementById('primary-variable-select');
+    const current = select.value;
 
-    // Get the user-selected choices for each ambiguous column
-    const choices = {};
-    const reviewContainer = document.getElementById('ambiguous-cols-review-c');
-    for (const select of reviewContainer.querySelectorAll('select')) {
-        const colName = select.name.replace('ambiguous-col-', '');
-        choices[colName] = select.value;
+    const columns = primaryVariableReviewed ? []
+        : Object.entries(primaryVariableCandidates).map(([name, info]) => [name, info.n_unique]);
+    // Ambiguous numeric columns can be chosen once the user marks them categorical
+    if (!primaryVariableReviewed && !document.getElementById('ambiguous-cols-dtypes-c').classList.contains('is-hidden')) {
+        for (const ambiguousSelect of document.getElementById('ambiguous-cols-review-c').querySelectorAll('select')) {
+            const colName = ambiguousColumnName(ambiguousSelect);
+            if (ambiguousSelect.value === 'categorical' && !(colName in primaryVariableCandidates)) {
+                columns.push([colName, Number(ambiguousSelect.dataset.nUnique)]);
+            }
+        }
+    }
+
+    // Column names come from the user's file, so options are built without innerHTML
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = 'None';
+    const options = [noneOption];
+    for (const [name, nUnique] of columns) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = Number.isFinite(nUnique) ? `${name} (${nUnique} values)` : name;
+        options.push(option);
+    }
+    select.replaceChildren(...options);
+    select.value = columns.some(([name]) => name === current) ? current : '';
+
+    const show = columns.length > 0;
+    container.classList.toggle('is-hidden', !show);
+    return show;
+}
+
+/**
+ * Saves the post-processing choices (column types and primary variable) in one request, so only
+ * one process writes the staged dataset file, then moves on to finalizing. Stays on the step if
+ * the choices can't be saved.
+ */
+const applyPostProcessingOptions = async () => {
+    // The step may be shown only for sample metadata warnings, with nothing to save
+    const showsColumnTypes = !document.getElementById('ambiguous-cols-dtypes-c').classList.contains('is-hidden');
+    const showsPrimaryVariable = !document.getElementById('primary-variable-c').classList.contains('is-hidden');
+    if (!showsColumnTypes && !showsPrimaryVariable) {
+        stepTo('finalize-dataset');
+        return;
     }
 
     const formData = new FormData();
     formData.append('share_uid', shareUid);
-    const choicesJson = JSON.stringify(choices);
-    formData.append('choices', choicesJson);
     formData.append('session_id', getCurrentUser()?.session_id);
+
+    if (showsColumnTypes) {
+        // Get the user-selected choices for each ambiguous column
+        const choices = {};
+        const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+        for (const select of reviewContainer.querySelectorAll('select')) {
+            const colName = ambiguousColumnName(select);
+            choices[colName] = select.value;
+        }
+        formData.append('choices', JSON.stringify(choices));
+    }
+    if (showsPrimaryVariable) {
+        formData.append('primary_variable', document.getElementById('primary-variable-select').value);
+    }
 
     try {
         const response = await fetch('./cgi/apply_obs_dtype_choices.cgi', {
@@ -1247,15 +1347,16 @@ const applyAmbiguousObsColumns = async () => {
         const data = await response.json();
 
         if (!data?.success) {
-            throw new Error(data?.message || 'Unknown error');
+            createToast(data?.message || 'Error saving the post-processing choices');
+            return;
         }
-
     } catch (error) {
-        // axios throws on non-2xx status codes
-        const message = error.response?.data?.message ?? 'Unknown error occurred';
-        console.error(`Error ${error.response?.status}: ${message}`);
-        createToast('Error processing dataset');
+        console.error(error);
+        createToast('Error saving the post-processing choices');
+        return;
     }
+
+    stepTo('finalize-dataset');
 }
 
 const stageTrackHub = async (hubContainer, trackContainer) => {
@@ -1609,6 +1710,9 @@ document.getElementById('dataset-processing-submit').addEventListener('click', (
     event.preventDefault();
     stepTo('post-process-dataset');
 });
+
+// Marking an ambiguous column categorical or continuous changes which columns can be the primary variable
+document.getElementById('ambiguous-cols-review-c').addEventListener('change', refreshPrimaryVariableOptions);
 
 document.getElementById('dataset-post-processing-submit').addEventListener('click', (event) => {
     event.preventDefault();

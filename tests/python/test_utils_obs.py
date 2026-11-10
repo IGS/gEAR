@@ -8,6 +8,7 @@ from gear.utils.obs import (
     VALID_UMAP_PAIRS,
     apply_obs_dtype_choices,
     find_column_pair,
+    find_primary_variable_candidates,
     flag_ambiguous_obs_columns,
     sanitize_obs_for_h5ad,
 )
@@ -118,3 +119,31 @@ def test_sanitized_obs_round_trips_through_h5ad(tmp_path, messy_obs):
 ])
 def test_find_column_pair(cols, pairs, expected):
     assert find_column_pair(cols, pairs) == expected
+
+
+# ---------------------------------------------------------------- primary variable candidates (#435)
+
+
+def test_primary_variable_candidates():
+    obs = pd.DataFrame({
+        "condition": pd.Categorical(["control", "treated", "control", "treated"]),
+        "sample": ["s1", "s2", "s3", "s1"],                     # object
+        "is_control": [True, False, True, False],
+        "batch": pd.array(["a", "b", "a", "b"], dtype="string"),
+        "replicate": [1, 2, 1, 2],                              # numeric: offered only via the dtype review
+        "depth": [1.5, 2.5, 3.5, 4.5],
+        "species": ["mouse"] * 4,                               # one value
+        "barcode": ["AAA", "CCC", "GGG", "TTT"],                # a value per cell
+    }, index=[f"c{i}" for i in range(4)])
+    candidates = find_primary_variable_candidates(obs)
+    assert list(candidates) == ["condition", "sample", "is_control", "batch"]
+    assert candidates["condition"] == {"n_unique": 2, "sample_values": ["control", "treated"]}
+    assert candidates["is_control"]["sample_values"] == ["False", "True"]
+
+
+def test_primary_variable_candidates_limits():
+    obs = pd.DataFrame({"many": [f"v{i % 50}" for i in range(100)],
+                        "with_missing": ["a", None, "b"] * 33 + ["a"]})
+    assert list(find_primary_variable_candidates(obs, max_unique=40)) == ["with_missing"]
+    assert find_primary_variable_candidates(obs)["many"]["sample_values"] == ["v0", "v1", "v10", "v11", "v12", "v13"]
+    assert find_primary_variable_candidates(obs)["with_missing"]["n_unique"] == 2

@@ -30,6 +30,7 @@ from gear.utils.gene_mapping import (
 from gear.utils.job_coordination import UploadCancelledError, raise_if_upload_deleted
 from gear.utils.archives import ARCHIVE_READ_ERRORS, archive_error_message
 from gear.utils.obs import (
+    find_primary_variable_candidates,
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
 )
@@ -855,6 +856,8 @@ class AnndataProcessor:
         # Nothing flagged -- nothing for the user to review, so the uploader
         # can skip straight past that step.
         metadata['obs_dtype_reviewed'] = not bool(questionable)
+        # Columns the user can choose as the primary variable in the same step (#435)
+        metadata['primary_variable_candidates'] = find_primary_variable_candidates(adata.obs)
 
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
