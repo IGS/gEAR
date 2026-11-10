@@ -33,6 +33,8 @@ Comprehensive guide covering:
 - Testing procedures
 - Common development tasks
 
+New contributors should start with [CONTRIBUTING.md](../CONTRIBUTING.md) (how to report issues and submit pull requests), the [Code of Conduct](../CODE_OF_CONDUCT.md) and the [security policy](../SECURITY.md).
+
 ### Quick Links for Developers
 
 - **[Setup Guides](developer/setup/README.md)** - Server installation and configuration

@@ -1,0 +1,90 @@
+cff-version: 1.2.0
+message: "If you use gEAR, please cite the paper below."
+title: "gEAR: gene Expression Analysis Resource"
+type: software
+authors:
+  - family-names: Orvis
+    given-names: Joshua
+  - family-names: Adkins
+    given-names: Shaun
+    orcid: "https://orcid.org/0000-0002-7983-5486"
+repository-code: "https://github.com/IGS/gEAR"
+url: "https://umgear.org"
+license: AGPL-3.0-only
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.4818596
+    description: "Zenodo concept DOI for all archived versions of the gEAR software"
+keywords:
+  - gene expression
+  - single-cell RNA-seq
+  - spatial transcriptomics
+  - multi-omics
+  - data visualization
+  - data portal
+preferred-citation:
+  type: article
+  title: "gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration"
+  journal: "Nature Methods"
+  year: 2021
+  month: 8
+  volume: 18
+  issue: 8
+  start: 843
+  end: 844
+  doi: 10.1038/s41592-021-01200-9
+  pmcid: PMC8996439
+  url: "https://pubmed.ncbi.nlm.nih.gov/34172972/"
+  authors:
+    - family-names: Orvis
+      given-names: Joshua
+    - family-names: Gottfried
+      given-names: Brian
+    - family-names: Kancherla
+      given-names: Jayaram
+    - family-names: Adkins
+      given-names: Ricky S
+      orcid: "https://orcid.org/0000-0002-7983-5486"
+    - family-names: Song
+      given-names: Yang
+    - family-names: Dror
+      given-names: Amiel A
+      orcid: "https://orcid.org/0000-0002-7178-6771"
+    - family-names: Olley
+      given-names: Dustin
+      orcid: "https://orcid.org/0000-0001-8685-0839"
+    - family-names: Rose
+      given-names: Kevin
+    - family-names: Chrysostomou
+      given-names: Elena
+    - family-names: Kelly
+      given-names: Michael C
+    - family-names: Milon
+      given-names: Beatrice
+      orcid: "https://orcid.org/0000-0001-9208-9134"
+    - family-names: Matern
+      given-names: Maggie S
+    - family-names: Azaiez
+      given-names: Hela
+    - family-names: Herb
+      given-names: Brian
+    - family-names: Colantuoni
+      given-names: Carlo
+    - family-names: Carter
+      given-names: Robert L
+      orcid: "https://orcid.org/0000-0003-0937-8141"
+    - family-names: Ament
+      given-names: Seth A
+      orcid: "https://orcid.org/0000-0001-6443-7509"
+    - family-names: Kelley
+      given-names: Matthew W
+    - family-names: White
+      given-names: Owen
+    - family-names: Bravo
+      given-names: Hector Corrada
+    - family-names: Mahurkar
+      given-names: Anup
+      orcid: "https://orcid.org/0000-0002-4999-2296"
+    - family-names: Hertzano
+      given-names: Ronna
+      orcid: "https://orcid.org/0000-0002-8093-6567"

@@ -11,6 +11,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCS = REPO_ROOT / "docs"
 # Historical material that is kept as-is
 SKIP_DIRS = {"posters", "ui-v2-design"}
+# Markdown files at the repository root (also listed in .github/workflows/python_tests.yml paths)
+ROOT_DOCS = ["README.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SECURITY.md"]
 
 
 def test_openapi_spec_is_valid():
@@ -38,7 +40,7 @@ def _anchors(md_file: Path) -> set:
 
 def _markdown_files():
     files = [p for p in DOCS.rglob("*.md") if not SKIP_DIRS & set(p.parts)]
-    return sorted(files + [REPO_ROOT / "README.md", REPO_ROOT / "tests" / "README.md"])
+    return sorted(files + [REPO_ROOT / name for name in ROOT_DOCS] + [REPO_ROOT / "tests" / "README.md"])
 
 
 def _links(md_file: Path):

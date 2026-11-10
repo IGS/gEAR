@@ -81,7 +81,17 @@ There are a few ways to get help with a gEAR Portal.
 
 ## Getting involved
 
-If you'd like to contribute to the gEAR in any form (documentation, bug fixes, new features, etc.) just fork the project and create a pull request. Within the project, we follow this [branching model](https://nvie.com/posts/a-successful-git-branching-model/).
+We welcome contributions to the gEAR in any form (documentation, bug fixes, new features, etc.). See [CONTRIBUTING.md](CONTRIBUTING.md) for how to report issues, set up a development environment and submit a pull request. Within the project, we follow this [branching model](https://nvie.com/posts/a-successful-git-branching-model/).
+
+Everyone taking part in the project is expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md). To report a security vulnerability, see [SECURITY.md](SECURITY.md).
+
+## Citing gEAR
+
+If you use the gEAR in your research, please cite:
+
+> Orvis J, et al. gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration. *Nat Methods*. 2021;18(8):843-844. doi: [10.1038/s41592-021-01200-9](https://doi.org/10.1038/s41592-021-01200-9)
+
+Citation metadata is in [CITATION.cff](CITATION.cff).
 
 ## Open source licensing info
 
