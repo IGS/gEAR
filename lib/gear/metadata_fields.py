@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass, field
 
 METADATA_VERSION = "2"
 
-DATASET_TYPES = ("single-cell-rnaseq", "bulk-rnaseq", "microarray")
+DATASET_TYPES = ("single-cell-rnaseq", "single-nucleus-rnaseq", "bulk-rnaseq", "microarray")
 
 # Types gEAR supports beyond the FAIR template's list
 GEAR_ONLY_DATASET_TYPES = ("spatial", "gosling")
@@ -123,7 +123,7 @@ FIELDS = (
     ),
     MetadataField(
         name="dataset_type",
-        instructions="Directs data to the correct part of the portal. If your study has more than one type of data, submit each type as a separate dataset. If you are doing single-nucleus RNA-seq or SMART-seq, use single-cell-rnaseq. Use spatial for spatial transcriptomics, and epigenome for epigenome tracks (e.g. ChIP-seq or ATAC-seq).",
+        instructions="Directs data to the correct part of the portal. If your study has more than one type of data, submit each type as a separate dataset. Use spatial for spatial transcriptomics, and epigenome for epigenome tracks (e.g. ChIP-seq or ATAC-seq).",
         example="single-cell-rnaseq",
         required=True, choices=DATASET_TYPES + GEAR_ONLY_DATASET_TYPES, column="dtype",
     ),
@@ -358,6 +358,8 @@ def normalize_value(name: str, value):
         return _normalize_prefix(value, REPOSITORY_PREFIXES)
     elif name == "dataset_type":
         lowered = value.lower()
+        if "single-nucleus-rnaseq" in lowered:
+            return "single-nucleus-rnaseq"
         if "single" in lowered:
             return "single-cell-rnaseq"
         if "bulk" in lowered:

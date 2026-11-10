@@ -229,3 +229,18 @@ def test_update_pi_name_takes_known_spelling(cursor):
     (sql, params), = [c.args for c in cursor.execute.call_args_list if c.args[0].startswith("UPDATE dataset")]
     columns = [a.split(" = ")[0] for a in sql.removeprefix("UPDATE dataset SET ").split(" WHERE")[0].split(", ")]
     assert dict(zip(columns, params))["pi_name"] == "Jane Doe"
+
+@pytest.mark.parametrize("label, expected", [
+    ("single-nucleus-rnaseq", "single-nucleus-rnaseq"),
+    ("single-cell-rnaseq", "single-cell-rnaseq"),
+])
+def test_dataset_type_single_nucleus_is_kept_apart(label, expected):
+    """Regression for #1345: single-nucleus labels are no longer folded into single-cell-rnaseq."""
+    df = pd.DataFrame({"value": [label]}, index=["dataset_type"])
+    assert md.get_value_from_df(df, "dataset_type") == expected
+
+
+def test_single_nucleus_dtype_is_saved(tmp_path, cursor):
+    """Regression for #1345: an upload typed as single-nucleus is saved with that dtype."""
+    row = save(tmp_path, cursor, dataset_type="single-nucleus-rnaseq")
+    assert row["dtype"] == "single-nucleus-rnaseq"

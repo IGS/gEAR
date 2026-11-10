@@ -60,7 +60,10 @@ def get_value_from_df(df, index_label):
 
     # Clean up dtype labels
     if index_label == 'dataset_type':
-        if 'single' in str(value).lower():
+        # Check for single-nucleus first, since "single-nucleus" also contains "single"
+        if 'single-nucleus-rnaseq' in str(value).lower():
+            value = 'single-nucleus-rnaseq'
+        elif 'single' in str(value).lower():
             value = 'single-cell-rnaseq'
         if 'bulk' in str(value).lower():
             value = 'bulk-rnaseq'
