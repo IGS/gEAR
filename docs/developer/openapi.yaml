@@ -6051,8 +6051,9 @@ paths:
                   type: string
                   description: Space-separated terms (MySQL boolean full-text on title, ldesc, geo_id, pubmed_id), matching
                     any term. Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
-                    by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), a trailing * is a prefix
-                    wildcard, and terms with no words are ignored.
+                    by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), and terms with no words
+                    are ignored. Words of 3 or more characters match as prefixes (Tono matches Tonotopic) and anywhere in the
+                    title, including inside underscore names (potential matches Groves_potential_targets).
                 organism_ids:
                   type: string
                   description: Comma-separated organism IDs.
@@ -6146,8 +6147,9 @@ paths:
                   type: string
                   description: Space-separated terms (MySQL boolean full-text on label, ldesc), matching any term.
                     Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
-                    by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), a trailing * is a prefix
-                    wildcard, and terms with no words are ignored.
+                    by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), and terms with no words
+                    are ignored. Words of 3 or more characters match as prefixes (Tono matches Tonotopic) and anywhere in the
+                    label, including inside underscore names (potential matches Groves_potential_targets).
                 organism_ids:
                   type: string
                   description: Comma-separated organism IDs.
