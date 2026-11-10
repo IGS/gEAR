@@ -118,6 +118,26 @@ def test_search_text_is_converted_for_boolean_mode(script):
         assert entry["params"].count('"Garcia Añoveros"') == 1
 
 
+@pytest.mark.parametrize("script, like_column", [("search_gene_carts.cgi", "gc.label"),
+                                                  ("search_datasets.cgi", "d.title")])
+def test_search_matches_partial_words(script, like_column):
+    """#636: "Tono" finds "Tonotopic" (prefix), and words inside underscore names are found with LIKE."""
+    result = run_cgi(script, query={"search_terms": "Tono Groves_potential ab", "sort_by": "relevance"},
+                     fake_modules=USERHISTORY)
+    assert result.json()["success"] == 1
+    main_query, *count_queries = match_queries(result)
+    fulltext, likes = "Tono* Groves_potential* ab", ["%Tono%", "%Groves\\_potential%"]
+    assert f"OR {like_column} LIKE %s OR {like_column} LIKE %s)" in main_query["query"]
+    # SELECT (relevance score) gets only the full-text query; WHERE gets it followed by the LIKE patterns
+    params = main_query["params"]
+    assert params[0] == fulltext and params.count(fulltext) == 2
+    where = params.index(fulltext, 1)
+    assert params[where + 1:where + 3] == likes
+    for entry in count_queries:
+        where = entry["params"].index(fulltext)
+        assert entry["params"][where + 1:where + 3] == likes
+
+
 @SEARCH_SCRIPTS
 def test_punctuation_only_search_lists_without_matching(script):
     result = run_cgi(script, query={"search_terms": "()", "sort_by": "relevance"}, fake_modules=USERHISTORY)
