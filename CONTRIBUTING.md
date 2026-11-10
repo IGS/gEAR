@@ -18,7 +18,8 @@ Everyone who takes part in the project is expected to follow our [Code of Conduc
 1. Search the [issue tracker](https://github.com/IGS/gEAR/issues) to see whether the problem has already been reported.
 2. If not, [open a new issue](https://github.com/IGS/gEAR/issues/new). Please include:
    * the portal URL (for example <https://umgear.org>) and the page you were on
-   * the gene, dataset or layout involved, if any
+   * the gene, dataset, gene list, etc involved, if any
+   * Any parameters used for the analysis or to generate the view
    * what you expected to happen and what happened instead
    * your browser and operating system
    * a screenshot, if it helps
