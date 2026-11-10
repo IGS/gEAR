@@ -51,7 +51,7 @@ def tsne_perplexity(n_obs):
 
 def compute_error_message(step, n_obs, err):
     """User-facing message for a failed neighbors/tSNE/UMAP computation."""
-    message = f"Could not compute {step} for this dataset ({n_obs} observations): {err}"
+    message = f"Could not compute {step} for this dataset ({n_obs} observations): {str(err).rstrip('.')}."
     if n_obs <= DEFAULT_TSNE_PERPLEXITY:
         message += (" tSNE and UMAP are meant for single-cell data with many cells, and may not work on"
                     " datasets with only a few samples, such as bulk RNA-seq.")

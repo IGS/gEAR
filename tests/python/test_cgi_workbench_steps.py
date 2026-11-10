@@ -280,14 +280,18 @@ class TestGenerateTsne:
 
     def test_failed_computation_returns_error(self, tmp_path, adata_builder):
         import anndata
-        # UMAP's spectral layout fails on three observations
-        n_pcs = self.analysis_with_pca(tmp_path, adata_builder, 3)
-        body = self.run(tmp_path, n_pcs, compute_tsne="0", plot_tsne="0", compute_umap="1", plot_umap="1")
+        # scikit-learn's input check always rejects tSNE on one observation (perplexity must be < n_samples).
+        # Numerical failures, such as UMAP's spectral layout on a few observations, vary by platform and
+        # library version, so they don't make a reliable test. With only 30 genes, scanpy uses X, not X_pca.
+        write_analysis(tmp_path, adata_builder()[:1].copy(), "user_unsaved", "owner", "A1")
+        body = self.run(tmp_path, 1, compute_neighbors="0")
         assert body["success"] == 0
-        assert body["error"].startswith("Could not compute UMAP for this dataset (3 observations): ")
-        assert "bulk RNA-seq" in body["error"]
+        assert body["error"].startswith("Could not compute tSNE for this dataset (1 observations): perplexity")
+        assert body["error"].endswith(". tSNE and UMAP are meant for single-cell data with many cells, and may not"
+                                      " work on datasets with only a few samples, such as bulk RNA-seq.")
         # Nothing is saved over the stored analysis
-        assert "neighbors" not in anndata.read_h5ad(unsaved_dir(tmp_path) / "DS1.h5ad").uns
+        assert "X_tsne" not in anndata.read_h5ad(unsaved_dir(tmp_path) / "DS1.h5ad").obsm
+
 
 def _load_cgi(name):
     """Import a CGI as a module, restoring sys.stdout (step CGIs redirect it to /dev/null on import)."""
