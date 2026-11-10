@@ -41,6 +41,8 @@ VALID = {
     ("repository_accession", "GSE168901", "GEO:GSE168901"),
     ("repository_accession", "arrayexpress:E-MTAB-11634", "ArrayExpress:E-MTAB-11634"),
     ("dataset_type", "Single cell RNA-Seq", "single-cell-rnaseq"),
+    ("dataset_type", "single-nucleus-rnaseq", "single-nucleus-rnaseq"),
+    ("dataset_type", "Single-Nucleus-RNAseq", "single-nucleus-rnaseq"),
     ("dataset_type", "Spatial", "spatial"),
     ("dataset_type", "Epigenome", "gosling"),
     ("dataset_type", "epigenomics", "gosling"),
@@ -133,7 +135,8 @@ def test_upgrade_legacy_values_keeps_v2_values():
 
 
 def test_template_dataset_types_use_labels():
-    assert mf.TEMPLATE_DATASET_TYPES == ("single-cell-rnaseq", "bulk-rnaseq", "microarray", "spatial", "epigenome")
+    assert mf.TEMPLATE_DATASET_TYPES == ("single-cell-rnaseq", "single-nucleus-rnaseq", "bulk-rnaseq", "microarray",
+                                         "spatial", "epigenome")
     assert all(mf.normalize_value("dataset_type", t) in mf.FIELDS_BY_NAME["dataset_type"].choices
                for t in mf.TEMPLATE_DATASET_TYPES)
 

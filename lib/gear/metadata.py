@@ -58,22 +58,6 @@ def get_value_from_df(df, index_label):
         if 'value' in value:
             value = value['value']
 
-    # Clean up dtype labels
-    if index_label == 'dataset_type':
-        # Check for single-nucleus first, since "single-nucleus" also contains "single"
-        if 'single-nucleus-rnaseq' in str(value).lower():
-            value = 'single-nucleus-rnaseq'
-        elif 'single' in str(value).lower():
-            value = 'single-cell-rnaseq'
-        if 'bulk' in str(value).lower():
-            value = 'bulk-rnaseq'
-        if value == 'microarray':
-            value = 'microarray'
-        if value == 'ChIP-Seq':
-            value = 'chip-seq'
-        if value == 'ATAC-Seq':
-            value = 'atac-seq'
-
     # If value is NaN, return None
     if is_na(value) is True:
         return None
@@ -342,7 +326,7 @@ class Metadata:
         geo_id = repository_id if repository_prefix == 'GEO' else None
 
         ldesc = get_value_from_df(df, 'summary')
-        dtype = get_value_from_df(df, 'dataset_type')
+        dtype = mf.normalize_value('dataset_type', get_value_from_df(df, 'dataset_type'))
         schematic_image = get_value_from_df(df, 'schematic_image')
         share_uid = get_value_from_df(df, 'share_uid')
         default_data_format = 'raw'

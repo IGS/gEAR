@@ -106,15 +106,14 @@ def test_is_na(value, expected):
 def test_get_value_from_df():
     """Regression for #1106: get_value_from_df returns None for missing or empty fields and unwraps {"value": ...} cells."""
     df = pd.DataFrame(
-        {"value": [np.nan, "", {"value": "GSE1"}, "GSE2", "Single cell RNA-Seq"]},
-        index=["geo_accession", "pubmed_id", "wrapped", "plain", "dataset_type"],
+        {"value": [np.nan, "", {"value": "GSE1"}, "GSE2"]},
+        index=["geo_accession", "pubmed_id", "wrapped", "plain"],
     )
     assert md.get_value_from_df(df, "geo_accession") is None
     assert md.get_value_from_df(df, "pubmed_id") is None
     assert md.get_value_from_df(df, "not_there") is None
     assert md.get_value_from_df(df, "wrapped") == "GSE1"
     assert md.get_value_from_df(df, "plain") == "GSE2"
-    assert md.get_value_from_df(df, "dataset_type") == "single-cell-rnaseq"
 
 
 # ---------------------------------------------------------------- v2 metadata template (#390)
@@ -230,17 +229,14 @@ def test_update_pi_name_takes_known_spelling(cursor):
     columns = [a.split(" = ")[0] for a in sql.removeprefix("UPDATE dataset SET ").split(" WHERE")[0].split(", ")]
     assert dict(zip(columns, params))["pi_name"] == "Jane Doe"
 
+
 @pytest.mark.parametrize("label, expected", [
     ("single-nucleus-rnaseq", "single-nucleus-rnaseq"),
     ("single-cell-rnaseq", "single-cell-rnaseq"),
+    ("Single cell RNA-Seq", "single-cell-rnaseq"),
 ])
-def test_dataset_type_single_nucleus_is_kept_apart(label, expected):
-    """Regression for #1345: single-nucleus labels are no longer folded into single-cell-rnaseq."""
-    df = pd.DataFrame({"value": [label]}, index=["dataset_type"])
-    assert md.get_value_from_df(df, "dataset_type") == expected
-
-
-def test_single_nucleus_dtype_is_saved(tmp_path, cursor):
-    """Regression for #1345: an upload typed as single-nucleus is saved with that dtype."""
-    row = save(tmp_path, cursor, dataset_type="single-nucleus-rnaseq")
-    assert row["dtype"] == "single-nucleus-rnaseq"
+def test_dtype_is_saved(tmp_path, cursor, label, expected):
+    """Regression for #1345: an upload typed as single-nucleus is saved with that dtype, not folded into
+    single-cell-rnaseq. The type is saved in its stored form (gear.metadata_fields.normalize_value)."""
+    row = save(tmp_path, cursor, dataset_type=label)
+    assert row["dtype"] == expected

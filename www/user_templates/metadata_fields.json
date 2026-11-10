@@ -81,7 +81,7 @@
     },
     {
       "name": "dataset_type",
-      "instructions": "Directs data to the correct part of the portal. If your study has more than one type of data, submit each type as a separate dataset. If you are doing single-nucleus RNA-seq or SMART-seq, use single-cell-rnaseq. Use spatial for spatial transcriptomics, and epigenome for epigenome tracks (e.g. ChIP-seq or ATAC-seq).",
+      "instructions": "Directs data to the correct part of the portal. If your study has more than one type of data, submit each type as a separate dataset. Use spatial for spatial transcriptomics, and epigenome for epigenome tracks (e.g. ChIP-seq or ATAC-seq).",
       "example": "single-cell-rnaseq",
       "required": true,
       "required_if": {},
@@ -90,6 +90,7 @@
       "pattern_hint": "",
       "choices": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "bulk-rnaseq",
         "microarray",
         "spatial",
