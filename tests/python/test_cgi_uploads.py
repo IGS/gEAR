@@ -225,3 +225,42 @@ class TestGetUploadsInProgress:
     def test_missing_session_id(self):
         body = run_cgi("get_uploads_in_progress.cgi").json()
         assert body["success"] == 0 and body["message"] == "No session_id provided"
+
+
+class TestProcessUploadedExpressionDataset:
+    """process_uploaded_expression_dataset.cgi decides whether to run a primary analysis from the dataset type."""
+
+    PROCESSOR_FAKES = {
+        **SPATIAL_FAKE,
+        "gear.anndata_processor": FAKES_DIR / "uploads_processors.py",
+        "gear.spatial_processor": FAKES_DIR / "uploads_processors.py",
+    }
+
+    def run(self, upload_session, dataset_type, dataset_format="h5ad", spatial_format=None):
+        session_id, path = upload_session
+        share = path / SHARE_UID
+        share.mkdir()
+        (share / "metadata.json").write_text(json.dumps({"dataset_uid": "DS-1", "dataset_type": dataset_type}))
+        form = {"session_id": session_id, "share_uid": SHARE_UID, "dataset_format": dataset_format}
+        if spatial_format:
+            form["spatial_format"] = spatial_format
+        result = run_cgi("process_uploaded_expression_dataset.cgi", form=form,
+                         db={"sessions": {session_id: 1}}, fake_modules=self.PROCESSOR_FAKES)
+        return result, json.loads((share / "metadata.json").read_text())
+
+    @pytest.mark.parametrize("dataset_type, expected", [
+        ("single-cell-rnaseq", True),
+        ("single-nucleus-rnaseq", True),    # #1345
+        ("bulk-rnaseq", False),
+        ("microarray", False),
+    ])
+    def test_primary_analysis_by_dataset_type(self, upload_session, dataset_type, expected):
+        result, metadata = self.run(upload_session, dataset_type)
+        assert result.json()["success"] == 1, result.stderr[-2000:]
+        assert metadata["perform_primary_analysis"] is expected
+        assert metadata["dataset_format"] == "h5ad"
+
+    def test_spatial_format_skips_anndata_primary_analysis(self, upload_session):
+        result, metadata = self.run(upload_session, "spatial", dataset_format="spatial", spatial_format="visium")
+        assert result.json()["success"] == 1, result.stderr[-2000:]
+        assert metadata["perform_primary_analysis"] is False

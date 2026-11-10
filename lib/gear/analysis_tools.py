@@ -9,6 +9,7 @@ dtypes (e.g. "sc-rna-seq") that older datasets still use.
 ANALYSIS_TOOL_DTYPES = {
     "dataset-curator": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "bulk-rnaseq",
         "bargraph-standard",
         "microarray",
@@ -21,6 +22,7 @@ ANALYSIS_TOOL_DTYPES = {
     ],
     "multigene-viewer": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "bulk-rnaseq",
         "bargraph-standard",
         "microarray",
@@ -32,6 +34,7 @@ ANALYSIS_TOOL_DTYPES = {
     ],
     "compare-tool": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "bulk-rnaseq",
         "bargraph-standard",
         "microarray",
@@ -44,6 +47,7 @@ ANALYSIS_TOOL_DTYPES = {
     # Single-cell data only; bulk datasets have too few observations for the workbench steps (#1361)
     "sc-workbench": [
         "single-cell-rnaseq",
+        "single-nucleus-rnaseq",
         "atac-seq",
         "spatial",
         "sc-rna-seq"
