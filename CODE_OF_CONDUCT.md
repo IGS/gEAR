@@ -48,7 +48,7 @@ Tensions can occur between community members even when they are trying their bes
 When an incident does occur, it is important to report it promptly. To report a possible violation, use either of these:
 
 * The Contact form on any gEAR portal, for example <https://umgear.org/contact.html>. Tick the box marking the message as private. Private messages go to a private issue tracker that only the gEAR team can see, not the public one.
-* A direct message to a maintainer through their GitHub profile: [Shaun Adkins](https://github.com/adkinsrs) or [Joshua Orvis](https://github.com/jorvis).
+* An email to maintainer Shaun Adkins at <sadkins@som.umaryland.edu>. Use this if you would rather not use the Contact form, or if your report concerns someone who handles Contact form messages.
 
 The gEAR maintainers act as the Community Moderators for this project.
 
