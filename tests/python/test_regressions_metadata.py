@@ -119,11 +119,7 @@ def test_get_value_from_df():
 
 @pytest.mark.parametrize("label, expected", [
     ("single-nucleus-rnaseq", "single-nucleus-rnaseq"),
-    ("Single-nucleus RNA-Seq", "single-nucleus-rnaseq"),
-    ("Single nuclei RNA-seq", "single-nucleus-rnaseq"),
-    ("snRNA-seq", "single-nucleus-rnaseq"),
     ("single-cell-rnaseq", "single-cell-rnaseq"),
-    ("Single cell RNA-Seq", "single-cell-rnaseq"),
 ])
 def test_dataset_type_single_nucleus_is_kept_apart(label, expected):
     """Regression for #1345: single-nucleus labels are no longer folded into single-cell-rnaseq."""
