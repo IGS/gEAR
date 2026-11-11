@@ -4,12 +4,16 @@ import hashlib
 import uuid
 
 import pytest
-
+from gear import passwords
 from helpers.cgi_harness import run_cgi
 
 PASSWORD = "correct horse"
 SHA3 = hashlib.sha3_256(PASSWORD.encode()).hexdigest()
 MD5 = hashlib.md5(PASSWORD.encode()).hexdigest()
+SCRYPT = passwords.hash_password(PASSWORD)
+
+# What the database reports once a new hash has been stored in full (see upgrade_stored_password in login.v2.cgi)
+STORED_IN_FULL = {"match": "SELECT CHAR_LENGTH(pass) FROM guser", "rows": [[len(SCRYPT)]]}
 
 
 class TestUpdatePassword:
@@ -24,7 +28,8 @@ class TestUpdatePassword:
         (update,) = result.writes()
         assert update["query"] == "UPDATE guser SET pass = %s, help_id = %s WHERE help_id = %s"
         encoded_pass, new_help_id, old_help_id = update["params"]
-        assert encoded_pass == hashlib.sha3_256(b"n3w-pass").hexdigest()
+        assert encoded_pass.startswith("scrypt$") and passwords.verify_password("n3w-pass", encoded_pass)
+        assert not passwords.needs_rehash(encoded_pass)
         assert old_help_id == "abc123"
         assert new_help_id != "abc123" and str(uuid.UUID(new_help_id)) == new_help_id
         assert result.logged("commit")
@@ -61,7 +66,7 @@ class TestUpdatePassword:
 
 
 class TestLogin:
-    def run(self, stored_hash=SHA3, password=PASSWORD, extra_sql=(), user_found=True):
+    def run(self, stored_hash=SCRYPT, password=PASSWORD, extra_sql=(), user_found=True):
         rows = [[7, "Alice", stored_hash, 0]] if user_found else []
         db = {"sql": [{"match": "FROM guser WHERE email", "rows": rows}, *extra_sql]}
         form = {"user-email": "alice@example.org"}
@@ -71,19 +76,60 @@ class TestLogin:
 
     def assert_logged_in(self, result):
         body = result.json()
-        (insert,) = result.writes()
+        (insert,) = [w for w in result.writes() if "guser" not in w["query"]]
         assert insert["query"] == "INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)"
         assert insert["params"][0] == 7
         assert body == {"session_id": insert["params"][1], "is_admin": 0, "user_name": "Alice",
                         "gear_default_domain": "Hearing (site default)", "default_profile_share_id": 0}
 
-    def test_sha3_password_logs_in(self):
-        self.assert_logged_in(self.run())
-
-    def test_md5_password_still_logs_in_without_upgrading_the_hash(self):
-        result = self.run(stored_hash=MD5)
+    def test_scrypt_password_logs_in_and_is_left_alone(self):
+        result = self.run()
         self.assert_logged_in(result)
         assert not [w for w in result.writes() if "guser" in w["query"]]
+
+    @pytest.mark.parametrize("stored_hash", [SHA3, MD5], ids=["sha3", "md5"])
+    def test_legacy_hash_logs_in_and_is_upgraded(self, stored_hash):
+        """Issue #1350: unsalted hashes are replaced at login, the only time the plaintext is available."""
+        result = self.run(stored_hash=stored_hash, extra_sql=[STORED_IN_FULL])
+        self.assert_logged_in(result)
+        (update,) = [w for w in result.writes() if "guser" in w["query"]]
+        assert update["query"] == "UPDATE guser SET pass = %s WHERE id = %s AND pass = %s"
+        new_hash, user_id, old_hash = update["params"]
+        assert (user_id, old_hash) == (7, stored_hash)
+        assert passwords.verify_password(PASSWORD, new_hash) and not passwords.needs_rehash(new_hash)
+        assert not result.logged("rollback")
+
+    def test_weaker_scrypt_settings_are_upgraded(self, monkeypatch):
+        monkeypatch.setattr(passwords, "SCRYPT_N", 2**14)
+        weak = passwords.hash_password(PASSWORD)
+        monkeypatch.undo()
+        result = self.run(stored_hash=weak, extra_sql=[STORED_IN_FULL])
+        self.assert_logged_in(result)
+        (update,) = [w for w in result.writes() if "guser" in w["query"]]
+        assert not passwords.needs_rehash(update["params"][0])
+
+    @pytest.mark.parametrize("stored_length", [64, None], ids=["truncated", "row-missing"])
+    def test_upgrade_is_rolled_back_if_the_new_hash_was_not_stored_in_full(self, stored_length):
+        """
+        If guser.pass is still VARCHAR(64) and MySQL isn't strict, the new hash is cut short. Keeping
+        it would lock the user out, so it is rolled back and the login still succeeds.
+        """
+        rows = [[stored_length]] if stored_length else []
+        result = self.run(stored_hash=SHA3, extra_sql=[{"match": "SELECT CHAR_LENGTH(pass) FROM guser", "rows": rows}])
+        self.assert_logged_in(result)
+        assert len(result.logged("rollback")) == 1
+        assert "could not upgrade the password hash of user 7" in result.stderr
+        # The rollback comes before the session is added, so the session is still committed
+        events = [e["event"] if e["event"] != "sql" else e["query"].split()[0] for e in result.db_log]
+        assert events.index("rollback") < events.index("INSERT") < len(events) - 1 - events[::-1].index("commit")
+
+    def test_upgrade_failure_does_not_block_login(self):
+        """MySQL in strict mode raises instead of truncating."""
+        strict = run_cgi("login.v2.cgi", form={"user-email": "alice@example.org", "user-password": PASSWORD},
+                         db={"sql": [{"match": "FROM guser WHERE email", "rows": [[7, "Alice", MD5, 0]]}],
+                             "fail_sql": ["UPDATE guser SET pass"]})
+        self.assert_logged_in(strict)
+        assert len(strict.logged("rollback")) == 1
 
     def test_existing_session_and_profile_are_reused(self):
         result = self.run(extra_sql=[{"match": "FROM user_session", "rows": [["existing-session"]]},
@@ -93,9 +139,11 @@ class TestLogin:
         assert body["gear_default_domain"] == "My profile" and body["default_profile_share_id"] == "LAYOUT1"
         assert result.writes() == []
 
-    @pytest.mark.parametrize("password", ["wrong", "", None, SHA3, MD5])
-    def test_wrong_password(self, password):
-        result = self.run(password=password)
+    @pytest.mark.parametrize("stored_hash", [SCRYPT, SHA3, MD5], ids=["scrypt", "sha3", "md5"])
+    @pytest.mark.parametrize("password", ["wrong", "", None, SHA3, MD5, SCRYPT])
+    def test_wrong_password(self, password, stored_hash):
+        """Including the stored hash itself, which must not work as a password."""
+        result = self.run(password=password, stored_hash=stored_hash)
         assert result.json() == {"session_id": -1, "is_admin": 0}
         assert result.writes() == []
 
@@ -111,6 +159,7 @@ class TestLogin:
         unknown = self.run(user_found=False)
         wrong = self.run(password="wrong")
         assert unknown.json() == wrong.json()
+        assert unknown.writes() == wrong.writes() == []
         assert "e-mail not found" in unknown.stderr
         assert "incorrect password" in wrong.stderr
 

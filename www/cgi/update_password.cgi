@@ -7,7 +7,6 @@ The help_id is replaced with a new one afterwards, so each reset link only works
 """
 
 import cgi
-import hashlib
 import json
 import os
 import sys
@@ -16,6 +15,7 @@ import uuid
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear import passwords
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -53,7 +53,7 @@ def main():
         print(json.dumps(result))
         return
 
-    encoded_pass = hashlib.sha3_256(password.encode('utf-8')).hexdigest()
+    encoded_pass = passwords.hash_password(password)
 
     # Replace the help_id too, so the reset link (which contains it) cannot be used again
     new_help_id = str(uuid.uuid4())

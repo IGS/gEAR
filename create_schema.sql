@@ -32,7 +32,7 @@ CREATE TABLE guser (
        user_name      VARCHAR(255),
        email          VARCHAR(255),
        institution    VARCHAR(255),
-       pass           VARCHAR(64), -- hashlib sha3_256 hexdigest is 64 characters
+       pass           VARCHAR(255), -- scrypt hash from gear.passwords (87 characters); older rows hold a SHA3-256 or MD5 hexdigest
        colorblind_mode TINYINT(1) DEFAULT 0,
        updates_wanted TINYINT(1),
        is_admin       TINYINT(1) DEFAULT 0,
@@ -44,7 +44,7 @@ CREATE TABLE guser (
        FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id)
 ) ENGINE=INNODB;
 
--- password is a hashlib md5 hexdigest
+-- password is a hashlib md5 hexdigest, which is replaced with a scrypt hash at the first login
 INSERT INTO guser (id, user_name, email, institution, pass, updates_wanted, is_admin)
        VALUES (0, 'gEAR admin', 'admin@localhost', 'UMaryland', 'fcdf1dc2c1ef7dec3dbb1a6e2c5e3c8a', 0, 1);
 INSERT INTO guser (email, user_name, institution, pass, updates_wanted, is_admin)
