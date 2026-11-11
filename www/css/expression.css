@@ -96,8 +96,8 @@ ul#gene-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
 ul#gene-result-list li.is-selected {
-    background-color: var(--gear-bg-primary);
-    color: white;
+    background-color: var(--gear-bg-primary, #362E5C);
+    color: var(--gear-text-on-primary, #fff);
 }
 ul#go-terms {
     max-height: 17em;

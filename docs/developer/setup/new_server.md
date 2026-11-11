@@ -68,12 +68,16 @@ Follow instructions in [the Apache setup](./apache.md) document
 
 Used for changing theme colors between portal flavors (e.g. `www/css/gear-theme-purple.scss`).
 
-Ruby Sass (`ruby-sass`) is end-of-life and may not be packaged on current Ubuntu releases. Install Dart Sass instead, either via npm or a standalone release from <https://github.com/sass/dart-sass/releases>:
+Ruby Sass (`ruby-sass`) is end-of-life and may not be packaged on current Ubuntu releases. Install Dart Sass 1.79.0 or newer instead, either via npm or a standalone release from <https://github.com/sass/dart-sass/releases>:
 
 ```bash
 sudo npm install -g sass
 sass www/css/gear-theme-purple.scss www/css/gear-theme-purple.css
 ```
+
+Select the desired portal's brand colors in the SCSS before compiling; if multiple
+sets are uncommented, the last set takes precedence. The compiled theme also exports
+the primary color and a contrast-safe text color used for selected results.
 
 ### gEAR portal
 
