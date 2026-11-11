@@ -166,8 +166,6 @@ I cannot add comments to the bash code without breaking the command.  So consult
 
 Do not forget to change out the old Python version in various files (i.e. systemd files, apache, etc.)
 
-The `kaleido` package requires Chrome to be installed.  From the same directory, run `./plotly_get_chrome` to install
-
 ### Apache
 
 If you update python versions, you need to update the wsgi_module path in the apache.conf to reflect the current python version.  Also restart the apache service.  Also update `WSGIPythonHome` in the apache.conf as well.
