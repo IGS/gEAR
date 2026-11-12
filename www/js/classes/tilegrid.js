@@ -4,6 +4,7 @@
 import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurrentUser, logErrorInConsole, openModal, triggerUrlDownload } from "../common.v2.js";
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
+import { clearGoslingTile, loadGoslingEmbed, renderGoslingPlot } from "../helpers/gosling-fxns.js";
 import { Citation } from "./citation.js";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
@@ -1454,6 +1455,8 @@ class DatasetTile {
 
         // Clear inline styles that a previous display type (spatial, gosling) set on this tile
         this.resetTileStyles();
+        // Stop routing Gosling location events to the previous display
+        clearGoslingTile(this.tile.tileId);
 
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
@@ -1760,24 +1763,16 @@ class DatasetTile {
      */
     async renderGoslingDisplay(display, otherOpts) {
         const datasetId = display.dataset_id;
-        const orgId = this.dataset.organism_id;
         const plotConfig = display.plotly_config;
-        const assembly = plotConfig.assembly;
-        const ucscHubUrl = plotConfig.hubUrl;
         const zoom = this.isZoomed;
-        const positionArr = ["", ""]; // [leftPosition, rightPosition]
-        let hiCFound = false;
 
-        let embedFn = null
+        let embedFn = null;
         try {
-            const gos = await import('https://esm.sh/gosling.js@1.0.6');
-            // prefer named export, then try default, then fallback to the module itself
-            embedFn = gos.embed ?? gos.default?.embed;
-        // use mod
+            embedFn = await loadGoslingEmbed();
         } catch (err) {
             logErrorInConsole(err);
             createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer.");
-            return
+            return;
         }
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
@@ -1785,23 +1780,13 @@ class DatasetTile {
         plotContainer.replaceChildren();    // erase plot
         createCardMessage(this.tile.tileId, "info", "Loading epigenome display...");
 
-        let spec;
+        let data;
         try {
-            const data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
+            data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
             if (data?.success < 1) {
                 const message = data?.message || "Failed to fetch Gosling display data.";
                 throw new Error(message);
             }
-            // spec is a JSON string which needs to be a JSON object
-            spec = (typeof data.spec === "string") ? JSON.parse(data.spec) : data.spec;
-
-            positionArr[0] = data.position;
-            if (zoom) {
-                positionArr[1] = data.position;
-            }
-
-            hiCFound = data?.hic_found || false;
-
         } catch (error) {
             logErrorInConsole(error);
             const message = error?.message || "An error occurred while fetching the Gosling display data.";
@@ -1809,97 +1794,23 @@ class DatasetTile {
             return;
         }
 
-        const goslingContainer = document.createElement("div");
-        goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
-        goslingContainer.style.width = "100%";
-        goslingContainer.style.boxSizing = "border-box";
-        goslingContainer.style.marginTop = "5px";
-        plotContainer.replaceChildren();    // erase card message
-        plotContainer.append(goslingContainer);
+        // spec is a JSON string which needs to be a JSON object
+        const spec = (typeof data.spec === "string") ? JSON.parse(data.spec) : data.spec;
 
-        // Themes -> https://gosling-lang.org/themes/
-        const embedOpts = { "padding": 0, "theme": null };
-        // NOTE: re-embedding does work but it causes some stability issues
-        let goslingApi = null;
         try {
-            goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
-            this.goslingApi = goslingApi; // Store the gosling API for future use (i.e. zooming to gene from search)
+            // Store the Gosling API for later use (e.g. PNG download)
+            this.goslingApi = await renderGoslingPlot(embedFn, plotContainer, spec, {
+                tileId: this.tile.tileId,
+                zoom,
+                position: data.position,
+                hicFound: data?.hic_found || false,
+                assembly: plotConfig.assembly,
+                hubUrl: plotConfig.hubUrl,
+            });
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while rendering the Gosling display.");
-            return;
         }
-
-        if (!zoom) {
-            return;
-        }
-
-        // If the view is a zoomed view extra controls and events are added.
-        const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
-        const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
-
-        if (ucscHubUrl) {
-            // Add event listener to export button to open UCSC Genome Browser with hub URL and position
-            document.getElementById(exportButton.id).addEventListener('click', () => {
-                const url = "https://genome.ucsc.edu/cgi-bin/hgTracks";
-                // add DB and Hub parameters
-                const urlParams = new URLSearchParams({
-                    db: assembly,
-                    hubUrl: ucscHubUrl,    // preconfigured hub file
-                    ignoreCookie: 1, // Ignore cookie to ensure trackHub changes are respected. Unfortunately, adds default tracks.
-                })
-
-                if (positionArr) {
-                    // if an element in positionArr is not empty, add it to the URL, separated by a pipe
-                    const highlightedPositions = positionArr.filter(pos => pos).join('|');
-                    urlParams.set('highlight', highlightedPositions);
-                }
-
-                // open in a new tab
-                window.open(`${url}?${urlParams.toString()}`, '_blank');
-            });
-        }
-
-        // Add event listener to search button to zoom to gene in Panel B
-        document.getElementById(searchButton.id).addEventListener('click', async () => {
-            const geneInput = document.getElementById(`tile-${this.tile.tileId}-panel-b-gene-input`);
-            const gene = geneInput.value.trim();
-            if (!gene) {
-                alert("Please enter a gene name.");
-                return;
-            }
-
-            let panelBData = null;
-            try {
-                panelBData = await apiCallsMixin.fetchHiglassGeneCoords(gene, assembly);
-            } catch (error) {
-                console.error("Error searching for gene:", error);
-                createToast(`An error occurred while searching for gene: ${gene}`);
-            }
-
-            if (!panelBData) {
-                alert(`Gene ${gene} not found for assembly ${assembly}.`);
-                return;
-            }
-
-            const chr = panelBData.chr
-            const start = panelBData.txStart
-            const end = panelBData.txEnd
-            //const gene_symbol = panelBData.geneName
-
-            const basePadding = 1500; // Base padding for zooming
-            //const basePadding = 0; // Base padding for zooming
-
-            const paddingToUse = hiCFound ? basePadding * 500 : basePadding;
-
-            const rightPosition = `${chr}:${start}-${end}`;
-            const positionStr = `${assembly}.${rightPosition}`; // Update the global position variable
-            positionArr[1] = positionStr;
-            await goslingApi.zoomTo("right-annotation", rightPosition, paddingToUse); // track name, position, padding, duration (ms)
-
-            // TODO:  if Hi-C data is found, add an annotation to the gene position
-
-        });
     }
 
     /**
@@ -2706,54 +2617,4 @@ const createCardMessage = (tileId, level, message, id) => {
     messageElt.classList.add(textLevel, bgLevel, "p-2", "m-2", "has-text-weight-bold");
     messageElt.textContent = message;
     cardContent.append(messageElt);
-}
-
-const createExportButton = (tileId, selectorId) => {
-    // Add a button to export the current view to UCSC Genome Browser
-    const exportButton = document.createElement('button');
-    exportButton.id = `tile-${tileId}-ucsc-export-button`;
-    exportButton.textContent = 'View in UCSC Genome Browser';
-    // stylize the button
-    exportButton.style.zIndex = '1000';
-    exportButton.style.padding = '10px';
-    exportButton.style.marginBottom = '10px';
-    exportButton.style.marginRight = '10px';
-    exportButton.style.backgroundColor = 'purple'; // Purple background
-    exportButton.style.color = 'white'; // White text
-    exportButton.style.border = 'none';
-    exportButton.style.borderRadius = '5px';
-    exportButton.style.cursor = 'pointer';
-    document.getElementById(selectorId).prepend(exportButton);
-    return exportButton
-}
-
-const createPanelBSearchBox = (tileId, selectorId) => {
-    // Add a search box that will link to Panel B
-    const searchBox = document.createElement('div');
-    searchBox.id = `tile-${tileId}-panel-b-gene-input-search;`
-    searchBox.style.float = "right";
-
-    const searchInput = document.createElement('input');
-    searchInput.id = `tile-${tileId}-panel-b-gene-input`;
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Enter gene name';
-    searchInput.style.marginRight = '4px'; // for some reason the label and input are not aligned propely with the panel A search box outside the gosling container
-
-    // Add label for the input
-    const searchLabel = document.createElement('label');
-    searchLabel.setAttribute('for', searchInput.id);
-    searchLabel.textContent = 'Search for a gene in Panel B:';
-    searchLabel.style.fontWeight = 'bold';
-    searchLabel.style.color = "black";
-    searchLabel.style.marginRight = '4px';
-
-    const searchButton = document.createElement('button');
-    searchButton.id = `tile-${tileId}-panel-b-search-button`;
-    searchButton.textContent = 'Search';
-
-    searchBox.appendChild(searchLabel);
-    searchBox.appendChild(searchInput);
-    searchBox.appendChild(searchButton);
-    document.getElementById(selectorId).before (searchBox);
-    return searchButton;
 }

@@ -222,6 +222,12 @@ ul#go-terms li {
     overflow: hidden;
 }
 
+/* show keyboard focus on a Gosling plot, which takes arrow keys and +/- for panning and zooming */
+.gosling-nav-target:focus-visible {
+    outline: 2px solid hsl(229, 53%, 53%);
+    outline-offset: 2px;
+}
+
 /* ensure internal canvases/svgs fill the container - Copilot generated */
 .gosling-component > * {
     max-width: 100% !important;
