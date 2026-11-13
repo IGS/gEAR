@@ -71,7 +71,17 @@ Used for changing theme colors between portal flavors (e.g. `www/css/gear-theme-
 Ruby Sass (`ruby-sass`) is end-of-life and may not be packaged on current Ubuntu releases. Install Dart Sass 1.79.0 or newer instead, either via npm or a standalone release from <https://github.com/sass/dart-sass/releases>:
 
 ```bash
-sudo npm install -g sass
+# Remove ruby sass if present, to avoid conflicts with dart-sass
+sudo apt remove ruby-sass
+
+# Change VER as needed
+VER=1.83.4
+cd /tmp
+wget https://github.com/sass/dart-sass/releases/download/$VER/dart-sass-$VER-linux-x64.tar.gz
+sudo tar -xzf dart-sass-$VER-linux-x64.tar.gz -C /opt
+sudo ln -sf /opt/dart-sass/sass /usr/local/bin/sass
+hash -r
+
 sass www/css/gear-theme-purple.scss www/css/gear-theme-purple.css
 ```
 
