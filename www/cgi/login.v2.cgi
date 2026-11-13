@@ -15,7 +15,6 @@ Where the session_id is one of the following:
 """
 
 import cgi
-import hashlib
 import json
 import os
 import sys
@@ -24,6 +23,7 @@ import uuid
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear import passwords
 
 def main():
     cnx = geardb.Connection()
@@ -37,9 +37,6 @@ def main():
     if user_pass is None:
         user_pass = ""
 
-    encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
-    encoded_256_pass = hashlib.sha3_256(user_pass.encode('utf-8')).hexdigest()
-
     result = {}
     result["session_id"] = 0
     result["is_admin"] = 0
@@ -50,6 +47,7 @@ def main():
     user_name = None
     is_admin = None
     password_correct = False
+    stored_pass = None
 
     session_qry = "SELECT session_id FROM user_session WHERE user_id = %s"
     profile_qry = "SELECT label, share_id FROM layout where user_id = %s and is_current = 1"  # Should either be 1 or 0 results
@@ -59,23 +57,21 @@ def main():
     for row in cursor:
         user_email_found = True
 
-        if row[2] == encoded_256_pass:
+        # Accepts scrypt hashes, and the unsalted SHA3-256 or MD5 hashes of older accounts
+        if passwords.verify_password(user_pass, row[2]):
             password_correct = True
             user_id = row[0]
             user_name = row[1]
+            stored_pass = row[2]
             is_admin = row[3]
             break
 
-        # Many older accounts may still be using the md5 encoding, so check that as well if the sha3_256 doesn't match
-        if not password_correct:
-            if row[2] == encoded_pass:
-                password_correct = True
-                user_id = row[0]
-                user_name = row[1]
-                is_admin = row[3]
-                break
+    if password_correct and passwords.needs_rehash(stored_pass):
+        upgrade_stored_password(cnx, cursor, user_id, user_pass, stored_pass)
 
     if not user_email_found:
+        # Take as long as a password check would, so timing doesn't reveal which e-mails are registered
+        passwords.verify_unknown_user(user_pass)
         print("login.v2.cgi: login failed for {}: e-mail not found".format(user_email), file=sys.stderr)
         result['session_id'] = -1
         print(json.dumps(result))
@@ -117,6 +113,31 @@ def main():
     cnx.commit()
     cursor.close()
     cnx.close()
+
+
+def upgrade_stored_password(cnx, cursor, user_id, user_pass, stored_pass):
+    """
+    Replace an older hash (unsalted SHA3-256 or MD5, or scrypt with weaker settings) with a current
+    one. This can only happen at login, the one time the plaintext password is available.
+
+    The login must not fail because of this, and a hash that doesn't fit in the column must never be
+    kept: a truncated hash would lock the user out. That happens if guser.pass is still VARCHAR(64)
+    and MySQL isn't in strict mode, so the stored length is checked before committing.
+    """
+    new_pass = passwords.hash_password(user_pass)
+
+    try:
+        cursor.execute("UPDATE guser SET pass = %s WHERE id = %s AND pass = %s", (new_pass, user_id, stored_pass))
+        cursor.execute("SELECT CHAR_LENGTH(pass) FROM guser WHERE id = %s", (user_id,))
+        row = cursor.fetchone()
+
+        if row is None or row[0] != len(new_pass):
+            raise ValueError("guser.pass is too short for the new hash; see docs/developer/database_schema.md")
+
+        cnx.commit()
+    except Exception as e:
+        cnx.rollback()
+        print("login.v2.cgi: could not upgrade the password hash of user {}: {}".format(user_id, e), file=sys.stderr)
 
 
 if __name__ == '__main__':

@@ -9,13 +9,13 @@ Currenty only saves changes to password
 import cgi, json
 import sys
 import os
-import hashlib
 import re
 import uuid
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear import passwords
 
 # Same pattern as the email check in www/js/create_account.js
 #  (anchored, so it can't backtrack from every starting position)
@@ -70,7 +70,7 @@ def main():
             exit()
 
         # Generate encoded password
-        encoded_pass = hashlib.sha3_256(new_password.encode('utf-8')).hexdigest()
+        encoded_pass = passwords.hash_password(new_password)
 
         # Save new password
         save_new_password(cursor, help_id, encoded_pass)
@@ -129,7 +129,7 @@ def main():
         if new_password:
             mid_query_settings.append(" pass = %s")
             # Generate encoded password
-            encoded_pass = hashlib.sha3_256(new_password.encode('utf-8')).hexdigest()
+            encoded_pass = passwords.hash_password(new_password)
 
             field_values.append(encoded_pass)
 

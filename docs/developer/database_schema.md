@@ -115,7 +115,26 @@ Most child tables use `ON DELETE CASCADE`, so deleting a `guser` removes their d
 
 - `gene_urls` (columns `gene_id`, `label`, `url`) is inserted into by `lib/loaderutils.py`, `bin/load_zfin_id_urls.py` and `bin/load_mirna_fam_data.py` but has no `CREATE TABLE` in `create_schema.sql`.
 - Several `bin/` scripts (`remove_marked_datasets.py`, `rescore_*_dataset_coloring.py`, `convert_legacy_dataset_to_3tab.py`) query a legacy `expression` table that is not in the schema.
-- The seed `guser` rows use MD5 hashes while the column comment mentions SHA3-256.  Older entries will still use the MD5 hashes for legacy purposes, while any new users or updated passwords use the SHA3-256 hashes.
+- The seed `guser` rows use MD5 hashes. See [Password hashes](#password-hashes).
+
+## Password hashes
+
+`guser.pass` holds the output of `gear.passwords.hash_password()` (`lib/gear/passwords.py`): a salted scrypt hash stored as `scrypt$<n>$<r>$<p>$<salt>$<key>` (87 characters with the current settings). The cost settings are part of the value, so they can be raised in `passwords.py` without invalidating stored passwords.
+
+Accounts older than this hold an unsalted SHA3-256 (64 characters) or MD5 (32 characters) hexdigest. These still work. `www/cgi/login.v2.cgi` replaces one with a scrypt hash the next time its user logs in, which is the only time the plaintext password is available. Accounts that never log in again keep their old hash; the only way to remove those is to clear `pass` and have the user reset their password.
+
+### Updating an existing server
+
+The column was `VARCHAR(64)`, which is too short for a scrypt hash. Run this on each existing database **before** deploying the code that writes scrypt hashes:
+
+```sql
+ALTER TABLE guser MODIFY pass VARCHAR(255);
+```
+
+If the code is deployed first:
+
+- With MySQL in strict mode (the default), creating an account or changing a password fails with a "Data too long" error until the column is altered. Logging in still works, and existing hashes are left as they are.
+- Without strict mode MySQL truncates the value, so a password set during that time doesn't work and has to be reset after the column is altered. The upgrade at login checks the stored length and rolls back, so existing accounts are not affected.
 
 ## Related documentation
 
