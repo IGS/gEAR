@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js";
 import { TileGrid } from "./classes/tilegrid.js";
@@ -120,11 +120,14 @@ document.getElementById('submit-expression-search').addEventListener('click', as
     }
     try {
 
-        let setupTileGridFn = setupTileGrid(datasetCollectionState.selectedShareId);
+        // Pick the scope first so only one tile grid is built
+        let setupTileGridFn;
         if (datasetShareId) {
             setupTileGridFn = setupTileGrid(datasetShareId, "dataset");
         } else if (datasetShareIds.length) {
             setupTileGridFn = setupTileGrid(datasetShareIds.join(","), "datasets");
+        } else {
+            setupTileGridFn = setupTileGrid(datasetCollectionState.selectedShareId);
         }
 
         const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(searchToken), setupTileGridFn]);
@@ -603,6 +606,35 @@ const selectGeneResult = async (geneSymbol) => {
 };
 
 /**
+ * Shows or hides the multi-gene display option based on the datasets in scope.
+ * Gosling datasets have no multi-gene views, so the option is hidden when every dataset is Gosling.
+ * Mixed collections keep the option.
+ *
+ * @param {Array<Object>} datasets - The datasets in the current tile grid.
+ */
+const updateMultigeneAvailability = (datasets) => {
+    const multiElt = document.getElementById('single-multi-multi');
+    const goslingOnly = datasets?.length > 0 && datasets.every((d) => d.dtype === "gosling");
+
+    if (!goslingOnly) {
+        enableAndShowElement(multiElt, true);
+        return;
+    }
+
+    disableAndHideElement(multiElt, true);
+    document.getElementById('single-multi-single').checked = true;
+
+    if (isMultigene) {
+        isMultigene = false;
+        // Restore the single-gene panels that the search handler hid for multigene mode
+        document.getElementById("gene-result-list-c").classList.remove('is-hidden');
+        document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
+        document.getElementById("annotation-panel").classList.remove('is-hidden');
+        createToast("Multi-gene displays are not available for Gosling datasets. Showing single-gene displays instead.", "is-warning");
+    }
+};
+
+/**
  * Sets up the tile grid with the provided shareId and type.
  *
  * @param {string} shareId - The shareId for the tile grid.
@@ -619,6 +651,8 @@ const setupTileGrid = async (shareId, type = "layout") => {
     const tilegrid = new TileGrid(shareId, type, "#result-panel-grid");
     try {
         tilegrid.datasets = await tilegrid.getDatasets();
+        // Must run before applyTileGrid, which builds tiles for the current single/multi mode
+        updateMultigeneAvailability(tilegrid.datasets);
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
 
@@ -851,6 +885,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 // If the user selects a collection, clear the datasetShareId as scope has changed
                 datasetShareId = null;
                 datasetShareIds = [];
+                // New scope may not be Gosling-only; the next search re-checks
+                enableAndShowElement(document.getElementById('single-multi-multi'), true);
             }
         }
     });

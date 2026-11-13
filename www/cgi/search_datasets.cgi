@@ -22,7 +22,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.userhistory import UserHistory
-from gear.utils.fulltext import to_boolean_mode_query
+from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
 
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 20
@@ -151,17 +151,23 @@ def main():
         wheres.append("d.is_public = 1")
 
     # Punctuation is an operator in boolean mode (e.g. "-" excludes a word), so the user's text
-    #  is converted first; if nothing searchable is left, search as if no terms were given
-    fulltext_query = to_boolean_mode_query(' '.join(search_terms))
+    #  is converted first; if nothing searchable is left, search as if no terms were given.
+    #  Words also match as prefixes ("Tono" finds "Tonotopic"), and inside underscore names in the
+    #  title ("potential" finds "Groves_potential_targets"), which full-text search treats as one word (#636)
+    search_text = ' '.join(search_terms)
+    fulltext_query = to_boolean_mode_query(search_text, prefix=True)
 
     if fulltext_query:
+        like_patterns = to_like_patterns(search_text)
         selects.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST(%s IN BOOLEAN MODE) as rscore')
-        wheres.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST(%s IN BOOLEAN MODE)')
+        wheres.append('(' + ' OR '.join(['MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST(%s IN BOOLEAN MODE)']
+                                        + ['d.title LIKE %s'] * len(like_patterns)) + ')')
 
         # this is the only instance where a placeholder can be in the SELECT statement, so it will
         #  be the first qry param
         qry_params.insert(0, fulltext_query)
         qry_params.append(fulltext_query)
+        qry_params.extend(like_patterns)
 
     if organism_ids:
         ## only numeric characters and the comma are allowed here

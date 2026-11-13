@@ -761,7 +761,7 @@ export class Analysis {
             await this.getSavedAnalysesList(this.dataset.id, this.id);
 
             // Update the current analysis label
-            for (const el of document.querySelectorAll(UI.currentAnalysisElt)) {
+            for (const el of document.querySelectorAll(UI.currentAnalysisElts)) {
                 el.textContent = this.label;
             }
 
@@ -1983,6 +1983,9 @@ class AnalysisSteptSNE {
             }
 
             createToast("tSNE/UMAP computed and displayed", "is-success");
+            if (data.warning) {
+                createToast(data.warning, "is-warning");
+            }
 
         } catch (error) {
             createToast(`Error generating tSNE: ${error.message}`);
