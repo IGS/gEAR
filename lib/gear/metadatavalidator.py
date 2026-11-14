@@ -10,6 +10,8 @@ import os, sys
 import re
 import requests
 
+from gear import metadata_fields as mf
+
 
 class MetadataValidator:
     """
@@ -17,17 +19,57 @@ class MetadataValidator:
     along with the expression data file
     """
     def __init__( self ):
-        self.required_atts = [
-            'annotation_release_number',
-            'annotation_source',
-            'contact_email',
-            'contact_institute',
-            'contact_name',
-            'dataset_type',
-            'sample_taxid',
-            'summary',
-            'title'
-        ]
+        self.required_atts = [f.name for f in mf.FIELDS if f.required]
+
+    @staticmethod
+    def validate_values(values: dict) -> tuple[dict, dict]:
+        """
+        Check every field of the v2 metadata template (see gear.metadata_fields).
+
+        Values are normalized first, so shortcuts like a bare taxon ID are accepted.
+
+        Returns (errors, warnings), each a dict of field name -> message. Errors must be fixed
+        before the dataset can be saved; warnings are passed on to the user and curators.
+        """
+        values = {name: mf.normalize_value(name, value) for name, value in values.items()}
+        errors = {}
+        warnings = {}
+
+        for f in mf.FIELDS:
+            value = values.get(f.name)
+
+            if value is None:
+                if f.is_required(values):
+                    errors[f.name] = "This field is required."
+                continue
+
+            if f.max_length is not None and len(value) > f.max_length:
+                errors[f.name] = f"Must be {f.max_length} characters or fewer."
+            elif f.choices and value not in f.choices:
+                errors[f.name] = "Must be one of: {0}.".format(", ".join(f.choices))
+            elif f.pattern and not re.fullmatch(f.pattern, value):
+                errors[f.name] = f"Expected {f.pattern_hint}."
+
+        keywords = mf.split_keywords(values.get("keywords"))
+        if len(keywords) > mf.MAX_KEYWORDS:
+            errors["keywords"] = f"Provide at most {mf.MAX_KEYWORDS} keywords."
+        elif any(len(k) > mf.MAX_KEYWORD_LENGTH for k in keywords):
+            errors["keywords"] = f"Each keyword must be {mf.MAX_KEYWORD_LENGTH} characters or fewer."
+
+        # Parts of these values are stored in their own, narrower columns
+        _, release = mf.parse_reference_annotation(values.get("reference_annot_id"))
+        if "reference_annot_id" not in errors and release and len(release) > mf.ANNOTATION_RELEASE_MAX_LENGTH:
+            errors["reference_annot_id"] = f"The version after the source must be {mf.ANNOTATION_RELEASE_MAX_LENGTH} characters or fewer."
+        repository, accession = mf.parse_repository_accession(values.get("repository_accession"))
+        if "repository_accession" not in errors and repository == "GEO" and len(accession) > mf.GEO_ID_MAX_LENGTH:
+            errors["repository_accession"] = f"GEO accessions must be {mf.GEO_ID_MAX_LENGTH} characters or fewer."
+
+        if values.get("device") == mf.OBI_DEVICE_ROOT:
+            warnings["device"] = "The OBI 'device' root term was given. The curator team will contact you to find a more specific term."
+        if values.get("assay") == mf.OBI_ASSAY_ROOT:
+            warnings["assay"] = "The OBI 'assay' root term was given. The curator team will contact you to find a more specific term."
+
+        return errors, warnings
 
     # check that required fields are populated
     @staticmethod

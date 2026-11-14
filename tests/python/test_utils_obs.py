@@ -4,7 +4,12 @@ import numpy as np
 import pandas as pd
 import pytest
 from gear.utils.obs import (
+    MAX_CATEGORIES,
+    VALID_TSNE_PAIRS,
+    VALID_UMAP_PAIRS,
     apply_obs_dtype_choices,
+    find_column_pair,
+    find_primary_variable_candidates,
     flag_ambiguous_obs_columns,
     sanitize_obs_for_h5ad,
 )
@@ -102,3 +107,52 @@ def test_sanitized_obs_round_trips_through_h5ad(tmp_path, messy_obs):
     assert obs["mixed"].tolist() == ["1", "a", ""]
     assert obs["whole"].tolist()[:2] == [1, 2] and pd.isna(obs["whole"].iloc[2])
     assert obs["fraction"].tolist() == [1.5, 2.0, 3.0]
+
+
+@pytest.mark.parametrize("cols, pairs, expected", [
+    (["tSNE_1", "tSNE_2", "cluster"], VALID_TSNE_PAIRS, ["tSNE_1", "tSNE_2"]),
+    # Written by the Seurat (RDS) uploader
+    (["tsne_1", "tsne_2"], VALID_TSNE_PAIRS, ["tsne_1", "tsne_2"]),
+    (["umap_1", "umap_2"], VALID_UMAP_PAIRS, ["umap_1", "umap_2"]),
+    # Both columns of a pair are needed
+    (["tSNE_1", "UMAP_2"], VALID_TSNE_PAIRS, None),
+    (["UMAP_1", "UMAP_2"], VALID_TSNE_PAIRS, None),
+])
+def test_find_column_pair(cols, pairs, expected):
+    assert find_column_pair(cols, pairs) == expected
+
+
+# ---------------------------------------------------------------- primary variable candidates (#435)
+
+
+def test_primary_variable_candidates():
+    obs = pd.DataFrame({
+        "condition": pd.Categorical(["control", "treated", "control", "treated"]),
+        "sample": ["s1", "s2", "s3", "s1"],                     # object
+        "is_control": [True, False, True, False],
+        "batch": pd.array(["a", "b", "a", "b"], dtype="string"),
+        "replicate": [1, 2, 1, 2],                              # numeric: offered only via the dtype review
+        "depth": [1.5, 2.5, 3.5, 4.5],
+        "species": ["mouse"] * 4,                               # one value
+        "barcode": ["AAA", "CCC", "GGG", "TTT"],                # a value per cell
+    }, index=[f"c{i}" for i in range(4)])
+    candidates = find_primary_variable_candidates(obs)
+    assert list(candidates) == ["condition", "sample", "is_control", "batch"]
+    assert candidates["condition"] == {"n_unique": 2, "sample_values": ["control", "treated"]}
+    assert candidates["is_control"]["sample_values"] == ["False", "True"]
+
+
+def test_primary_variable_candidates_limits():
+    obs = pd.DataFrame({"many": [f"v{i % 50}" for i in range(100)],
+                        "with_missing": ["a", None, "b"] * 33 + ["a"]})
+    assert list(find_primary_variable_candidates(obs, max_unique=40)) == ["with_missing"]
+    assert find_primary_variable_candidates(obs, max_unique=50)["many"]["sample_values"] == ["v0", "v1", "v10", "v11", "v12", "v13"]
+    assert find_primary_variable_candidates(obs)["with_missing"]["n_unique"] == 2
+
+
+def test_primary_variable_candidates_default_limit():
+    """By default a primary variable has at most 30 values, so the displays grouped by it stay readable."""
+    obs = pd.DataFrame({"thirty": [f"v{i % 30}" for i in range(60)],
+                        "thirty_one": [f"v{i % 31}" for i in range(60)]})
+    assert MAX_CATEGORIES == 30
+    assert list(find_primary_variable_candidates(obs)) == ["thirty"]

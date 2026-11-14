@@ -1,13 +1,70 @@
 # obs.py - obs-dataframe sanitization/categorization helpers for AnnData uploads.
 
 """
-obs.py - obs dataframe sanitization and categorization helpers for AnnData uploads.
+obs.py - obs dataframe sanitization and categorization helpers for AnnData uploads, and the
+obs column names recognized as an upload's own clusters and embeddings.
 """
+
+import re
 
 import pandas as pd
 
 
-def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
+# Names of obs columns holding an upload's own primary analysis (clusters and embeddings), shared
+# by gear.primary_analysis and the workbench's get_embedded_tsne_display.cgi.
+
+# Checked in order; the first one found is the dataset's clustering (gear.primary_analysis copies
+# it to obs['louvain']). Includes the sample metadata template's cell_clusters, and the names
+# scanpy (leiden) and Seurat (seurat_clusters) use.
+# Seurat's orig.ident is left out: it holds the sample or project name, not a cell grouping.
+VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass_label', 'joint_cluster_round4_annot',
+                              'cell_clusters', 'clusters', 'seurat_clusters', 'leiden', 'louvain']
+# Seurat's FindClusters also writes one column per resolution, e.g. RNA_snn_res.0.8
+SEURAT_CLUSTER_COLUMN_PATTERN = re.compile(r".+_snn_res\.[\d.]+")
+
+# Lowercase pairs are what the Seurat (RDS) uploader writes, from reductions named tsne, umap and pca
+VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined'], ['tsne_1', 'tsne_2'],
+                    # These are all carlo's custom ones.  Need to resolve this a different way later
+                    ['PC1%var6.14', 'PC2%var1.79']]
+VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
+                    ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2'], ['umap_1', 'umap_2']]
+VALID_PCA_PAIRS = [['PCA_1', 'PCA_2'], ['PC_1', 'PC_2'], ['PC1', 'PC2'], ['pca_1', 'pca_2']]
+
+# The most values an obs column can have and still be treated as a set of groups: numeric columns
+# with more are assumed continuous (flag_ambiguous_obs_columns), and a primary variable can have no
+# more (find_primary_variable_candidates, apply_obs_dtype_choices.cgi), so the default displays
+# grouped by it (e.g. a heatmap, or a UMAP colored by it) stay readable.
+MAX_CATEGORIES = 30
+
+
+def find_cluster_column(cols: list) -> str | None:
+    """
+    Return the first column in VALID_CLUSTER_COLUMN_NAMES found in cols, else the first Seurat
+    resolution column (e.g. RNA_snn_res.0.8), else None.
+    """
+    for vname in VALID_CLUSTER_COLUMN_NAMES:
+        if vname in cols:
+            return vname
+
+    for col in cols:
+        if SEURAT_CLUSTER_COLUMN_PATTERN.fullmatch(str(col)):
+            return col
+
+    return None
+
+
+def find_column_pair(cols: list, pairs: list) -> list | None:
+    """
+    Return the first [x, y] pair from pairs (e.g. VALID_TSNE_PAIRS) with both columns in cols, else None.
+    """
+    for pair in pairs:
+        if pair[0] in cols and pair[1] in cols:
+            return pair
+
+    return None
+
+
+def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = MAX_CATEGORIES) -> dict:
     """
     Identify obs columns whose current dtype looks questionable: numeric,
     but with few enough unique values that they're plausibly mislabeled
@@ -27,7 +84,7 @@ def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
     ----------
     obs : pd.DataFrame
         The obs dataframe to inspect.
-    max_unique : int, optional (default: 30)
+    max_unique : int, optional (default: MAX_CATEGORIES, 30)
         Columns with more unique values than this are assumed to be
         genuinely continuous and are not flagged.
 
@@ -77,6 +134,44 @@ def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
         }
 
     return questionable
+
+
+def is_categorical_obs_column(series: pd.Series) -> bool:
+    """True if an obs column holds categories (categorical, string or boolean) rather than numbers."""
+    return (isinstance(series.dtype, pd.CategoricalDtype) or series.dtype == object
+            or pd.api.types.is_bool_dtype(series) or pd.api.types.is_string_dtype(series))
+
+
+def find_primary_variable_candidates(obs: pd.DataFrame, max_unique: int = MAX_CATEGORIES) -> dict:
+    """
+    Find the obs columns a user could choose as the dataset's primary variable (#435): the column
+    the dataset is mainly about, like a condition or cell type, used to build default displays.
+
+    Only categorical columns with 2 to max_unique values are offered (default MAX_CATEGORIES, 30),
+    so the displays grouped by the column stay readable. Columns with one value, or a different
+    value for every observation (like cell barcodes), can't group anything.
+    Numeric columns are left out; the uploader offers the ambiguous ones from
+    flag_ambiguous_obs_columns when the user marks them categorical.
+
+    Returns a dict keyed by column name, e.g.
+        {"condition": {"n_unique": 2, "sample_values": ["control", "treated"]}}
+    """
+    max_sample_values = 6
+    candidates = {}
+
+    for col in obs.columns:
+        series = obs[col]
+        if not is_categorical_obs_column(series):
+            continue
+
+        n_unique = int(series.nunique(dropna=True))
+        if n_unique < 2 or n_unique > max_unique or n_unique >= len(obs):
+            continue
+
+        values = sorted(str(v) for v in series.dropna().unique())
+        candidates[str(col)] = {"n_unique": n_unique, "sample_values": values[:max_sample_values]}
+
+    return candidates
 
 
 def apply_obs_dtype_choices(obs: pd.DataFrame, choices: dict) -> pd.DataFrame:

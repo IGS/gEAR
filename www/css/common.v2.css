@@ -26,6 +26,12 @@ html, body {
     border-bottom-width: 0 !important;
 }
 
+/* bulma-tooltip hyphenates long words (e.g. "ac-cession"); wrap whole words instead */
+[data-tooltip]:not(.is-loading)::before {
+    hyphens: manual;
+    overflow-wrap: break-word;
+}
+
 .columns {
     /* Without this, the entire page has a gap at the bottom.  Discussed here:
          https://stackoverflow.com/questions/55568335/100vh-flex-item-is-not-full-height

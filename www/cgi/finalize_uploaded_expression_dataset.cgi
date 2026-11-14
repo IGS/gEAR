@@ -42,6 +42,7 @@ from pathlib import Path
 lib_path = Path(__file__).resolve().parents[2] / 'lib'
 sys.path.append(str(lib_path))
 import geardb
+from gear.mailer import notify_curators
 from gear.metadata import Metadata, get_value_from_df
 from werkzeug.utils import secure_filename
 
@@ -56,6 +57,22 @@ result = {
     "primary_analysis_migrated": 0,
     "message": ""
 }
+
+def notify_curators_of_flags(dataset_id, share_uid, user, curation_flags: dict, title) -> None:
+    """E-mail curators the follow-ups flagged for a newly uploaded dataset. Never fails the upload."""
+    lines = [
+        "A dataset uploaded to {0} needs follow-up by a curator.".format(geardb.domain_short_label),
+        "",
+        "Dataset: {0}".format(title),
+        "Dataset ID: {0}".format(dataset_id),
+        "Link: {0}/p?s={1}".format(geardb.domain_url, share_uid),
+        "Uploaded by: {0} <{1}>".format(user.user_name, user.email),
+        "",
+        "Issues:",
+    ]
+    lines.extend("- {0}: {1}".format(flag, message) for flag, message in curation_flags.items())
+    notify_curators("[{0}] Dataset upload needs curator follow-up".format(geardb.domain_short_label), "\n".join(lines))
+
 
 def main() -> dict:
     print('Content-Type: application/json\n\n', flush=True)
@@ -143,6 +160,12 @@ def main() -> dict:
     except Exception as e:
         result['message'] = 'Error saving metadata to MySQL: {}'.format(str(e))
         return result
+
+    # Tell curators about anything to follow up on, like a reference annotation gEAR doesn't have yet (#421)
+    curation_flags = getattr(metadata, 'curation_flags', None)
+    if curation_flags:
+        notify_curators_of_flags(dataset_id, share_uid, user, curation_flags,
+                                 get_value_from_df(metadata.metadata, 'title'))
 
     global dataset_final_dir
     if dataset_format == "gosling":

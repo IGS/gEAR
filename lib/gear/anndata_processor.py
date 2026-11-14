@@ -17,6 +17,8 @@ import anndata
 import geardb
 import pandas as pd
 import scanpy as sc
+from gear.metadata_fields import parse_taxon_id
+from gear.ontology import annotate_upload_obs
 from gear.primary_analysis import (
     PrimaryAnalysisProcessingError,
     add_primary_analysis_to_dataset,
@@ -28,6 +30,7 @@ from gear.utils.gene_mapping import (
 from gear.utils.job_coordination import UploadCancelledError, raise_if_upload_deleted
 from gear.utils.archives import ARCHIVE_READ_ERRORS, archive_error_message
 from gear.utils.obs import (
+    find_primary_variable_candidates,
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
 )
@@ -538,7 +541,7 @@ class AnndataProcessor:
             metadata = json.load(f)
 
         self._update_progress(35, "Converting gene symbols to Ensembl IDs...")
-        sample_taxid = metadata.get("sample_taxid", None)
+        sample_taxid = parse_taxon_id(metadata.get("sample_taxid"))
         try:
             adata = SeuratUploader.genes_to_ensembl(adata, sample_taxid)
             if adata is None:
@@ -801,7 +804,7 @@ class AnndataProcessor:
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
 
-        sample_taxid = metadata.get("sample_taxid", None)
+        sample_taxid = parse_taxon_id(metadata.get("sample_taxid"))
         organism_id = geardb.get_organism_id_by_taxon_id(sample_taxid)
 
         if not organism_id:
@@ -832,24 +835,29 @@ class AnndataProcessor:
 
     def _sanitize_and_flag_obs_columns(self, adata: anndata.AnnData) -> None:
         """
-        Standardize/sanitize the obs table, then scan it for numeric columns
+        Standardize/sanitize the obs table, add ontology term names (see
+        gear.ontology.annotate_upload_obs), then scan it for numeric columns
         that look like they may actually be categorical (e.g. replicate/slide
         numbers), and record them in metadata.json for the uploader's "review
         column types" step. Operates on the in-memory AnnData object, right
         before it's written, so the H5AD never needs to be reopened from disk
         for this.
         """
-        adata.obs = standardize_and_sanitize_obs(adata.obs)
-        questionable = flag_ambiguous_obs_columns(adata.obs)
-
         metadata_file = self.staging_area / 'metadata.json'
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
+
+        adata.obs = standardize_and_sanitize_obs(adata.obs)
+        # Add tissue/cell type names for ontology term IDs and check the sample metadata (#422)
+        annotate_upload_obs(adata, metadata)
+        questionable = flag_ambiguous_obs_columns(adata.obs)
 
         metadata['questionable_obs_columns'] = questionable
         # Nothing flagged -- nothing for the user to review, so the uploader
         # can skip straight past that step.
         metadata['obs_dtype_reviewed'] = not bool(questionable)
+        # Columns the user can choose as the primary variable in the same step (#435)
+        metadata['primary_variable_candidates'] = find_primary_variable_candidates(adata.obs)
 
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)

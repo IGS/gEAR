@@ -18,6 +18,8 @@ orthomap_inputs
 **/__pycache__
 **/*.bak
 **/*.sql
+# Schema migrations for existing databases are code, unlike database dumps
+!bin/migrations/*.sql
 www/nemoarchive_import/*.json
 gear.ini
 feature_mapping.tar.gz

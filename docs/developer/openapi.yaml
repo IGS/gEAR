@@ -203,7 +203,8 @@ paths:
                       items:
                         type: string
                       description: obs columns, plus X_tsne_1/2, X_umap_1/2, X_pca_1/2 when present in obsm; excludes
-                        replicate, BioRep, TechRep and time_point_order.
+                        replicate, BioRep, TechRep, time_point_order and columns holding only missing value words
+                        like "not applicable" or "N/A".
                     obs_levels:
                       type: object
                       additionalProperties:
@@ -231,7 +232,8 @@ paths:
       tags:
       - H5AD
       summary: Count observations per category for each categorical obs column, optionally filtered.
-      description: Returns per-category counts for every categorical obs column (excluding replicate and *_colors).
+      description: Returns per-category counts for every categorical obs column (excluding replicate, *_colors and
+        columns holding only missing value words like "not applicable" or "N/A").
         Categories with zero observations are kept and "nan" is renamed "Data not available". Filters on non-categorical
         columns are ignored. Called by apiCallsMixin.fetchAggregations in www/js/common.v2.js.
       security:
@@ -1852,11 +1854,13 @@ paths:
       operationId: cgiApplyObsDtypeChoices
       tags:
       - Uploads
-      summary: Apply user-chosen dtypes to flagged obs columns of a staged upload
-      description: Used by the uploader's "Review column types" step. Requires a valid session. Rewrites only the
-        obs of the staged H5AD (or the 'table' group of a spatial Zarr store) under uploads/files/<session_id>/<share_uid>/,
-        then sets obs_dtype_reviewed=true and clears questionable_obs_columns in metadata.json. Errors are returned
-        with HTTP 200 and success 0.
+      summary: Apply user-chosen dtypes to flagged obs columns of a staged upload, and set its primary variable
+      description: Used by the uploader's post-processing review step. Requires a valid session. Rewrites only the
+        obs and uns gear_obs_columns of the staged H5AD (or the 'table' group of a spatial Zarr store) under
+        uploads/files/<session_id>/<share_uid>/. If choices was sent, sets obs_dtype_reviewed=true and clears
+        questionable_obs_columns in metadata.json; if primary_variable was sent, saves it there as primary_variable
+        with primary_variable_reviewed=true. At least one of choices and primary_variable is required. Errors
+        are returned with HTTP 200 and success 0, and nothing is written.
       requestBody:
         required: true
         content:
@@ -1866,7 +1870,6 @@ paths:
               required:
               - session_id
               - share_uid
-              - choices
               properties:
                 session_id:
                   type: string
@@ -1878,6 +1881,10 @@ paths:
                   type: string
                   description: 'JSON object mapping obs column name to ''categorical'' or ''continuous'', e.g. {"replicate":
                     "categorical"}'
+                primary_variable:
+                  type: string
+                  description: The obs column the dataset is mainly about, saved as uns["gear_obs_columns"]["primary_variable"].
+                    Must be categorical once the choices are applied, with at most 30 values. An empty value removes it.
       responses:
         '200':
           description: Result of applying the dtype choices.
@@ -2731,6 +2738,29 @@ paths:
                   reviewed:
                     type: boolean
                     description: metadata.json obs_dtype_reviewed
+                  sample_metadata_warnings:
+                    type: array
+                    items:
+                      type: string
+                    description: metadata.json sample_metadata_warnings
+                  ontology_terms:
+                    type: object
+                    additionalProperties: true
+                    description: metadata.json ontology_terms
+                  primary_variable_candidates:
+                    type: object
+                    additionalProperties: true
+                    description: metadata.json primary_variable_candidates, keyed by obs column (n_unique, sample_values)
+                  primary_variable:
+                    type: string
+                    nullable: true
+                    description: metadata.json primary_variable
+                  primary_variable_reviewed:
+                    type: boolean
+                    description: metadata.json primary_variable_reviewed
+                  primary_variable_max_values:
+                    type: integer
+                    description: The most values a primary variable can have (gear.utils.obs.MAX_CATEGORIES, 30)
   /cgi/get_analysis_image.cgi:
     post:
       operationId: cgiGetAnalysisImage
@@ -3917,6 +3947,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cgi1TagList'
+  /cgi/get_pi_names.cgi:
+    post:
+      operationId: cgiGetPiNames
+      tags:
+      - Datasets
+      summary: List PI names already given for datasets (uploader suggestions)
+      description: Distinct pi_name values from public datasets and the user's own, ignoring case, each with the contact institute most often given with it. Without a valid session_id only public datasets are used.
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+      responses:
+        '200':
+          description: PI names.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: integer
+                  pi_names:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        institute:
+                          type: string
   /cgi/get_unweighted_gene_cart_preview.cgi:
     post:
       operationId: cgiGetUnweightedGeneCartPreview
@@ -6502,12 +6566,14 @@ paths:
       operationId: cgiStoreExpressionMetadata
       tags:
       - Uploads
-      summary: Save the uploader's metadata form to metadata.json
+      summary: Validate the uploader's metadata form and save it to metadata.json
       description: 'Requires a logged-in user. session_id and share_uid must be plain file names (unchanged by
         secure_filename), otherwise "Invalid session_id" / "Invalid share_uid" (they are refused, not rewritten).
-        After the user check, creates `uploads/files/<session_id>/<share_uid>/` and writes the form fields to metadata.json
-        using legacy key names (e.g. geo_id to geo_accession, taxon_id to sample_taxid). Errors use HTTP 200 and
-        `success: 0`.'
+        The fields of the metadata template (lib/gear/metadata_fields.py) are normalized (e.g. 10090 to NCBI:txid10090)
+        and validated. Invalid fields, or a taxon that is not a gEAR organism, give `success: 0` and `errors`, and
+        nothing is written. Otherwise creates `uploads/files/<session_id>/<share_uid>/`, writes the fields to
+        metadata.json under their template names, and returns `warnings` for things the gEAR team follows up on
+        (reference annotation not loaded, OBI root terms). Errors use HTTP 200 and `success: 0`.'
       requestBody:
         required: true
         content:
@@ -6525,47 +6591,70 @@ paths:
                   type: string
                 dataset_uid:
                   type: string
-                title:
+                user_pii_affirmed:
                   type: string
-                summary:
-                  type: string
-                dataset_type:
-                  type: string
-                annotation_source:
-                  type: string
-                annotation_version:
-                  type: string
-                  description: Saved as annotation_release_number.
-                geo_id:
-                  type: string
-                  description: Saved as geo_accession.
                 contact_name:
                   type: string
                 contact_email:
                   type: string
                 contact_institute:
                   type: string
-                taxon_id:
+                pi_name:
                   type: string
-                  description: Saved as sample_taxid.
-                organism:
+                  description: Principal investigator (optional). Saved with the spelling another dataset already uses for the name, ignoring case.
+                title:
                   type: string
-                  description: Saved as sample_organism.
-                platform_id:
+                summary:
                   type: string
-                instrument:
+                dataset_type:
                   type: string
-                  description: Saved as instrument_model.
-                library_selection:
+                  enum:
+                  - single-cell-rnaseq
+                  - bulk-rnaseq
+                  - microarray
+                  - spatial
+                  - gosling
+                reference_annot_id:
                   type: string
-                library_source:
+                  description: Like Ensembl:93, GenBank:GCA_000001635.9 or RefSeq:GCF_000001635.27.
+                repository_accession:
                   type: string
-                library_strategy:
+                  description: Like GEO:GSE168901 or ArrayExpress:E-MTAB-11634. Optional.
+                sample_taxid:
                   type: string
+                  description: Like NCBI:txid10090 (a bare number is accepted).
                 pubmed_id:
                   type: string
-                user_pii_affirmed:
+                  description: Like PMID:25855195. Optional.
+                keywords:
                   type: string
+                  description: Up to 6, comma-separated. Optional.
+                device:
+                  type: string
+                  description: OBI term ID, like OBI:0002630.
+                assay:
+                  type: string
+                  description: OBI term ID, like OBI:0002631.
+                library_cons_method:
+                  type: string
+                rna_extraction_method:
+                  type: string
+                microarray_hybridization_protocol:
+                  type: string
+                  description: Required when dataset_type is microarray.
+                normalization_method:
+                  type: string
+                log_transformation:
+                  type: string
+                  enum:
+                  - No Transformation
+                  - log2 transformation
+                  - log10 transformation
+                primary_analysis_completed:
+                  type: string
+                  enum:
+                  - 'Yes'
+                  - 'No'
       responses:
         '200':
           description: Result (errors also use HTTP 200).
@@ -6582,6 +6671,16 @@ paths:
                   error:
                     type: string
                     nullable: true
+                  errors:
+                    type: object
+                    description: Invalid fields, as field name -> message.
+                    additionalProperties:
+                      type: string
+                  warnings:
+                    type: object
+                    description: Issues the gEAR team will follow up on, as flag -> message (e.g. annotation_not_loaded).
+                    additionalProperties:
+                      type: string
   /cgi/test.cgi:
     get:
       operationId: cgiTestGet

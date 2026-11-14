@@ -96,7 +96,12 @@ class TestDownloadSourceFile:
         result = self.run(db=db_with(PRIVATE, metadata={"priv": "a,b\n1,2\n"}), share_id="priv", type="metadata")
         assert result.status == 200
         assert result.headers["content-disposition"] == "attachment; filename=priv.metadata.csv"
-        assert result.text == "a,b\n1,2\n"
+        assert result.body == "a,b\n1,2\n".encode("utf-8-sig")
+
+    def test_metadata_is_utf8_with_byte_order_mark(self):
+        """Characters latin1 can't hold survive, and the byte order mark lets Excel read the CSV as UTF-8 (#59)."""
+        result = self.run(db=db_with(PRIVATE, metadata={"priv": "title,\u03b2 cell\n"}), share_id="priv", type="metadata")
+        assert result.body == b"\xef\xbb\xbf" + "title,\u03b2 cell\n".encode("utf-8")
 
     def test_missing_metadata(self):
         result = self.run(share_id="priv", type="metadata")

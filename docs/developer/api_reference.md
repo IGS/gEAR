@@ -233,10 +233,10 @@ These back the dataset curator, the multigene viewer and the expression pages. M
 
 | Resource | Input | Response keys |
 |---|---|---|
-| `H5ad` `GET /h5ad/<dataset_id>` | query `analysis_id` | `success`, `num_obs`, `obs_columns` (includes `X_tsne_1/2`, `X_umap_1/2`, `X_pca_1/2` when present in `obsm`; excludes replicate columns and `time_point_order`), `obs_levels` (categorical columns with at most 50 levels, including `NA` if nulls exist), `obs_levels_truncated` (categorical columns with more than 50 levels), `has_replicates` |
+| `H5ad` `GET /h5ad/<dataset_id>` | query `analysis_id` | `success`, `num_obs`, `obs_columns` (includes `X_tsne_1/2`, `X_umap_1/2`, `X_pca_1/2` when present in `obsm`; excludes replicate columns, `time_point_order` and columns holding only missing value words like `not applicable` or `N/A`), `obs_levels` (categorical columns with at most 50 levels, including `NA` if nulls exist), `obs_levels_truncated` (categorical columns with more than 50 levels), `has_replicates` |
 | `GeneSymbols` `GET /h5ad/<dataset_id>/genes` | query `analysis` | `success`, `gene_symbols` |
 | `Analyses` `GET /h5ad/<dataset_id>/analyses` | cookie session | `success`, `public`, `private`: analyses (from `AnalysisCollection.get_all_by_dataset_id`) with tSNE or UMAP computed, serialized without `session_id`. `private` is empty for anonymous users. |
-| `Aggregations` `POST /h5ad/<dataset_id>/aggregations` | reqparse `analysis_id`, `filters` (dict of column to values) | `success`, `aggregations` (list of `{name, count, items: [{name, count}]}` per categorical obs column, with zero-count categories kept and `nan` renamed `Data not available`), `total_count` |
+| `Aggregations` `POST /h5ad/<dataset_id>/aggregations` | reqparse `analysis_id`, `filters` (dict of column to values) | `success`, `aggregations` (list of `{name, count, items: [{name, count}]}` per categorical obs column, except columns holding only missing value words like `not applicable` or `N/A`, with zero-count categories kept and `nan` renamed `Data not available`), `total_count` |
 | `AvailableDisplayTypes` `POST /h5ad/<dataset_id>/availableDisplayTypes` | JSON `dataset_id`, `session_id`, `analysis_id` | Flat dict of booleans: `scatter`, `tsne_static`, `umap_static`, `pca_static`, `tsne/umap_dynamic`, `bar`, `violin`, `line`, `svg` |
 | `MGAvailableDisplayTypes` `POST /h5ad/<dataset_id>/mg_availableDisplayTypes` | JSON `dataset_id`, `session_id`, `analysis_id` | Flat dict of booleans: `dotplot`, `heatmap`, `mg_violin`, `volcano` (needs 2 or more categorical columns), `quadrant` (needs 3 or more), `mg_pca_static`, `mg_tsne_static`, `mg_umap_static` |
 | `AvailableAnalysisTools` `GET /h5ad/<share_uid>/availableAnalysisTools` | path share UID | `success`, `share_id`, `available_analysis_tools`: `{dataset-curator, multigene-viewer, compare-tool, sc-workbench}` mapped to booleans from the module-level `tools` table keyed on dataset type |
@@ -403,11 +403,11 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 
 | Script | Purpose | Key parameters |
 |---|---|---|
-| `apply_obs_dtype_choices.cgi` | Apply user-chosen categorical/continuous dtypes to flagged obs columns of a staged upload | session_id, share_uid, choices (JSON) |
+| `apply_obs_dtype_choices.cgi` | Apply user-chosen categorical/continuous dtypes to flagged obs columns of a staged upload, and set its primary variable | session_id, share_uid, choices (JSON) and/or primary_variable |
 | `check_dataset_processing_status.cgi` | Report processing status/progress of an uploading dataset. Not used by the frontend; kept for manual checks because it takes `session_id` as a parameter instead of a cookie, e.g. `curl "https://<host>/cgi/check_dataset_processing_status.cgi?session_id=$SID&share_uid=$SHARE"` | session_id, share_uid |
 | `delete_upload_in_progress.cgi` | Delete a user's in-progress upload directory | session_id, share_uid, dataset_id |
 | `finalize_uploaded_expression_dataset.cgi` | Finalize an upload: load metadata to MySQL and migrate H5AD/source files | session_id, share_uid, dataset_uid, dataset_format, dataset_visibility, user_pii_affirmed, perform_analysis_migration |
-| `get_ambiguous_obs_columns.cgi` | Return obs columns flagged as possibly mis-typed for the upload review step | session_id, share_uid |
+| `get_ambiguous_obs_columns.cgi` | Return obs columns flagged as possibly mis-typed, sample metadata results and primary variable candidates for the upload review step | session_id, share_uid |
 | `get_metadata_from_geo.cgi` | Fetch series metadata from GEO for a GEO ID | geo_id |
 | `get_uploads_in_progress.cgi` | List the user's incomplete uploads | session_id |
 | `process_uploaded_expression_dataset.cgi` | Queue an uploaded expression dataset for processing via RabbitMQ | session_id, share_uid, dataset_uid, dataset_format, spatial_format, dataset_type |
@@ -431,6 +431,7 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `get_citation_from_pubmed_id.cgi` | Fetch a formatted citation for a PubMed ID (cached, throttled); HTTP 400 for a missing or non-numeric ID | pubmed_id |
 | `get_event_registration_list.cgi` | Report event attendance and the user's registration/waitlist status | session_id, min_event_id, max_event_id |
 | `get_organism_list.cgi` | List organisms in the database | (none) |
+| `get_pi_names.cgi` | PI names already given for public datasets and the user's own, each with its most common institute, for the uploader's PI suggestions | session_id (optional) |
 | `get_tag_list.cgi` | Return tags for comment-form autocomplete | (none) |
 | `load_comment.cgi` | Store a user question/comment and tags in the database | submitter_firstname, submitter_lastname, submitter_email, comment_title, comment, comment_tag, super_impressive_security_check |
 | `process_contact.py` | Save a contact-form submission to a file | submitterName, InputEmail, keep_updated, super_impressive_security_check, comments |

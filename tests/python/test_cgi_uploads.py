@@ -234,6 +234,7 @@ class TestProcessUploadedExpressionDataset:
         **SPATIAL_FAKE,
         "gear.anndata_processor": FAKES_DIR / "uploads_processors.py",
         "gear.spatial_processor": FAKES_DIR / "uploads_processors.py",
+        "gearqueue": FAKES_DIR / "uploads_processors.py",  # used if the local gear.ini enables the queue
     }
 
     def run(self, upload_session, dataset_type, dataset_format="h5ad", spatial_format=None):
