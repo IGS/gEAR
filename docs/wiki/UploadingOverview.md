@@ -26,6 +26,8 @@ best suited for your upload needs, please see the links below. If you have any q
 
 ## Using the Dataset Uploader
 
+Expression datasets (RNA-seq, microarray and spatial) are stored and searched at the gene level, with one row per gene. Transcript- or isoform-level counts, such as those from long-read RNA-seq, must be summed to genes before upload. To show isoform-level detail alongside them, upload coverage and transcript-model tracks as an epigenome dataset; see [Long-read and isoform data](#long-read-and-isoform-data).
+
 Open the [Dataset Uploader](https://umgear.org/upload_dataset.html) from "Dataset Uploader" in the navigation panel (you must be logged in). The uploader walks you through these steps:
 
 1. **Enter metadata.** Fill in the form or upload the completed [metadata template](https://umgear.org/user_templates/metadata_template.xlsx) with "Or upload a metadata file". Choose the "Dataset type" (Single-cell RNA-seq, Single-nucleus RNA-seq, Bulk RNA-seq, Microarray, Spatial or Epigenome). If your data are in GEO, enter the GEO ID (like GSEnnnnn or GSMnnnnnnn) and click "Lookup" to fill in the contact, organism, platform, instrument, library and PubMed fields automatically; check the results before continuing. Confirm that the data contain no personally identifiable information and click "Submit metadata".
@@ -62,6 +64,8 @@ If the check reports an error (for example "Unexpected EOF in archive" on Linux,
 ### Direct H5AD Uploads
 
 gEAR supports uploads of H5AD datasets (those created using the Anndata structure).  If you plan to upload one of these, it is strongly recommended that the `Anndata.var` has unique identifiers as the DataFrame index, and gene symbol names in a "gene_symbol" column.  If gene symbols are in the index, we can infer Ensembl IDs based on what annotations are stored in our database. However, there is a chance Ensembl IDs may not be found for some gene symbols and they will be flagged with a generic identifier.
+
+**Write the file with pandas 2.x.** pandas 3 stores text columns with a new string type, and H5AD files written with pandas 3 (for example with anndata 0.13) save those columns as "nullable strings". gEAR can't process these yet, and the upload fails with a message mentioning `anndata.settings.allow_write_nullable_strings`. To avoid this, write the H5AD in an environment with pandas older than 3.0 (for example pandas 2.3 with anndata 0.10, 0.11 or 0.12): read your existing file there and save it again with `adata.write_h5ad()`.
 
 ### Direct RDS / Seurat Uploads
 
@@ -174,7 +178,7 @@ A few metadata (observation) column names get special treatment. Add them to you
   | cell3 | IHC | #1f77b4 |
 
   gEAR uses these colors in dynamic and static plots and as the starting colors in the curators, and doesn't list the `_colors` column as a separate category. H5AD files written by Scanpy may instead carry a color list in `adata.uns["cell_type_colors"]` (one color per category, in category order); that list is used for static tSNE/UMAP/PCA plots only. Colors picked in the curator, and colorblind mode, take precedence. See [Category colors](https://github.com/IGS/gEAR/blob/main/docs/wiki/gEARWiki.md#category-colors).
-- **`replicate` column.** A column named `replicate` is hidden from the filter and plot category lists, so use it for replicate IDs you don't need to plot by.
+- **Replicate columns.** Columns named `replicate`, `BioRep` or `TechRep` are hidden from the filter and plot category lists, so use them for replicate IDs you don't need to plot by. The comparison tool doesn't need these columns: its statistical tests treat each sample or cell as one observation. See [Comparison tool](https://github.com/IGS/gEAR/blob/main/docs/wiki/gEARWiki.md#comparison-tool).
 
 ## Microarray data
 
@@ -214,6 +218,15 @@ You can upload your trackhub data from the [gEAR uploader page](http://umgear.or
 5. When complete, you have the option to make this a public or a private dataset. After everything is finalized, uploading is complete!
 
 Track hub files will be copied over to the gEAR server. This is to ensure that files are always available to be streamed by Gosling.
+
+### Long-read and isoform data
+
+Expression datasets in gEAR are gene-level only, but you can show isoform-level detail from long-read (or short-read) RNA-seq as tracks in an epigenome dataset:
+
+- **Coverage (BigWig).** Convert each sample's or condition's read alignments to a BigWig coverage track. Differences in exon coverage between tracks show where isoform use changes. Group the tracks in a multiWig container to overlay them.
+- **Transcript models (BigBed).** Convert your transcript models (for example a GTF from your isoform caller) to BigBed. Gosling draws each BigBed entry as a single bar from its start to its end, without separate exons. To see full exon-intron structures, use "View in UCSC Genome Browser" on the epigenome display, which opens the same track hub in the UCSC Genome Browser.
+
+BAM files are not supported. Convert them to BigWig first.
 
 ### Currently supported UCSC Track Hub fields
 

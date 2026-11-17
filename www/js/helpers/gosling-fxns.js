@@ -16,7 +16,7 @@ It is kept apart from the top-level gene_symbol, which tilegrid.js overwrites wi
 
 import { apiCallsMixin, createToast, logErrorInConsole } from "../common.v2.js";
 
-const GOSLING_MODULE_URL = "https://esm.sh/gosling.js@1.0.6";
+const GOSLING_MODULE_URL = "https://esm.sh/gosling.js@1.0.7";
 
 // Pan and zoom step sizes match the UCSC Genome Browser defaults.
 const GOSLING_PAN_FRACTION = 0.1;   // pan by 10% of the visible region

@@ -259,7 +259,7 @@ The comparison tool ([Link](https://umgear.org/compare_datasets.html)) compares 
    - "Standard Deviation": show only genes whose fold change is more than 1 or 2 standard deviations from the mean, or "No filter".
 4. Click **Plot**. To change settings afterwards, click "Edit Parameters".
 
-Statistical tests need more than one observation (replicate samples or cells) in each condition. Without replicates the plot is still drawn, but no p-values are calculated.
+Statistical tests need at least two observations (samples or cells) in each condition. Each row of the dataset's observations counts as one observation, so you don't need a column named `replicate`. If a test is selected and either condition has only one observation, the comparison fails with an error instead of drawing the plot. To compare conditions without replicates, set "Select test" to "None": the plot is drawn without p-values.
 
 **Working with genes on the plot:** click and drag on the plot to select genes. The selected genes are listed in a table (gene, Ensembl ID, p-value, fold change). To save them, enter a name under "Enter name of collection", choose a "Collection type" ("Unweighted (saves only selected genes)" or "Weighted (saves all genes from dataset)") and click "Save"; this creates a new gene list. "Download selected" saves the table as a file. Use "Highlight specific genes" to type gene symbols or pick a gene list and mark those genes on the plot (only genes found in the dataset are highlighted); "Clear selection" removes the highlighting.
 
