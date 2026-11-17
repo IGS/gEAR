@@ -1,6 +1,11 @@
 {
-    "portals": ["nemo"],
+    "portals": [
+        "nemo"
+    ],
+    "featured": true,
     "title": "Neurodegeneration: exploring data collections and gene signatures with projection analysis",
     "summary": "Transcriptomic data collections and gene signatures for exploring neuroinflammation and neurodegeneration through projection analysis.",
+    "pmid": "",
+    "thumbnail": "",
     "canonical_url": "https://nemoanalytics.org/landing/neurodegeneration/"
 }

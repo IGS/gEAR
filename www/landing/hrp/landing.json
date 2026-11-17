@@ -1,6 +1,11 @@
 {
-    "portals": ["gear"],
+    "portals": [
+        "gear"
+    ],
+    "featured": true,
     "title": "Hearing Restoration Project",
     "summary": "Datasets, publications and tools from the HRP consortium, a collaborative effort to accelerate research on hair cell regeneration.",
+    "pmid": "",
+    "thumbnail": "cell_gene_explorer_composite.png",
     "canonical_url": "https://umgear.org/landing/hrp/"
 }

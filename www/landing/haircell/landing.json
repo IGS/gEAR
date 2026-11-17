@@ -1,6 +1,11 @@
 {
-    "portals": ["gear"],
+    "portals": [
+        "gear"
+    ],
+    "featured": true,
     "title": "A comparative single-cell transcriptomic atlas for vertebrate hair cells",
     "summary": "Basu et al. Cross-species single-cell atlas of hair cells from zebrafish, chicken, mouse and human inner ear and lateral line organs.",
+    "pmid": "42818558",
+    "thumbnail": "profile_view_demo.png",
     "canonical_url": "https://umgear.org/landing/haircell/"
 }

@@ -218,9 +218,13 @@ def get_landing_pages(domain_label):
         if '*' not in portals and domain_label not in portals:
             continue
 
+        thumbnail = manifest.get('thumbnail') or ''
         pages.append({'title': clean_text(manifest.get('title') or name),
                       'url': f"/landing/{name}/",
                       'summary': truncate(clean_text(manifest.get('summary', '')), 160),
+                      'featured': bool(manifest.get('featured')),
+                      'pmid': str(manifest.get('pmid') or ''),
+                      'thumbnail': f"/landing/{name}/{thumbnail}" if thumbnail else '',
                       'date': last_changed(os.path.join(LANDING_DIR, name))})
 
     pages.sort(key=lambda p: p['date'], reverse=True)
