@@ -1,6 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, downloadWithMetadata, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, triggerUrlDownload, validateShareId } from "./common.v2.js";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, downloadWithMetadata, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, setDisplayCardText, SHARE_ID_MAX_LENGTH, triggerUrlDownload, validateShareId } from "./common.v2.js";
+import { describeGoslingSession } from "./helpers/gosling-fxns.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 
 /* Imported variables
@@ -2466,6 +2467,12 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
             displayType.classList.add("is-info");
             displayType.textContent = display.plot_type;
         }
+
+        // Name the display; saved Gosling views also get their panels and ranges, as they all share one preview image.
+        // Every Gosling card keeps room for the two panel lines (blank for upload defaults) so the images line up.
+        const isGosling = display.plot_type === "gosling";
+        const session = isGosling ? describeGoslingSession(display.plotly_config) : null;
+        setDisplayCardText(displayElement, display.label, session?.lines, session?.full, isGosling ? 2 : 0);
 
         // Determine number of times display is in current layout
         const displayCount = displayElement.querySelector('.js-collection-display-count');

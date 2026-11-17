@@ -1099,6 +1099,47 @@ for (const jsStep of jsSteps) {
     jsStep.addEventListener("click", resetSteps, {capture: true});
 }
 
+/**
+ * Fills the name line (and optional detail lines) at the top of a display picker card
+ * (.js-modal-display, from the "Choose display" or dataset explorer "View displays" templates).
+ * The name line always keeps its height, so cards in a row line up even when a display has no label.
+ * Each line is cut off with an ellipsis if too long; hovering the text or preview image shows the full text.
+ *
+ * @param {HTMLElement} displayElement - The card.
+ * @param {string|null} label - The display's label.
+ * @param {string[]} [detailLines=[]] - Extra short lines (e.g. a saved Gosling view's panels and ranges).
+ * @param {string} [detailTitle=""] - Hover text for the detail lines (defaults to the lines themselves).
+ * @param {number} [reserveLines=0] - Keep room for at least this many detail lines, so cards of the same
+ *     kind line up even when some have fewer (or no) lines.
+ */
+const setDisplayCardText = (displayElement, label, detailLines = [], detailTitle = "", reserveLines = 0) => {
+    const labelElt = displayElement.querySelector(".js-modal-display-label");
+    if (labelElt) {
+        labelElt.textContent = label || "\u00a0";  // keep the line's height when there is no label
+    }
+    const detailElt = displayElement.querySelector(".js-modal-display-detail");
+    if (detailElt) {
+        const lines = [...(detailLines || [])];
+        while (lines.length < reserveLines) lines.push("\u00a0");  // blank line, same height as text
+        detailElt.replaceChildren(...lines.map((line) => {
+            const lineElt = document.createElement("span");
+            lineElt.classList.add("is-block");
+            lineElt.style.overflow = "hidden";
+            lineElt.style.textOverflow = "ellipsis";
+            lineElt.textContent = line;
+            return lineElt;
+        }));
+        detailElt.classList.toggle("is-hidden", !lines.length);
+    }
+    // One tooltip on the name, details and preview image, since the text lines may be cut off.
+    // Not on the whole card: the dataset explorer's add/remove buttons inside it have their own tooltips.
+    const fullDetail = detailTitle || (detailLines || []).join("\n");
+    const tooltip = [label, fullDetail].filter(Boolean).join("\n");
+    for (const elt of [labelElt, detailElt, displayElement.querySelector("figure > img")]) {
+        if (elt) elt.title = tooltip;
+    }
+}
+
 /* API Calls Mixin */
 
 /* NOTES
@@ -1532,9 +1573,12 @@ const apiCallsMixin = {
      * @param {object} plotConfig - The configuration object for the Gosling plot.
      * @param {boolean} [zoom=false] - Whether to enable zoom in the display.
      * @param {object} [otherOpts={}] - Additional options for the request.
+     * @param {object} [regions={}] - Saved panel ranges ("chromosome:start-end") to open at instead of around the gene.
+     * @param {string|null} [regions.panelA] - Panel A range.
+     * @param {string|null} [regions.panelB] - Panel B range (zoomed view only).
      * @returns {Promise<Object>} The data returned from the Gosling display API.
      */
-    async fetchGoslingDisplay(datasetId, plotConfig, zoom=false, otherOpts={}) {
+    async fetchGoslingDisplay(datasetId, plotConfig, zoom=false, otherOpts={}, regions={}) {
         const urlParams = new URLSearchParams();
         const {gene_symbol: geneSymbol, assembly, hubUrl} = plotConfig;
 
@@ -1543,6 +1587,8 @@ const apiCallsMixin = {
         urlParams.append('hub_url', hubUrl);
         urlParams.append('zoom', zoom);
         urlParams.append('colorblind_mode', Boolean(apiCallsMixin.colorblindMode));
+        if (regions.panelA) urlParams.append('panel_a', regions.panelA);
+        if (regions.panelB) urlParams.append('panel_b', regions.panelB);
 
         // JSON is returned
         const {data} = await axios.get(`/api/plot/${datasetId}/gosling?${urlParams.toString()}`, otherOpts);
@@ -1999,6 +2045,7 @@ export {
     insertVersionedJS,
     loadDomainFunding,
     SHARE_ID_MAX_LENGTH,
+    setDisplayCardText,
     triggerUrlDownload,
     validateShareId,
 };

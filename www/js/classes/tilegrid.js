@@ -1,10 +1,10 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurrentUser, logErrorInConsole, openModal, triggerUrlDownload } from "../common.v2.js";
+import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurrentUser, logErrorInConsole, openModal, setDisplayCardText, triggerUrlDownload } from "../common.v2.js";
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
-import { clearGoslingTile, loadGoslingEmbed, renderGoslingPlot } from "../helpers/gosling-fxns.js";
+import { buildGoslingSessionConfig, clearGoslingTile, describeGoslingSession, loadGoslingEmbed, renderGoslingPlot, resolveGoslingSession, saveGoslingSession } from "../helpers/gosling-fxns.js";
 import { downloadSpatialHTML, renderSpatialPanel } from "../helpers/spatial-fxns.js";
 import { Citation } from "./citation.js";
 
@@ -68,6 +68,10 @@ export class TileGrid {
         // Clear selector element
         const selectorElt = document.querySelector(selector);
         selectorElt.replaceChildren();
+
+        // Drop the single-tile layout applySingleTileGrid() may have set on this element earlier (e.g. a share_id
+        // view before switching to a collection), so collections get the stylesheet's 12-column grid
+        selectorElt.classList.remove("is-single-tile");
 
         // clear any no-displays message
         const noDisplaysElt = selectorElt.querySelector(".no-displays");
@@ -153,9 +157,7 @@ export class TileGrid {
      */
     async applySingleTileGrid(datasetTile, selectorElt, isZoomed=false, projectROpts={}) {
 
-        selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
-        selectorElt.style.gridTemplateRows = `repeat(1, fit-content)`;
-        selectorElt.style.width = "unset"; // This is needed to make the grid auto-size to the content
+        selectorElt.classList.add("is-single-tile");  // one full-width column; see expression.css and projection.css
 
         // if zoomed, create new DatasetTile object with zoomed flag
         // SAdkins - I tried to use a "clone node and change ids" approach, but it was not working.
@@ -1291,8 +1293,9 @@ class DatasetTile {
 
         if (this.type === "single") {
             // Add userGoslingDisplays to userDisplays...
-            const userGoslingDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "gosling");
-            const ownerGoslingDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "gosling");
+            // (skipping those already included because their config has a gene_symbol)
+            const userGoslingDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "gosling" && !userDisplays.includes(d));
+            const ownerGoslingDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "gosling" && !ownerDisplays.includes(d));
             userDisplays.push(...userGoslingDisplays);
             ownerDisplays.push(...ownerGoslingDisplays);
         }
@@ -1426,6 +1429,12 @@ class DatasetTile {
             // Add tag indicating plot type
             const displayType = displayElement.querySelector('.js-modal-display-type');
             displayType.textContent = display.plot_type;
+
+            // Name the display; saved Gosling views also get their panels and ranges, as they all share one preview image.
+            // Every Gosling card keeps room for the two panel lines (blank for upload defaults) so the images line up.
+            const isGosling = display.plot_type === "gosling";
+            const session = isGosling ? describeGoslingSession(display.plotly_config) : null;
+            setDisplayCardText(displayElement, display.label, session?.lines, session?.full, isGosling ? 2 : 0);
 
             displayElt.append(displayHTML);
         }
@@ -1739,9 +1748,12 @@ class DatasetTile {
         plotContainer.replaceChildren();    // erase plot
         createCardMessage(this.tile.tileId, "info", "Loading epigenome display...");
 
+        // Saved ranges to reopen at, if this display is a saved view
+        const session = resolveGoslingSession(plotConfig, plotConfig.gene_symbol, zoom);
+
         let data;
         try {
-            data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
+            data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts, session)
             if (data?.success < 1) {
                 const message = data?.message || "Failed to fetch Gosling display data.";
                 throw new Error(message);
@@ -1765,11 +1777,33 @@ class DatasetTile {
                 hicFound: data?.hic_found || false,
                 assembly: plotConfig.assembly,
                 hubUrl: plotConfig.hubUrl,
+                initialRegions: data?.regions || {},
+                panelBGene: session.panelBGene,
+                onSave: apiCallsMixin.sessionId ? (opts) => this.saveGoslingView(display, opts) : null,
             });
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while rendering the Gosling display.");
         }
+    }
+
+    /**
+     * Saves the current Gosling view as a new display for this user. The tile keeps showing the
+     * current display; the new one is added to the dataset's display list so it can be chosen.
+     *
+     * @param {Object} display - The display being shown.
+     * @param {Object} opts - From the "Save display" form.
+     * @param {string} opts.label - Name for the new display.
+     * @param {boolean} opts.makeDefault - True to make it the user's default display for the dataset.
+     * @param {Object} opts.state - The current view ({panelA, panelB, panelBGene}).
+     * @returns {Promise<void>}
+     */
+    async saveGoslingView(display, { label, makeDefault, state }) {
+        const plotConfig = buildGoslingSessionConfig(display.plotly_config, display.plotly_config.gene_symbol, state);
+        const newDisplay = await saveGoslingSession({ datasetId: display.dataset_id, label, makeDefault, plotConfig });
+        if (!newDisplay) return;
+        // The zoomed tile shares its dataset object with the grid tile, so both see the new display
+        this.dataset.userDisplays?.push(newDisplay);
     }
 
     /**
