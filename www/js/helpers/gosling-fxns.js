@@ -25,6 +25,9 @@ const GOSLING_NAV_DURATION = 300;   // animation length (ms)
 const GOSLING_MIN_REGION = 20;      // narrowest region (bp) that zooming in will reach
 const GOSLING_BASE_PADDING = 1500;  // matches zoom_view_to_domain() in www/api/resources/gosling_spec.py
 const GOSLING_HIC_PADDING_MULTIPLIER = 500;
+// UCSC export highlight colors, matching the Panel A (steelblue) and Panel B (yellow) brushes in
+// build_genome_wide_view() in www/api/resources/gosling_spec.py. UCSC takes hex colors.
+const GOSLING_UCSC_HIGHLIGHT_COLORS = ["4682B4", "FFFF00"];  // [Panel A, Panel B]
 
 // Gosling's "location" PubSub is shared by every embedded Gosling plot on the page, and its unsubscribe()
 // removes every subscriber. So we subscribe once and route events to the tile whose id namespace prefixes the event id.
@@ -302,8 +305,15 @@ export const renderGoslingPlot = async (embedFn, plotContainer, spec, { tileId, 
                 ignoreCookie: 1, // Ignore cookie to ensure trackHub changes are respected. Unfortunately, adds default tracks.
             })
 
-            // if an element in positionArr is not empty, add it to the URL, separated by a pipe
-            const highlightedPositions = positionArr.filter(pos => pos).join('|');
+            // Open UCSC at Panel A's current view (after any panning or zooming). Without it, UCSC opens at the assembly's default position.
+            const panelAPosition = regionToGoslingStr(regions.left, chromSizes);
+            if (panelAPosition) urlParams.set('position', panelAPosition);
+
+            // Highlight each non-empty position in its panel's brush color ("db.chr:start-end#RRGGBB"), separated by a pipe
+            const highlightedPositions = positionArr
+                .map((pos, i) => pos ? `${pos}#${GOSLING_UCSC_HIGHLIGHT_COLORS[i]}` : "")
+                .filter(Boolean)
+                .join('|');
             urlParams.set('highlight', highlightedPositions);
 
             // open in a new tab
