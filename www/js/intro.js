@@ -173,7 +173,7 @@ const renderCards = (panel, items, kind) => {
         let meta = [];
         if (kind === 'datasets') meta = [item.organism, item.dtype, fmtDate(item.date)];
         if (kind === 'collections') meta = [`${item.dataset_count} datasets`, item.organisms];
-        if (kind === 'landing') meta = [`Updated ${fmtDate(item.date)}`];
+        if (kind === 'landing') meta = [`Added ${fmtDate(item.date)}`];
         return `
             <a class="new-card" href="${escapeHtml(item.url)}">
                 <span class="new-card-kind"><i class="mdi ${icon}" aria-hidden="true"></i></span>

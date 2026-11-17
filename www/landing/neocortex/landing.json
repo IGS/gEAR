@@ -3,6 +3,7 @@
         "nemo"
     ],
     "featured": true,
+    "date": "2024-06-24",
     "title": "NeMO Analytics: a curated compendium of transcriptomic data for the exploration of neocortical development",
     "summary": "Sonthalia et al. Gene-level transcriptomic data from ~200 studies of neocortical development, with conserved gene signatures across species.",
     "pmid": "41882195",

@@ -30,6 +30,7 @@ WWW_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)
 DEFAULT_OUTPUT = os.path.join(WWW_DIR, 'stats_archive', 'intro_stats.json')
 LANDING_DIR = os.path.join(WWW_DIR, 'landing')
 PREFS_PATH = os.path.join(WWW_DIR, 'site_domain_prefs.json')
+DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 # Datasets flagged for removal shouldn't count anywhere
 ACTIVE = "(d.marked_for_removal IS NULL OR d.marked_for_removal = 0)"
@@ -193,11 +194,15 @@ def get_landing_pages(domain_label):
     """
     Each www/landing/<name>/ folder is a study landing page, described by its landing.json:
 
-        {"portals": ["gear"], "title": "...", "summary": "...", "canonical_url": "https://..."}
+        {"portals": ["gear"], "featured": true, "date": "2026-01-31", "title": "...",
+         "summary": "...", "pmid": "...", "thumbnail": "thumbnail.jpg", "canonical_url": "https://..."}
 
     Every portal shares this directory, so only pages whose "portals" list includes the current
-    domain_label (or "*") are listed. Pages without a landing.json are skipped. Recency comes
-    from the folder's last git commit.
+    domain_label (or "*") are listed. Pages without a landing.json are skipped.
+
+    Pages are sorted newest first by "date" (YYYY-MM-DD, when the page was added or announced).
+    If it's missing or malformed, the date index.html was first committed is used instead; unlike
+    a last-modified date, that doesn't change when the page is edited.
     """
     pages = []
     if not os.path.isdir(LANDING_DIR):
@@ -218,6 +223,12 @@ def get_landing_pages(domain_label):
         if '*' not in portals and domain_label not in portals:
             continue
 
+        date = manifest.get('date')
+        if not (isinstance(date, str) and DATE_RE.match(date)):
+            date = first_added(os.path.join(LANDING_DIR, name, 'index.html'))
+            print(f"WARNING: {manifest_path} has no valid \"date\" (YYYY-MM-DD); using {date}",
+                  file=sys.stderr)
+
         thumbnail = manifest.get('thumbnail') or ''
         pages.append({'title': clean_text(manifest.get('title') or name),
                       'url': f"/landing/{name}/",
@@ -225,22 +236,24 @@ def get_landing_pages(domain_label):
                       'featured': bool(manifest.get('featured')),
                       'pmid': str(manifest.get('pmid') or ''),
                       'thumbnail': f"/landing/{name}/{thumbnail}" if thumbnail else '',
-                      'date': last_changed(os.path.join(LANDING_DIR, name))})
+                      'date': date})
 
+    # Newest first; same-day pages in title order
+    pages.sort(key=lambda p: p['title'].lower())
     pages.sort(key=lambda p: p['date'], reverse=True)
     return pages
 
 
-def last_changed(path):
+def first_added(path):
     """
-    Last git commit date for a path (a fresh checkout resets file mtimes, so they're
+    Date a file was first committed to git (a fresh checkout resets file mtimes, so they're
     useless here). Falls back to mtime outside a git checkout.
     """
     try:
-        out = subprocess.run(['git', 'log', '-1', '--format=%cs', '--', path], cwd=WWW_DIR,
-                             capture_output=True, text=True, timeout=10).stdout.strip()
+        out = subprocess.run(['git', 'log', '--diff-filter=A', '--follow', '--format=%cs', '--', path],
+                             cwd=WWW_DIR, capture_output=True, text=True, timeout=10).stdout.split()
         if out:
-            return out
+            return out[-1]
     except (OSError, subprocess.SubprocessError):
         pass
     return datetime.date.fromtimestamp(os.path.getmtime(path)).isoformat()
