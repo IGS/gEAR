@@ -8,6 +8,7 @@ zoomed to a requested gene.
 
 import ipaddress
 import os
+import re
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -811,6 +812,61 @@ def parse_position_str(position_str: str) -> tuple:
         print(f"ERROR: Failed to parse position string '{position_str}': {e}", file=sys.stderr)
         return None, None, None, None
 
+REGION_RE = re.compile(r"^([\w.\-]+):(\d+)-(\d+)$")
+
+def parse_region_str(region_str, assembly_array=None):
+    """
+    Parses a saved panel range ("chromosome:start-end", no assembly prefix) such as the
+    "panel_a" and "panel_b" query parameters.
+
+    Args:
+        region_str (str): The range to parse.
+        assembly_array (list, optional): [chromosome, size] pairs from build_assembly_array(). When given,
+            the chromosome must be one of them and the end is clamped to the chromosome size.
+
+    Returns:
+        tuple: (chromosome, start, end), or None if the range is missing or invalid.
+    """
+    if not region_str:
+        return None
+    match = REGION_RE.match(region_str.strip())
+    if not match:
+        return None
+    chromosome, start, end = match.group(1), int(match.group(2)), int(match.group(3))
+
+    if assembly_array is not None:
+        chrom_sizes = {chrom: int(size) for chrom, size in assembly_array}
+        if chromosome not in chrom_sizes:
+            return None
+        end = min(end, chrom_sizes[chromosome])
+
+    start = max(1, start)
+    if start >= end:
+        return None
+    return chromosome, start, end
+
+def set_view_region(view, region):
+    """
+    Sets a view's xDomain to an exact range (no padding). A child view's xDomain overrides the
+    one inherited from its parent, so this can be used on one panel of the region view.
+
+    Args:
+        view: A Gosling view object.
+        region (tuple): (chromosome, start, end) from parse_region_str().
+
+    Returns:
+        The updated view.
+    """
+    chromosome, start, end = region
+    return view.properties(xDomain=gos.GenomicDomain(chromosome=chromosome, interval=[start, end]))
+
+def region_to_str(region):
+    """Formats a (chromosome, start, end) tuple as "chromosome:start-end", or None."""
+    if not region:
+        return None
+    chromosome, start, end = region
+    return f"{chromosome}:{start}-{end}"
+
 def zoom_view_to_domain(view, position_str, hic_found=False):
     """
     Zooms a Gosling view to a specified genomic domain with padding.
@@ -1387,11 +1443,14 @@ class GoslingSpec(Resource):
         """
         Build a Gosling spec for a gene from the tracks in a track hub.
 
-        Query params: gene, assembly, and hub_url (all required), plus zoom ("true"/"false").
+        Query params: gene, assembly, and hub_url (all required), plus zoom ("true"/"false"),
+        and optionally panel_a and panel_b ("chromosome:start-end") to open Panel A or Panel B
+        (zoom only) at a saved range instead of around the gene.
 
         Returns:
             tuple: (response dict, HTTP status). The dict has "success", "spec" (JSON
-            string), "position" (gene position string or "NA"), "message", and "hic_found".
+            string), "position" (gene position string or "NA"), "message", "hic_found", and
+            "regions" ({"left", "right"}: the saved ranges that were applied, or None).
         """
         # session_id = request.cookies.get("gear_session_id", "")
         args = request.args
@@ -1399,6 +1458,9 @@ class GoslingSpec(Resource):
         assembly = args.get("assembly")
         hub_url = args.get("hub_url", "")
         zoom = args.get("zoom", "false")
+        # Optional saved panel ranges ("chromosome:start-end"). Invalid values are ignored and the gene is used instead.
+        panel_a = args.get("panel_a", "")
+        panel_b = args.get("panel_b", "")
         # Set zoom from string to bool
         if zoom.lower() == "true":
             zoom = True
@@ -1412,7 +1474,8 @@ class GoslingSpec(Resource):
             "spec": {},
             "position": "",  # will be filled with chr:start-end
             "message": "",
-            "hic_found": False  # If the spec has a HiC file, we need to adjust zooming behavior
+            "hic_found": False,  # If the spec has a HiC file, we need to adjust zooming behavior
+            "regions": {"left": None, "right": None},  # saved panel ranges that were applied, if any
         }
 
         if assembly is None:
@@ -1444,6 +1507,10 @@ class GoslingSpec(Resource):
         # Let's get the coordinates of the gene_symbol.
         (position_str, new_gene_symbol) = get_gene_info(gene_symbol, assembly)
 
+        assembly_array = build_assembly_array(assembly)
+        region_left = parse_region_str(panel_a, assembly_array)
+        region_right = parse_region_str(panel_b, assembly_array) if zoom else None
+
         if new_gene_symbol != "NA":
             gene_symbol = new_gene_symbol
 
@@ -1455,6 +1522,8 @@ class GoslingSpec(Resource):
         (parent_view_left, hic_found) = build_gosling_tracks(
             gos_tracks["left"], tracks, zoom=zoom, prefix="left-", position_str=position_str, colorblind=colorblind
         )
+        if region_left:
+            parent_view_left = set_view_region(parent_view_left, region_left)
         parent_view_right = None
         if zoom:
             gos_tracks["right"].append(
@@ -1463,13 +1532,13 @@ class GoslingSpec(Resource):
             (parent_view_right, _) = build_gosling_tracks(
                 gos_tracks["right"], tracks, zoom=zoom, prefix="right-", position_str=position_str, colorblind=colorblind
             )
+            if region_right:
+                parent_view_right = set_view_region(parent_view_right, region_right)
 
         # Start building the Gosling spec
         region_view = build_region_view(parent_view_left, parent_view_right)
 
         base_views = []
-
-        assembly_array = build_assembly_array(assembly)
 
         genome_wide_view = build_genome_wide_view(assembly, assembly_array, zoom=zoom, gene_symbol=gene_symbol)
         base_views.append(genome_wide_view)
@@ -1497,6 +1566,7 @@ class GoslingSpec(Resource):
         response["spec"] = spec
         response["position"] = position_str
         response["hic_found"] = hic_found
+        response["regions"] = {"left": region_to_str(region_left), "right": region_to_str(region_right)}
         return response, 200
 
     def post(self, dataset_id):

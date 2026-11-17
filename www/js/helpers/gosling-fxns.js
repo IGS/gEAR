@@ -6,7 +6,12 @@ Gosling (epigenome) plot rendering for dataset tiles.
 renderGoslingPlot() embeds a Gosling spec built by /api/plot/<dataset_id>/gosling
 (www/api/resources/gosling_spec.py) and adds the controls around it:
 - pan and zoom buttons for each panel, plus keyboard shortcuts (←/→ pan, +/− zoom)
-- in the zoomed (expanded) view, the "View in UCSC Genome Browser" button and the Panel B gene search
+- in the zoomed (expanded) view, the "View in UCSC Genome Browser" button, the Panel B gene search,
+  and (when logged in) a "Save display" form that saves the current view as a new display
+
+A saved view ("session") is a normal plot_type "gosling" dataset_display whose plotly_config has a
+"session" object: {gene_symbol, panel_a, panel_b, panel_b_gene}. Ranges are "chromosome:start-end".
+It is kept apart from the top-level gene_symbol, which tilegrid.js overwrites with the searched gene.
 */
 
 import { apiCallsMixin, createToast, logErrorInConsole } from "../common.v2.js";
@@ -63,11 +68,19 @@ export const clearGoslingTile = (tileId) => {
  * @param {boolean} opts.hicFound - True if the spec has a Hi-C track (which is shown with more padding).
  * @param {string} opts.assembly - Genome assembly (e.g. "mm10").
  * @param {string} [opts.hubUrl] - UCSC track hub URL, for the UCSC export button.
+ * @param {Object} [opts.initialRegions] - Saved ranges the API opened the panels at ({left, right}, "chromosome:start-end" or null).
+ * @param {string|null} [opts.panelBGene] - Saved Panel B gene (zoomed view). Only labels the view; it does not move it.
+ * @param {function(Object): Promise<void>} [opts.onSave] - Called by the zoomed view's "Save display" form with
+ *     {label, makeDefault, state}, where state is {panelA, panelB, panelBGene}. No form is shown without it.
  * @returns {Promise<Object>} The Gosling API for the embedded plot.
  * @throws {Error} If Gosling fails to render the plot.
  */
-export const renderGoslingPlot = async (embedFn, plotContainer, spec, { tileId, zoom, position, hicFound, assembly, hubUrl }) => {
-    const positionArr = [position, zoom ? position : ""]; // [leftPosition, rightPosition], for the UCSC export
+export const renderGoslingPlot = async (embedFn, plotContainer, spec, { tileId, zoom, position, hicFound, assembly, hubUrl, initialRegions = {}, panelBGene: savedPanelBGene = null, onSave = null }) => {
+    const savedRight = zoom ? parseGoslingRegion(initialRegions.right) : null;
+    // [leftPosition, rightPosition], for the UCSC export highlight. A restored Panel B range is not the gene, so
+    // it gets no highlight until its saved gene's position is looked up below.
+    const positionArr = [position, zoom && !savedRight ? position : ""];
+    let panelBGene = zoom ? savedPanelBGene : null;  // last gene found by the Panel B search, saved with the view
 
     // Give this tile's track and view ids a unique prefix, so its "location" events can be told apart
     // from those of other Gosling tiles on the page (the event PubSub is shared).
@@ -79,7 +92,10 @@ export const renderGoslingPlot = async (embedFn, plotContainer, spec, { tileId, 
     const padding = hicFound ? GOSLING_BASE_PADDING * GOSLING_HIC_PADDING_MULTIPLIER : GOSLING_BASE_PADDING;
     const initialRegion = parseGoslingPosition(position, padding);
     const panels = zoom ? ["left", "right"] : ["left"];
-    const regions = { left: initialRegion, right: zoom ? initialRegion : null };
+    const regions = {
+        left: parseGoslingRegion(initialRegions.left) ?? initialRegion,
+        right: zoom ? (savedRight ?? initialRegion) : null,
+    };
 
     let goslingApi = null;  // set once the plot is embedded
 
@@ -225,6 +241,56 @@ export const renderGoslingPlot = async (embedFn, plotContainer, spec, { tileId, 
     const exportButton = createExportButton(tileId, goslingContainer.id);
     const searchButton = createPanelBSearchBox(tileId, exportButton.id);
 
+    if (panelBGene) {
+        document.getElementById(`tile-${tileId}-panel-b-gene-input`).value = panelBGene;
+        // Highlight the saved gene in the UCSC export, without moving Panel B off its saved range
+        apiCallsMixin.fetchHiglassGeneCoords(panelBGene, assembly)
+            .then((coords) => {
+                if (coords) positionArr[1] = `${assembly}.${coords.chr}:${coords.txStart}-${coords.txEnd}`;
+            })
+            .catch(logErrorInConsole);
+    }
+
+    // When saving is allowed, the "Save display" form goes right-aligned under the Panel B gene search
+    // (which floats right beside the UCSC export button). The plot then starts below both floats.
+    const saveForm = onSave ? createSaveSessionControls(tileId) : null;
+    if (saveForm) {
+        saveForm.element.style.float = "right";
+        saveForm.element.style.clear = "right";
+        searchButton.parentElement.after(saveForm.element);
+        const clearFloats = document.createElement("div");
+        clearFloats.style.clear = "both";
+        exportButton.after(clearFloats);
+
+        saveForm.input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") saveForm.button.click();
+        });
+        saveForm.button.addEventListener("click", async () => {
+            if (saveForm.button.classList.contains("is-loading")) return;  // a save is already running
+            const label = saveForm.input.value.trim();
+            if (!label) {
+                createToast("Please enter a name for this display.");
+                saveForm.input.focus();
+                return;
+            }
+            const state = {
+                panelA: regionToGoslingStr(regions.left, chromSizes),
+                panelB: regionToGoslingStr(regions.right, chromSizes),
+                panelBGene,
+            };
+            saveForm.button.classList.add("is-loading");
+            try {
+                await onSave({ label, makeDefault: saveForm.checkbox.checked, state });
+                saveForm.input.value = "";
+                saveForm.checkbox.checked = false;
+            } catch (error) {
+                logErrorInConsole(error);
+            } finally {
+                saveForm.button.classList.remove("is-loading");
+            }
+        });
+    }
+
     if (hubUrl) {
         // Add event listener to export button to open UCSC Genome Browser with hub URL and position
         exportButton.addEventListener('click', () => {
@@ -273,6 +339,7 @@ export const renderGoslingPlot = async (embedFn, plotContainer, spec, { tileId, 
 
         const rightPosition = `${chr}:${start}-${end}`;
         positionArr[1] = `${assembly}.${rightPosition}`;
+        panelBGene = panelBData.geneName || gene;
         await goslingApi.zoomTo(`${idNamespace}right-annotation`, rightPosition, padding); // track name, position, padding, duration (ms)
 
         // TODO:  if Hi-C data is found, add an annotation to the gene position
@@ -343,6 +410,181 @@ export const parseGoslingPosition = (positionStr, padding = 0) => {
         endChromosome: chromosome,
         end: Number(end) + padding,
     };
+}
+
+/**
+ * Parses a saved panel range ("chromosome:start-end", no assembly prefix) into a region.
+ *
+ * @param {string|null} regionStr - The range, e.g. from a saved session or the API's "regions".
+ * @returns {Object|null} The region ({chromosome, start, endChromosome, end}), or null if it cannot be parsed.
+ */
+export const parseGoslingRegion = (regionStr) => {
+    const match = typeof regionStr === "string" ? regionStr.trim().match(/^(.+):(\d+)-(\d+)$/) : null;
+    if (!match) return null;
+    const [, chromosome, start, end] = match;
+    if (Number(start) >= Number(end)) return null;
+    return { chromosome, start: Number(start), endChromosome: chromosome, end: Number(end) };
+}
+
+/**
+ * Formats a panel's current region as a saved range ("chromosome:start-end").
+ * A region that spans chromosomes (only reachable with the mouse) is cut at the end of its first chromosome.
+ *
+ * @param {Object|null} region - The region ({chromosome, start, endChromosome, end}).
+ * @param {Map<string, number>} chromSizes - Chromosome sizes from getGoslingChromSizes().
+ * @returns {string|null} The range, or null if there is no region.
+ */
+export const regionToGoslingStr = (region, chromSizes) => {
+    if (!region) return null;
+    const { chromosome } = region;
+    const chromSize = chromSizes.get(chromosome);
+    let end = region.endChromosome === chromosome ? region.end : (chromSize ?? region.end);
+    if (chromSize) end = Math.min(end, chromSize);
+    const start = Math.max(1, Math.round(region.start));
+    end = Math.round(end);
+    if (end <= start) return null;
+    return `${chromosome}:${start}-${end}`;
+}
+
+/**
+ * Picks the saved ranges to open a Gosling display at.
+ * Panel A uses its saved range only while the searched gene is the gene it was saved with; otherwise it
+ * centers on the searched gene. Panel B (zoomed view only) always reopens at its saved range and gene.
+ *
+ * @param {Object} plotConfig - The display's plotly_config.
+ * @param {string} searchedGene - The gene being shown.
+ * @param {boolean} zoom - True for the zoomed view.
+ * @returns {{panelA: string|null, panelB: string|null, panelBGene: string|null}} The ranges to request.
+ */
+export const resolveGoslingSession = (plotConfig, searchedGene, zoom) => {
+    const session = plotConfig?.session;
+    const resolved = { panelA: null, panelB: null, panelBGene: null };
+    if (!session) return resolved;
+
+    const sameGene = Boolean(session.gene_symbol && searchedGene)
+        && session.gene_symbol.toLowerCase() === String(searchedGene).toLowerCase();
+    if (sameGene && session.panel_a) resolved.panelA = session.panel_a;
+
+    if (zoom && session.panel_b) {
+        resolved.panelB = session.panel_b;
+        resolved.panelBGene = session.panel_b_gene || null;
+    }
+    return resolved;
+}
+
+/**
+ * Builds the plotly_config for a new saved Gosling view.
+ *
+ * @param {Object} baseConfig - The plotly_config of the display being shown (hubUrl and assembly are kept).
+ * @param {string} searchedGene - The gene being shown.
+ * @param {{panelA: string|null, panelB: string|null, panelBGene: string|null}} state - The current view.
+ * @returns {Object} The new plotly_config.
+ */
+export const buildGoslingSessionConfig = (baseConfig, searchedGene, state) => {
+    const session = { gene_symbol: searchedGene };
+    if (state.panelA) session.panel_a = state.panelA;
+    if (state.panelB) {
+        session.panel_b = state.panelB;
+        if (state.panelBGene) session.panel_b_gene = state.panelBGene;
+    }
+    return {
+        hubUrl: baseConfig.hubUrl,
+        assembly: baseConfig.assembly,
+        gene_symbol: searchedGene,
+        session,
+    };
+}
+
+/**
+ * Formats a saved range compactly, e.g. "chr18:42.01–42.93 Mb", or "chr2:120–480 kb" for a range that ends
+ * within the first megabase. Narrow ranges get more decimals (down to 1 bp) so the start and end stay distinct.
+ *
+ * @param {string} rangeStr - The range ("chromosome:start-end").
+ * @returns {string|null} The short range, or null if it cannot be parsed.
+ */
+export const formatGoslingRangeShort = (rangeStr) => {
+    const region = parseGoslingRegion(rangeStr);
+    if (!region) return null;
+    // Unit by position, so positions near the start of a chromosome don't read as "0.000120 Mb"
+    const [unit, size, minDecimals, maxDecimals] = region.end >= 1e6 ? ["Mb", 1e6, 2, 6] : ["kb", 1e3, 0, 3];
+    const span = (region.end - region.start) / size;
+    const decimals = Math.min(maxDecimals, Math.max(minDecimals, Math.ceil(-Math.log10(span)) + 1));
+    const format = (bp) => (bp / size).toFixed(decimals);
+    return `${region.chromosome}:${format(region.start)}–${format(region.end)} ${unit}`;
+}
+
+/**
+ * Describes a saved Gosling view for display pickers: one short line per panel, plus the exact
+ * coordinates for a tooltip.
+ *
+ * @param {Object} plotConfig - The display's plotly_config.
+ * @returns {{lines: string[], full: string}|null} e.g. lines ["A: Pou4f3 · chr18:42.01–42.93 Mb",
+ *     "B: Myo7a · chr7:98.120–98.152 Mb"], or null if the display is not a saved view.
+ */
+export const describeGoslingSession = (plotConfig) => {
+    const session = plotConfig?.session;
+    if (!session) return null;
+    const formatExact = (rangeStr) => {
+        const region = parseGoslingRegion(rangeStr);
+        return region ? `${region.chromosome}:${region.start.toLocaleString()}-${region.end.toLocaleString()}` : null;
+    };
+    const describePanel = (panel, gene, rangeStr, formatRange) =>
+        `${panel}: ${[gene, formatRange(rangeStr)].filter(Boolean).join(" · ")}`;
+
+    const lines = [];
+    const full = [];
+    if (session.gene_symbol || session.panel_a) {
+        lines.push(describePanel("A", session.gene_symbol, session.panel_a, formatGoslingRangeShort));
+        full.push(describePanel("A", session.gene_symbol, session.panel_a, formatExact));
+    }
+    if (session.panel_b) {
+        lines.push(describePanel("B", session.panel_b_gene, session.panel_b, formatGoslingRangeShort));
+        full.push(describePanel("B", session.panel_b_gene, session.panel_b, formatExact));
+    }
+    return lines.length ? { lines, full: full.join("\n") } : null;
+}
+
+/**
+ * Saves the current Gosling view as a new display, and optionally makes it the user's default for the dataset.
+ * Shows a toast with the result.
+ *
+ * @param {Object} opts
+ * @param {string} opts.datasetId - The dataset ID.
+ * @param {string} opts.label - Name for the new display.
+ * @param {boolean} opts.makeDefault - True to make the new display the user's single-gene default.
+ * @param {Object} opts.plotConfig - The new display's plotly_config, from buildGoslingSessionConfig().
+ * @returns {Promise<Object|null>} The new display ({id, dataset_id, label, plot_type, plotly_config}), or null if not saved.
+ */
+export const saveGoslingSession = async ({ datasetId, label, makeDefault, plotConfig }) => {
+    let displayId = null;
+    try {
+        const { display_id, success } = await apiCallsMixin.saveDatasetDisplay(datasetId, null, label, "gosling", plotConfig);
+        if (!success) {
+            throw new Error("Could not save this new display. Please contact the gEAR team.");
+        }
+        displayId = display_id;
+    } catch (error) {
+        logErrorInConsole(error);
+        createToast(error?.message || "Could not save this new display. Please contact the gEAR team.");
+        return null;
+    }
+
+    const display = { id: displayId, dataset_id: datasetId, label, plot_type: "gosling", plotly_config: plotConfig };
+
+    if (!makeDefault) {
+        createToast("Display saved.", "is-success");
+        return display;
+    }
+
+    try {
+        const { success } = await apiCallsMixin.saveDefaultDisplay(datasetId, displayId, 0);  // 0 = single-gene
+        if (!success) throw new Error("saveDefaultDisplay failed");
+        createToast("Display saved and set as your default.", "is-success");
+    } catch (error) {
+        logErrorInConsole(error);
+        createToast("The display was saved, but could not be made your default. Please contact the gEAR team.");
+    }
+    return display;
 }
 
 /**
@@ -451,6 +693,7 @@ const createExportButton = (tileId, selectorId) => {
     exportButton.style.zIndex = '1000';
     exportButton.style.padding = '10px';
     exportButton.style.marginBottom = '10px';
+    exportButton.style.marginLeft = '10px';
     exportButton.style.marginRight = '10px';
     exportButton.style.backgroundColor = 'purple'; // Purple background
     exportButton.style.color = 'white'; // White text
@@ -470,7 +713,7 @@ const createExportButton = (tileId, selectorId) => {
  */
 const createPanelBSearchBox = (tileId, selectorId) => {
     const searchBox = document.createElement('div');
-    searchBox.id = `tile-${tileId}-panel-b-gene-input-search;`
+    searchBox.id = `tile-${tileId}-panel-b-gene-input-search`;
     searchBox.style.float = "right";
 
     const searchInput = document.createElement('input');
@@ -490,10 +733,60 @@ const createPanelBSearchBox = (tileId, selectorId) => {
     const searchButton = document.createElement('button');
     searchButton.id = `tile-${tileId}-panel-b-search-button`;
     searchButton.textContent = 'Search';
+    searchButton.style.marginRight = '10px';
 
     searchBox.appendChild(searchLabel);
     searchBox.appendChild(searchInput);
     searchBox.appendChild(searchButton);
     document.getElementById(selectorId).before (searchBox);
     return searchButton;
+}
+
+/**
+ * Creates the zoomed view's "Save display" form: a name, a "Make default" checkbox and a Save button.
+ *
+ * @param {string} tileId - The ID of the dataset tile.
+ * @returns {{element: HTMLElement, input: HTMLInputElement, checkbox: HTMLInputElement, button: HTMLButtonElement}} The form parts.
+ */
+const createSaveSessionControls = (tileId) => {
+    const element = document.createElement("div");
+    element.classList.add("field", "is-grouped", "is-grouped-multiline", "is-justify-content-flex-end", "is-align-items-center", "mt-3", "mb-1");
+
+    const inputControl = document.createElement("div");
+    inputControl.classList.add("control");
+    const input = document.createElement("input");
+    input.id = `tile-${tileId}-gosling-save-label`;
+    input.type = "text";
+    input.classList.add("input", "is-small");
+    input.placeholder = "Name this view";
+    input.setAttribute("aria-label", "Name for the saved display");
+    input.maxLength = 255;  // dataset_display.label is VARCHAR(255)
+    input.dataset.testid = "gosling-save-label";
+    inputControl.append(input);
+
+    const checkboxControl = document.createElement("div");
+    checkboxControl.classList.add("control");
+    const checkboxLabel = document.createElement("label");
+    // Explicit text color: the tile's inherited text color is too light, and the theme only darkens .checkbox on hover
+    checkboxLabel.classList.add("checkbox", "is-size-7", "has-text-grey-dark");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset.testid = "gosling-save-make-default";
+    checkbox.classList.add("mr-1");
+    checkboxLabel.append(checkbox, "Make default");
+    checkboxControl.append(checkboxLabel);
+
+    const buttonControl = document.createElement("div");
+    buttonControl.classList.add("control");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.classList.add("button", "is-small", "is-primary");
+    button.textContent = "Save display";
+    button.style.marginRight = '10px';
+    button.dataset.testid = "gosling-save-button";
+    button.title = "Save the Panel A and Panel B ranges and the Panel B gene as a new display";
+    buttonControl.append(button);
+
+    element.append(inputControl, checkboxControl, buttonControl);
+    return { element, input, checkbox, button };
 }

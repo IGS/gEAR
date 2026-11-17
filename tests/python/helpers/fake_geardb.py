@@ -117,8 +117,8 @@ class _Layout:
     def get_members(self):
         return self.members
 
-    def remove_member_by_dataset_id(self, dataset_id):
-        _log("layout.remove_member_by_dataset_id", layout=self.share_id, dataset_id=dataset_id)
+    def remove_members_by_dataset_id(self, dataset_id):
+        _log("layout.remove_members_by_dataset_id", layout=self.share_id, dataset_id=dataset_id)
 
     def remove_member_by_display_id(self, display_id):
         _log("layout.remove_member_by_display_id", layout=self.share_id, display_id=display_id)
