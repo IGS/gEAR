@@ -18,6 +18,7 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
         <!-- Linked statically (not via insertVersionedCSS) so this first-impression page never flashes unstyled -->
         <link rel="stylesheet" href="css/common.v2.css" />
+        <link rel="stylesheet" href="css/featured_studies.css" />
         <link rel="stylesheet" href="css/intro.css" />
     </head>
     <body>
@@ -150,8 +151,30 @@
           </div>
         </section>
 
+        <!-- ============================== FEATURED STUDIES ============================== -->
+        <!-- Same side-scroller as index.html: js/featured_studies.js + css/featured_studies.css -->
+        <section id="featured-studies" class="intro-section is-banded" aria-labelledby="featured-studies-title" hidden>
+          <div class="section-head">
+            <h2 id="featured-studies-title">Featured studies</h2>
+            <p>Published studies with their data ready to explore in gEAR.</p>
+          </div>
+          <div class="featured-header">
+            <div class="featured-nav">
+              <button type="button" class="button is-small is-rounded featured-prev" aria-label="Scroll to previous studies" aria-controls="featured-track" disabled>
+                <span class="icon"><i class="mdi mdi-chevron-left mdi-24px"></i></span>
+              </button>
+              <button type="button" class="button is-small is-rounded featured-next" aria-label="Scroll to more studies" aria-controls="featured-track" disabled>
+                <span class="icon"><i class="mdi mdi-chevron-right mdi-24px"></i></span>
+              </button>
+            </div>
+          </div>
+          <div class="featured-viewport">
+            <ul id="featured-track" class="featured-track" tabindex="0" aria-label="Featured study landing pages"></ul>
+          </div>
+        </section>
+
         <!-- ============================== STATISTICS ============================== -->
-        <section id="by-the-numbers" class="intro-section is-banded">
+        <section id="by-the-numbers" class="intro-section">
           <div class="section-head">
             <h2>gEAR by the numbers</h2>
             <p>A community resource that keeps growing. <span id="stats-generated" class="muted"></span></p>
@@ -184,10 +207,10 @@
         </section>
 
         <!-- ============================== WHAT'S NEW ============================== -->
-        <section id="whats-new" class="intro-section">
+        <section id="whats-new" class="intro-section is-banded">
           <div class="section-head">
             <h2>What's new</h2>
-            <p>The latest public data, curated collections and study pages.</p>
+            <p>The latest public datasets and curated collections.</p>
           </div>
 
           <div class="new-tabs" role="tablist" aria-label="What's new">
@@ -197,14 +220,10 @@
             <button role="tab" class="new-tab" aria-selected="false" aria-controls="new-panel-collections" id="new-tab-collections" tabindex="-1">
               <i class="mdi mdi-folder-open-outline" aria-hidden="true"></i> Collections
             </button>
-            <button role="tab" class="new-tab" aria-selected="false" aria-controls="new-panel-landing" id="new-tab-landing" tabindex="-1">
-              <i class="mdi mdi-file-document-outline" aria-hidden="true"></i> Featured studies
-            </button>
           </div>
 
           <div id="new-panel-datasets" class="new-panel" role="tabpanel" aria-labelledby="new-tab-datasets"></div>
           <div id="new-panel-collections" class="new-panel" role="tabpanel" aria-labelledby="new-tab-collections" hidden></div>
-          <div id="new-panel-landing" class="new-panel" role="tabpanel" aria-labelledby="new-tab-landing" hidden></div>
 
           <p class="new-more">
             <a href="/dataset_explorer.html">See all datasets <i class="mdi mdi-arrow-right" aria-hidden="true"></i></a>
@@ -212,7 +231,7 @@
         </section>
 
         <!-- ============================== GET STARTED ============================== -->
-        <section id="get-started" class="intro-section is-banded">
+        <section id="get-started" class="intro-section">
           <div class="section-head">
             <h2>Get started</h2>
             <p>Short guides and videos for the most common analyses.</p>

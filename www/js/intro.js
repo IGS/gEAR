@@ -7,6 +7,8 @@
  * the rest of the page (search, tools, guides) still works.
  */
 
+import { loadFeaturedStudies } from './featured_studies.js';
+
 const STATS_URL = '/stats_archive/intro_stats.json';
 
 // ---------------------------------------------------------------------------
@@ -168,12 +170,11 @@ const renderCards = (panel, items, kind) => {
         panel.innerHTML = '<p class="muted">Nothing to show yet. Check back soon.</p>';
         return;
     }
-    const icon = { datasets: 'mdi-database-outline', collections: 'mdi-folder-open-outline', landing: 'mdi-file-document-outline' }[kind];
+    const icon = { datasets: 'mdi-database-outline', collections: 'mdi-folder-open-outline' }[kind];
     panel.innerHTML = `<div class="new-grid">${items.map((item) => {
         let meta = [];
         if (kind === 'datasets') meta = [item.organism, item.dtype, fmtDate(item.date)];
         if (kind === 'collections') meta = [`${item.dataset_count} datasets`, item.organisms];
-        if (kind === 'landing') meta = [`Added ${fmtDate(item.date)}`];
         return `
             <a class="new-card" href="${escapeHtml(item.url)}">
                 <span class="new-card-kind"><i class="mdi ${icon}" aria-hidden="true"></i></span>
@@ -217,7 +218,9 @@ const loadStats = async () => {
 
     renderCards(document.getElementById('new-panel-datasets'), data.recent_datasets, 'datasets');
     renderCards(document.getElementById('new-panel-collections'), data.recent_collections, 'collections');
-    renderCards(document.getElementById('new-panel-landing'), data.landing_pages, 'landing');
+
+    // Reuse the data already fetched rather than requesting the file a second time
+    loadFeaturedStudies(data.landing_pages ?? []);
 };
 
 loadStats();

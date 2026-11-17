@@ -176,6 +176,16 @@ body {
     color: var(--intro-ink-muted);
 }
 
+/* -------------------------------------------------------- featured studies */
+/* Base styles live in featured_studies.css (shared with index.html); these adapt it to this page */
+#featured-studies.is-banded { --fs-fade: var(--intro-tertiary); }
+#featured-studies .section-head { margin-bottom: 1rem; }
+#featured-studies .featured-header {
+    justify-content: flex-end;
+    min-height: 2rem;            /* hold the space so the cards don't jump when the arrows appear */
+    margin-bottom: 0.5rem;
+}
+
 /* --------------------------------------------------------------- tool grid */
 .tool-grid {
     display: grid;
