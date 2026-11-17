@@ -1,0 +1,6 @@
+{
+    "portals": ["nemo"],
+    "title": "NeMO Analytics: a curated compendium of transcriptomic data for the exploration of neocortical development",
+    "summary": "Sonthalia et al. Gene-level transcriptomic data from ~200 studies of neocortical development, with conserved gene signatures across species.",
+    "canonical_url": "https://nemoanalytics.org/landing/neocortex/"
+}
