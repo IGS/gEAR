@@ -1,14 +1,23 @@
 /* Intro page (intro.html). Brand colors match gear-theme-purple.scss. */
 
 :root {
-    --intro-primary: #362E5C;
-    --intro-secondary: #544A8E;
-    --intro-tertiary: #EFEDF7;
-    --intro-accent: #8E7FD6;      /* lighter brand step, for data marks on dark hero */
-    --intro-ink: #1f1d2b;
-    --intro-ink-muted: #5b5870;
+    /* Brand colors come from the per-portal theme build (gear-theme-purple.scss -> --gear-* on :root);
+       the fallbacks are gEAR's purple for themes compiled before those variables existed. */
+    --intro-primary: var(--gear-bg-primary, #362E5C);
+    --intro-secondary: var(--gear-bg-secondary, #544A8E);
+    --intro-tertiary: var(--gear-bg-tertiary, #EFEDF7);
+    --intro-on-primary: var(--gear-text-on-primary, #fff);
+
+    /* Derived from the brand colors so every portal gets matching shades */
+    --intro-accent: color-mix(in srgb, var(--intro-secondary) 55%, white);
+    --intro-on-primary-muted: color-mix(in srgb, var(--intro-on-primary) 80%, transparent);
+    --intro-on-primary-faint: color-mix(in srgb, var(--intro-on-primary) 25%, transparent);
+    --intro-shadow: color-mix(in srgb, var(--intro-primary) 14%, transparent);
+    --intro-border: color-mix(in srgb, var(--intro-secondary) 20%, #e4e4e8);
+
+    --intro-ink: #1f1f26;
+    --intro-ink-muted: #5b5b68;
     --intro-surface: #ffffff;
-    --intro-border: #dcd8ec;
     --intro-radius: 12px;
     --intro-max: 1200px;
 }
@@ -35,27 +44,34 @@ body {
     background: var(--intro-primary);
 }
 .intro-brand img { height: 42px; display: block; }
+.intro-brand img[hidden] { display: none; }
+/* Shown only when a portal has no logo-main-normal.png */
+#intro-brand-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--intro-on-primary);
+}
 .intro-header-links {
     display: flex;
     align-items: center;
     gap: 1.25rem;
 }
 .intro-header-links > a:not(.button) {
-    color: #fff;
+    color: var(--intro-on-primary);
     font-weight: 600;
     font-size: 0.95rem;
     opacity: 0.85;
 }
 .intro-header-links > a:not(.button):hover { opacity: 1; text-decoration: underline; }
-#portal-link.is-ghost { color: #fff; }
+#portal-link.is-ghost { color: var(--intro-on-primary); }
 
 /* -------------------------------------------------------------------- hero */
 #hero {
     background:
-        radial-gradient(ellipse at 85% 10%, rgba(142, 127, 214, 0.45), transparent 55%),
-        radial-gradient(ellipse at 10% 100%, rgba(84, 74, 142, 0.9), transparent 60%),
+        radial-gradient(ellipse at 85% 10%, color-mix(in srgb, var(--intro-accent) 45%, transparent), transparent 55%),
+        radial-gradient(ellipse at 10% 100%, color-mix(in srgb, var(--intro-secondary) 90%, transparent), transparent 60%),
         var(--intro-primary);
-    color: #fff;
+    color: var(--intro-on-primary);
     padding: 5rem 1.5rem 3.5rem;
 }
 .hero-inner {
@@ -63,19 +79,27 @@ body {
     margin: 0 auto;
     text-align: center;
 }
+.hero-eyebrow {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--intro-on-primary-muted);
+}
+.hero-eyebrow .js-domain-label { color: var(--intro-on-primary); }
 .hero-title {
     font-size: clamp(2rem, 4.5vw, 3.2rem);
     font-weight: 700;
     line-height: 1.1;
     letter-spacing: -0.02em;
-    color: #fff;
+    color: var(--intro-on-primary);
 }
 .hero-subtitle {
     margin-top: 1rem;
     font-size: 1.2rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--intro-on-primary-muted);
 }
-.hero-subtitle strong { color: #fff; }
+.hero-subtitle strong { color: var(--intro-on-primary); }
 
 #hero-search-form {
     position: relative;
@@ -87,7 +111,7 @@ body {
     padding: 6px;
     box-shadow: 0 12px 40px rgba(10, 6, 30, 0.35);
 }
-#hero-search-form:focus-within { box-shadow: 0 0 0 4px rgba(142, 127, 214, 0.6), 0 12px 40px rgba(10, 6, 30, 0.35); }
+#hero-search-form:focus-within { box-shadow: 0 0 0 4px color-mix(in srgb, var(--intro-accent) 60%, transparent), 0 12px 40px rgba(10, 6, 30, 0.35); }
 .hero-search-icon {
     position: absolute;
     left: 1.25rem;
@@ -116,19 +140,19 @@ body {
 .hero-examples {
     margin-top: 1rem;
     font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--intro-on-primary-muted);
 }
 .hero-examples a {
     display: inline-block;
     margin: 0.2rem 0.15rem;
     padding: 0.1rem 0.7rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    color: #fff;
+    border: 1px solid var(--intro-on-primary-faint);
+    color: var(--intro-on-primary);
     font-style: italic;
 }
-.hero-examples a:last-child { font-style: normal; border-color: transparent; text-decoration: underline; }
-.hero-examples a:hover { background: rgba(255, 255, 255, 0.15); }
+.hero-examples a.hero-browse-link { font-style: normal; border-color: transparent; text-decoration: underline; }
+.hero-examples a:hover { background: color-mix(in srgb, var(--intro-on-primary) 15%, transparent); }
 .hero-examples-sep { margin: 0 0.3rem; }
 
 .hero-ticker {
@@ -138,15 +162,15 @@ body {
     gap: 0.5rem 2.5rem;
     margin-top: 3rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.18);
-    color: rgba(255, 255, 255, 0.75);
+    border-top: 1px solid var(--intro-on-primary-faint);
+    color: var(--intro-on-primary-muted);
     list-style: none;
 }
 .hero-ticker strong {
     display: block;
     font-size: 1.8rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--intro-on-primary);
     font-variant-numeric: tabular-nums;
 }
 
@@ -226,7 +250,7 @@ body {
 .tool-card:focus-visible {
     transform: translateY(-2px);
     border-color: var(--intro-secondary);
-    box-shadow: 0 8px 20px rgba(54, 46, 92, 0.14);
+    box-shadow: 0 8px 20px var(--intro-shadow);
     color: var(--intro-ink);
 }
 .tool-card img {
@@ -373,7 +397,7 @@ body {
     display: block;
     width: 100%;
     height: var(--h);
-    background: #b9b0e3;
+    background: color-mix(in srgb, var(--intro-secondary) 40%, white);
     border-radius: 4px 4px 0 0;
 }
 .col-fill.is-current { background: var(--intro-secondary); }
@@ -433,7 +457,7 @@ body {
     cursor: pointer;
 }
 .new-tab:hover { border-color: var(--intro-secondary); color: var(--intro-primary); }
-.new-tab.is-active { background: var(--intro-primary); border-color: var(--intro-primary); color: #fff; }
+.new-tab.is-active { background: var(--intro-primary); border-color: var(--intro-primary); color: var(--intro-on-primary); }
 
 .new-grid {
     display: grid;
@@ -456,7 +480,7 @@ body {
 .new-card:focus-visible {
     color: var(--intro-ink);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(54, 46, 92, 0.12);
+    box-shadow: 0 8px 20px var(--intro-shadow);
 }
 .new-card-kind { color: var(--intro-secondary); font-size: 1.2rem; line-height: 1; }
 .new-card-title { font-weight: 700; color: var(--intro-primary); line-height: 1.3; }
@@ -494,7 +518,7 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 4rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--intro-on-primary-muted);
     background: linear-gradient(135deg, var(--intro-secondary), var(--intro-primary));
 }
 .guide-body { padding: 1rem 1.2rem 1.2rem; display: flex; flex-direction: column; flex: 1; }

@@ -3,9 +3,11 @@
    Shared by index.html and intro.html; markup + loader in js/featured_studies.js
    ------------------------------------------------------------------ */
 #featured-studies {
-    --fs-primary: #362e5c;
-    --fs-secondary: #544a8e;
-    --fs-tint: #f3f1fa;
+    /* Brand colors from the per-portal theme build; fallbacks are gEAR's purple */
+    --fs-primary: var(--gear-bg-primary, #362e5c);
+    --fs-secondary: var(--gear-bg-secondary, #544a8e);
+    --fs-tint: var(--gear-bg-tertiary, #f3f1fa);
+    --fs-on-primary: var(--gear-text-on-primary, #fff);
     --fs-border: rgb(220, 218, 232);
     --fs-muted: rgb(95, 95, 110);
     --fs-card-width: 300px;
@@ -93,14 +95,14 @@
     border: 1px solid var(--fs-border);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(54, 46, 92, 0.08);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--fs-primary) 8%, transparent);
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 #featured-studies .featured-card:hover,
 #featured-studies .featured-card:focus-within {
     transform: translateY(-3px);
     border-color: var(--fs-secondary);
-    box-shadow: 0 10px 24px rgba(54, 46, 92, 0.16);
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--fs-primary) 16%, transparent);
 }
 
 /* Figures are scientific, so show them whole (contain) on a soft backdrop rather than cropping */
@@ -123,7 +125,7 @@
     background:
         radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18) 0, transparent 45%),
         linear-gradient(135deg, var(--fs-secondary), var(--fs-primary));
-    color: rgba(255, 255, 255, 0.9);
+    color: color-mix(in srgb, var(--fs-on-primary) 90%, transparent);
 }
 #featured-studies .featured-media.is-placeholder .mdi {
     font-size: 3.5rem;

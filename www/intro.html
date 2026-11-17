@@ -24,7 +24,11 @@
     <body>
       <!-- ============================== HEADER ============================== -->
       <header id="intro-header">
-        <a href="/" class="intro-brand"><img id="intro-logo" src="/img/by_domain/gear/logo-main-normal.png" alt="gEAR home" /></a>
+        <!-- Logo, alt text and label are set per portal from site_domain_prefs.json in js/intro.js -->
+        <a href="/" class="intro-brand">
+          <img id="intro-logo" src="/img/by_domain/gear/logo-main-normal.png" alt="gEAR home" />
+          <span id="intro-brand-text" class="js-domain-label" hidden>gEAR</span>
+        </a>
         <nav class="intro-header-links" aria-label="Site">
           <a href="#tools">Tools</a>
           <a href="#whats-new">What's new</a>
@@ -38,6 +42,9 @@
         <!-- ============================== HERO / SEARCH ============================== -->
         <section id="hero">
           <div class="hero-inner">
+            <p id="hero-eyebrow" class="hero-eyebrow" hidden>
+              <span class="js-domain-label">gEAR</span><span id="hero-tagline"></span>
+            </p>
             <h1 class="hero-title">Where is your gene expressed?</h1>
             <p class="hero-subtitle">
               Search one gene or many and see expression instantly across
@@ -49,22 +56,19 @@
               <label class="is-sr-only" for="hero-gene-symbol">Gene symbol(s)</label>
               <span class="icon hero-search-icon" aria-hidden="true"><i class="mdi mdi-magnify"></i></span>
               <input id="hero-gene-symbol" name="gene_symbol" type="text"
-                     placeholder="Enter a gene symbol, e.g. Pou4f3 or SOX2, MYO7A"
+                     placeholder="Enter one or more gene symbols"
                      autocomplete="off" spellcheck="false" required />
               <button type="submit" class="button is-primary">Search</button>
             </form>
 
+            <!-- Example chips come from intro_example_genes (or default_demo_gene) in site_domain_prefs.json -->
             <p class="hero-examples">
-              Try:
-              <a href="/expression.html?gene_symbol=Pou4f3">Pou4f3</a>
-              <a href="/expression.html?gene_symbol=Sox2">Sox2</a>
-              <a href="/expression.html?gene_symbol=Atoh1">Atoh1</a>
-              <a href="/expression.html?gene_symbol=Myo7a,Pou4f3,Gfi1&amp;is_multigene=1">Myo7a + Pou4f3 + Gfi1</a>
-              <span class="hero-examples-sep">·</span>
-              <a href="/dataset_explorer.html">Browse datasets instead</a>
+              <span id="hero-example-genes" hidden>Try:</span>
+              <span id="hero-examples-sep" class="hero-examples-sep" hidden>·</span>
+              <a class="hero-browse-link" href="/dataset_explorer.html">Browse datasets instead</a>
             </p>
 
-            <ul class="hero-ticker" aria-label="gEAR at a glance">
+            <ul class="hero-ticker" aria-label="At a glance">
               <li><strong class="js-stat" data-stat="public_datasets">–</strong> public datasets</li>
               <li><strong class="js-stat" data-stat="organisms">–</strong> organisms</li>
               <li><strong class="js-stat" data-stat="displays">–</strong> curated displays</li>
@@ -156,7 +160,7 @@
         <section id="featured-studies" class="intro-section is-banded" aria-labelledby="featured-studies-title" hidden>
           <div class="section-head">
             <h2 id="featured-studies-title">Featured studies</h2>
-            <p>Published studies with their data ready to explore in gEAR.</p>
+            <p>Published studies with their data ready to explore in <span class="js-domain-label">gEAR</span>.</p>
           </div>
           <div class="featured-header">
             <div class="featured-nav">
@@ -176,7 +180,7 @@
         <!-- ============================== STATISTICS ============================== -->
         <section id="by-the-numbers" class="intro-section">
           <div class="section-head">
-            <h2>gEAR by the numbers</h2>
+            <h2><span class="js-domain-label">gEAR</span> by the numbers</h2>
             <p>A community resource that keeps growing. <span id="stats-generated" class="muted"></span></p>
           </div>
 
@@ -346,9 +350,9 @@
       <script type="module">
         import { getDomainPreferences, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
-        // Same dark-background logo the portal sidebar uses for this domain
-        document.getElementById('intro-logo').src = `/img/by_domain/${prefs.domain_label}/logo-main-normal.png`;
-        insertVersionedJS('js/intro.js', prefs.cache_version);
+        // Imported with the cache version (rather than insertVersionedJS) so the prefs can be handed over
+        const { applyDomainBranding } = await import(`./js/intro.js?v=${prefs.cache_version}`);
+        applyDomainBranding(prefs);
         await loadDomainFunding(prefs);
       </script>
     </body>

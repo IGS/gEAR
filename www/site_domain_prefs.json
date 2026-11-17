@@ -3,6 +3,7 @@
     "domain_short_display_label": "gEAR",
     "domain_tagline": "gene Expression Analysis Resource",
     "default_demo_gene": "Sox2",
+    "intro_example_genes": ["Pou4f3", "Sox2", "Atoh1", "Myo7a,Pou4f3,Gfi1"],
     "citations": [
         {
             "lines": [

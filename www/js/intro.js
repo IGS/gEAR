@@ -27,6 +27,71 @@ if (/(^|;\s*)gear_session_id=/.test(document.cookie)) {
 }
 
 // ---------------------------------------------------------------------------
+// Portal branding from site_domain_prefs.json
+// (colors need nothing here: intro.css reads the --gear-* variables the theme build sets)
+// ---------------------------------------------------------------------------
+
+/**
+ * Applies the portal's name, tagline, logo and example genes to the page.
+ *
+ * Uses domain_label, domain_short_display_label and domain_tagline, plus optionally
+ * intro_example_genes: a list of searches for the "Try:" chips, each one gene or a
+ * comma-separated set (e.g. ["Sox2", "Myo7a,Pou4f3,Gfi1"]). Without it the chips fall
+ * back to default_demo_gene, and are hidden if neither is set.
+ *
+ * @param {Object} prefs - Result of getDomainPreferences()
+ */
+export const applyDomainBranding = (prefs) => {
+    const label = prefs.domain_short_display_label || 'gEAR';
+
+    document.title = document.title.replace('gEAR', label);
+    for (const el of document.querySelectorAll('.js-domain-label')) {
+        el.textContent = label;
+    }
+
+    if (prefs.domain_tagline?.trim()) {
+        document.getElementById('hero-tagline').textContent = ` · ${prefs.domain_tagline.trim()}`;
+        document.getElementById('hero-eyebrow').hidden = false;
+    }
+
+    // Same dark-background logo the portal sidebar uses; show the name as text if a portal has none
+    const logo = document.getElementById('intro-logo');
+    logo.alt = `${label} home`;
+    logo.addEventListener('error', () => {
+        logo.hidden = true;
+        document.getElementById('intro-brand-text').hidden = false;
+    }, { once: true });
+    logo.src = `/img/by_domain/${encodeURIComponent(prefs.domain_label)}/logo-main-normal.png`;
+
+    renderExampleGenes(prefs);
+};
+
+const renderExampleGenes = (prefs) => {
+    let examples = Array.isArray(prefs.intro_example_genes) ? prefs.intro_example_genes : [];
+    if (!examples.length && prefs.default_demo_gene) examples = [prefs.default_demo_gene];
+
+    const searches = examples
+        .map((example) => String(example).split(/[\s,;]+/).filter(Boolean))
+        .filter((genes) => genes.length);
+    if (!searches.length) return;
+
+    const container = document.getElementById('hero-example-genes');
+    for (const genes of searches) {
+        const params = new URLSearchParams({ gene_symbol: genes.join(',') });
+        if (genes.length > 1) params.set('is_multigene', '1');
+        const link = document.createElement('a');
+        link.href = `/expression.html?${params}`;
+        link.textContent = genes.join(' + ');
+        container.append(' ', link);
+    }
+    container.hidden = false;
+    document.getElementById('hero-examples-sep').hidden = false;
+
+    const firstGenes = searches.find((genes) => genes.length === 1) ?? searches[0];
+    searchInput.placeholder = `Enter one or more gene symbols, e.g. ${firstGenes.join(', ')}`;
+};
+
+// ---------------------------------------------------------------------------
 // Search
 // ---------------------------------------------------------------------------
 const searchForm = document.getElementById('hero-search-form');
