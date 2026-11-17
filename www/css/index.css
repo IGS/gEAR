@@ -6,14 +6,6 @@ div#dataset-explorer-card div.card-content{
 div#dropdown-dc div.dropdown-menu {
     min-width: 40rem !important;
 }
-div.guide-element {
-    border-right: 1px solid rgb(200, 200, 200);
-}
-div#guides_c div.card-content{
-    background-color: white;
-    color: black;
-    border-top: 1px solid rgb(200, 200, 200);
-}
 div#highlighted-datasets div.card {
     height: 100%;
     display: flex;
@@ -117,4 +109,218 @@ span.expression-search-step-number {
     font-size: 130%;
     font-weight: bold;
     color: #544a8e;
+}
+
+/* ------------------------------------------------------------------
+   Featured studies: side-scrolling cards built from www/landing/<name>/landing.json
+   ------------------------------------------------------------------ */
+#featured-studies {
+    --fs-primary: #362e5c;
+    --fs-secondary: #544a8e;
+    --fs-tint: #f3f1fa;
+    --fs-border: rgb(220, 218, 232);
+    --fs-muted: rgb(95, 95, 110);
+    --fs-card-width: 300px;
+}
+#featured-studies[hidden] { display: none; }
+
+#featured-studies .featured-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+#featured-studies .featured-nav {
+    display: flex;
+    gap: 0.5rem;
+}
+#featured-studies .featured-nav[hidden] { display: none; }
+#featured-studies .featured-nav .button {
+    color: var(--fs-secondary);
+    border-color: var(--fs-border);
+}
+#featured-studies .featured-nav .button:not([disabled]):hover {
+    background-color: var(--fs-tint);
+    border-color: var(--fs-secondary);
+}
+
+/* Fade the edge(s) that have more cards beyond them */
+#featured-studies .featured-viewport {
+    position: relative;
+}
+#featured-studies .featured-viewport::before,
+#featured-studies .featured-viewport::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 1rem;
+    width: 2.5rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 2;
+}
+#featured-studies .featured-viewport::before {
+    left: 0;
+    background: linear-gradient(to right, white, rgba(255, 255, 255, 0));
+}
+#featured-studies .featured-viewport::after {
+    right: 0;
+    background: linear-gradient(to left, white, rgba(255, 255, 255, 0));
+}
+#featured-studies .featured-viewport.can-scroll-left::before,
+#featured-studies .featured-viewport.can-scroll-right::after {
+    opacity: 1;
+}
+
+#featured-studies .featured-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: var(--fs-card-width);
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0.25rem 0.25rem 1rem;
+    list-style: none;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 0.25rem;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--fs-border) transparent;
+}
+#featured-studies .featured-track:focus-visible {
+    outline: 2px solid var(--fs-secondary);
+    outline-offset: 2px;
+    border-radius: 12px;
+}
+
+#featured-studies .featured-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    scroll-snap-align: start;
+    background: white;
+    border: 1px solid var(--fs-border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(54, 46, 92, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+#featured-studies .featured-card:hover,
+#featured-studies .featured-card:focus-within {
+    transform: translateY(-3px);
+    border-color: var(--fs-secondary);
+    box-shadow: 0 10px 24px rgba(54, 46, 92, 0.16);
+}
+
+/* Figures are scientific, so show them whole (contain) on a soft backdrop rather than cropping */
+#featured-studies .featured-media {
+    aspect-ratio: 16 / 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    background: var(--fs-tint);
+    border-bottom: 1px solid var(--fs-border);
+}
+#featured-studies .featured-media img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+}
+#featured-studies .featured-media.is-placeholder {
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18) 0, transparent 45%),
+        linear-gradient(135deg, var(--fs-secondary), var(--fs-primary));
+    color: rgba(255, 255, 255, 0.9);
+}
+#featured-studies .featured-media.is-placeholder .mdi {
+    font-size: 3.5rem;
+    line-height: 1;
+}
+
+#featured-studies .featured-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    padding: 1rem 1.1rem 1.1rem;
+}
+#featured-studies .featured-title {
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--fs-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+/* The title link covers the whole card so the card is one click target */
+#featured-studies .featured-title a {
+    color: inherit;
+}
+#featured-studies .featured-title a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+#featured-studies .featured-title a:focus-visible {
+    outline: none;
+}
+#featured-studies .featured-card:has(.featured-title a:focus-visible) {
+    outline: 2px solid var(--fs-secondary);
+    outline-offset: 2px;
+}
+#featured-studies .featured-summary {
+    font-size: 0.85rem;
+    color: var(--fs-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+#featured-studies .featured-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    font-size: 0.8rem;
+}
+#featured-studies .featured-cta {
+    font-weight: 600;
+    color: var(--fs-secondary);
+}
+/* Sits above the stretched title link so it stays independently clickable */
+#featured-studies .featured-pubmed {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: var(--fs-tint);
+    color: var(--fs-secondary);
+    font-weight: 600;
+}
+#featured-studies .featured-pubmed:hover {
+    background: var(--fs-secondary);
+    color: white;
+}
+
+@media screen and (max-width: 768px) {
+    #featured-studies { --fs-card-width: min(80vw, 300px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    #featured-studies .featured-track { scroll-behavior: auto; }
+    #featured-studies .featured-card { transition: none; }
+    #featured-studies .featured-card:hover,
+    #featured-studies .featured-card:focus-within { transform: none; }
 }
