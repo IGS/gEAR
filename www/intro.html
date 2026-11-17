@@ -1,13 +1,9 @@
 <!DOCTYPE html>
-<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
-<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
-<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<html class="no-js" lang="en">
     <head>
         <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
         <title>gEAR - Explore gene expression data</title>
-        <meta name="description" content="Search gene expression across public datasets, compare conditions, and share your own data. No coding required.">
+        <meta name="description" content="Search gene expression across hundreds of public datasets, compare conditions, and share your own data. No coding required.">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
         <meta http-equiv="Expires" content="-1">
@@ -19,238 +15,322 @@
         <base href="/" />
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
-
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
-
-        <!--Page-specific CSS here -->
-        <script>document.write('<link rel="stylesheet" href="css/intro.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+        <!-- Linked statically (not via insertVersionedCSS) so this first-impression page never flashes unstyled -->
+        <link rel="stylesheet" href="css/common.v2.css" />
+        <link rel="stylesheet" href="css/intro.css" />
     </head>
     <body>
-      <div id="main-layout-c" class="is-fullheight">
-        <section id="top-with-background">
-          <header id="header-c" class="is-fullwidth">
-            <div class="columns is-gapless is-vcentered">
-              <div class="column is-2">
-                <a href="/"><img id="intro-logo" class="pt-2 pl-3" src="/img/logos/gear-B-3.png" alt="gEAR home" /></a>
-              </div>
-              <div class="column is-10 has-text-right">
-                <a id="portal-link" href="/index.html" class="button is-small is-ghost">Skip to portal</a>
-                <a id="header-create-account" href="/create_account.html" class="button is-small is-primary is-outlined is-rounded mr-3">Create account</a>
-              </div>
-            </div>
-          </header>
+      <!-- ============================== HEADER ============================== -->
+      <header id="intro-header">
+        <a href="/" class="intro-brand"><img id="intro-logo" src="/img/by_domain/gear/logo-main-normal.png" alt="gEAR home" /></a>
+        <nav class="intro-header-links" aria-label="Site">
+          <a href="#tools">Tools</a>
+          <a href="#whats-new">What's new</a>
+          <a href="#get-started">Guides</a>
+          <a id="portal-link" href="/index.html" class="button is-small is-ghost">Skip to portal</a>
+          <a id="header-create-account" href="/create_account.html" class="button is-small is-light is-rounded">Create account</a>
+        </nav>
+      </header>
 
-          <section id="primary-intro-c" class="columns is-gapless is-vcentered">
-            <div class="column is-6">&nbsp;</div>
-            <div class="column is-4">
-              <h1 class="title">Where is your gene expressed?</h1>
-              <p class="subtitle mt-1">
-                Search a gene and instantly see its expression across public datasets.
-                No account, no coding.
-              </p>
-              <form id="hero-search-form" action="/expression.html" method="get" role="search">
-                <label class="label is-sr-only" for="hero-gene-symbol">Gene symbol</label>
-                <div class="field has-addons">
-                  <div class="control is-expanded">
-                    <input id="hero-gene-symbol" name="gene_symbol" class="input" type="text" placeholder="e.g. Pou4f3, SOX2, GAPDH" autocomplete="off" required />
-                  </div>
-                  <div class="control">
-                    <button type="submit" class="button is-primary">Search</button>
-                  </div>
-                </div>
-              </form>
-              <p class="help">
-                Or <a href="/dataset_explorer.html">browse all datasets</a>
-              </p>
-            </div>
-            <div class="column is-2">&nbsp;</div>
-          </section>
+      <main>
+        <!-- ============================== HERO / SEARCH ============================== -->
+        <section id="hero">
+          <div class="hero-inner">
+            <h1 class="hero-title">Where is your gene expressed?</h1>
+            <p class="hero-subtitle">
+              Search one gene or many and see expression instantly across
+              <strong class="js-stat" data-stat="public_datasets">hundreds of</strong> public datasets.
+              No account, no coding.
+            </p>
+
+            <form id="hero-search-form" action="/expression.html" method="get" role="search">
+              <label class="is-sr-only" for="hero-gene-symbol">Gene symbol(s)</label>
+              <span class="icon hero-search-icon" aria-hidden="true"><i class="mdi mdi-magnify"></i></span>
+              <input id="hero-gene-symbol" name="gene_symbol" type="text"
+                     placeholder="Enter a gene symbol, e.g. Pou4f3 or SOX2, MYO7A"
+                     autocomplete="off" spellcheck="false" required />
+              <button type="submit" class="button is-primary">Search</button>
+            </form>
+
+            <p class="hero-examples">
+              Try:
+              <a href="/expression.html?gene_symbol=Pou4f3">Pou4f3</a>
+              <a href="/expression.html?gene_symbol=Sox2">Sox2</a>
+              <a href="/expression.html?gene_symbol=Atoh1">Atoh1</a>
+              <a href="/expression.html?gene_symbol=Myo7a,Pou4f3,Gfi1&amp;is_multigene=1">Myo7a + Pou4f3 + Gfi1</a>
+              <span class="hero-examples-sep">·</span>
+              <a href="/dataset_explorer.html">Browse datasets instead</a>
+            </p>
+
+            <ul class="hero-ticker" aria-label="gEAR at a glance">
+              <li><strong class="js-stat" data-stat="public_datasets">–</strong> public datasets</li>
+              <li><strong class="js-stat" data-stat="organisms">–</strong> organisms</li>
+              <li><strong class="js-stat" data-stat="displays">–</strong> curated displays</li>
+              <li><strong class="js-stat" data-stat="users">–</strong> researchers</li>
+            </ul>
+          </div>
         </section>
 
-        <section id="main-c" class="pl-0 pt-0">
-          <section id="content-c">
+        <!-- ============================== TOOL GRID ============================== -->
+        <section id="tools" class="intro-section">
+          <div class="section-head">
+            <h2>Tools for every question</h2>
+            <p>Browsing and analysis are open to everyone. An account is only needed to upload data and save your work.</p>
+          </div>
 
-            <section id="justification-c" class="columns is-gapless">
-              <div class="column is-3">&nbsp;</div>
-              <div class="column is-6">
-                <h2 class="title has-text-centered">Get started in three steps</h2>
-                <p class="subtitle has-text-centered mt-1">
-                  Most visitors begin with a gene they care about. From there, go as deep as you like.
-                </p>
+          <div class="tool-grid">
+            <div class="tool-column">
+              <h3 class="tool-column-title"><span class="mdi mdi-compass-outline" aria-hidden="true"></span> Explore</h3>
+              <a class="tool-card is-featured" href="/expression.html">
+                <img src="/img/guide_image_mag_dna.png" alt="" />
+                <span class="tool-name"><i class="mdi mdi-test-tube" aria-hidden="true"></i> Gene Expression</span>
+                <span class="tool-desc">See where one or many genes are expressed, side by side across datasets.</span>
+              </a>
+              <a class="tool-card" href="/dataset_explorer.html">
+                <img src="/img/guide_image_dna_folder.png" alt="" />
+                <span class="tool-name"><i class="mdi mdi-table-search" aria-hidden="true"></i> Datasets</span>
+                <span class="tool-desc">Browse public datasets by organism, tissue and assay.</span>
+              </a>
+              <a class="tool-card" href="/projection.html">
+                <img src="/img/guide_image_mag_lines.png" alt="" />
+                <span class="tool-name"><i class="mdi mdi-hexagon-multiple" aria-hidden="true"></i> Projection Tool</span>
+                <span class="tool-desc">Project gene patterns from one study onto other datasets.</span>
+              </a>
+            </div>
+
+            <div class="tool-column">
+              <h3 class="tool-column-title"><span class="mdi mdi-flask-outline" aria-hidden="true"></span> Analyze</h3>
+              <a class="tool-card" href="/sc_workbench.html">
+                <img src="/img/example_tsne.png" alt="" />
+                <span class="tool-name"><i class="mdi mdi-chart-line" aria-hidden="true"></i> Single Cell Workbench</span>
+                <span class="tool-desc">Cluster, find markers and annotate cell types, step by step.</span>
+              </a>
+              <a class="tool-card" href="/compare_datasets.html">
+                <img src="/img/guide_image_bidirectional.png" alt="" />
+                <span class="tool-name"><i class="mdi mdi-compare-horizontal" aria-hidden="true"></i> Comparison Tool</span>
+                <span class="tool-desc">Find genes that differ between two conditions or cell types.</span>
+              </a>
+              <a class="tool-card" href="/dataset_curator.html">
+                <img src="/img/single-gene-examples.png" alt="" />
+                <span class="tool-name"><i class="mdi mdi-chart-box-outline" aria-hidden="true"></i> Single-gene Displays</span>
+                <span class="tool-desc">Build bar, violin, UMAP and other plots for one gene.</span>
+              </a>
+              <a class="tool-card" href="/multigene_curator.html">
+                <img src="/img/multi-gene-examples.png" alt="" />
+                <span class="tool-name"><i class="mdi mdi-chart-box-multiple-outline" aria-hidden="true"></i> Multi-gene Displays</span>
+                <span class="tool-desc">Heatmaps, dot plots and volcano plots for a set of genes.</span>
+              </a>
+              <a class="tool-card is-compact" href="/cell_cell.html">
+                <span class="tool-name"><i class="mdi mdi-swap-horizontal" aria-hidden="true"></i> Cell-cell Communication</span>
+                <span class="tool-desc">Predict ligand–receptor signaling between cell types.</span>
+              </a>
+            </div>
+
+            <div class="tool-column">
+              <h3 class="tool-column-title"><span class="mdi mdi-folder-cog-outline" aria-hidden="true"></span> Manage</h3>
+              <a class="tool-card is-compact" href="/dataset_explorer.html">
+                <span class="tool-name"><i class="mdi mdi-folder-open-outline" aria-hidden="true"></i> Dataset Collections</span>
+                <span class="tool-desc">Group datasets into a collection you can view and share in one link.</span>
+              </a>
+              <a class="tool-card is-compact" href="/gene_list_manager.html">
+                <span class="tool-name"><i class="mdi mdi-folder-text-outline" aria-hidden="true"></i> Gene Lists</span>
+                <span class="tool-desc">Save, upload and share gene lists to search them all at once.</span>
+              </a>
+              <a class="tool-card is-compact" href="/upload_dataset.html">
+                <span class="tool-name"><i class="mdi mdi-cloud-upload-outline" aria-hidden="true"></i> Dataset Uploader</span>
+                <span class="tool-desc">Bring your own data and use every tool on it. <em>Free account required.</em></span>
+              </a>
+              <div class="manage-callout">
+                <span class="mdi mdi-account-plus-outline" aria-hidden="true"></span>
+                <p>A free account lets you upload data, save displays and share collections with collaborators.</p>
+                <a id="callout-create-account" class="button is-primary is-outlined is-small is-rounded" href="/create_account.html">Create an account</a>
               </div>
-              <div class="column is-3">&nbsp;</div>
-            </section>
+            </div>
+          </div>
+        </section>
 
-            <section id="card-collection-c" class="columns is-gapless">
-              <div class="column is-3">&nbsp;</div>
-              <div class="column is-6">
-                <div id="intro-cards" class="columns">
-                  <div class="column is-4 mt-6">
-                    <div class="card">
-                      <div class="card-image">
-                        <figure class="image"><img src="/img/guide_image_mag_dna.png" alt="Magnifying glass over DNA" /></figure>
-                      </div>
-                      <div class="card-content">
-                        <div class="content has-text-centered">
-                          <h2 class="title is-3">1. Search</h2>
-                          <p class="subtitle">Enter one or more genes and see expression in curated displays, side by side across datasets.</p>
-                          <a class="button is-primary is-outlined is-small mt-3" href="/expression.html">
-                            <span>Gene Expression Search</span>
-                            <span class="icon is-small"><i class="mdi mdi-arrow-right" aria-hidden="true"></i></span>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="column is-4 mt-6">
-                    <div class="card">
-                      <div class="card-image">
-                        <figure class="image"><img src="/img/guide_image_bidirectional.png" alt="Two-way arrows" /></figure>
-                      </div>
-                      <div class="card-content">
-                        <div class="content has-text-centered">
-                          <h2 class="title is-3">2. Compare</h2>
-                          <p class="subtitle">Compare conditions or cell types within a dataset, or build your own multi-gene displays.</p>
-                          <a class="button is-primary is-outlined is-small mt-3" href="/compare_datasets.html">
-                            <span>Comparison Tool</span>
-                            <span class="icon is-small"><i class="mdi mdi-arrow-right" aria-hidden="true"></i></span>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="column is-4 mt-6">
-                    <div class="card">
-                      <div class="card-image">
-                        <figure class="image"><img src="/img/guide_image_dna_folder.png" alt="DNA in a folder" /></figure>
-                      </div>
-                      <div class="card-content">
-                        <div class="content has-text-centered">
-                          <h2 class="title is-3">3. Share your data</h2>
-                          <p class="subtitle">Create a free account to upload your own data, save displays and gene lists, and share them with collaborators.</p>
-                          <a class="button is-primary is-outlined is-small mt-3" href="/create_account.html">
-                            <span>Create a free account</span>
-                            <span class="icon is-small"><i class="mdi mdi-arrow-right" aria-hidden="true"></i></span>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        <!-- ============================== STATISTICS ============================== -->
+        <section id="by-the-numbers" class="intro-section is-banded">
+          <div class="section-head">
+            <h2>gEAR by the numbers</h2>
+            <p>A community resource that keeps growing. <span id="stats-generated" class="muted"></span></p>
+          </div>
+
+          <div class="stat-tiles">
+            <div class="stat-tile"><span class="stat-value js-stat" data-stat="public_datasets">–</span><span class="stat-label">public datasets</span></div>
+            <div class="stat-tile"><span class="stat-value js-stat" data-stat="added_last_year">–</span><span class="stat-label">added in the past year</span></div>
+            <div class="stat-tile"><span class="stat-value js-stat" data-stat="displays">–</span><span class="stat-label">curated displays</span></div>
+            <div class="stat-tile"><span class="stat-value js-stat" data-stat="public_collections">–</span><span class="stat-label">public collections</span></div>
+            <div class="stat-tile"><span class="stat-value js-stat" data-stat="gene_lists">–</span><span class="stat-label">gene lists</span></div>
+            <div class="stat-tile"><span class="stat-value js-stat" data-stat="users">–</span><span class="stat-label">registered researchers</span></div>
+          </div>
+
+          <div class="chart-grid">
+            <figure class="chart-card">
+              <figcaption>Public datasets by organism</figcaption>
+              <div id="chart-organism" class="hbar-chart" role="img" aria-label="Public datasets by organism"></div>
+            </figure>
+            <figure class="chart-card">
+              <figcaption>Public datasets by data type</figcaption>
+              <div id="chart-dtype" class="hbar-chart" role="img" aria-label="Public datasets by data type"></div>
+            </figure>
+            <figure class="chart-card">
+              <figcaption>Public datasets over time <span class="muted">(cumulative)</span></figcaption>
+              <div id="chart-growth" class="col-chart" role="img" aria-label="Cumulative public datasets by year"></div>
+            </figure>
+          </div>
+          <div id="chart-tooltip" class="chart-tooltip" role="tooltip" hidden></div>
+        </section>
+
+        <!-- ============================== WHAT'S NEW ============================== -->
+        <section id="whats-new" class="intro-section">
+          <div class="section-head">
+            <h2>What's new</h2>
+            <p>The latest public data, curated collections and study pages.</p>
+          </div>
+
+          <div class="new-tabs" role="tablist" aria-label="What's new">
+            <button role="tab" class="new-tab is-active" aria-selected="true" aria-controls="new-panel-datasets" id="new-tab-datasets">
+              <i class="mdi mdi-database-outline" aria-hidden="true"></i> Datasets
+            </button>
+            <button role="tab" class="new-tab" aria-selected="false" aria-controls="new-panel-collections" id="new-tab-collections" tabindex="-1">
+              <i class="mdi mdi-folder-open-outline" aria-hidden="true"></i> Collections
+            </button>
+            <button role="tab" class="new-tab" aria-selected="false" aria-controls="new-panel-landing" id="new-tab-landing" tabindex="-1">
+              <i class="mdi mdi-file-document-outline" aria-hidden="true"></i> Featured studies
+            </button>
+          </div>
+
+          <div id="new-panel-datasets" class="new-panel" role="tabpanel" aria-labelledby="new-tab-datasets"></div>
+          <div id="new-panel-collections" class="new-panel" role="tabpanel" aria-labelledby="new-tab-collections" hidden></div>
+          <div id="new-panel-landing" class="new-panel" role="tabpanel" aria-labelledby="new-tab-landing" hidden></div>
+
+          <p class="new-more">
+            <a href="/dataset_explorer.html">See all datasets <i class="mdi mdi-arrow-right" aria-hidden="true"></i></a>
+          </p>
+        </section>
+
+        <!-- ============================== GET STARTED ============================== -->
+        <section id="get-started" class="intro-section is-banded">
+          <div class="section-head">
+            <h2>Get started</h2>
+            <p>Short guides and videos for the most common analyses.</p>
+          </div>
+
+          <div class="guide-grid">
+            <article class="guide-card">
+              <a class="guide-thumb" href="https://youtu.be/guI161nTv2U" target="_blank" rel="noopener" aria-label="Watch: search gene expression (video)">
+                <img src="/img/gear_guide_preview_new_look_with_play_button.png" alt="" />
+              </a>
+              <div class="guide-body">
+                <span class="guide-level">Beginner</span>
+                <h3>Search a gene across datasets</h3>
+                <p>Look up a gene, switch between collections, and read single- and multi-gene views.</p>
+                <div class="guide-links">
+                  <a href="https://youtu.be/guI161nTv2U" target="_blank" rel="noopener"><i class="mdi mdi-play-circle-outline" aria-hidden="true"></i> Video</a>
+                  <a href="/expression.html">Try it</a>
                 </div>
               </div>
-              <div class="column is-3">&nbsp;</div>
-            </section>
-
-            <section id="banded-section-c" class="pt-6 pb-6">
-              <section id="element-intro-c" class="columns is-gapless">
-                <div class="column is-3">&nbsp;</div>
-                <div class="column is-6">
-                  <h2 class="title has-text-centered">Tools for every question</h2>
-                  <p class="subtitle has-text-centered mt-1">
-                    Browsing and searching are open to everyone. An account is only needed to
-                    upload data and save your work.
-                  </p>
-                </div>
-                <div class="column is-3">&nbsp;</div>
-              </section>
-              <section id="element-grid-c" class="columns is-gapless pt-6">
-                <div class="column is-2">&nbsp;</div>
-                <div class="column is-8">
-                  <div class="tile is-ancestor">
-                    <div class="tile is-vertical is-parent">
-                      <div class="tile is-child box">
-                        <div class="columns">
-                          <div class="column is-7">
-                            <p class="title mb-2">Dataset Explorer</p>
-                            <p class="description mb-2">Browse public datasets by organism, tissue, and assay, and view them in one click.</p>
-                            <a class="tool-link" href="/dataset_explorer.html">Open Dataset Explorer</a>
-                          </div>
-                          <div class="column is-5">
-                            <img class="img-fluid" src="/img/workspace_screenshot.png" alt="Dataset Explorer screenshot" />
-                          </div>
-                        </div>
-                      </div>
-                      <div class="tile is-child box">
-                        <div class="columns">
-                          <div class="column is-7">
-                            <p class="title mb-2">Multi-gene Curator</p>
-                            <p class="description mb-2">Build heatmaps, dot plots and more for a set of genes across a dataset.</p>
-                            <a class="tool-link" href="/multigene_curator.html">Open Multi-gene Curator</a>
-                          </div>
-                          <div class="column is-5">
-                            <img class="img-fluid" src="/img/analyzer_composite_screenshot.png" alt="Multi-gene Curator screenshot" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="tile is-vertical is-parent">
-                      <div class="tile is-child box">
-                        <div class="columns">
-                          <div class="column is-7">
-                            <p class="title mb-2">Comparison Tool</p>
-                            <p class="description mb-2">Find differentially expressed genes between two conditions or cell types in a dataset.</p>
-                            <a class="tool-link" href="/compare_datasets.html">Open Comparison Tool</a>
-                          </div>
-                          <div class="column is-5">
-                            <img class="img-fluid" src="/img/comparison_tool_screenshot.png" alt="Comparison Tool screenshot" />
-                          </div>
-                        </div>
-                      </div>
-                      <div class="tile is-child box">
-                        <div class="columns">
-                          <div class="column is-7">
-                            <p class="title mb-2">Dataset Uploader</p>
-                            <p class="description mb-2">Bring your own data into gEAR (account required) and analyze it with the same tools.</p>
-                            <a class="tool-link" href="/upload_dataset.html">Open Dataset Uploader</a>
-                          </div>
-                          <div class="column is-5">
-                            <img class="img-fluid" src="/img/uploader_screenshot.png" alt="Dataset Uploader screenshot" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="column is-2">&nbsp;</div>
-              </section>
-            </section>
-
-            <section id="final-cta-c" class="columns is-gapless pt-6 pb-6">
-              <div class="column is-3">&nbsp;</div>
-              <div class="column is-6 has-text-centered">
-                <h2 class="title">Ready to dig in?</h2>
-                <p class="subtitle mt-1">Need help? Visit the <a href="https://github.com/IGS/gEAR/wiki">user guide</a> or <a href="/contact.html">contact us</a>.</p>
-                <div class="buttons is-centered">
-                  <a class="button is-primary is-rounded" href="/expression.html">Start searching</a>
-                  <a id="cta-create-account" class="button is-primary is-outlined is-rounded" href="/create_account.html">Create an account</a>
-                  <a class="button is-ghost is-rounded" href="/index.html">Go to the portal</a>
+            </article>
+            <article class="guide-card">
+              <a class="guide-thumb" href="https://youtu.be/DItayfJsldI" target="_blank" rel="noopener" aria-label="Watch: find and curate datasets (video)">
+                <img src="/img/gear_guide_preview_dataset_explorer_with_play_button.png" alt="" />
+              </a>
+              <div class="guide-body">
+                <span class="guide-level">Beginner</span>
+                <h3>Find datasets &amp; make displays</h3>
+                <p>Filter the dataset explorer, build a collection, and design your own plots.</p>
+                <div class="guide-links">
+                  <a href="https://youtu.be/DItayfJsldI" target="_blank" rel="noopener"><i class="mdi mdi-play-circle-outline" aria-hidden="true"></i> Video</a>
+                  <a href="/dataset_explorer.html">Try it</a>
                 </div>
               </div>
-              <div class="column is-3">&nbsp;</div>
-            </section>
+            </article>
+            <article class="guide-card">
+              <a class="guide-thumb" href="https://youtu.be/7vsldnrjETw" target="_blank" rel="noopener" aria-label="Watch: compare conditions (video)">
+                <img src="/img/gear_guide_preview_comparison_tool_with_play_button.png" alt="" />
+              </a>
+              <div class="guide-body">
+                <span class="guide-level">Intermediate</span>
+                <h3>Compare two conditions</h3>
+                <p>Plot every gene in one condition against another and pull out the differences.</p>
+                <div class="guide-links">
+                  <a href="https://youtu.be/7vsldnrjETw" target="_blank" rel="noopener"><i class="mdi mdi-play-circle-outline" aria-hidden="true"></i> Video</a>
+                  <a href="/compare_datasets.html">Try it</a>
+                </div>
+              </div>
+            </article>
+            <article class="guide-card">
+              <a class="guide-thumb" href="https://youtu.be/bKTzGKAvn7w" target="_blank" rel="noopener" aria-label="Watch: work with gene lists (video)">
+                <img src="/img/gear_guide_preview_gene_list_manager_with_play_button.png" alt="" />
+              </a>
+              <div class="guide-body">
+                <span class="guide-level">Intermediate</span>
+                <h3>Work with gene lists</h3>
+                <p>Save the genes from a comparison or upload your own list, then search them together.</p>
+                <div class="guide-links">
+                  <a href="https://youtu.be/bKTzGKAvn7w" target="_blank" rel="noopener"><i class="mdi mdi-play-circle-outline" aria-hidden="true"></i> Video</a>
+                  <a href="/gene_list_manager.html">Try it</a>
+                </div>
+              </div>
+            </article>
+            <article class="guide-card">
+              <a class="guide-thumb" href="https://youtu.be/7_oiT4Q5yag" target="_blank" rel="noopener" aria-label="Watch: project gene patterns (video)">
+                <img src="/img/gear_guide_preview_projection_with_play_button.png" alt="" />
+              </a>
+              <div class="guide-body">
+                <span class="guide-level">Advanced</span>
+                <h3>Project patterns across studies</h3>
+                <p>Take gene signatures learned in one dataset and see where they appear in others.</p>
+                <div class="guide-links">
+                  <a href="https://youtu.be/7_oiT4Q5yag" target="_blank" rel="noopener"><i class="mdi mdi-play-circle-outline" aria-hidden="true"></i> Video</a>
+                  <a href="/projection.html">Try it</a>
+                </div>
+              </div>
+            </article>
+            <article class="guide-card is-text">
+              <div class="guide-thumb guide-thumb-icon" aria-hidden="true"><i class="mdi mdi-cloud-upload-outline"></i></div>
+              <div class="guide-body">
+                <span class="guide-level">Account required</span>
+                <h3>Upload &amp; share your data</h3>
+                <p>Prepare a dataset, upload it, and share it privately with collaborators or publicly with a paper.</p>
+                <div class="guide-links">
+                  <a href="https://github.com/IGS/gEAR/wiki" target="_blank" rel="noopener"><i class="mdi mdi-book-open-variant" aria-hidden="true"></i> User guide</a>
+                  <a href="/upload_dataset.html">Try it</a>
+                </div>
+              </div>
+            </article>
+          </div>
 
-          </section><!-- end #content-c -->
-        </section><!-- end #main-c -->
-      </div>
+          <p class="guide-more">
+            More in the <a href="https://github.com/IGS/gEAR/wiki" target="_blank" rel="noopener">full user guide</a>,
+            or <a href="/contact.html">contact us</a> with questions.
+          </p>
+        </section>
+
+        <!-- ============================== FINAL CTA ============================== -->
+        <section id="final-cta">
+          <h2>Ready to dig in?</h2>
+          <div class="buttons is-centered">
+            <a class="button is-primary is-rounded" href="#hero" id="cta-search">Search a gene</a>
+            <a id="cta-create-account" class="button is-primary is-outlined is-rounded" href="/create_account.html">Create an account</a>
+            <a class="button is-ghost is-rounded" href="/index.html">Go to the portal</a>
+          </div>
+        </section>
+      </main>
+
       <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
-        </div>
+        <div id="funding"></div>
       </footer>
-      <script>
-        // Mark this browser as having seen the intro page so index.html no longer redirects here.
-        document.cookie = 'gear_returning_visitor=1; path=/; max-age=31536000; SameSite=Lax';
 
-        // Logged-in users (or anyone who has been here before) get a clear way back instead of sign-up prompts.
-        const hasSession = /(^|;\s*)gear_session_id=/.test(document.cookie);
-        if (hasSession) {
-          document.getElementById('header-create-account').classList.add('is-hidden');
-          document.getElementById('cta-create-account').classList.add('is-hidden');
-          document.getElementById('portal-link').textContent = 'Back to the portal';
-          document.getElementById('portal-link').classList.replace('is-ghost', 'is-primary');
-        }
+      <script type="module">
+        import { getDomainPreferences, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+        // Same dark-background logo the portal sidebar uses for this domain
+        document.getElementById('intro-logo').src = `/img/by_domain/${prefs.domain_label}/logo-main-normal.png`;
+        insertVersionedJS('js/intro.js', prefs.cache_version);
+        await loadDomainFunding(prefs);
       </script>
     </body>
 </html>

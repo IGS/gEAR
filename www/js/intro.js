@@ -1,6 +1,223 @@
-document.title = 'gEAR intro page';
+/*
+ * intro.js - Intro page for new gEAR visitors.
+ *
+ * All statistics and "What's new" content come from one pre-generated file,
+ * stats_archive/intro_stats.json (see bin/generate_intro_stats.py), so this page
+ * never queries the database. If the file is missing, those sections hide and
+ * the rest of the page (search, tools, guides) still works.
+ */
 
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    
+const STATS_URL = '/stats_archive/intro_stats.json';
+
+// ---------------------------------------------------------------------------
+// Visitor state (mirrors intro.html so index.html's first-visit redirect works)
+// ---------------------------------------------------------------------------
+document.cookie = 'gear_returning_visitor=1; path=/; max-age=31536000; SameSite=Lax';
+
+if (/(^|;\s*)gear_session_id=/.test(document.cookie)) {
+    for (const id of ['header-create-account', 'cta-create-account']) {
+        document.getElementById(id)?.classList.add('is-hidden');
+    }
+    document.querySelector('.manage-callout')?.classList.add('is-hidden');
+    const portalLink = document.getElementById('portal-link');
+    portalLink.textContent = 'Back to the portal';
+    portalLink.classList.replace('is-ghost', 'is-light');
 }
 
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+const searchForm = document.getElementById('hero-search-form');
+const searchInput = document.getElementById('hero-gene-symbol');
+
+searchForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    // Accept commas, spaces or semicolons between symbols
+    const genes = searchInput.value.split(/[\s,;]+/).filter(Boolean);
+    if (!genes.length) return;
+
+    const params = new URLSearchParams({ gene_symbol: genes.join(',') });
+    if (genes.length > 1) params.set('is_multigene', '1');
+    window.location.href = `/expression.html?${params}`;
+});
+
+document.getElementById('cta-search').addEventListener('click', (event) => {
+    event.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    searchInput.focus({ preventScroll: true });
+});
+
+// ---------------------------------------------------------------------------
+// What's new tabs (WAI-ARIA tabs pattern, arrow-key navigable)
+// ---------------------------------------------------------------------------
+const tabs = [...document.querySelectorAll('.new-tab')];
+
+const selectTab = (tab) => {
+    for (const t of tabs) {
+        const selected = t === tab;
+        t.classList.toggle('is-active', selected);
+        t.setAttribute('aria-selected', selected);
+        t.tabIndex = selected ? 0 : -1;
+        document.getElementById(t.getAttribute('aria-controls')).hidden = !selected;
+    }
+};
+
+tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => selectTab(tab));
+    tab.addEventListener('keydown', (event) => {
+        const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+        if (!step) return;
+        const next = tabs[(i + step + tabs.length) % tabs.length];
+        selectTab(next);
+        next.focus();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Rendering helpers
+// ---------------------------------------------------------------------------
+const fmt = new Intl.NumberFormat();
+const fmtDate = (iso) => iso
+    ? new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    : '';
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Many titles are entered in ALL CAPS; soften those for display only
+const tidyTitle = (s) => {
+    const letters = s.replace(/[^A-Za-z]/g, '');
+    if (letters.length > 8 && letters === letters.toUpperCase()) {
+        return s.toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
+            .replace(/\b(snrna|scrna|rna|dna|atac)(-seq)?\b/gi, (m) => m.replace(/rna|dna|atac/i, (x) => x.toUpperCase()));
+    }
+    return s;
+};
+
+const tooltip = document.getElementById('chart-tooltip');
+
+const attachTooltip = (el, html) => {
+    const show = (event) => {
+        tooltip.innerHTML = html;
+        tooltip.hidden = false;
+        const rect = el.getBoundingClientRect();
+        const x = event?.clientX ?? rect.left + rect.width / 2;
+        const tipRect = tooltip.getBoundingClientRect();
+        let left = x - tipRect.width / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
+        tooltip.style.left = `${left + window.scrollX}px`;
+        tooltip.style.top = `${rect.top + window.scrollY - tipRect.height - 8}px`;
+    };
+    const hide = () => { tooltip.hidden = true; };
+    el.addEventListener('mouseenter', show);
+    el.addEventListener('mousemove', show);
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', () => show());
+    el.addEventListener('blur', hide);
+};
+
+// Horizontal bars: label | bar | value. One series, so no legend; values are direct-labeled.
+const renderHBars = (container, rows, total) => {
+    const max = Math.max(...rows.map((r) => r.count));
+    container.innerHTML = '';
+    for (const row of rows) {
+        const pct = total ? Math.round((row.count / total) * 100) : 0;
+        const item = document.createElement('div');
+        item.className = 'hbar-row';
+        item.tabIndex = 0;
+        item.innerHTML = `
+            <span class="hbar-label">${escapeHtml(row.label)}</span>
+            <span class="hbar-track"><span class="hbar-fill" style="--w:${(row.count / max) * 100}%"></span></span>
+            <span class="hbar-value">${fmt.format(row.count)}</span>`;
+        attachTooltip(item, `<strong>${escapeHtml(row.label)}</strong><br>${fmt.format(row.count)} datasets · ${pct}% of public`);
+        container.appendChild(item);
+    }
+};
+
+// Column chart of cumulative public datasets per year
+const renderGrowth = (container, rows) => {
+    const max = Math.max(...rows.map((r) => r.cumulative));
+    container.innerHTML = '';
+    const plot = document.createElement('div');
+    plot.className = 'col-plot';
+    rows.forEach((row, i) => {
+        const col = document.createElement('div');
+        col.className = 'col-item';
+        col.tabIndex = 0;
+        const isLast = i === rows.length - 1;
+        col.innerHTML = `
+            ${isLast ? `<span class="col-value">${fmt.format(row.cumulative)}</span>` : ''}
+            <span class="col-fill${isLast ? ' is-current' : ''}" style="--h:${(row.cumulative / max) * 100}%"></span>`;
+        attachTooltip(col, `<strong>${row.year}</strong><br>${fmt.format(row.cumulative)} total · +${fmt.format(row.count)} that year`);
+        plot.appendChild(col);
+    });
+    const axis = document.createElement('div');
+    axis.className = 'col-axis';
+    // Label only the first, middle and last year so labels never collide
+    const labelIdx = new Set([0, Math.floor((rows.length - 1) / 2), rows.length - 1]);
+    rows.forEach((row, i) => {
+        const tick = document.createElement('span');
+        tick.textContent = labelIdx.has(i) ? row.year : '';
+        axis.appendChild(tick);
+    });
+    container.append(plot, axis);
+};
+
+const renderCards = (panel, items, kind) => {
+    if (!items?.length) {
+        panel.innerHTML = '<p class="muted">Nothing to show yet. Check back soon.</p>';
+        return;
+    }
+    const icon = { datasets: 'mdi-database-outline', collections: 'mdi-folder-open-outline', landing: 'mdi-file-document-outline' }[kind];
+    panel.innerHTML = `<div class="new-grid">${items.map((item) => {
+        let meta = [];
+        if (kind === 'datasets') meta = [item.organism, item.dtype, fmtDate(item.date)];
+        if (kind === 'collections') meta = [`${item.dataset_count} datasets`, item.organisms];
+        if (kind === 'landing') meta = [`Updated ${fmtDate(item.date)}`];
+        return `
+            <a class="new-card" href="${escapeHtml(item.url)}">
+                <span class="new-card-kind"><i class="mdi ${icon}" aria-hidden="true"></i></span>
+                <span class="new-card-title">${escapeHtml(tidyTitle(item.title))}</span>
+                ${item.summary ? `<span class="new-card-summary">${escapeHtml(item.summary)}</span>` : ''}
+                <span class="new-card-meta">${meta.filter(Boolean).map(escapeHtml).join(' · ')}</span>
+            </a>`;
+    }).join('')}</div>`;
+};
+
+// ---------------------------------------------------------------------------
+// Load stats
+// ---------------------------------------------------------------------------
+const loadStats = async () => {
+    let data;
+    try {
+        const response = await fetch(STATS_URL, { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        data = await response.json();
+    } catch (error) {
+        console.warn('Intro stats unavailable; hiding stats and What\'s new sections.', error);
+        document.getElementById('by-the-numbers').hidden = true;
+        document.getElementById('whats-new').hidden = true;
+        document.querySelector('.hero-ticker').hidden = true;
+        return;
+    }
+
+    for (const el of document.querySelectorAll('.js-stat')) {
+        const value = data.totals?.[el.dataset.stat];
+        if (value != null) el.textContent = fmt.format(value);
+    }
+
+    if (data.generated) {
+        document.getElementById('stats-generated').textContent = `Updated ${fmtDate(data.generated.slice(0, 10))}.`;
+    }
+
+    const total = data.totals?.public_datasets;
+    renderHBars(document.getElementById('chart-organism'), data.by_organism ?? [], total);
+    renderHBars(document.getElementById('chart-dtype'), data.by_dtype ?? [], total);
+    renderGrowth(document.getElementById('chart-growth'), data.by_year ?? []);
+
+    renderCards(document.getElementById('new-panel-datasets'), data.recent_datasets, 'datasets');
+    renderCards(document.getElementById('new-panel-collections'), data.recent_collections, 'collections');
+    renderCards(document.getElementById('new-panel-landing'), data.landing_pages, 'landing');
+};
+
+loadStats();
