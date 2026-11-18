@@ -24,17 +24,15 @@
     <body>
       <!-- ============================== HEADER ============================== -->
       <a href="#hero" class="skip-link">Skip to search</a>
-      <header id="intro-header">
-        <!-- Logo, alt text, label and title are set per portal from site_domain_prefs.json in js/intro.js -->
+      <!-- One bar: logo, site menu and account links. It sits transparently over the hero and turns
+           solid once the page scrolls (js/intro.js). Logo, alt text and label are set per portal from
+           site_domain_prefs.json; dropdown behavior is also in js/intro.js -->
+      <header id="intro-nav">
         <a href="/" class="intro-brand">
           <img id="intro-logo" src="/img/by_domain/gear/logo-main-normal.png" alt="gEAR home" />
           <span id="intro-brand-text" class="js-domain-label" hidden>gEAR</span>
         </a>
-        <p id="intro-site-title" class="intro-site-title" hidden></p>
-      </header>
-
-      <!-- Site menu. Stays at the top while scrolling; dropdown behavior is in js/intro.js -->
-      <nav id="intro-nav" aria-label="Site">
+        <nav class="intro-nav-main" aria-label="Site">
         <button type="button" class="intro-nav-toggle" aria-expanded="false" aria-controls="intro-nav-menu">
           <i class="mdi mdi-menu" aria-hidden="true"></i> Menu
         </button>
@@ -85,14 +83,16 @@
         </ul>
         <div class="intro-nav-account">
           <a id="header-login" href="/index.html">Log in</a>
-          <a id="header-create-account" href="/create_account.html" class="button is-small is-primary is-rounded">Create account</a>
+          <a id="header-create-account" href="/create_account.html" class="button is-small is-rounded">Create account</a>
         </div>
-      </nav>
+        </nav>
+      </header>
 
       <main>
         <!-- ============================== HERO / SEARCH ============================== -->
         <section id="hero">
           <div class="hero-inner">
+            <p id="hero-tagline" class="hero-tagline" hidden></p>
             <h1 class="hero-title">Where is your gene expressed?</h1>
             <p class="hero-subtitle">
               Search one gene or many and see expression instantly across

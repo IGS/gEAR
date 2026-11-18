@@ -21,7 +21,10 @@ if (/(^|;\s*)gear_session_id=/.test(document.cookie)) {
         document.getElementById(id)?.classList.add('is-hidden');
     }
     document.querySelector('.manage-callout')?.classList.add('is-hidden');
-    document.getElementById('header-login').textContent = 'My workspace';
+    // Logged-in visitors get a button to their workspace in place of the Log in link
+    const workspaceLink = document.getElementById('header-login');
+    workspaceLink.textContent = 'Go to my workspace';
+    workspaceLink.classList.add('button', 'is-small', 'is-rounded', 'intro-nav-cta');
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +64,13 @@ for (const trigger of navTriggers) {
     });
 }
 
+// The bar is transparent over the hero and turns solid (with a shadow) once the page scrolls
+const updateNavSolid = () => navEl.classList.toggle('is-scrolled', window.scrollY > 8);
+window.addEventListener('scroll', updateNavSolid, { passive: true });
+// Also catch a scroll position the browser restores on reload or back/forward
+for (const type of ['load', 'pageshow', 'resize']) window.addEventListener(type, updateNavSolid);
+updateNavSolid();
+
 // The narrow-screen "Menu" button shows or hides the whole list
 navToggle.addEventListener('click', () => {
     const open = navToggle.getAttribute('aria-expanded') !== 'true';
@@ -92,6 +102,8 @@ document.addEventListener('keydown', (event) => {
 const narrow = window.matchMedia('(max-width: 768px)');
 const syncNavLayout = () => {
     navEl.classList.toggle('is-collapsed', narrow.matches);
+    navToggle.setAttribute('aria-expanded', 'false');
+    navEl.classList.remove('is-menu-open');
     closeDropdowns();
 };
 narrow.addEventListener('change', syncNavLayout);
@@ -120,10 +132,12 @@ export const applyDomainBranding = (prefs) => {
         el.textContent = label;
     }
 
-    // The header title is the tagline (e.g. "gene Expression Analysis Resource"), or the label without one
-    const siteTitle = document.getElementById('intro-site-title');
-    siteTitle.textContent = prefs.domain_tagline?.trim() || label;
-    siteTitle.hidden = false;
+    // The tagline (e.g. "gene Expression Analysis Resource") is a small line above the hero question
+    if (prefs.domain_tagline?.trim()) {
+        const tagline = document.getElementById('hero-tagline');
+        tagline.textContent = prefs.domain_tagline.trim();
+        tagline.hidden = false;
+    }
 
     // Same dark-background logo the portal sidebar uses; show the name as text if a portal has none
     const logo = document.getElementById('intro-logo');
@@ -131,8 +145,6 @@ export const applyDomainBranding = (prefs) => {
     logo.addEventListener('error', () => {
         logo.hidden = true;
         document.getElementById('intro-brand-text').hidden = false;
-        // Without a tagline the title would just repeat the name the text logo already shows
-        if (!prefs.domain_tagline?.trim()) siteTitle.hidden = true;
     }, { once: true });
     logo.src = `/img/by_domain/${encodeURIComponent(prefs.domain_label)}/logo-main-normal.png`;
 
