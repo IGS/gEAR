@@ -7,7 +7,7 @@
  * the rest of the page (search, tools, guides) still works.
  */
 
-import { loadFeaturedStudies } from './featured_studies.js';
+import { landingPagesForThisPortal, loadFeaturedStudies } from './featured_studies.js';
 
 const STATS_URL = '/stats_archive/intro_stats.json';
 
@@ -353,6 +353,19 @@ const loadStats = async () => {
         return;
     }
 
+    // Stats files from before private_datasets was added: work it out
+    const totals = data.totals ?? {};
+    if (totals.private_datasets == null && totals.all_datasets != null && totals.public_datasets != null) {
+        totals.private_datasets = totals.all_datasets - totals.public_datasets;
+    }
+    // landing_pages lists every portal's; count this portal's, and keep the tile hidden if none
+    try {
+        totals.landing_pages = (await landingPagesForThisPortal(data.landing_pages ?? [])).length;
+        document.getElementById('stat-tile-landing').hidden = !totals.landing_pages;
+    } catch (error) {
+        console.warn(`Couldn't count landing pages: ${error}`);
+    }
+
     for (const el of document.querySelectorAll('.js-stat')) {
         const value = data.totals?.[el.dataset.stat];
         if (value != null) el.textContent = fmt.format(value);
@@ -364,7 +377,9 @@ const loadStats = async () => {
 
     const total = data.totals?.public_datasets;
     renderHBars(document.getElementById('chart-organism'), data.by_organism ?? [], total);
-    renderHBars(document.getElementById('chart-dtype'), data.by_dtype ?? [], total);
+    // Curated plots are deprecated; older stats files still include them
+    renderHBars(document.getElementById('chart-dtype'),
+                (data.by_dtype ?? []).filter((row) => row.label !== 'Curated plots'), total);
     renderGrowth(document.getElementById('chart-growth'), data.by_year ?? []);
 
     renderCards(document.getElementById('new-panel-datasets'), data.recent_datasets, 'datasets');

@@ -39,6 +39,8 @@ DTYPE_GROUPS = {
     'single-cell-rnaseq': 'Single-cell RNA-seq',
     'single-nucleus-rnaseq': 'Single-nucleus RNA-seq',
     'spatial': 'Spatial',
+    'spatial-h5ad': 'Spatial',
+    'atac-seq': 'Epigenomic',
     'bulk-rnaseq': 'Bulk RNA-seq',
     'microarray': 'Microarray',
     'epiviz': 'Epigenomic',
@@ -68,6 +70,8 @@ def main():
         'recent_collections': get_recent_collections(cursor, args.recent_count),
         'landing_pages': get_landing_pages(),
     }
+    # The landing page count is per portal, so intro.js works it out from landing_pages
+    result['totals']['private_datasets'] = result['totals']['all_datasets'] - result['totals']['public_datasets']
 
     cursor.close()
     cnx.close()
@@ -114,10 +118,13 @@ def get_by_organism(cursor):
 
 def get_by_dtype(cursor):
     cursor.execute(f"SELECT d.dtype, COUNT(*) FROM dataset d WHERE d.is_public = 1 AND {ACTIVE} GROUP BY d.dtype")
+    # Only the assay types above. The curated plot types (bargraph-standard, svg-expression, ...)
+    # are deprecated, so they're left out of this chart.
     groups = {}
     for dtype, count in cursor.fetchall():
-        label = DTYPE_GROUPS.get(dtype, 'Curated plots')
-        groups[label] = groups.get(label, 0) + int(count)
+        label = DTYPE_GROUPS.get(dtype)
+        if label:
+            groups[label] = groups.get(label, 0) + int(count)
     return [{'label': k, 'count': v} for k, v in sorted(groups.items(), key=lambda kv: -kv[1])]
 
 

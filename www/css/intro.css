@@ -418,10 +418,13 @@ main section[id] { scroll-margin-top: var(--intro-nav-h); }
 /* ------------------------------------------------------------------- stats */
 .stat-tiles {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    /* One equal-width row however many tiles show (the landing pages tile can be hidden) */
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
+.stat-tile[hidden] { display: none; }
 .stat-tile {
     background: var(--intro-surface);
     border-radius: var(--intro-radius);
@@ -661,7 +664,7 @@ footer { padding: 0 1rem; overflow-x: clip; }
 
 /* -------------------------------------------------------------- responsive */
 @media (max-width: 1024px) {
-    .stat-tiles { grid-template-columns: repeat(3, 1fr); }
+    .stat-tiles { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); }
     .chart-grid, .tool-grid, .new-grid, .guide-grid { grid-template-columns: repeat(2, 1fr); }
     .chart-card:last-child { grid-column: 1 / -1; }
     .tool-column:last-child { grid-column: 1 / -1; }
@@ -708,7 +711,7 @@ footer { padding: 0 1rem; overflow-x: clip; }
     #hero-search-form .button { padding: 0 1.1rem; }
     #hero-gene-symbol { font-size: 1rem; padding-left: 2.75rem; }
     .hero-search-icon { left: 0.9rem; }
-    .stat-tiles { grid-template-columns: repeat(2, 1fr); }
+    .stat-tiles { grid-auto-flow: row; grid-template-columns: repeat(2, 1fr); }
     .chart-grid, .tool-grid, .new-grid, .guide-grid { grid-template-columns: 1fr; }
     .hbar-row { grid-template-columns: 7.5rem 1fr 2.5rem; }
 }

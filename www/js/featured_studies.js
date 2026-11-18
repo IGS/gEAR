@@ -26,6 +26,16 @@ const isForPortal = (page, domainLabel) => {
 };
 
 /**
+ * Narrows intro_stats.json's landing_pages (every portal's) to this portal's, using domain_label
+ * from site_domain_prefs.json. Throws if the prefs file can't be read. Also used by intro.js to
+ * count them.
+ */
+export const landingPagesForThisPortal = async (pages) => {
+    const domainLabel = (await (await fetch(PREFS_URL, { cache: 'no-cache' })).json()).domain_label;
+    return pages.filter((page) => isForPortal(page, domainLabel));
+};
+
+/**
  * Fills the side-scroller and un-hides the section. It stays hidden if the stats file is
  * missing or no page is marked featured.
  *
@@ -49,14 +59,12 @@ export const loadFeaturedStudies = async (landingPages = null) => {
         }
     }
     // intro_stats.json lists every portal's pages; keep this portal's
-    let domainLabel;
     try {
-        domainLabel = (await (await fetch(PREFS_URL, { cache: 'no-cache' })).json()).domain_label;
+        pages = (await landingPagesForThisPortal(pages)).filter((page) => page.featured);
     } catch (error) {
         logErrorInConsole(`Featured studies unavailable, couldn't read domain_label: ${error}`);
         return;
     }
-    pages = pages.filter((page) => page.featured && isForPortal(page, domainLabel));
     if (!pages.length) return;
 
     const el = (tag, className, text) => {
