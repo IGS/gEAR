@@ -6,7 +6,8 @@ Spatial panel rendering for dataset tiles.
 The spatial panel is a Panel (Bokeh server) app in services/spatial. The API returns a <script> that loads
 the app into the tile. The app talks back to this page through globals and events set in
 services/spatial/panel_common.py:
-- window.gearSpatialViewState[datasetId]: current view range, so switching genes keeps the view
+- window.gearSpatialViewState[datasetId]: current view range, so switching genes keeps the view.
+  A flipped axis (the app's "Flip X"/"Flip Y" buttons) is stored as start > end, so it carries over too.
 - window.gearSpatialUrlParams: current app parameters, used by the HTML download
 - "save_spatial_display_<datasetId>" window event: the app's "save display" button (zoomed view only)
 */
@@ -15,6 +16,9 @@ import { apiCallsMixin, createToast, logErrorInConsole } from "../common.v2.js";
 
 const RENDER_POLL_INTERVAL = 100;   // ms between checks for the rendered app
 const RENDER_MAX_ATTEMPTS = 1800;   // 3 minute maximum wait (100 ms * 1800)
+
+// View range keys stored in a saved display's plotly_config and window.gearSpatialViewState
+const VIEW_RANGE_KEYS = ["x_range_start", "x_range_end", "y_range_start", "y_range_end"];
 
 // "save display" listeners, by tile ID, so a re-render replaces the tile's previous listener
 const saveHandlers = new Map();  // tileId -> {eventName, handler}
@@ -47,7 +51,14 @@ export const renderSpatialPanel = async (cardImage, plotConfig, { tileId, datase
         disable_save: !apiCallsMixin.sessionId && isZoomed,  // If not logged in, then do not allow saving the display
     }
 
-    // Grab the saved range from the global state if it exists and apply it to the prepPlotConfig
+    // Start from the view range saved with the display, if any (start > end means a flipped axis)
+    for (const key of VIEW_RANGE_KEYS) {
+        if (plotConfig[key] != null) {
+            prepPlotConfig[key] = plotConfig[key];
+        }
+    }
+
+    // The current page's view (e.g. carried over from the previous gene) takes priority over the saved one
     const savedRange = window.gearSpatialViewState?.[datasetId];
     if (savedRange) {
         Object.assign(prepPlotConfig, savedRange);
@@ -198,6 +209,18 @@ const registerSaveHandler = ({ tileId, datasetId, isZoomed, isMultigene, plotCon
     };
     window.addEventListener(eventName, handler);
     saveHandlers.set(tileId, { eventName, handler });
+}
+
+/**
+ * Forgets the current page's view range for a dataset, so the next render uses the display's saved view.
+ * Call this when the user picks a different display (not on gene switches, which should keep the view).
+ *
+ * @param {string} datasetId - The dataset ID.
+ */
+export const clearSpatialViewState = (datasetId) => {
+    if (window.gearSpatialViewState) {
+        delete window.gearSpatialViewState[datasetId];
+    }
 }
 
 /**

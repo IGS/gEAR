@@ -139,6 +139,41 @@ def link_ranges(figures):
         fig.x_range = reference.x_range
         fig.y_range = reference.y_range
 
+def apply_range(rng, bounds=None):
+    """
+    Optionally applies a view range to a Bokeh Range1d, and points the Reset
+    tool at the full extent in the same direction as the range.
+
+    A Range1d is reversed (flipped) when start > end. The flip buttons swap
+    start/end and reset_start/reset_end together, so Reset keeps the flip.
+    A restored range (carried over from a previous gene) may already be
+    flipped, so the reset values are oriented to match it here.
+
+    Parameters
+    ----------
+    rng : bokeh.models.Range1d
+        The range to update.
+    bounds : tuple[float, float] | None
+        (start, end) to apply. Pass start > end for a flipped axis.
+        None leaves start/end unchanged.
+
+    NOTE: Edits 'rng' in-place.
+    """
+    # The full extent. HoloViews sets reset_start/reset_end when rendering; fall back to start/end.
+    full_start = rng.reset_start if rng.reset_start is not None else rng.start
+    full_end = rng.reset_end if rng.reset_end is not None else rng.end
+
+    if bounds is not None:
+        rng.start, rng.end = bounds
+
+    if None in (full_start, full_end, rng.start, rng.end):
+        return
+    low, high = min(full_start, full_end), max(full_start, full_end)
+    if rng.start > rng.end:
+        rng.reset_start, rng.reset_end = high, low
+    else:
+        rng.reset_start, rng.reset_end = low, high
+
 def _prepare_category_renderers(cmap, registry=None):
     """
     Returns a HoloViews plot hook for categorical (NdOverlay-based) spatial
