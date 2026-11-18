@@ -25,6 +25,9 @@
 html { scroll-behavior: smooth; }
 
 body {
+    /* common.v2.css pins body to the viewport height, which would end the sticky menu after one screen */
+    height: auto;
+    min-height: 100%;
     background: var(--intro-surface);
     color: var(--intro-ink);
 }
@@ -32,38 +35,147 @@ body {
 .muted { color: var(--intro-ink-muted); }
 
 /* ------------------------------------------------------------------ header */
+.skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -3rem;
+    z-index: 50;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    background: var(--intro-surface);
+    color: var(--intro-primary);
+    font-weight: 600;
+}
+.skip-link:focus { top: 0.5rem; }
+
+/* Three columns so the title is centered on the page, not in the space beside the logo */
 #intro-header {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.6rem 1.5rem;
+    gap: 2rem;
+    padding: 1rem 2rem;
     background: var(--intro-primary);
 }
-.intro-brand img { height: 42px; display: block; }
+.intro-brand { justify-self: start; }
+.intro-brand img { height: 76px; display: block; }
 .intro-brand img[hidden] { display: none; }
 /* Shown only when a portal has no logo-main-normal.png */
 #intro-brand-text {
-    font-size: 1.5rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--intro-on-primary);
 }
-.intro-header-links {
+.intro-site-title {
+    text-align: center;
+    font-size: clamp(1.25rem, 2.4vw, 2rem);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--intro-on-primary);
+}
+
+/* -------------------------------------------------------------------- menu */
+#intro-nav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
     display: flex;
     align-items: center;
-    gap: 1.25rem;
+    gap: 1rem;
+    padding: 0 2rem;
+    min-height: 3.25rem;
+    background: var(--intro-surface);
+    border-bottom: 1px solid var(--intro-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
-.intro-header-links > a:not(.button) {
+.intro-nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.intro-nav-item { position: relative; }
+.intro-nav-trigger,
+.intro-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.6rem 0.8rem;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--intro-ink);
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.intro-nav-trigger:hover,
+.intro-nav-toggle:hover,
+.intro-nav-item.is-open > .intro-nav-trigger {
+    background: var(--intro-tertiary);
+    color: var(--intro-primary);
+}
+/* Only for narrow screens (see the 768px block) */
+#intro-nav .intro-nav-toggle { display: none; }
+.intro-nav-trigger .mdi-chevron-down { font-size: 1.15rem; transition: transform 0.15s ease; }
+.intro-nav-item.is-open .mdi-chevron-down { transform: rotate(180deg); }
+
+.intro-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    left: 0;
+    min-width: 15.5rem;
+    margin: 0;
+    padding: 0.4rem;
+    list-style: none;
+    background: var(--intro-surface);
+    border: 1px solid var(--intro-border);
+    border-radius: 10px;
+    box-shadow: 0 12px 28px var(--intro-shadow);
+}
+/* Bridges the gap under the trigger so the menu doesn't close on the way down */
+.intro-dropdown::before { content: ''; position: absolute; inset: -0.4rem 0 auto; height: 0.4rem; }
+.intro-nav-item.is-open > .intro-dropdown { display: block; }
+.intro-dropdown a {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 6px;
+    color: var(--intro-ink);
+    font-weight: 500;
+    white-space: nowrap;
+}
+.intro-dropdown a > .mdi:first-child { font-size: 1.2rem; color: var(--intro-secondary); }
+.intro-dropdown a:hover,
+.intro-dropdown a:focus-visible {
+    background: var(--intro-tertiary);
+    color: var(--intro-primary);
+}
+.intro-dropdown-ext { margin-left: auto; font-size: 0.85rem; color: var(--intro-ink-muted); }
+
+.intro-nav-account {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+}
+#header-login { color: var(--intro-primary); font-weight: 600; }
+#header-login:hover { text-decoration: underline; }
+#header-create-account {
+    background: var(--intro-primary);
+    border-color: transparent;
     color: var(--intro-on-primary);
     font-weight: 600;
-    font-size: 0.95rem;
-    opacity: 0.85;
 }
-.intro-header-links > a:not(.button):hover { opacity: 1; text-decoration: underline; }
-#portal-link.is-ghost { color: var(--intro-on-primary); }
+#header-create-account:hover { background: var(--intro-secondary); }
+
+/* Anchored sections land below the sticky menu */
+main section[id] { scroll-margin-top: 3.5rem; }
 
 /* -------------------------------------------------------------------- hero */
 #hero {
@@ -79,14 +191,6 @@ body {
     margin: 0 auto;
     text-align: center;
 }
-.hero-eyebrow {
-    margin-bottom: 0.75rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--intro-on-primary-muted);
-}
-.hero-eyebrow .js-domain-label { color: var(--intro-on-primary); }
 .hero-title {
     font-size: clamp(2rem, 4.5vw, 3.2rem);
     font-weight: 700;
@@ -551,9 +655,34 @@ footer { padding: 0 1rem; overflow-x: clip; }
     .chart-card:last-child { grid-column: 1 / -1; }
     .tool-column:last-child { grid-column: 1 / -1; }
 }
+@media (max-width: 768px) {
+    #intro-header { grid-template-columns: auto 1fr; gap: 1rem; padding: 0.75rem 1rem; }
+    #intro-nav { flex-wrap: wrap; padding: 0 1rem; }
+    #intro-nav .intro-nav-toggle { display: inline-flex; margin-left: -0.6rem; }
+    .intro-nav-menu {
+        display: none;
+        order: 3;
+        flex-basis: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        padding-bottom: 0.75rem;
+    }
+    #intro-nav.is-menu-open .intro-nav-menu { display: flex; }
+    .intro-nav-trigger { width: 100%; justify-content: space-between; }
+    .intro-dropdown {
+        position: static;
+        min-width: 0;
+        padding: 0 0 0.25rem 0.75rem;
+        border: 0;
+        box-shadow: none;
+    }
+    .intro-dropdown::before { display: none; }
+}
 @media (max-width: 680px) {
-    #intro-header { padding: 0.5rem 1rem; }
-    .intro-header-links > a:not(.button) { display: none; }
+    .intro-brand img { height: 52px; }
+    #intro-brand-text { font-size: 1.5rem; }
+    .intro-site-title { text-align: right; font-size: 1.05rem; }
+    #header-create-account { display: none; }
     #hero { padding: 3rem 1rem 2.5rem; }
     .intro-section { padding: 3rem 1rem; }
     #hero-search-form .button { padding: 0 1.1rem; }

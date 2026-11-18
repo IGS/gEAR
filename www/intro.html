@@ -23,28 +23,76 @@
     </head>
     <body>
       <!-- ============================== HEADER ============================== -->
+      <a href="#hero" class="skip-link">Skip to search</a>
       <header id="intro-header">
-        <!-- Logo, alt text and label are set per portal from site_domain_prefs.json in js/intro.js -->
+        <!-- Logo, alt text, label and title are set per portal from site_domain_prefs.json in js/intro.js -->
         <a href="/" class="intro-brand">
           <img id="intro-logo" src="/img/by_domain/gear/logo-main-normal.png" alt="gEAR home" />
           <span id="intro-brand-text" class="js-domain-label" hidden>gEAR</span>
         </a>
-        <nav class="intro-header-links" aria-label="Site">
-          <a href="#tools">Tools</a>
-          <a href="#whats-new">What's new</a>
-          <a href="#get-started">Guides</a>
-          <a id="portal-link" href="/index.html" class="button is-small is-ghost">Skip to portal</a>
-          <a id="header-create-account" href="/create_account.html" class="button is-small is-light is-rounded">Create account</a>
-        </nav>
+        <p id="intro-site-title" class="intro-site-title" hidden></p>
       </header>
+
+      <!-- Site menu. Stays at the top while scrolling; dropdown behavior is in js/intro.js -->
+      <nav id="intro-nav" aria-label="Site">
+        <button type="button" class="intro-nav-toggle" aria-expanded="false" aria-controls="intro-nav-menu">
+          <i class="mdi mdi-menu" aria-hidden="true"></i> Menu
+        </button>
+        <ul id="intro-nav-menu" class="intro-nav-menu">
+          <li class="intro-nav-item">
+            <button type="button" class="intro-nav-trigger" aria-expanded="false" aria-controls="nav-explore">
+              Explore <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+            </button>
+            <ul id="nav-explore" class="intro-dropdown">
+              <li><a href="/expression.html"><i class="mdi mdi-test-tube" aria-hidden="true"></i> Gene expression</a></li>
+              <li><a href="/projection.html"><i class="mdi mdi-hexagon-multiple" aria-hidden="true"></i> Projection tool</a></li>
+              <li><a href="/dataset_explorer.html"><i class="mdi mdi-table-search" aria-hidden="true"></i> Datasets</a></li>
+            </ul>
+          </li>
+          <li class="intro-nav-item">
+            <button type="button" class="intro-nav-trigger" aria-expanded="false" aria-controls="nav-analyze">
+              Analyze <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+            </button>
+            <ul id="nav-analyze" class="intro-dropdown">
+              <li><a href="/sc_workbench.html"><i class="mdi mdi-chart-line" aria-hidden="true"></i> Single-cell workbench</a></li>
+              <li><a href="/compare_datasets.html"><i class="mdi mdi-compare-horizontal" aria-hidden="true"></i> Comparison tool</a></li>
+              <li><a href="/dataset_curator.html"><i class="mdi mdi-chart-box-outline" aria-hidden="true"></i> Single-gene displays</a></li>
+              <li><a href="/multigene_curator.html"><i class="mdi mdi-chart-box-multiple-outline" aria-hidden="true"></i> Multi-gene displays</a></li>
+              <li><a href="/cell_cell.html"><i class="mdi mdi-swap-horizontal" aria-hidden="true"></i> Cell-cell communication</a></li>
+            </ul>
+          </li>
+          <li class="intro-nav-item">
+            <button type="button" class="intro-nav-trigger" aria-expanded="false" aria-controls="nav-manage">
+              Manage <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+            </button>
+            <ul id="nav-manage" class="intro-dropdown">
+              <li><a href="/index.html"><i class="mdi mdi-monitor" aria-hidden="true"></i> My workspace</a></li>
+              <li><a href="/dataset_explorer.html"><i class="mdi mdi-folder-open-outline" aria-hidden="true"></i> Dataset collections</a></li>
+              <li><a href="/gene_list_manager.html"><i class="mdi mdi-folder-text-outline" aria-hidden="true"></i> Gene lists</a></li>
+              <li><a href="/upload_dataset.html"><i class="mdi mdi-cloud-upload-outline" aria-hidden="true"></i> Upload a dataset</a></li>
+            </ul>
+          </li>
+          <li class="intro-nav-item">
+            <button type="button" class="intro-nav-trigger" aria-expanded="false" aria-controls="nav-support">
+              Support <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+            </button>
+            <ul id="nav-support" class="intro-dropdown">
+              <li><a href="#get-started"><i class="mdi mdi-play-circle-outline" aria-hidden="true"></i> Getting-started guides</a></li>
+              <li><a href="https://github.com/IGS/gEAR/wiki" target="_blank" rel="noopener"><i class="mdi mdi-help-circle-outline" aria-hidden="true"></i> User guide <i class="mdi mdi-open-in-new intro-dropdown-ext" aria-hidden="true"></i></a></li>
+              <li><a href="/contact.html"><i class="mdi mdi-face-agent" aria-hidden="true"></i> Contact us</a></li>
+            </ul>
+          </li>
+        </ul>
+        <div class="intro-nav-account">
+          <a id="header-login" href="/index.html">Log in</a>
+          <a id="header-create-account" href="/create_account.html" class="button is-small is-primary is-rounded">Create account</a>
+        </div>
+      </nav>
 
       <main>
         <!-- ============================== HERO / SEARCH ============================== -->
         <section id="hero">
           <div class="hero-inner">
-            <p id="hero-eyebrow" class="hero-eyebrow" hidden>
-              <span class="js-domain-label">gEAR</span><span id="hero-tagline"></span>
-            </p>
             <h1 class="hero-title">Where is your gene expressed?</h1>
             <p class="hero-subtitle">
               Search one gene or many and see expression instantly across

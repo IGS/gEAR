@@ -21,10 +21,81 @@ if (/(^|;\s*)gear_session_id=/.test(document.cookie)) {
         document.getElementById(id)?.classList.add('is-hidden');
     }
     document.querySelector('.manage-callout')?.classList.add('is-hidden');
-    const portalLink = document.getElementById('portal-link');
-    portalLink.textContent = 'Back to the portal';
-    portalLink.classList.replace('is-ghost', 'is-light');
+    document.getElementById('header-login').textContent = 'My workspace';
 }
+
+// ---------------------------------------------------------------------------
+// Site menu: disclosure dropdowns (click/tap or Enter to open; also on hover with a mouse)
+// ---------------------------------------------------------------------------
+const navEl = document.getElementById('intro-nav');
+const navToggle = navEl.querySelector('.intro-nav-toggle');
+const navTriggers = [...navEl.querySelectorAll('.intro-nav-trigger')];
+const canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+const setDropdown = (trigger, open) => {
+    trigger.setAttribute('aria-expanded', String(open));
+    trigger.closest('.intro-nav-item').classList.toggle('is-open', open);
+};
+const closeDropdowns = (except = null) => {
+    for (const t of navTriggers) if (t !== except) setDropdown(t, false);
+};
+
+for (const trigger of navTriggers) {
+    const item = trigger.closest('.intro-nav-item');
+    trigger.addEventListener('click', () => {
+        const open = trigger.getAttribute('aria-expanded') !== 'true';
+        closeDropdowns(trigger);
+        setDropdown(trigger, open);
+    });
+    item.addEventListener('mouseenter', () => {
+        if (!canHover.matches || navEl.classList.contains('is-collapsed')) return;
+        closeDropdowns(trigger);
+        setDropdown(trigger, true);
+    });
+    item.addEventListener('mouseleave', () => {
+        if (canHover.matches && !navEl.classList.contains('is-collapsed')) setDropdown(trigger, false);
+    });
+    // Close once focus leaves the menu entirely (e.g. tabbing past the last link)
+    item.addEventListener('focusout', (event) => {
+        if (!item.contains(event.relatedTarget)) setDropdown(trigger, false);
+    });
+}
+
+// The narrow-screen "Menu" button shows or hides the whole list
+navToggle.addEventListener('click', () => {
+    const open = navToggle.getAttribute('aria-expanded') !== 'true';
+    navToggle.setAttribute('aria-expanded', String(open));
+    navEl.classList.toggle('is-menu-open', open);
+});
+
+// Following a link (including the in-page guides link) closes everything
+navEl.addEventListener('click', (event) => {
+    if (!event.target.closest('a')) return;
+    closeDropdowns();
+    navToggle.setAttribute('aria-expanded', 'false');
+    navEl.classList.remove('is-menu-open');
+});
+
+document.addEventListener('click', (event) => {
+    if (!navEl.contains(event.target)) closeDropdowns();
+});
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const open = navTriggers.find((t) => t.getAttribute('aria-expanded') === 'true');
+    if (open) {
+        setDropdown(open, false);
+        open.focus();
+    }
+});
+
+// Narrow layout: the list collapses behind the Menu button and dropdowns open inline
+const narrow = window.matchMedia('(max-width: 768px)');
+const syncNavLayout = () => {
+    navEl.classList.toggle('is-collapsed', narrow.matches);
+    closeDropdowns();
+};
+narrow.addEventListener('change', syncNavLayout);
+syncNavLayout();
 
 // ---------------------------------------------------------------------------
 // Portal branding from site_domain_prefs.json
@@ -49,10 +120,10 @@ export const applyDomainBranding = (prefs) => {
         el.textContent = label;
     }
 
-    if (prefs.domain_tagline?.trim()) {
-        document.getElementById('hero-tagline').textContent = ` · ${prefs.domain_tagline.trim()}`;
-        document.getElementById('hero-eyebrow').hidden = false;
-    }
+    // The header title is the tagline (e.g. "gene Expression Analysis Resource"), or the label without one
+    const siteTitle = document.getElementById('intro-site-title');
+    siteTitle.textContent = prefs.domain_tagline?.trim() || label;
+    siteTitle.hidden = false;
 
     // Same dark-background logo the portal sidebar uses; show the name as text if a portal has none
     const logo = document.getElementById('intro-logo');
@@ -60,6 +131,8 @@ export const applyDomainBranding = (prefs) => {
     logo.addEventListener('error', () => {
         logo.hidden = true;
         document.getElementById('intro-brand-text').hidden = false;
+        // Without a tagline the title would just repeat the name the text logo already shows
+        if (!prefs.domain_tagline?.trim()) siteTitle.hidden = true;
     }, { once: true });
     logo.src = `/img/by_domain/${encodeURIComponent(prefs.domain_label)}/logo-main-normal.png`;
 
