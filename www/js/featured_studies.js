@@ -9,12 +9,21 @@
  *   </section>
  *
  * Cards come from the landing pages in stats_archive/intro_stats.json (built by
- * bin/generate_intro_stats.py, already limited to this portal).
+ * bin/generate_intro_stats.py), which lists every portal's pages. Only the featured ones whose
+ * "portals" include domain_label from site_domain_prefs.json are shown, so switching portals
+ * doesn't require regenerating the stats file.
  */
 
 import { logErrorInConsole } from "./common.v2.js";
 
 const STATS_URL = '/stats_archive/intro_stats.json';
+const PREFS_URL = '/site_domain_prefs.json';
+
+/** True if a landing page's "portals" list includes this portal's domain_label, or "*". */
+const isForPortal = (page, domainLabel) => {
+    const portals = page.portals ?? [];
+    return portals.includes('*') || portals.includes(domainLabel);
+};
 
 /**
  * Fills the side-scroller and un-hides the section. It stays hidden if the stats file is
@@ -39,7 +48,15 @@ export const loadFeaturedStudies = async (landingPages = null) => {
             return;
         }
     }
-    pages = pages.filter((page) => page.featured);
+    // intro_stats.json lists every portal's pages; keep this portal's
+    let domainLabel;
+    try {
+        domainLabel = (await (await fetch(PREFS_URL, { cache: 'no-cache' })).json()).domain_label;
+    } catch (error) {
+        logErrorInConsole(`Featured studies unavailable, couldn't read domain_label: ${error}`);
+        return;
+    }
+    pages = pages.filter((page) => page.featured && isForPortal(page, domainLabel));
     if (!pages.length) return;
 
     const el = (tag, className, text) => {

@@ -29,7 +29,6 @@ import gear.db  # noqa: E402
 WWW_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'www'))
 DEFAULT_OUTPUT = os.path.join(WWW_DIR, 'stats_archive', 'intro_stats.json')
 LANDING_DIR = os.path.join(WWW_DIR, 'landing')
-PREFS_PATH = os.path.join(WWW_DIR, 'site_domain_prefs.json')
 DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 # Datasets flagged for removal shouldn't count anywhere
@@ -54,8 +53,6 @@ def main():
     parser = argparse.ArgumentParser(description='Generate intro page statistics JSON')
     parser.add_argument('-o', '--output', default=DEFAULT_OUTPUT, help='Output JSON path')
     parser.add_argument('-n', '--recent_count', type=int, default=6, help='Items per "What\'s new" list')
-    parser.add_argument('-d', '--domain_label', default=None,
-                        help='Portal whose landing pages to list (default: domain_label in site_domain_prefs.json)')
     args = parser.parse_args()
 
     cnx = gear.db.MySQLDB().connect()
@@ -69,7 +66,7 @@ def main():
         'by_year': get_by_year(cursor),
         'recent_datasets': get_recent_datasets(cursor, args.recent_count),
         'recent_collections': get_recent_collections(cursor, args.recent_count),
-        'landing_pages': get_landing_pages(args.domain_label or get_domain_label()),
+        'landing_pages': get_landing_pages(),
     }
 
     cursor.close()
@@ -180,25 +177,16 @@ def get_recent_collections(cursor, limit):
     } for label, share_id, n, organisms in cursor.fetchall()]
 
 
-def get_domain_label():
-    """The current portal's domain_label (gear, nemo, cancergear, ...) from site_domain_prefs.json."""
-    try:
-        with open(PREFS_PATH) as fh:
-            return json.load(fh).get('domain_label')
-    except (OSError, ValueError) as e:
-        print(f"WARNING: couldn't read domain_label from {PREFS_PATH}: {e}", file=sys.stderr)
-        return None
-
-
-def get_landing_pages(domain_label):
+def get_landing_pages():
     """
     Each www/landing/<name>/ folder is a study landing page, described by its landing.json:
 
         {"portals": ["gear"], "featured": true, "date": "2026-01-31", "title": "...",
          "summary": "...", "pmid": "...", "thumbnail": "thumbnail.jpg", "canonical_url": "https://..."}
 
-    Every portal shares this directory, so only pages whose "portals" list includes the current
-    domain_label (or "*") are listed. Pages without a landing.json are skipped.
+    Every portal shares this directory. All pages with a landing.json are listed along with their
+    "portals"; the browser keeps only those matching the current domain_label (or "*"), so changing
+    site_domain_prefs.json takes effect without regenerating this file.
 
     Pages are sorted newest first by "date" (YYYY-MM-DD, when the page was added or announced).
     If it's missing or malformed, the date index.html was first committed is used instead; unlike
@@ -220,7 +208,8 @@ def get_landing_pages(domain_label):
             continue
 
         portals = manifest.get('portals', [])
-        if '*' not in portals and domain_label not in portals:
+        if not isinstance(portals, list) or not portals:
+            print(f"WARNING: skipping {manifest_path}, \"portals\" must be a non-empty list", file=sys.stderr)
             continue
 
         date = manifest.get('date')
@@ -231,6 +220,7 @@ def get_landing_pages(domain_label):
 
         thumbnail = manifest.get('thumbnail') or ''
         pages.append({'title': clean_text(manifest.get('title') or name),
+                      'portals': portals,
                       'url': f"/landing/{name}/",
                       'summary': truncate(clean_text(manifest.get('summary', '')), 160),
                       'featured': bool(manifest.get('featured')),
