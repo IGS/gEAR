@@ -91,13 +91,13 @@ Restart=always
 
 3. Save the file.  If in nano, press Ctrl+O, Enter, then Ctrl+X. Suggested save filename is ok.
   1. File will be saved into /etc/systemd/system/apache2.service.d/override.conf
-4. Run `sudo service restart apache2` to apply changes
+4. Run `sudo systemctl restart apache2` to apply changes
 5. Verify properties are set by running `systemctl show apache2 --property=PrivateTmp --property=Restart`
 
 ## Victor's SSL instructions
 
     $ sudo a2enmod ssl
-    $ sudo service apache2 restart
+    $ sudo systemctl apache2 restart
 
 Copied /etc/apache2/ssl_umgear from production server to this server
 Created /etc/apache2/sites-available/umgear-ssl.conf file with contents from production server
@@ -106,7 +106,17 @@ In /etc/apache2/sites-available/umgear-ssl.conf, edited servername, removed serv
 Used a2ensite to enable the umgear-ssl site.
 
      $ sudo a2ensite
-     $ sudo service apache2 restart
+     $ sudo systemctl apache2 restart
+
+Lately we have shifted to using Let's Encrypt for our SSL, which was pretty easy:
+
+
+     $ sudo snap install --classic certbot
+     $ sudo ln -s /snap/bin/certbot /usr/bin/certbot
+     $ sudo certbot --apache -d yourdomain.org
+     (then answer the interactive questions)
+
+     $ sudo systemctl apache2 restart
 
 ### Custom config needed for Flask API
 
@@ -170,7 +180,7 @@ NOTE: For the Flask-API, more processes is better.  The standard of 4 processes 
 
 ### The version numbers here need to coincide with the python version installed
 
-LoadModule wsgi_module "/opt/Python-3.14.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py314.cpython-314-x86_64-linux-gnu.so"
+LoadModule wsgi_module "/opt/Python-3.14.4/lib/python3.14/site-packages/mod_wsgi/server/mod_wsgi-py314.cpython-314-x86_64-linux-gnu.so"
 
 ## /etc/apache2/mods-enabled/wsgi.conf
 
@@ -178,7 +188,7 @@ Add the line `WSGIPythonHome "/opt/Python-3.14.4"` into the IfModule block.
 
 Then, finally restart apache again.
 
-      $ sudo service apache2 restart
+      $ sudo systemctl apache2 restart
 
 ## /etc/apache2/mods-available/mpm_prefork.conf
 

@@ -84,7 +84,8 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
 
         // clear the patterns-manually-entered input element
         document.getElementById('dropdown-pattern-list-search-input').value = '';
-        document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
+        showSearchNotFound(null);
+        document.getElementById('dropdown-pattern-list-selector-label').textContent = 'Quick search using pattern lists';
 
         // and finally the related pattern lists and patterns
         // Doing it this way to not break the Proxy object on projection.js
@@ -98,6 +99,7 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
     // Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
     document.getElementById('dropdown-pattern-list-search-input').addEventListener('keyup', (event) => {
         const searchTerm = event.target.value;
+        showSearchNotFound(null);
 
         if (searchTerm.length === 0) {
             // clear the gene list
@@ -129,6 +131,10 @@ export const registerEventListeners = (apiCallsMixinObj=null) => {
                     listShareIdsFound.add(cart.share_id);   // Keep track of duplicates
                 }
             }
+        }
+
+        if (listShareIdsFound.size === 0) {
+            showSearchNotFound(searchTerm);
         }
     });
 
@@ -309,12 +315,24 @@ export const fetchPatternsData = async (shareId=null) => {
 }
 
 /**
+ * Shows (or hides, when searchTerm is null) the "no matches" message under the search box.
+ *
+ * @param {string|null} searchTerm - The search that found nothing, or null to hide the message.
+ */
+const showSearchNotFound = (searchTerm) => {
+    const message = document.getElementById('dropdown-pattern-list-search-not-found');
+    message.textContent = searchTerm === null ? '' : `No patterns match "${searchTerm}".`;
+    message.classList.toggle('is-hidden', searchTerm === null);
+}
+
+/**
  * Sets the active pattern cart category and updates the pattern list accordingly.
  * @param {string} category - The category of the pattern cart.
  */
 const setActivePatternCartCategory = (category) => {
     // clear the pattern list
     document.getElementById('dropdown-pattern-list-search-input').value = '';
+    showSearchNotFound(null);
 
     const patternListItemTemplate = document.getElementById('tmpl-pattern-list-item');
     let data = null;
@@ -410,21 +428,14 @@ export const populatePatternWeights = async () => {
 
         document.getElementById('dropdown-content-weights').appendChild(row);
 
-        const thisRow = document.querySelector(`.dropdown-weight-item[data-label="${weight.label}"]`);
+        const thisRow = document.querySelector(`.dropdown-weight-item[data-label="${CSS.escape(weight.label)}"]`);
 
         // Event listener to select the weight and update the selectedPattern.selectedWeights
         // Multiple weights can be selected
-
         thisRow.addEventListener("click", (event) => {
-            // create object from event.currentTarget.dataset
-            const obj = {};
-            for (const key in event.currentTarget.dataset) {
-                obj[key] = event.currentTarget.dataset[key];
-            }
-
             if (event.currentTarget.classList.contains('is-selected')) {
                 event.currentTarget.classList.remove('is-selected');
-                selectedPattern.selectedWeights = selectedPattern.selectedWeights.filter((weight) => weight.label !== obj.label);
+                selectedPattern.selectedWeights = selectedPattern.selectedWeights.filter((w) => w.label !== weight.label);
                 // change mdi-plus to mdi-minus
                 event.currentTarget.querySelector('.mdi').classList.remove('mdi-check');
                 event.currentTarget.querySelector('.mdi').classList.add('mdi-plus');
@@ -432,9 +443,10 @@ export const populatePatternWeights = async () => {
             }
             event.currentTarget.classList.add('is-selected');
 
+            // Re-add the original weight object from the API so fields like "binary" are kept.
             // This is done so that the Proxy object can detect the change
             const currentWeights = selectedPattern.selectedWeights;
-            currentWeights.push(obj);
+            currentWeights.push(weight);
             selectedPattern.selectedWeights = currentWeights;
 
             // change mdi-minus to mdi-plus
@@ -465,17 +477,17 @@ const selectPatternList = (shareId) => {
     updatePatternListSelectorLabel();
 }
 
+/**
+ * Toggles the selection of the pattern weights with the provided labels by clicking each row.
+ * Selected rows become deselected and unselected rows become selected, keeping
+ * selectedPattern.selectedWeights and the row checkmarks in sync.
+ * NOTE: Rows are not cleared first. Callers that want an exact selection must clear the rows
+ * and selectedPattern.selectedWeights beforehand (see the Top N / All shortcut buttons).
+ * @param {string[]} labels - The labels of the weights to toggle.
+ */
 export const selectPatternWeights = (labels) => {
-
-    // uncheck all the existing rows
-    const rows = document.getElementsByClassName('.dropdown-weight-item');
-    for (const row of rows) {
-        row.classList.remove('is-selected');
-    };
-
-    // select our labels
     for (const label of labels) {
-        document.querySelector(`.dropdown-weight-item[data-label="${label}"]`).click();
+        document.querySelector(`.dropdown-weight-item[data-label="${CSS.escape(label)}"]`).click();
     }
 
 }
@@ -485,5 +497,5 @@ export const selectPatternWeights = (labels) => {
  */
 const updatePatternListSelectorLabel = () => {
     const shareId = selectedPattern.shareId;
-    document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = shareId ? selectedPattern.label : 'Quick search using pattern sources';
+    document.querySelector('#dropdown-pattern-list-selector-label').textContent = shareId ? selectedPattern.label : 'Quick search using pattern sources';
 }

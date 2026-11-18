@@ -1,3 +1,10 @@
+"""
+geardb.py - Object model and database access layer for the gEAR MySQL database.
+
+Defines classes for users, datasets, displays, layouts, gene carts, genes, organisms
+and folders, along with module-level helper functions that query or update them.
+"""
+
 import csv
 import datetime
 import io
@@ -48,29 +55,34 @@ JSONEncoder.default = _default  # type: ignore
 def _read_site_domain_config():
     """Convert site domain preferences into a dictionary."""
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    with open("{0}/../www/site_domain_prefs.json".format(this_dir)) as json_file:
-        return json.loads(json_file.read())
+    try:
+        with open("{0}/../www/site_domain_prefs.json".format(this_dir)) as json_file:
+            return json.loads(json_file.read())
+    except FileNotFoundError:
+        # Not every deployment (e.g. RabbitMQ consumer containers) mounts the full
+        # www/ tree, so this file may not be present. Fall back to empty prefs.
+        return {}
 
 
 def _read_domain_url():
     json_conf = _read_site_domain_config()
     # Can build a longer URL off of this one
-    return json_conf["domain_url"]
+    return json_conf.get("domain_url")
 
 
 def _read_domain_label():
     json_conf = _read_site_domain_config()
-    return json_conf["domain_label"]
+    return json_conf.get("domain_label")
 
 
 def _read_domain_links_out():
     json_conf = _read_site_domain_config()
-    return json_conf["links_out"]
+    return json_conf.get("links_out")
 
 
 def _read_domain_short_label():
     json_conf = _read_site_domain_config()
-    return json_conf["domain_short_display_label"]
+    return json_conf.get("domain_short_display_label")
 
 
 # For those functional differences we have depending on the site domain
@@ -441,11 +453,17 @@ def get_metadata_by_share_id(share_id=None):
     return output.getvalue()
 
 def get_dataset_collection(ids=None):
+    """
+    Placeholder for retrieving a dataset collection; not yet implemented.
+    """
     # TODO: implement
     return 1
 
 
 def get_dataset_count():
+    """
+    Return the number of datasets not marked for removal, or None if the query returns no row.
+    """
     conn = Connection()
     cursor = conn.get_cursor()
 
@@ -701,6 +719,9 @@ def get_organism_id_by_taxon_id(taxon_id) -> int | None:
     return organism_id
 
 def get_user_count():
+    """
+    Return the total number of users, or None if the query returns no row.
+    """
     conn = Connection()
     cursor = conn.get_cursor()
 
@@ -902,6 +923,70 @@ def get_default_display(user_id, dataset_id, is_multigene=0):
     return default_display_id
 
 
+# Embedding plots (tSNE/UMAP/PCA) need room to be readable, so auto-arranged layouts give them the full row
+EMBEDDING_PLOT_TYPES = (
+    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic",
+    "mg_tsne_static", "mg_umap_static", "mg_pca_static",
+)
+AUTO_LAYOUT_EMBEDDING_WIDTH = 12
+
+# Minimum share of a display's uses a width needs to be preferred over the most common one
+AUTO_LAYOUT_WIDTH_THRESHOLD = 0.25
+
+
+def get_auto_layout_width(display_id):
+    """
+    Choose the grid width (out of 12) for a display placed in an automatically arranged layout.
+
+    Rules, in order:
+      1. Embedding plots (see EMBEDDING_PLOT_TYPES) get the full width of 12.
+      2. Otherwise, look at every width this display has been given in saved dataset collections
+         and use the widest one accounting for at least AUTO_LAYOUT_WIDTH_THRESHOLD of those uses.
+         This lets a width people deliberately chose for a wide plot win over many narrow
+         placements in multi-dataset collections, while keeping displays that are almost always
+         narrow narrow.
+      3. If the display is in no collection, return None so the caller uses its own default.
+
+    Returns:
+        dict: {width: int | None, rule: str, width_counts: {width: count}}
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    cursor.execute("SELECT plot_type FROM dataset_display WHERE id = %s", (display_id,))
+    row = cursor.fetchone()
+    plot_type = row[0] if row else None
+
+    cursor.execute("""
+        SELECT grid_width, COUNT(*)
+          FROM layout_displays
+         WHERE display_id = %s
+      GROUP BY grid_width
+      ORDER BY grid_width DESC
+    """, (display_id,))
+    width_counts = {width: count for width, count in cursor.fetchall()}
+    cursor.close()
+    conn.close()
+
+    if plot_type in EMBEDDING_PLOT_TYPES:
+        return dict(width=AUTO_LAYOUT_EMBEDDING_WIDTH, rule=f"embedding plot type '{plot_type}'", width_counts=width_counts)
+
+    if not width_counts:
+        return dict(width=None, rule="display is in no saved collection", width_counts=width_counts)
+
+    total = sum(width_counts.values())
+    for width, count in width_counts.items():   # widest first
+        if count / total >= AUTO_LAYOUT_WIDTH_THRESHOLD:
+            return dict(
+                width=width,
+                rule=f"widest width used by >= {int(AUTO_LAYOUT_WIDTH_THRESHOLD * 100)}% of uses ({count}/{total})",
+                width_counts=width_counts,
+            )
+
+    # Unreachable in practice (the most common width is always >= 1/len), but keep a safe fallback
+    return dict(width=max(width_counts, key=width_counts.get), rule="most common width", width_counts=width_counts)
+
+
 def get_displays_by_user_id(user_id, dataset_id):
     """Given user id, return all datasets representations from dataset display table."""
     conn = Connection()
@@ -968,6 +1053,21 @@ def get_organism_label(organism_id: int | None) -> str:
 
 
 def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
+    """
+    Look up a gene by symbol within the organism of the given dataset.
+
+    Genes are ordered by Ensembl release, so the most recent annotation is used.
+
+    Args:
+        gene_symbol (str): Gene symbol to search for.
+        dataset_id (str): Dataset whose organism restricts the search.
+
+    Returns:
+        Gene | None: The matching gene, or None if not found.
+
+    Raises:
+        ValueError: If no organism is found for the dataset.
+    """
     qry_org_id = "SELECT organism_id from dataset where id = %s"
 
     conn = Connection()
@@ -1071,51 +1171,70 @@ def add_spatial_panel_curation(dataset_id: str, user: "User", config: dict) -> N
     cursor.close()
     cnx.close()
 
-def add_gosling_display_curation(dataset_id: str, user: "User", config: dict) -> None:
+def add_gosling_display_curation(dataset_id: str, user: "User", config: dict) -> int:
     """
-    Adds a gosling display curation for the specified dataset and user.
+    Adds a gosling display curation for the specified dataset and user, and makes it
+    that user's single-gene default display for the dataset.
+
+    Returns:
+        int: The ID of the new dataset_display row.
     """
 
     if not user or not user.id:
         raise ValueError("Valid user with an ID must be provided to add a gosling display curation.")
 
-    # add file to both dataset and dataset_epiviz
     cnx = Connection()
     cursor = cnx.get_cursor()
 
-    #  insert into dataset_display
-    dataset_display_sql = """
-        INSERT INTO dataset_display (dataset_id, user_id, label, plot_type, plotly_config)
-        VALUES (%s, %s, %s, %s, %s)
-    """
+    try:
+        dataset_display_sql = """
+            INSERT INTO dataset_display (dataset_id, user_id, label, plot_type, plotly_config)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        cursor.execute(dataset_display_sql, (dataset_id, user.id, "Gosling curation", "gosling", json.dumps(config),))
+        display_id = cursor.lastrowid
 
-    # Insert dataset_gosling info to database
-    cursor.execute(dataset_display_sql, (dataset_id, user.id, "Gosling curation", "gosling", json.dumps(config),))
+        # The user may already have a single-gene default for this dataset (e.g. finalize was re-run)
+        dataset_preference_sql = """
+            INSERT INTO dataset_preference (user_id, dataset_id, display_id, is_multigene)
+            VALUES (%s, %s, %s, 0)
+            ON DUPLICATE KEY UPDATE display_id = VALUES(display_id)
+        """
+        cursor.execute(dataset_preference_sql, (user.id, dataset_id, display_id,))
 
-    cnx.commit()
+        # One commit, so a display is never left without its preference row
+        cnx.commit()
+    finally:
+        cursor.close()
+        cnx.close()
 
-    #  set preference
-    dataset_preference_sql = """
-        INSERT INTO dataset_preference (user_id, dataset_id, display_id)
-        VALUES (%s, %s, %s)
-    """
-
-    # Insert dataset_epiviz info to database
-    cursor.execute(dataset_preference_sql, (user.id, dataset_id, cursor.lastrowid,))
-    cnx.commit()
-
-    # close connection
-    cursor.close()
-    cnx.close()
+    return display_id
 
 class Connection:
+    """
+    Wrapper around a MySQL connection to the gEAR database.
+
+    The connection is opened on instantiation and closed when the object is deleted.
+    """
     def __init__(self):
         self.mysql_cnx = gear.db.MySQLDB().connect()
 
     def commit(self):
+        """
+        Commit the current transaction.
+        """
         self.mysql_cnx.commit()
 
+    def rollback(self):
+        """
+        Roll back the current transaction.
+        """
+        self.mysql_cnx.rollback()
+
     def close(self):
+        """
+        Close the MySQL connection if it is still open.
+        """
         if self.mysql_cnx.is_connected():
             self.mysql_cnx.close()
 
@@ -1126,6 +1245,15 @@ class Connection:
     def get_cursor(self, use_dict: bool = True) -> "MySQLCursorDict": ...
 
     def get_cursor(self, use_dict=False):
+        """
+        Return a new cursor on the connection.
+
+        Args:
+            use_dict (bool): If True, return a dictionary cursor whose rows are dicts.
+
+        Returns:
+            MySQLCursor | MySQLCursorDict: The new cursor.
+        """
         if use_dict:
             return self.mysql_cnx.cursor(dictionary=True)   # type: ignore[call-arg]
         else:
@@ -1137,6 +1265,9 @@ class Connection:
 
 
 class Organism:
+    """
+    An organism supported by gEAR, such as mouse or human.
+    """
     def __init__(
         self, id=None, label=None, genus=None, species=None, strain=None, taxon_id=None
     ):
@@ -1153,6 +1284,9 @@ class Organism:
 
 @dataclass
 class OrganismCollection:
+    """
+    A collection of Organism objects.
+    """
     organisms: list["Organism"] = field(default_factory=list)
 
     def __repr__(self):
@@ -1204,6 +1338,9 @@ class OrganismCollection:
 
 
 class Layout:
+    """
+    A dataset layout (profile): a named, shareable arrangement of dataset displays.
+    """
     def __init__(
         self,
         id=None,
@@ -1389,9 +1526,15 @@ class Layout:
         conn.close()
 
     def get_singlegene_members(self):
+        """
+        Populate self.members with only the single-gene displays of this layout.
+        """
         return self.get_members(scope="single")
 
     def get_multigene_members(self):
+        """
+        Populate self.members with only the multi-gene displays of this layout.
+        """
         return self.get_members(scope="multi")
 
     def load(self):
@@ -1479,14 +1622,16 @@ class Layout:
         """
         cursor.execute(qry, (display_id, self.id))
 
-        self.members = self.get_members()
-
         # ? Would be nice to delete empty rows, but then we have to figure out
         #  if this was a single or multigene display, then adjust the start_row for that type
 
         cursor.close()
         conn.commit()
         conn.close()
+
+        # Reload after commit; get_members() uses its own connection and would otherwise still see the deleted row.
+        # It fills self.members itself (and returns None when there are members).
+        self.get_members()
 
     def remove_members_by_dataset_id(self, dataset_id):
         """Deletes all members where the display ID belongs to a given dataset ID from the database."""
@@ -1505,12 +1650,15 @@ class Layout:
 
         cursor.execute(qry, (dataset_id, self.id))
 
-        self.members = self.get_members()
-
         # ? Would be nice to dynamically adjust the start_row afterwards to remove gaps
 
         cursor.close()
         conn.commit()
+        conn.close()
+
+        # Reload after commit; get_members() uses its own connection and would otherwise still see the deleted rows.
+        # It fills self.members itself (and returns None when there are members).
+        self.get_members()
 
     def save(self):
         """
@@ -1601,6 +1749,11 @@ class Layout:
 
 @dataclass
 class LayoutCollection:
+    """
+    A collection of Layout objects, with folder indexes used to place layouts in folders.
+
+    Keeps a shared database connection open while its methods run.
+    """
     # keep an index of folder IDs and their parent-most root IDs (tree walk needed here)
     root_folder_idx: dict = field(default_factory=dict, repr=False)
 
@@ -1612,9 +1765,17 @@ class LayoutCollection:
     # should dataset-populating methods called (adds overhead if you only need layout names)
     include_datasets: bool = True
 
-    # In this class many of the methods need db connections, and this can be costly. Let's keep one
-    #  open while it's used
-    _cnx = Connection()
+    # Many of this class's methods query the database, and a CGI may build several collections, so
+    #  they share one connection per process. It is opened on first use rather than when the module
+    #  is imported, so importing geardb doesn't connect, and reopened if the server has dropped it.
+    _shared_cnx: typing.ClassVar[Connection | None] = None
+
+    @property
+    def _cnx(self) -> Connection:
+        cls = type(self)
+        if cls._shared_cnx is None or not cls._shared_cnx.mysql_cnx.is_connected():
+            cls._shared_cnx = Connection()
+        return cls._shared_cnx
 
     def __post_init__(self):
         if len(self.folder_idx) == 0:
@@ -1924,6 +2085,9 @@ class LayoutCollection:
 
 @dataclass
 class Folder:
+    """
+    A folder used to organize layouts, gene carts and other items.
+    """
     id: int | None = None
     parent_id: int | None = None
     label: str | None = None
@@ -1937,6 +2101,9 @@ class Folder:
 
 @dataclass
 class FolderCollection:
+    """
+    A collection of Folder objects.
+    """
     folders: list["Folder"] = field(default_factory=list)
 
     def __repr__(self):
@@ -2087,6 +2254,9 @@ class FolderCollection:
 
 @dataclass
 class DatasetLink:
+    """
+    An external link (resource) associated with a dataset.
+    """
     id: int | None = None
     dataset_id: str | None = None
     resource: str | None = None
@@ -2102,6 +2272,9 @@ class DatasetLink:
 
 @dataclass
 class DatasetDisplay:
+    """
+    A saved plot display configuration for a dataset.
+    """
     id: int | None = None
     dataset_id: str | None = None
     user_id: int | None = None
@@ -2126,7 +2299,6 @@ class DatasetDisplay:
                 "Can only save changes to existing dataset displays currently"
             )
         else:
-            # gene_cart_member entries are deleted by foreign key cascade
             conn = Connection()
             cursor = conn.get_cursor()
 
@@ -2190,6 +2362,9 @@ class DatasetDisplay:
 
 @dataclass
 class Dataset:
+    """
+    A dataset stored in gEAR, mirroring the dataset table plus some derived attributes.
+    """
     id: str
     owner_id: int | None = None
     title: str | None = None
@@ -2366,6 +2541,21 @@ class Dataset:
 
         return h5ad_file_path
 
+    def get_source_archive_path(self):
+        """
+        Returns the path of the dataset's original uploaded archive if one exists, else None.
+
+        MEX/3-tab archives are kept with the extension they were uploaded with (.tar.gz, .tar
+        or .zip), so this checks each of those next to get_tarball_path().
+        """
+        base_path = self.get_tarball_path().removesuffix(".tar.gz")
+
+        for extension in (".tar.gz", ".tar", ".zip"):
+            if os.path.exists(base_path + extension):
+                return base_path + extension
+
+        return None
+
     def get_tarball_path(self):
         """
         This returns where the path of where a dataset's tarball SHOULD be, it doesn't check that
@@ -2536,11 +2726,15 @@ class Dataset:
             return "{0}x{1}".format(self.gene_count, self.obs_count)
         elif self.dtype == "spatial":
             zarr_file_path = self.get_file_path(session_id=session_id)
+            table_path = "{0}/tables/table".format(zarr_file_path)
 
-            import spatialdata as sd
+            import anndata
+            try:
+                adata = anndata.read_zarr(table_path)
+            except FileNotFoundError:
+                raise FileNotFoundError(f"No 'table' found in SpatialData tables at {table_path}")
 
-            sdata = sd.read_zarr(zarr_file_path)
-            (n_obs, n_vars) = sdata.tables["table"].shape
+            (n_obs, n_vars) = adata.shape
 
             if tuple_only:
                 return (n_obs, n_vars)
@@ -2549,6 +2743,9 @@ class Dataset:
             self.obs_count = n_obs  # type: ignore
 
     def to_json(self):
+        """
+        Return the string (JSON) representation of the dataset.
+        """
         return str(self)
 
     def remove(self):
@@ -2587,6 +2784,9 @@ class Dataset:
 
 @dataclass
 class DatasetCollection:
+    """
+    A collection of Dataset objects.
+    """
     datasets: list["Dataset"] = field(default_factory=list)
 
     def __repr__(self):
@@ -2613,6 +2813,19 @@ class DatasetCollection:
         self.datasets = datasets_to_keep
 
     def get_by_dataset_ids(self, ids=None, get_links=False):
+        """
+        Populate the collection with datasets matching the given IDs.
+
+        Datasets marked for removal are skipped. Supplemental attributes such as organism,
+        tags, user_name, has_tarball and has_h5ad are also set on each dataset.
+
+        Args:
+            ids (list): Dataset IDs to retrieve.
+            get_links (bool): If True, also load each dataset's external links.
+
+        Returns:
+            list: The populated list of Dataset objects.
+        """
         conn = Connection()
         cursor = conn.get_cursor()
 
@@ -2685,7 +2898,7 @@ class DatasetCollection:
                 dataset.access = "access_level"
                 dataset.user_name = row[10]
 
-                if os.path.exists(dataset.get_tarball_path()):
+                if dataset.get_source_archive_path():
                     dataset.has_tarball = 1
                 else:
                     dataset.has_tarball = 0
@@ -2797,6 +3010,17 @@ class DatasetCollection:
         conn.close()
 
     def get_owned_by_user(self, has_h5ad=None, user=None, types=None):
+        """
+        Populate the collection with datasets owned by the given user.
+
+        Args:
+            has_h5ad (int): If given, only include datasets with this has_h5ad value.
+            user (User): The owning user.
+            types (list): If given, only keep datasets of these types.
+
+        Raises:
+            Exception: If no user is passed.
+        """
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2859,6 +3083,17 @@ class DatasetCollection:
         conn.close()
 
     def get_shared_with_user(self, has_h5ad=None, user=None, types=None):
+        """
+        Populate the collection with datasets explicitly shared with the given user.
+
+        Args:
+            has_h5ad (int): If given, only include datasets with this has_h5ad value.
+            user (User): The user the datasets are shared with.
+            types (list): If given, only keep datasets of these types.
+
+        Raises:
+            Exception: If no user is passed.
+        """
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2922,11 +3157,17 @@ class DatasetCollection:
         conn.close()
 
     def to_json(self):
+        """
+        Return the string (JSON) representation of the collection.
+        """
         return str(self)
 
 
 @dataclass
 class Gene:
+    """
+    A gene annotation record, with optionally loaded GO terms, dbxrefs and aliases.
+    """
     id: int | None = None
     ensembl_id: list[str] | None = None
     ensembl_version: str | None = None
@@ -2949,6 +3190,9 @@ class Gene:
         return json.dumps(self.__dict__)
 
     def load_aliases(self):
+        """
+        Load the non-primary gene symbols for this gene into self.aliases.
+        """
         self.aliases = list()
 
         qry = "SELECT label FROM gene_symbol WHERE gene_id = %s AND is_primary = 0"
@@ -2970,6 +3214,9 @@ class Gene:
         conn.close()
 
     def load_dbxrefs(self):
+        """
+        Load this gene's database cross-references into self.dbxrefs (without URLs).
+        """
         self.dbxrefs = list()
 
         qry = "SELECT dbxref FROM gene_dbxref WHERE gene_id = %s"
@@ -3274,6 +3521,9 @@ class Gene:
                 )
 
     def load_go_terms(self):
+        """
+        Load the GO terms linked to this gene into self.go_terms.
+        """
         self.go_terms = list()
 
         qry = """
@@ -3301,9 +3551,15 @@ class Gene:
 
 @dataclass
 class GeneCollection:
+    """
+    A collection of Gene objects.
+    """
     genes: list["Gene"] = field(default_factory=list)
 
     def add_gene(self, gene):
+        """
+        Append a Gene to the collection.
+        """
         self.genes.append(gene)
 
     def get_by_gene_symbol(
@@ -3412,6 +3668,9 @@ class GeneCollection:
 
 
 class GeneCart:
+    """
+    A gene cart (gene list) owned by a user, either unweighted or weighted.
+    """
     def __init__(
         self,
         id=None,
@@ -3461,9 +3720,17 @@ class GeneCart:
         return json.dumps(self.__dict__)
 
     def add_gene(self, gene):
+        """
+        Append a gene to the cart's gene list.
+        """
         self.genes.append(gene)
 
     def get_genes(self):
+        """
+        Load the gene symbols of this cart into self.genes and update num_genes.
+
+        Only works for unweighted-list gene carts.
+        """
         # Only works for unweighted-list gctype.
         conn = Connection()
         cursor = conn.get_cursor()
@@ -3489,6 +3756,11 @@ class GeneCart:
         conn.close()
 
     def get_gene_counts(self):
+        """
+        Set self.num_genes without loading the genes themselves.
+
+        Weighted carts are counted from their cart file; unweighted carts from the database.
+        """
         conn = Connection()
         cursor = conn.get_cursor()
 
@@ -3534,6 +3806,27 @@ class GeneCart:
         cursor.close()
         conn.close()
 
+    def remove_all_members(self, cursor=None):
+        """
+        Remove all members from the gene cart.
+
+        If a cursor is passed, the delete runs on it and the caller is responsible for
+        committing.  Otherwise a new connection is opened and committed here.
+        """
+        sql = "DELETE FROM gene_cart_member WHERE gene_cart_id = %s"
+
+        if cursor is not None:
+            cursor.execute(sql, (self.id,))
+            return
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(sql, (self.id,))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
     def save(self):
         """
         Will perform a save or an update depending on whether the ID attribute is
@@ -3541,10 +3834,6 @@ class GeneCart:
         """
         conn = Connection()
         cursor = conn.get_cursor()
-
-        gcm_insert_qry = (
-            "INSERT INTO gene_cart_member (gene_cart_id, gene_symbol) VALUES (%s, %s)"
-        )
 
         if self.id is None:
             # ID is empty, this is a new one
@@ -3569,20 +3858,58 @@ class GeneCart:
             )
             self.id = cursor.lastrowid
 
-            # Only save unweighted-list genes as members.  Weighted lists will have lots more members
-            # and can be read from disk instead of storing in the db.
+            # Save the members of the cart in the same transaction as the cart itself
             if self.gctype == "unweighted-list":
-                for gene in self.genes:
-                    cursor.execute(gcm_insert_qry, (self.id, gene.gene_symbol))
-
+                self.save_members(cursor=cursor)
         else:
             # ID already populated
-            # TODO: Update cart properties, delete existing members, add current ones
+            # TODO: Update cart properties.  Members can be replaced with save_members()
             raise Exception("Called feature not yet implemented")
 
         cursor.close()
         conn.commit()
         conn.close()
+
+    def save_members(self, cursor=None):
+        """
+        Replace the members of the cart in the database with self.genes.  Only works for
+        unweighted-list carts.  Duplicate gene symbols are only saved once.
+
+        If a cursor is passed, the writes run on it and the caller is responsible for
+        committing.  Otherwise a new connection is opened, and the delete and inserts are
+        committed together so a failed insert does not leave the cart emptied.
+        """
+        if self.id is None:
+            raise Exception("Error: no gene cart id. Cannot save members.")
+
+        # Only save unweighted-list genes as members.  Weighted lists will have lots more members
+        # and can be read from disk instead of storing in the db.
+        if self.gctype != "unweighted-list":
+            raise Exception(
+                "Error: save_members() only works for unweighted-list carts."
+            )
+
+        conn = None
+        if cursor is None:
+            conn = Connection()
+            cursor = conn.get_cursor()
+
+        gcm_insert_qry = (
+            "INSERT INTO gene_cart_member (gene_cart_id, gene_symbol) VALUES (%s, %s)"
+        )
+
+        # Remove any existing members first
+        self.remove_all_members(cursor=cursor)
+
+        # dict.fromkeys removes duplicates while keeping the original order
+        gene_symbols = dict.fromkeys(gene.gene_symbol for gene in self.genes)
+        for gene_symbol in gene_symbols:
+            cursor.execute(gcm_insert_qry, (self.id, gene_symbol))
+
+        if conn is not None:
+            conn.commit()
+            cursor.close()
+            conn.close()
 
     def save_change(self, attribute=None, value=None):
         """
@@ -3661,6 +3988,11 @@ class GeneCart:
 
 @dataclass
 class GeneCartCollection:
+    """
+    A collection of GeneCart objects.
+
+    If include_genes is False, only gene counts are loaded for each cart.
+    """
     carts: list["GeneCart"] = field(default_factory=list)
 
     # should gene-populating methods called to include gene members (lots of overhead)
@@ -3696,6 +4028,15 @@ class GeneCartCollection:
         return cart
 
     def get_by_cart_ids(self, ids=[]):
+        """
+        Populate the collection with gene carts matching the given cart IDs.
+
+        Returns:
+            list: The populated list of GeneCart objects.
+
+        Raises:
+            Exception: If no IDs are provided.
+        """
         if not ids:
             raise Exception("No cart IDs provided to get_by_cart_ids")
 
@@ -3740,6 +4081,15 @@ class GeneCartCollection:
         return self.carts
 
     def get_by_share_ids(self, share_ids=[]):
+        """
+        Populate the collection with gene carts matching the given share IDs.
+
+        Returns:
+            list: The populated list of GeneCart objects.
+
+        Raises:
+            Exception: If no share IDs are provided.
+        """
         if not share_ids:
             raise Exception("No share_ids provided to get_by_share_ids")
 
@@ -3783,6 +4133,15 @@ class GeneCartCollection:
         return self.carts
 
     def get_by_user(self, user=None):
+        """
+        Populate the collection with gene carts owned by the given user.
+
+        Returns:
+            list: The populated list of GeneCart objects.
+
+        Raises:
+            Exception: If no user is provided.
+        """
         if not user:
             raise Exception("User not provided to get_by_user")
 
@@ -3876,6 +4235,19 @@ class GeneCartCollection:
         return self.carts
 
     def get_by_user_recent(self, user=None, n=None):
+        """
+        Populate the collection with the user's gene carts, most recently added first.
+
+        Args:
+            user (User): The owning user.
+            n (int): Maximum number of carts to return. All are returned if None.
+
+        Returns:
+            list: The populated list of GeneCart objects.
+
+        Raises:
+            Exception: If no user is provided.
+        """
         if not user:
             raise Exception("No user provided to get_by_user_recent")
 
@@ -3924,6 +4296,12 @@ class GeneCartCollection:
         return self.carts
 
     def get_domain(self):
+        """
+        Populate the collection with domain (site-wide curated) gene carts.
+
+        Returns:
+            list: The populated list of GeneCart objects.
+        """
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -3963,6 +4341,12 @@ class GeneCartCollection:
         return self.carts
 
     def get_public(self):
+        """
+        Populate the collection with public gene carts.
+
+        Returns:
+            list: The populated list of GeneCart objects.
+        """
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -4003,6 +4387,9 @@ class GeneCartCollection:
 
 
 class LayoutMember:
+    """
+    A dataset placed in a layout, with grid positions for single- and multi-gene views.
+    """
     def __init__(
         self,
         id=None,
@@ -4121,6 +4508,9 @@ class LayoutMember:
 
 
 class LayoutDisplay:
+    """
+    A dataset display placed in a layout grid.
+    """
     def __init__(
         self,
         id=None,
@@ -4162,6 +4552,9 @@ class LayoutDisplay:
         conn.close()
 
     def get_dataset_id(self):
+        """
+        Look up the dataset ID for this display and store it in self.dataset_id.
+        """
         conn = Connection()
         cursor = conn.get_cursor()
 
@@ -4177,6 +4570,11 @@ class LayoutDisplay:
         conn.close()
 
     def get_is_multigene(self):
+        """
+        Set self.is_multigene based on the plot type of this display.
+
+        Set to None if the display is not found.
+        """
         # single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "gosling"]
         multi_plot_types = [
             "dotplot",
@@ -4315,6 +4713,16 @@ class User:
         return json.dumps(self.__dict__)
 
     def datasets(self, has_h5ad=None, types=None):
+        """
+        Return the user's owned datasets as a DatasetCollection, loading them on first call.
+
+        Args:
+            has_h5ad (int): If given, only include datasets with this has_h5ad value.
+            types (list): If given, only keep datasets of these types.
+
+        Returns:
+            DatasetCollection: The user's cached dataset collection.
+        """
         # populate it if we haven't already
         if self._datasets is None:
             self._datasets = DatasetCollection()

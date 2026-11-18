@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js";
 import { TileGrid } from "./classes/tilegrid.js";
@@ -11,6 +11,7 @@ let tilegrid = null;
 let svgScoringMethod = 'user_defined';
 
 let datasetShareId = null;
+let datasetShareIds = [];  // Multiple datasets, arranged on the fly (no saved collection)
 let layoutShareId = null;
 let shareUsed = false;
 
@@ -47,22 +48,37 @@ document.getElementById('genes-manually-entered').addEventListener('keydown', (e
     }
 });
 
-document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
-    const annotationPanel = document.getElementById('extended-annotation-panel');
-    const toggleIcon = document.querySelector('#functional-annotation-toggle i');
-    const organismSelector = document.getElementById('annotation-panel-organism-selector-c');
+/**
+ * Expands or collapses the elements controlled by a toggle button.
+ * The button's aria-controls attribute lists the IDs of the elements to show/hide.
+ * @param {HTMLButtonElement} button - The toggle button (must have aria-expanded and aria-controls).
+ */
+const setCollapsibleExpanded = (button, expand) => {
+    const toggleIcon = button.querySelector('i');
 
-    if (annotationPanel.classList.contains('is-hidden')) {
-        annotationPanel.classList.remove('is-hidden');
-        organismSelector.classList.remove('is-hidden');
-        toggleIcon.classList.remove('mdi-chevron-down');
-        toggleIcon.classList.add('mdi-chevron-up');
-        return;
+    for (const targetId of button.getAttribute('aria-controls').split(' ')) {
+        document.getElementById(targetId).classList.toggle('is-hidden', !expand);
     }
-    annotationPanel.classList.add('is-hidden');
-    organismSelector.classList.add('is-hidden');
-    toggleIcon.classList.remove('mdi-chevron-up');
-    toggleIcon.classList.add('mdi-chevron-down');
+    button.setAttribute('aria-expanded', String(expand));
+    toggleIcon.classList.toggle('mdi-chevron-up', expand);
+    toggleIcon.classList.toggle('mdi-chevron-down', !expand);
+}
+
+const isCollapsibleExpanded = (button) => button.getAttribute('aria-expanded') === 'true';
+
+// Collapse/expand the whole annotation panel, or just its functional annotation section
+document.getElementById('annotation-panel-toggle').addEventListener('click', (event) => {
+    const expand = !isCollapsibleExpanded(event.currentTarget);
+    setCollapsibleExpanded(event.currentTarget, expand);
+
+    // Expanding the whole panel also opens the functional annotation section
+    if (expand) {
+        setCollapsibleExpanded(document.getElementById('functional-annotation-toggle'), true);
+    }
+});
+
+document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
+    setCollapsibleExpanded(event.currentTarget, !isCollapsibleExpanded(event.currentTarget));
 });
 
 // add event listener for when the submit-expression-search button is clicked
@@ -93,17 +109,26 @@ document.getElementById('submit-expression-search').addEventListener('click', as
     document.getElementById("gene-result-list-c").classList.remove('is-hidden');
     document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
     document.getElementById("annotation-panel").classList.remove('is-hidden');
-    document.getElementById("scoring-method-div").classList.remove('is-hidden');
+    // Hidden until the new displays render; tiles showing an SVG will bring it back
+    document.getElementById("scoring-method-div").classList.add('is-hidden');
+    document.getElementById("result-panel-options-divider").classList.add('is-hidden');
     if (isMultigene) {
         currentlySelectedGeneSymbol = null;
         document.getElementById("gene-result-list-c").classList.add('is-hidden');
         document.getElementById("currently-selected-gene-header").classList.add('is-hidden');
         document.getElementById("annotation-panel").classList.add('is-hidden');
-        document.getElementById("scoring-method-div").classList.add('is-hidden');
     }
     try {
 
-        const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
+        // Pick the scope first so only one tile grid is built
+        let setupTileGridFn;
+        if (datasetShareId) {
+            setupTileGridFn = setupTileGrid(datasetShareId, "dataset");
+        } else if (datasetShareIds.length) {
+            setupTileGridFn = setupTileGrid(datasetShareIds.join(","), "datasets");
+        } else {
+            setupTileGridFn = setupTileGrid(datasetCollectionState.selectedShareId);
+        }
 
         const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(searchToken), setupTileGridFn]);
 
@@ -113,6 +138,7 @@ document.getElementById('submit-expression-search').addEventListener('click', as
         }
 
         tilegrid = tilegridRes.value;
+        updateScoringMethodVisibility();
 
         if (!annotRes.value) {
             tilegrid.warnGeneAnnotationNotFound();
@@ -141,6 +167,7 @@ document.getElementById('submit-expression-search').addEventListener('click', as
                 genes = Array.from(allGenesElts).map(elt => elt.textContent);
             }
             await tilegrid.renderDisplays(genes, isMultigene);
+            updateScoringMethodVisibility();
 
         }
 
@@ -227,6 +254,20 @@ setDefaultOrganism.addEventListener('click', (event) => {
     setDefaultOrganism.classList.add('is-hidden');
 });
 
+/**
+ * Shows the SVG scoring method dropdown only when it applies: single-gene mode with at least
+ * one tile currently showing an SVG display. Re-checked whenever a tile renders a display.
+ */
+const updateScoringMethodVisibility = () => {
+    const isVisible = !isMultigene && Boolean(tilegrid?.hasSvgDisplay());
+    for (const id of ["scoring-method-div", "result-panel-options-divider"]) {
+        document.getElementById(id).classList.toggle("is-hidden", !isVisible);
+    }
+}
+
+// Tiles announce each rendered display (including display switches from a tile's display chooser)
+document.addEventListener("tile-display-rendered", updateScoringMethodVisibility);
+
 // Change the svg scoring method when select element is changed
 document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
     if (isMultigene) return;   // multigene does not use this
@@ -235,6 +276,8 @@ document.getElementById('svg-scoring-method').addEventListener('change', (event)
 
     // Loop through all tiles with svgData and update the display based on the selected method
     for (const tile of tilegrid.tiles) {
+        // Remembered by the tile so a later display switch uses the current method
+        tile.svgScoringMethod = svgScoringMethod;
         if (tile.svg) {
             tile.updateSVGDisplay(svgScoringMethod);
         }
@@ -279,6 +322,8 @@ const buildStateURL = () => {
     // add the dataset collections
     if (datasetShareId) {
         url.searchParams.append('share_id', datasetShareId);
+    } else if (datasetShareIds.length) {
+        url.searchParams.append('share_ids', datasetShareIds.join(','));
     } else if (datasetCollectionState.selectedShareId) {
         url.searchParams.append('layout_id', datasetCollectionState.selectedShareId);
     }
@@ -326,7 +371,7 @@ const fetchGeneAnnotations = async (searchToken = null) => {
             const sortedGeneSymbols = Object.keys(annotationData).sort((a, b) => a.localeCompare(b));
             for (const geneSymbol of sortedGeneSymbols) {
                 const row = template.content.cloneNode(true);
-                row.querySelector('li').innerHTML = geneSymbol;
+                row.querySelector('li').textContent = geneSymbol;
                 document.getElementById('gene-result-list').appendChild(row);
 
                 // due to a python issue, at some point in depth the data becomes a string. Parse it.
@@ -497,6 +542,19 @@ const parseGeneListURLParams = async () => {
 };
 
 /**
+ * Splits a comma-separated list of dataset share IDs, dropping blanks and duplicates.
+ *
+ * @param {string|null} value - The raw URL parameter value.
+ * @returns {string[]} The share IDs, in the order given.
+ */
+const parseShareIdsParam = (value) => {
+    if (!value) {
+        return [];
+    }
+    return [...new Set(value.split(",").map((id) => id.trim()).filter(Boolean))];
+};
+
+/**
  * Parses the URL parameters to handle the passed dataset collection.
  */
 const parseDatasetCollectionURLParams = () => {
@@ -509,7 +567,7 @@ const parseDatasetCollectionURLParams = () => {
 
     datasetCollectionState.selectedShareId = layoutShareId;
     datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[layoutShareId];
-    document.getElementById('dropdown-dc-selector-label').innerHTML = datasetCollectionState.selectedLabel;
+    document.getElementById('dropdown-dc-selector-label').textContent = datasetCollectionState.selectedLabel;
 };
 
 /**
@@ -535,6 +593,7 @@ const selectGeneResult = async (geneSymbol) => {
         document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
 
         await tilegrid.renderDisplays(currentlySelectedGeneSymbol, isMultigene, svgScoringMethod);
+        updateScoringMethodVisibility();
     }
 
     // call any callbacks that have been added (usually by plugins)
@@ -544,6 +603,35 @@ const selectGeneResult = async (geneSymbol) => {
         }
     }
 
+};
+
+/**
+ * Shows or hides the multi-gene display option based on the datasets in scope.
+ * Gosling datasets have no multi-gene views, so the option is hidden when every dataset is Gosling.
+ * Mixed collections keep the option.
+ *
+ * @param {Array<Object>} datasets - The datasets in the current tile grid.
+ */
+const updateMultigeneAvailability = (datasets) => {
+    const multiElt = document.getElementById('single-multi-multi');
+    const goslingOnly = datasets?.length > 0 && datasets.every((d) => d.dtype === "gosling");
+
+    if (!goslingOnly) {
+        enableAndShowElement(multiElt, true);
+        return;
+    }
+
+    disableAndHideElement(multiElt, true);
+    document.getElementById('single-multi-single').checked = true;
+
+    if (isMultigene) {
+        isMultigene = false;
+        // Restore the single-gene panels that the search handler hid for multigene mode
+        document.getElementById("gene-result-list-c").classList.remove('is-hidden');
+        document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
+        document.getElementById("annotation-panel").classList.remove('is-hidden');
+        createToast("Multi-gene displays are not available for Gosling datasets. Showing single-gene displays instead.", "is-warning");
+    }
 };
 
 /**
@@ -563,6 +651,8 @@ const setupTileGrid = async (shareId, type = "layout") => {
     const tilegrid = new TileGrid(shareId, type, "#result-panel-grid");
     try {
         tilegrid.datasets = await tilegrid.getDatasets();
+        // Must run before applyTileGrid, which builds tiles for the current single/multi mode
+        updateMultigeneAvailability(tilegrid.datasets);
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
 
@@ -701,7 +791,7 @@ const validateExpressionSearchForm = () => {
     }
 
     // Check if the user has selected any dataset collections or individual datasets
-    if (!(datasetShareId || datasetCollectionState.selectedShareId)) {
+    if (!(datasetShareId || datasetShareIds.length || datasetCollectionState.selectedShareId)) {
         createToast('Please select at least one dataset to proceed');
         return false;
     }
@@ -742,6 +832,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
+    datasetShareIds = parseShareIdsParam(getUrlParameter('share_ids'));
     const cartShareId = getUrlParameter('gene_lists');
     const geneSymbolId = getUrlParameter('gene_symbol');
     shareUsed = getUrlParameter('share_used') === '1';
@@ -768,7 +859,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     parseDatasetCollectionURLParams();
 
     // Trigger the default dataset collection to be selected in the
-    if (datasetShareId) {
+    if (datasetShareId || datasetShareIds.length) {
         selectDatasetCollection(null);  // Clear the label
         urlParamsPassed = true;
     } else if (layoutShareId) {
@@ -782,7 +873,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both genes and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
-        if ((datasetShareId || datasetCollectionState.selectedShareId) && geneCollectionState.selectedGenes.size > 0) {
+        if ((datasetShareId || datasetShareIds.length || datasetCollectionState.selectedShareId) && geneCollectionState.selectedGenes.size > 0) {
             document.getElementById('submit-expression-search').click();
         }
     }
@@ -793,6 +884,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             if (mutation.type === 'childList') {
                 // If the user selects a collection, clear the datasetShareId as scope has changed
                 datasetShareId = null;
+                datasetShareIds = [];
+                // New scope may not be Gosling-only; the next search re-checks
+                enableAndShowElement(document.getElementById('single-multi-multi'), true);
             }
         }
     });
@@ -801,29 +895,33 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // If we entered via a share link, conditionally display the notification
     if (shareUsed) {
-        const shareData = await apiCallsMixin.fetchShareData(datasetShareId, layoutShareId);
+        // For an on-the-fly arrangement, the first dataset supplies the owner/gene information
+        const shareData = await apiCallsMixin.fetchShareData(datasetShareId || datasetShareIds[0] || null, layoutShareId);
         document.getElementById("share-entrance-notification").classList.remove('is-hidden');
 
         // if an individual dataset was shared, show its info
-        if (datasetShareId) {
-            document.getElementById("share-entrance-dataset-label").innerHTML = shareData['dataset_label'];
+        if (datasetShareIds.length) {
+            document.getElementById("share-entrance-datasets-count").textContent = datasetShareIds.length;
+            document.getElementById("share-entrance-datasets").classList.remove('is-hidden');
+        } else if (datasetShareId) {
+            document.getElementById("share-entrance-dataset-label").textContent = shareData['dataset_label'];
             document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
 
             if (shareData['owner_name']) {
-                document.getElementById("share-entrance-dataset-owner-label").innerHTML = shareData['owner_name'];
+                document.getElementById("share-entrance-dataset-owner-label").textContent = shareData['owner_name'];
             } else {
-                document.getElementById("share-entrance-dataset-owner-label").innerHTML = 'Unknown';
+                document.getElementById("share-entrance-dataset-owner-label").textContent = 'Unknown';
             }
 
             // if a dataset collection was shared, show its info
         } else if (layoutShareId) {
-            document.getElementById("share-entrance-layout-label").innerHTML = shareData['layout_label'];
+            document.getElementById("share-entrance-layout-label").textContent = shareData['layout_label'];
             document.getElementById("share-entrance-layout").classList.remove('is-hidden');
 
             if (shareData['owner_name']) {
-                document.getElementById("share-entrance-layout-owner-label").innerHTML = shareData['owner_name'];
+                document.getElementById("share-entrance-layout-owner-label").textContent = shareData['owner_name'];
             } else {
-                document.getElementById("share-entrance-layout-owner-label").innerHTML = 'Unknown';
+                document.getElementById("share-entrance-layout-owner-label").textContent = 'Unknown';
             }
         }
 
@@ -832,7 +930,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         } else {
             if (shareData['gene_symbol']) {
                 document.getElementById("share-entrance-genes-autoselected").classList.remove('is-hidden');
-                document.getElementById("share-entrance-genes-label").innerHTML = shareData['gene_symbol'];
+                document.getElementById("share-entrance-genes-label").textContent = shareData['gene_symbol'];
                 document.getElementById("share-entrance-genes").classList.remove('is-hidden');
 
                 // insert the gene symbol and trigger a search

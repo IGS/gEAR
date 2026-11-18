@@ -10,6 +10,7 @@ Requires:
 """
 
 import cgi
+import json
 import os
 import sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
@@ -29,13 +30,21 @@ def main():
         historyargs[key] = form[key].value
 
     ## add the user
-    user = geardb.get_user_from_session_id(historyargs['session_id'])
+    user = geardb.get_user_from_session_id(historyargs.get('session_id'))
+    if user is None:
+        print(json.dumps({'success': 0, 'error': 'User must be logged in'}))
+        return
     historyargs['user_id'] = user.id
-    
-    if user is not None:
-        # Log the addition
+
+    # Log the addition (this used to print no response body at all)
+    try:
         history = UserHistory()
         history.add_record(**historyargs)
+    except Exception as e:
+        print(json.dumps({'success': 0, 'error': str(e)}))
+        return
+
+    print(json.dumps({'success': 1}))
 
 if __name__ == '__main__':
     main()

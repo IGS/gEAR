@@ -8,6 +8,7 @@ skips any for which image files are already present.  Does this only for
 primary datasets which are of types:
 
    single-cell-rnaseq
+   single-nucleus-rnaseq
    singlecell-h5ad
 
 """
@@ -104,7 +105,7 @@ def get_dataset_id_list(cursor):
     qry = """
           SELECT id
             FROM dataset
-           WHERE dtype IN ('single-cell-rnaseq', 'singlecell-h5ad', 'spatial')
+           WHERE dtype IN ('single-cell-rnaseq', 'single-nucleus-rnaseq', 'singlecell-h5ad', 'spatial')
     """ # AND has_h5ad = 1
 
     cursor.execute(qry)

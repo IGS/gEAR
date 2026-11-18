@@ -139,7 +139,7 @@
                 <button id="btn-view-unweighted-genes" class="js-view-genes button is-small is-primary is-outlined is-hidden my-3">View list of genes</button>
                 <section id="result-panel" class="p-3">
                   <div id="result-panel-options">
-                    <div id="scoring-method-div">
+                    <div id="scoring-method-div" class="is-hidden">
                       <span class="option-label pr-1">SVG expression scoring method: </span>
                       <div class="control select is-small">
                         <select id="svg-scoring-method" aria-label="SVG expression scoring method">
@@ -152,7 +152,7 @@
                     </div>
                     <!-- other panel options here -->
                   </div>
-                  <hr class="mt-3 mb-3" \>
+                  <hr id="result-panel-options-divider" class="mt-3 mb-3 is-hidden" \>
                   <div id="result-panel-initial-notification" class="notification is-primary has-text-centered">
                     To explore projections in various datasets, please choose a pattern and a dataset collection above and click the magnifying glass
                   </div>
@@ -228,9 +228,9 @@
                       <p>
                           Calculates the expression level of each pattern by counting the number of genes in the pattern that are expressed at non-zero levels in each new sample.
                       </p>
-                      <div class="notification is-warning is-light">
-                          <strong>Note:</strong> Should only be used in single-cell data. This method is simple and interpretable, but may not capture complex continuous signals.
-                      </div>
+                      <p>
+                          <strong>Note:</strong> This algorithm should only be used in single-cell data. This method is simple and interpretable, but may not capture complex continuous signals.
+                      </p>
                   </div>
 
               </div>
@@ -242,10 +242,8 @@
     </div>
 
       <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
-        </div>
-      </footer>
+        <div id="funding"></div>
+</footer>
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script src="js/vendor/js.cookie.js"></script>
@@ -255,8 +253,10 @@
 
 
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/projection.js', prefs.cache_version);

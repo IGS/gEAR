@@ -40,29 +40,31 @@ def main():
     original_stdout = sys.stdout
     sys.stdout = open(os.devnull, 'w')
 
-    form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
-    if not dataset_id:
+    def respond(result):
+        """Restore stdout (silenced so library output can't corrupt the response) and print the JSON response."""
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
-        print(json.dumps({'error': 'No dataset_id provided.'}))
+        print(json.dumps(result))
+
+    form = cgi.FieldStorage()
+    dataset_id = form.getfirst('dataset_id')
+    if not dataset_id:
+        respond({'error': 'No dataset_id provided.'})
         return
 
     ds = geardb.get_dataset_by_id(dataset_id)
     if not ds:
-        print('Content-Type: application/json\n\n')
-        print(json.dumps({'error': 'No dataset found with that ID.'}))
+        respond({'error': 'No dataset found with that ID.'})
         return
 
     is_spatial = ds.dtype == "spatial"
 
-    analysis_obj = dict(type="primary")
-
     try:
-        ana = get_analysis(analysis_obj, dataset_id, None, is_spatial=is_spatial)
-    except Exception:
-        print('Content-Type: application/json\n\n')
-        print(json.dumps({'error': "Analysis for this dataset is unavailable."}))
+        # No analysis object means the dataset's primary analysis
+        ana = get_analysis(None, dataset_id, None, is_spatial=is_spatial)
+    except Exception as e:
+        print("Could not load primary analysis for dataset {0}: {1}".format(dataset_id, e), file=sys.stderr)
+        respond({'error': "Analysis for this dataset is unavailable."})
         return
 
     try:
@@ -70,9 +72,9 @@ def main():
             if not is_spatial:
                 args['backed'] = True
             adata = ana.get_adata(**args)
-    except Exception:
-        print('Content-Type: application/json\n\n')
-        print(json.dumps({'error': 'Could not retrieve AnnData object.'}))
+    except Exception as e:
+        print("Could not read AnnData for dataset {0}: {1}".format(dataset_id, e), file=sys.stderr)
+        respond({'error': 'Could not retrieve AnnData object.'})
         return
 
     results = {
@@ -96,9 +98,7 @@ def main():
             results['plotly_config']['y_axis'] = pair[1] # type: ignore
             break
 
-    sys.stdout = original_stdout
-    print('Content-Type: application/json\n\n')
-    print(json.dumps(results))
+    respond(results)
 
 if __name__ == '__main__':
     main()

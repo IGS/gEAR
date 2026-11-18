@@ -29,6 +29,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.analysis import get_analysis
+from gear.colorblind import categorical_colors, is_enabled, remove_colorblind_copies
 
 
 matplotlib.use('Agg')
@@ -36,10 +37,10 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
     result = {'success': 0, 'n_obs': None, 'n_genes': None}
 
     ds = geardb.get_dataset_by_id(dataset_id)
@@ -81,10 +82,11 @@ def main():
         print(json.dumps(result))
         return
 
-    filter_cells_lt_n_genes = form.getvalue('filter_cells_lt_n_genes')
-    filter_cells_gt_n_genes = form.getvalue('filter_cells_gt_n_genes')
-    filter_genes_lt_n_cells = form.getvalue('filter_genes_lt_n_cells')
-    filter_genes_gt_n_cells = form.getvalue('filter_genes_gt_n_cells')
+    filter_cells_lt_n_genes = form.getfirst('filter_cells_lt_n_genes')
+    filter_cells_gt_n_genes = form.getfirst('filter_cells_gt_n_genes')
+    filter_genes_lt_n_cells = form.getfirst('filter_genes_lt_n_cells')
+    filter_genes_gt_n_cells = form.getfirst('filter_genes_gt_n_cells')
+    colorblind_mode = is_enabled(form.getfirst('colorblind_mode', ''))
 
     # This step should only be performed on the original dataset.
     # However the filtering will be saved in a temp directory to avoid overwriting the original dataset.
@@ -135,7 +137,16 @@ def main():
         adata.var['gene_symbol'] = adata.var['gene_symbol'].astype('object')
 
     try:
-        sc.pl.highest_expr_genes(adata, n_top=20, gene_symbols='gene_symbol', show=True, save=".png")
+        n_top = 20
+        sc.pl.highest_expr_genes(adata, n_top=n_top, gene_symbols='gene_symbol', show=True, save=".png")
+
+        # Colorblind copy (highest_expr_genes_colorblind.png): one palette color per gene box.
+        # saturation=1 keeps seaborn from fading the palette colors.
+        if colorblind_mode:
+            sc.pl.highest_expr_genes(adata, n_top=n_top, gene_symbols='gene_symbol', show=True,
+                                     save="_colorblind.png", palette=categorical_colors(n_top), saturation=1)
+        else:
+            remove_colorblind_copies(sc.settings.figdir, ['highest_expr_genes'])
         result['success'] = 1
     except Exception as e:
         print("Failed to generate highest_expr_genes plot: {0}".format(e), file=sys.stderr)

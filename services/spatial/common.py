@@ -1,13 +1,24 @@
+"""
+common.py - Shared plotting and data helpers for the spatial Panel apps.
+
+Used by panel_common.py to build Datashader/HoloViews spatial, UMAP, and
+violin plots from the CSV and image caches in www/cache/spatial_panel.
+"""
+
+import json
 from pathlib import Path
+import sys
 
 import colorcet as cc
 import datashader as ds
+import matplotlib
+import holoviews as hv
 import numpy as np
 import pandas as pd
 import param
 from bokeh.models import CustomJS, CustomJSHover, HoverTool, Span
 from holoviews.operation.datashader import spread
-import holoviews as hv
+from PIL import Image
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
@@ -25,6 +36,9 @@ DEFAULT_PLOT_HEIGHT = 300
 ### Functions
 
 def autohide_toolbar(plot, element):
+    """
+    HoloViews hook that hides the Bokeh toolbar until the plot is hovered.
+    """
     plot.state.toolbar.autohide = True
 
 def fix_colorbar_hook(plot, element):
@@ -158,9 +172,19 @@ def _prepare_category_renderers(cmap, registry=None):
     return hook
 
 
+def expression_clim(cbar_min:float|None=None, cbar_max:float|None=None) -> tuple|None:
+    """
+    Colorbar limits for an expression plot, or None to let HoloViews pick them.
+
+    The lower limit defaults to 0, and a missing upper limit (NaN) is left for HoloViews to pick from the data.
+    """
+    if cbar_min is None and cbar_max is None:
+        return None
+    return (0 if cbar_min is None else cbar_min, np.nan if cbar_max is None else cbar_max)
+
 def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatial2', color_col:str='raw_value', cmap="YlOrRd",
                         is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None,
-                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3):
+                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3, cbar_min:float|None=None):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
     plot_kwargs = dict(
@@ -173,7 +197,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
-        clim = (0, cbar_max) if cbar_max is not None else None,
+        clim = expression_clim(cbar_min, cbar_max),
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
@@ -220,7 +244,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         ))
     return plot
 
-def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
+def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15, cbar_min:float|None=None):
     """Generates a Datashaded UMAP."""
 
     color_col_title = title if title else color_col.title()
@@ -236,7 +260,7 @@ def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", 
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
-        clim = (0, cbar_max) if cbar_max is not None else None,
+        clim = expression_clim(cbar_min, cbar_max),
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
@@ -287,21 +311,11 @@ def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=
     """Generates standard bokeh violin plots (no Datashader needed here)."""
     plot_title = title if title else f"Expression Distribution: {y_col}"
 
-    # Bokeh will try to wrap in a list, so we need to convert to a flattened list of hex colors.
-    if isinstance(cmap, dict):
-        # Determine the exact order of categories Bokeh will use
-        if hasattr(df[group_col], 'cat'):
-            categories = df[group_col].cat.categories
-        else:
-            categories = sorted(df[group_col].unique())
-
-        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
-
     # Sort df by the group_col
     df = df.sort_values(by=group_col)
 
     plot = df.hvplot.violin(
-        y=y_col, by=group_col, c=group_col, cmap=cmap,
+        y=y_col, by=group_col, color=group_col, cmap=cmap,
         ylabel='Expression', xlabel='Annotation Cluster',
         title=plot_title,
         min_height=400, responsive=True, legend=False
@@ -361,7 +375,31 @@ def compute_aggregation_params(df, x_col, y_col, target_markers=80_000, min_dim=
     isn't proportional to the data's aspect ratio produces different spacing
     in x vs y, and a single radius can't match both, causing visible tearing.
     radius is derived from that spacing so markers tile without gaps or overlap.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the data to aggregate.
+    x_col : str
+        The name of the column to use for the x-axis.
+    y_col : str
+        The name of the column to use for the y-axis.
+    target_markers : int, optional
+        The target number of markers to display in the aggregated plot. Default is 80,000.
+    min_dim : int, optional
+        The minimum dimension (width or height) for the aggregated plot. Default is 275.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the computed width, height, and radius.
+
     """
+    n = len(df)
+    target_markers = min(target_markers, n)
+    # For displays with small numbers of points, like Visium, don't force a grid finer than the real point density supports
+    min_dim = min(min_dim, int(n ** 0.5))
+
     x_extent = df[x_col].max() - df[x_col].min()
     y_extent = df[y_col].max() - df[y_col].min()
     aspect = x_extent / y_extent if y_extent else 1.0
@@ -412,6 +450,9 @@ def create_datashader_agg(df, x: str, y: str, width:int=DEFAULT_PLOT_WIDTH, heig
     return agg
 
 def create_clusters_df(agg):
+    """
+    Return a dataframe of pixel coordinates and cluster codes present in a Datashader aggregate.
+    """
     agg_df = agg.to_dataframe(name="clusters_cat_codes")
     agg_df = agg_df[agg_df["clusters_cat_codes"]]
     # The columns we want are in the multi-index, so we need to make them into a dataframe
@@ -419,6 +460,9 @@ def create_clusters_df(agg):
     return final_df
 
 def create_expression_df(agg):
+    """
+    Return a dataframe of pixel coordinates and max expression, dropping empty pixels.
+    """
     agg_df = agg.to_dataframe(name="raw_value")
     # Drop missing values
     agg_df = agg_df.dropna()
@@ -470,6 +514,31 @@ def create_umap_sample(df, value_col='raw_value', cluster_col='clusters', backgr
 
     bg_sampled = pd.concat(parts, ignore_index=True)
     return pd.concat([expressing, bg_sampled], ignore_index=True)
+
+def list_image_channels(dataset_id) -> list[str]:
+    """
+    List the available image channels for a given dataset.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+
+    Returns:
+        list[str]: A list of available image channel names.
+    """
+    dataset_id = secure_filename(dataset_id)
+    img_dir = PANEL_CSV_CACHE_DIR / dataset_id
+    candidates = sorted(img_dir.glob("spatial_img*.npy"))
+    names = []
+    for path in candidates:
+        stem = path.stem  # "spatial_img_DAPI" or legacy "spatial_img"
+        name = stem[len("spatial_img"):].lstrip("_") or "default"
+        names.append(name)
+
+    # If "default" in names, move it to the front of the list
+    if "default" in names:
+        names.remove("default")
+        names.insert(0, "default")
+    return names
 
 def normalize_expression_name(filename) -> str:
         """
@@ -531,53 +600,65 @@ def retrieve_dataframe(dataset_id, filename) -> pd.DataFrame:
 
     return pd.read_csv(df_path)
 
-def retrieve_image_array(dataset_id) -> np.ndarray | None:
+def retrieve_image_array(dataset_id, channel_name=None) -> np.ndarray | None:
     """
     Retrieve a spatial image array from the cache for a given dataset ID.
 
     Args:
         dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+        channel_name (str, optional): The name of the channel to retrieve. If None, retrieves the first available channel.
 
     Returns:
         np.ndarray | None: The image array if it exists, otherwise None.
     """
-    dataset_id = secure_filename(dataset_id)  # type: ignore
-    spatial_img_path = PANEL_CSV_CACHE_DIR / dataset_id / SPATIAL_IMAGE_NAME
-    if spatial_img_path.is_file():
-        return np.load(spatial_img_path)
+    dataset_id = secure_filename(dataset_id)
+    img_dir = PANEL_CSV_CACHE_DIR / dataset_id
+    if channel_name is not None:
+        path = img_dir / f"spatial_img_{secure_filename(channel_name)}.npy"
+        return np.load(path) if path.is_file() else None
+    # If no channel name is provided, attempt to load the first available spatial image file
+    candidates = sorted(img_dir.glob("spatial_img*.npy"))
+    if not candidates:
+        raise FileNotFoundError(f"No spatial image files found in {img_dir}")
+    return np.load(candidates[0]) if candidates else None
+
+def downsample_image(arr: np.ndarray | None, max_dim: int | None) -> np.ndarray | None:
+    """
+    Shrink an image so its longest side is at most max_dim, keeping the aspect ratio.
+
+    The whole image is sent to the browser, so a smaller array means a much smaller payload.
+    Callers should plot it with the original image bounds so it still lines up with the markers.
+
+    Args:
+        arr (np.ndarray | None): Image array of shape (H, W, C) in uint8.
+        max_dim (int | None): Maximum length of the longest side. If None, the image is returned unchanged.
+
+    Returns:
+        np.ndarray | None: The downsampled image array, or the input if no downsampling was needed.
+    """
+    if arr is None or max_dim is None or max(arr.shape[0], arr.shape[1]) <= max_dim:
+        return arr
+    img = Image.fromarray(arr)
+    img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+    return np.asarray(img)
+
+def retrieve_image_dims(dataset_id) -> tuple[int, int] | None:
+    """
+    Retrieve the dimensions of a spatial image from the cache for a given dataset ID.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+
+    Returns:
+        tuple[int, int] | None: The height and width of the image if it exists, otherwise None.
+    """
+    dataset_id = secure_filename(dataset_id)
+    dims_path = PANEL_CSV_CACHE_DIR / dataset_id / "spatial_props.json"
+    if dims_path.is_file():
+        with open(dims_path) as f:
+            d = json.load(f)
+        return d["height"], d["width"]
     return None
-
-def rotate_spatial(df, image_array, rotation, x_col="spatial1", y_col="spatial2"):
-    """
-    Rotates the raw image array and the raw spatial coordinates together, by
-    `rotation` degrees clockwise (0/90/180/270 only). Objective is to keep
-    a cell's coordinate co-located with its corresponding image pixel after rotation.
-    """
-    if rotation not in (0, 90, 180, 270):
-        raise ValueError(f"rotation must be one of 0, 90, 180, 270 -- got {rotation}")
-    if rotation == 0:
-        return df, image_array
-
-    df = df.copy()
-    x, y = df[x_col].to_numpy(), df[y_col].to_numpy()
-
-    if image_array is not None:
-        H, W = image_array.shape[0], image_array.shape[1]
-        k = {90: -1, 180: 2, 270: 1}[rotation]
-        image_array = np.rot90(image_array, k=k)
-    else:
-        # No background image -- still need bounds to rotate coordinates consistently
-        W, H = x.max(), y.max()
-
-    if rotation == 90:
-        new_x, new_y = H - y, x # swap and flip y
-    elif rotation == 180:
-        new_x, new_y = W - x, H - y # flip both
-    else:  # 270
-        new_x, new_y = y, W - x # swap and flip x
-
-    df[x_col], df[y_col] = new_x, new_y
-    return df, image_array
 
 def sort_clusters(clusters) -> list:
     """
@@ -590,6 +671,23 @@ def sort_clusters(clusters) -> list:
     return sorted_clusters
 
 
+def get_color_maps(df, colorblind_mode=False):
+    """
+    Return (expression_cmap, cluster_cmap) for the viewers.
+
+    The normal cluster colors come from the cached dataframe's "colors" column. Colorblind mode
+    (a per-viewer setting, never saved) uses reversed cividis for expression and colorcet glasbey_cool
+    for clusters, matching lib/gear/colorblind.py (this service cannot import it).
+    """
+    if not colorblind_mode:
+        return cc.m_CET_L4_r, dict(zip(df['clusters'], df['colors']))
+
+    sorted_clusters = sort_clusters(df['clusters'].unique())
+    palette = cc.glasbey_cool
+    cluster_cmap = {cluster: palette[i % len(palette)] for i, cluster in enumerate(sorted_clusters)}
+    return matplotlib.colormaps["cividis_r"], cluster_cmap
+
+
 ### Classes
 class Settings(param.Parameterized):
     """
@@ -599,7 +697,10 @@ class Settings(param.Parameterized):
     filename = param.String(doc="Filename for the dataframe to retrieve")
     dataset_id = param.String(doc="Dataset ID to display")
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
-    expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
+    # NOTE: param.Number defaults to 0.0 even with allow_None=True, so default=None must be explicit
+    expression_min_clip = param.Number(doc="Minimum expression value to clip", default=None, allow_None=True)
+    vmin = param.Number(doc="User-defined expression colorbar minimum", default=None, allow_None=True)
+    vmax = param.Number(doc="User-defined expression colorbar maximum", default=None, allow_None=True)
 
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False
@@ -613,4 +714,8 @@ class Settings(param.Parameterized):
 
     nosave = param.Boolean(
         doc="If true, do not show the contents related to saving.", default=False
+    )
+
+    colorblind_mode = param.Boolean(
+        doc="If true, use colorblind-friendly palettes for this viewer (never saved).", default=False
     )

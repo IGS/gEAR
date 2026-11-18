@@ -12,14 +12,20 @@ p = page to send to:
     de = dataset_explorer.html
     gcm = gene_list_manager.html
     p = projection.html
-s = dataset_share_id
+s = dataset_share_id. Multiple IDs can be passed comma-separated (e.g. s=abc,def,ghi), in which
+    case the datasets are arranged on the fly on expression.html using the viewer's default display
+    for each (or the dataset owner's default if the viewer has none)
 ss = search string (for use in things like dataset/gene cart explorers)
-id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
+id = identifiers.org identifier, in the format gear:d.a59037e8 or gear:p.bfd178f5 or bioregistry.io identifier, in the format d.a59037e8 or p.bfd178f5. The prefix gear: is optional. The first character
 
 '''
 
 import cgi
 import os
+import re
+
+SHARE_ID_PATTERN = re.compile(r'^[A-Za-z0-9_-]+$')
+IDENTIFIERS_ORG_ID_PATTERN = re.compile(r'^(?:gear:)?([dp])\.([A-Za-z0-9_-]+)$', re.IGNORECASE)
 
 
 def check_for_truthy(value):
@@ -44,6 +50,18 @@ def check_for_truthy(value):
         if value in ('0', 'false', 'f', 'no', 'n'):
             return 0
     return 1
+
+def parse_share_ids(value):
+    """
+    Splits a comma-separated string of dataset share IDs, dropping blanks, duplicates
+    (order preserved) and anything that doesn't look like a share ID.
+    """
+    share_ids = []
+    for share_id in value.split(','):
+        share_id = share_id.strip()
+        if SHARE_ID_PATTERN.match(share_id) and share_id not in share_ids:
+            share_ids.append(share_id)
+    return share_ids
 
 def main():
     print('Content-Type: text/html\n\n')
@@ -82,7 +100,11 @@ def main():
     params['share_used'] = share_used
 
     if dataset_share_id is not None:
-        params['share_id'] = dataset_share_id
+        share_ids = parse_share_ids(dataset_share_id)
+        if len(share_ids) == 1:
+            params['share_id'] = share_ids[0]
+        elif len(share_ids) > 1:
+            params['share_ids'] = ','.join(share_ids)
 
     if layout_share_id is not None:
         params['layout_id'] = layout_share_id
@@ -122,13 +144,13 @@ def main():
         params["search_string"] = search_string
 
     if identifiers_org_id:
-        (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')
-
-        if id_prefix == 'd':
-            params['share_id'] = identifiers_share_id
-
-        elif id_prefix == 'p':
-            params['layout_id'] = identifiers_share_id
+        identifier_match = IDENTIFIERS_ORG_ID_PATTERN.fullmatch(identifiers_org_id)
+        if identifier_match:
+            id_prefix, identifiers_share_id = identifier_match.groups()
+            if id_prefix.lower() == 'd':
+                params['share_id'] = identifiers_share_id
+            elif id_prefix.lower() == 'p':
+                params['layout_id'] = identifiers_share_id
 
     if len(params) > 0:
         url += '?'

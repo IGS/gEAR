@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+delete_dataset_analysis.cgi - Delete a user's stored (non-primary) analysis directory.
 
+Input: analysis_id, analysis_type, dataset_id, session_id (required; must own the analysis).
+Output: JSON {success: 1} or {success: 0, error}.
 """
 
 import cgi, json
@@ -16,13 +19,15 @@ sys.path.append(lib_path)
 import geardb
 from gear.analysis import Analysis
 
+UUID_PATTERN = re.compile(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
     result = {"success": 0, "error": ""}
 
     user = geardb.get_user_from_session_id(session_id)
@@ -48,6 +53,17 @@ def main():
     if analysis_type and analysis_type in ["primary"]:
         result["success"] = 0
         result["error"] = "Cannot delete primary analyses"
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    # Only the user's own analyses can be deleted (the UI offers nothing else), and only by a plain
+    #  UUID: a path like "../../<other user>/<dataset>/<uuid>" would otherwise reach another user's
+    #  directory, since base_path joins analysis_id as given
+    if analysis_type not in ["user_saved", "user_unsaved"] or not UUID_PATTERN.fullmatch(analysis_id or ""):
+        result["success"] = 0
+        result["error"] = "Only your own saved or unsaved analyses can be deleted"
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))
@@ -110,7 +126,7 @@ def main():
         #shutil.rmtree(source_pipeline_base + '.deleted')
         # Only allow deletion if the final path component is a UUID
         base_name = os.path.basename(os.path.normpath(source_pipeline_base))
-        if re.match(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', base_name):
+        if UUID_PATTERN.fullmatch(base_name):
             shutil.rmtree(source_pipeline_base)
             result = {'success': 1}
         else:

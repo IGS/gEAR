@@ -43,6 +43,7 @@ lib_path = Path(__file__).resolve().parents[2] / 'lib'
 sys.path.append(str(lib_path))
 import geardb
 from gear.metadata import Metadata, get_value_from_df
+from werkzeug.utils import secure_filename
 
 user_upload_file_path = Path(__file__).resolve().parents[1] / 'uploads' / 'files'
 dataset_final_dir = Path(__file__).resolve().parents[1] / 'datasets'
@@ -94,6 +95,20 @@ def main() -> dict:
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
+        return result
+
+    # These are used as path components below, so only accept plain file names
+    safe_share_uid = secure_filename(share_uid or '')
+    safe_dataset_id = secure_filename(dataset_id)
+    safe_session_id = secure_filename(session_id)
+    if not safe_share_uid or safe_share_uid != share_uid:
+        result['message'] = 'Invalid share_uid: ' + str(share_uid)
+        return result
+    if not safe_dataset_id or safe_dataset_id != dataset_id:
+        result['message'] = 'Invalid dataset_uid: ' + str(dataset_id)
+        return result
+    if not safe_session_id or safe_session_id != session_id:
+        result['message'] = 'Invalid session_id.'
         return result
 
     dataset_upload_dir = user_upload_file_path / session_id / share_uid
@@ -232,9 +247,12 @@ def main() -> dict:
 
 
     if dataset_format == 'mex_3tab':
-        # migrate the tarball
-        tarball_file = dataset_upload_dir / f'{share_uid}.tar.gz'
-        tarball_dest = dataset_final_dir / f'{dataset_id}.tar.gz'
+        # migrate the archive, which may have been uploaded as a .tar.gz, .tar or .zip file
+        for extension in ('tar.gz', 'tar', 'zip'):
+            tarball_file = dataset_upload_dir / f'{share_uid}.{extension}'
+            tarball_dest = dataset_final_dir / f'{dataset_id}.{extension}'
+            if tarball_file.exists():
+                break
 
         #print(f"DEBUG: Attempting to do: mv {tarball_file} {tarball_dest}", file=sys.stderr)
         try:
@@ -269,9 +287,12 @@ def main() -> dict:
             return result
 
     elif dataset_format == "spatial":
-        # migrate the spatial tarball
-        spatial_src = dataset_upload_dir / f'{share_uid}.tar.gz'
-        spatial_dest = dataset_final_dir / f'{dataset_id}.tar.gz'
+        # migrate the spatial tarball, which may have been uploaded as a .tar.gz or .tar file
+        for extension in ('tar.gz', 'tar'):
+            spatial_src = dataset_upload_dir / f'{share_uid}.{extension}'
+            spatial_dest = dataset_final_dir / f'{dataset_id}.{extension}'
+            if spatial_src.exists():
+                break
 
         try:
             shutil.move(spatial_src, spatial_dest)

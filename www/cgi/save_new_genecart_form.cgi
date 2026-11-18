@@ -8,7 +8,6 @@ a NEW GeneCart object
 
 import cgi
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -23,10 +22,20 @@ abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 def exit_with_error(msg):
+    """
+    Print a 500 JSON error response with the message and exit.
+    """
     print("Status: 500 Internal Server Error")
     print("Content-Type: application/json\n")
     print(json.dumps({"message": msg}))
     sys.exit(1)
+
+def get_uploaded_file(form):
+    """Return the uploaded new_cart_file field, or None if no file was uploaded."""
+    fileitem = form['new_cart_file'] if 'new_cart_file' in form else None
+    if fileitem is None or isinstance(fileitem, list) or not fileitem.filename:
+        return None
+    return fileitem
 
 def validate_weighted_gene_cart(df):
     """Ensure weighted gene cart meets the requirements.  Returns a boolean."""
@@ -63,40 +72,40 @@ def main():
     gc = geardb.GeneCart()
     form = cgi.FieldStorage()
 
-    gc.label = form.getvalue('new_cart_label')
-    gc.organism_id = form.getvalue('new_cart_organism_id')
-    gc.ldesc = form.getvalue('new_cart_ldesc')
-    gc.is_public = form.getvalue('is_public')
+    gc.label = form.getfirst('new_cart_label')
+    gc.organism_id = form.getfirst('new_cart_organism_id')
+    gc.ldesc = form.getfirst('new_cart_ldesc')
+    gc.is_public = form.getfirst('is_public')
 
-    user_logged_in = geardb.get_user_from_session_id(form.getvalue('session_id'))
+    user_logged_in = geardb.get_user_from_session_id(form.getfirst('session_id'))
     if not user_logged_in:
         exit_with_error("No logged-in user detected")
     gc.user_id = user_logged_in.id
 
-    upload_type = form.getvalue('new_cart_upload_type')
+    upload_type = form.getfirst('new_cart_upload_type')
 
     if upload_type == 'pasted_genes':
         gc.gctype = 'unweighted-list'
-        pasted_genes = form.getvalue('new_cart_pasted_genes').replace(',', ' ').replace('  ', ' ')
-        pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
+        new_genes = form.getfirst('new_cart_pasted_genes', '')
 
-        for gene_sym in pasted_genes.split(' '):
-            if len(gene_sym) > 0:
-                gene = geardb.Gene(gene_symbol=gene_sym)
-                gc.add_gene(gene)
+        # Split on commas and any whitespace, then remove duplicates while keeping the original order
+        pasted_genes = list(dict.fromkeys(new_genes.replace(',', ' ').split()))
+
+        for gene_sym in pasted_genes:
+            gc.add_gene(geardb.Gene(gene_symbol=gene_sym))
 
     elif upload_type == 'uploaded-unweighted':
         gc.gctype = 'unweighted-list'
 
-        fileitem = form['new_cart_file']
-        if fileitem.filename:
-            pasted_genes = fileitem.file.read().decode().replace(",", " ")
-            pasted_genes = re.sub(r"\s+", " ", pasted_genes)
-            pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
+        fileitem = get_uploaded_file(form)
+        if fileitem is not None:
+            file_genes = fileitem.file.read().decode()
 
-            for gene_sym in pasted_genes.split(' '):
-                gene = geardb.Gene(gene_symbol=gene_sym)
-                gc.add_gene(gene)
+            # Split on commas and any whitespace, then remove duplicates while keeping the original order
+            pasted_genes = list(dict.fromkeys(file_genes.replace(',', ' ').split()))
+
+            for gene_sym in pasted_genes:
+                gc.add_gene(geardb.Gene(gene_symbol=gene_sym))
         else:
             exit_with_error("Didn't detect an uploaded file for an uploaded-unweighted submission")
 
@@ -107,8 +116,11 @@ def main():
         import pandas as pd
         gc.gctype = 'weighted-list'
 
+        fileitem = get_uploaded_file(form)
+        if fileitem is None:
+            exit_with_error("Didn't detect an uploaded file for an uploaded-weighted submission")
+
         # sanitize the file name
-        fileitem = form['new_cart_file']
         valid_chars = "-_.() {}{}".format(string.ascii_letters, string.digits)
         fileitem.filename = ''.join(c for c in fileitem.filename if c in valid_chars)
 

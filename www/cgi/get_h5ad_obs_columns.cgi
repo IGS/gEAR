@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+get_h5ad_obs_columns.cgi - List the observation (obs) columns of a dataset's H5AD file.
+
+Input: dataset_id.
+Output: JSON {success, obs_columns: [names, excluding 'replicate']} or {success: 0, error}.
+"""
+
 import cgi
 import json
 import os
@@ -23,7 +30,7 @@ def main():
     result = { 'success': 0 }
 
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
+    dataset_id = form.getfirst('dataset_id')
     ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
     h5_path = ds.get_file_path()
 
@@ -42,6 +49,7 @@ def main():
         columns.remove('replicate')
 
     result['obs_columns'] = columns
+    result['success'] = 1
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

@@ -1,3 +1,6 @@
+> [!WARNING]
+> This document is obsolete and kept for historical reference only. It was written before the Dataset Uploader supported spatial datasets. Spatial data can now be uploaded directly in the Dataset Uploader; see [Spatial data](../wiki/UploadingOverview.md#spatial-data) in the upload documentation.
+
 # Uploading Spatial Transcriptomics Datasets
 
 This document is meant to be a guide on how to upload a spatial transcriptomics dataset before the uploader tool supports spatial datasets.

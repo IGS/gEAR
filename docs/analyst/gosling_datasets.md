@@ -21,6 +21,7 @@ Subject to additions
 * hg19
 * hg38
 * mm10
+* mm39
 * rn6
 
 ## Manual dataset upload process
@@ -51,8 +52,9 @@ Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hubQuic
 
 ### Dataset organization
 
-```
+Legacy way
 
+```text
 <dataset_name>/
 ├── hub.txt
 ├── genomes.txt                   # Info must match directory name for genome
@@ -60,7 +62,15 @@ Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hubQuic
 │   └── file1.bw                  # Example track file
 │   └── file2.bw
 │   └── trackDb.txt                  # Contains track information for all tracks
+```
 
+Current (uploader) way
+
+```text
+<dataset_name>/
+├── hub.txt                       # Info about hub, genome, and tracks. Must have useOneFile=on
+├── file1.bw                      # Example track file
+├── file2.bw
 ```
 
 ### Supported trackDb.txt properties
@@ -77,7 +87,10 @@ Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hubQuic
 
 The trackDb.txt file also allows for custom metadata tags, which will be subject to future additon.
 
-* gos_url (filled in during upload if type is hic)
+* gos_url (filled in during upload if type is hic or bed)
+  * The URL for gosling to read so the original URL can be used in UCSC
+* gos_scope
+  * If track type is CSV/JSON allows for it to be processed for multiple purposes.
 
 ### Special considerations for certain file types
 

@@ -71,11 +71,15 @@ def main():
        VALUES (%s, %s)
     """
 
-    if user_already_exists(user_email, cursor) == True:
+    if user_already_exists(user_email, cursor):
         result['error'] = "User already exists"
         result['success'] = 0
         result['session_id'] = -1
         print(json.dumps(result))
+        # Stop here; falling through printed a second, "success" JSON object
+        cursor.close()
+        cnx.close()
+        return
     else:
         print("DEBUG: adding user to database", file=sys.stderr)
         try:
@@ -101,6 +105,9 @@ def main():
 
 
 def user_already_exists(user_email, curs):
+    """
+    Check whether a user account with the given email already exists.
+    """
     is_found = False
 
     qry = "SELECT id FROM guser WHERE email = %s"

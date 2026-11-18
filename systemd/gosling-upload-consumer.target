@@ -1,6 +1,9 @@
 [Unit]
 Description=TrackHub (Gosling Upload) RabbitMQ Consumer Workers
 Wants=gosling-upload-consumer@1.service gosling-upload-consumer@2.service gosling-upload-consumer@3.service
+# Wants= only pulls the workers in on start. PartOf= makes stop/restart of gear-consumers.target
+# cascade down to this target (and from here to the workers, which are PartOf this target).
+PartOf=gear-consumers.target
 
 [Install]
 WantedBy=multi-user.target

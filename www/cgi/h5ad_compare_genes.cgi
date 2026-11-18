@@ -1,7 +1,12 @@
 #!/opt/bin/python3
 
 """
+h5ad_compare_genes.cgi - Compare marker genes between a query cluster and a reference cluster (or all others).
 
+Input: analysis_id, analysis_type, dataset_id, session_id, query_cluster, reference_cluster
+       ('all-reference-clusters' allowed), n_genes, method, corr_method, group_labels (JSON list, optional).
+Output: JSON {success, cluster_label, table_json_f, table_json_r, error?}; writes ranked/violin
+        comparison PNGs next to the analysis file.
 """
 
 import cgi
@@ -30,18 +35,18 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
-    query_cluster = form.getvalue('query_cluster')
-    reference_cluster = form.getvalue('reference_cluster')
-    n_genes = int(form.getvalue('n_genes'))
-    method = form.getvalue('method')
-    corr_method = form.getvalue('corr_method')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
+    query_cluster = form.getfirst('query_cluster')
+    reference_cluster = form.getfirst('reference_cluster')
+    n_genes = int(form.getfirst('n_genes'))
+    method = form.getfirst('method')
+    corr_method = form.getfirst('corr_method')
 
-    if form.getvalue('group_labels'):
-        group_labels = json.loads(form.getvalue('group_labels'))
+    if form.getfirst('group_labels'):
+        group_labels = json.loads(form.getfirst('group_labels'))
     else:
         group_labels = None
 
@@ -128,6 +133,11 @@ def main():
         ana.type = 'user_unsaved'
 
     dest_datafile_path = ana.dataset_path
+    dest_directory = os.path.dirname(dest_datafile_path)
+
+    # Figures are saved next to the user's (possibly not yet created) unsaved analysis, as in the other steps
+    if not os.path.exists(dest_directory):
+        os.makedirs(dest_directory)
 
     if group_labels:
         adata.rename_categories(cluster_method, group_labels)
@@ -191,7 +201,7 @@ def main():
             'names': adata.var.loc[ensembl_id_list]['gene_symbol'].tolist(),
             'log2FC':adata.uns['rank_genes_groups']['logfoldchanges'],
             'P-value':adata.uns['rank_genes_groups']['pvals'],
-            'FDR':adata.uns['rank_genes_groups']['pvals_adj']}).loc[:n_genes].to_json(orient='split')
+            'FDR':adata.uns['rank_genes_groups']['pvals_adj']}).iloc[:n_genes].to_json(orient='split')
 
     if reference_cluster != 'all-reference-clusters':
         if corr_method is None:
@@ -223,7 +233,7 @@ def main():
             'names': adata.var.loc[ensembl_id_list]['gene_symbol'].tolist(),
             'log2FC':adata.uns['rank_genes_groups']['logfoldchanges'],
             'P-value':adata.uns['rank_genes_groups']['pvals'],
-            'FDR':adata.uns['rank_genes_groups']['pvals_adj']}).loc[:n_genes].to_json(orient='split')
+            'FDR':adata.uns['rank_genes_groups']['pvals_adj']}).iloc[:n_genes].to_json(orient='split')
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

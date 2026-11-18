@@ -32,12 +32,19 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
 
     user = geardb.get_user_from_session_id(session_id)
 
     result = { 'success': 0 }
+
+    if user is None:
+        result['error'] = "Not able to remove dataset. User must be logged in."
+        print(json.dumps(result))
+        cursor.close()
+        cnx.close()
+        return
 
     # Does user own the dataset...
     owns_dataset = check_dataset_ownership(cursor, user.id, dataset_id)
@@ -62,6 +69,9 @@ def main():
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d
@@ -80,6 +90,9 @@ def check_dataset_ownership(cursor, current_user_id, dataset_id):
     return user_owns_dataset
 
 def mark_for_removal(cursor, dataset_id):
+    """
+    Flag a dataset as marked_for_removal in the database.
+    """
     qry = """
         UPDATE dataset
         SET marked_for_removal = '1'

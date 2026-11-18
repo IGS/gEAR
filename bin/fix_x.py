@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+"""
+fix_x.py - One-off migration renaming the "x" key to "x_axis" in dataset_display.plotly_config.
+
+Note: it writes json.dumps() of the already-serialized config string, which double-encodes
+the JSON. Run fix_double_encoded_json.py afterwards.
+
+Usage: fix_x.py -u <db_user> -p <db_password> -d <db_name>
+"""
+
 import argparse
 import mysql.connector
 import json

@@ -16,8 +16,8 @@ CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 def main():
     form = cgi.FieldStorage()
-    source_id = form.getvalue('source_id')  # Root of the file name (minus extension)
-    scope = form.getvalue("scope", None)
+    source_id = form.getfirst('source_id')  # Root of the file name (minus extension)
+    scope = form.getfirst("scope", None)
     result = []
 
     print('Content-Type: application/json\n\n')
@@ -26,6 +26,10 @@ def main():
     # NOTE: Does not check db for existence of unweighted genecart
     if scope == "unweighted-list":
         result.append({"label":"unweighted", "top_up":"", "top_down":"", "binary": True})
+        print(json.dumps(result))
+        return
+
+    if not source_id:
         print(json.dumps(result))
         return
 

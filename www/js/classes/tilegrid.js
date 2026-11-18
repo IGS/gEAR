@@ -1,12 +1,16 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
+import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurrentUser, logErrorInConsole, openModal, setDisplayCardText, triggerUrlDownload } from "../common.v2.js";
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
+import { buildGoslingSessionConfig, clearGoslingTile, describeGoslingSession, loadGoslingEmbed, renderGoslingPlot, resolveGoslingSession, saveGoslingSession } from "../helpers/gosling-fxns.js";
+import { downloadSpatialHTML, renderSpatialPanel } from "../helpers/spatial-fxns.js";
 import { Citation } from "./citation.js";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
+A TileGrid "type" of "dataset" shows a single dataset share ID, and "datasets" arranges a comma-separated
+list of dataset share IDs on the fly using the viewing user's default display for each dataset (or the owner's default).
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
 For the given layout, a single-gene grid and a multi-gene grid are generated.
 */
@@ -14,6 +18,10 @@ For the given layout, a single-gene grid and a multi-gene grid are generated.
 const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  // "tsne_dynamic" is a legacy option
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
 const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
+
+// Auto-arranged tile widths on the 12-column grid, used when a display has no usual width: 3 tiles per row for single-gene, 2 for multi-gene
+const AUTO_LAYOUT_SINGLE_WIDTH = 4;
+const AUTO_LAYOUT_MULTI_WIDTH = 6;
 
 export class TileGrid {
 
@@ -60,6 +68,10 @@ export class TileGrid {
         // Clear selector element
         const selectorElt = document.querySelector(selector);
         selectorElt.replaceChildren();
+
+        // Drop the single-tile layout applySingleTileGrid() may have set on this element earlier (e.g. a share_id
+        // view before switching to a collection), so collections get the stylesheet's 12-column grid
+        selectorElt.classList.remove("is-single-tile");
 
         // clear any no-displays message
         const noDisplaysElt = selectorElt.querySelector(".no-displays");
@@ -118,8 +130,6 @@ export class TileGrid {
         // sort by grid position
         this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
 
-        const specialRows = new Set();
-
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
             // Get HTML for the tile
@@ -135,20 +145,6 @@ export class TileGrid {
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
             tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
         }
-
-        // Set grid-template-rows for special rows
-        // ? This feels hacky... this property could get crazy long if there are a lot of rows.
-        if (specialRows.size > 0) {
-            const uniqueRows = [...specialRows];
-            let gridTemplateRows = "";
-            const maxStartRow = Math.max(...this.tiles.map(t => t.tile.startRow));
-            // Normal datasets get "auto", gosling and spatial datasets get "1fr"
-            for (let i = 1; i <= maxStartRow; i++) {
-                gridTemplateRows += uniqueRows.includes(i) ? "1fr " : "auto ";
-            }
-            selectorElt.style.gridTemplateRows = gridTemplateRows;
-
-        }
     }
 
     /**
@@ -161,9 +157,7 @@ export class TileGrid {
      */
     async applySingleTileGrid(datasetTile, selectorElt, isZoomed=false, projectROpts={}) {
 
-        selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
-        selectorElt.style.gridTemplateRows = `repeat(1, fit-content)`;
-        selectorElt.style.width = "unset"; // This is needed to make the grid auto-size to the content
+        selectorElt.classList.add("is-single-tile");  // one full-width column; see expression.css and projection.css
 
         // if zoomed, create new DatasetTile object with zoomed flag
         // SAdkins - I tried to use a "clone node and change ids" approach, but it was not working.
@@ -202,7 +196,12 @@ export class TileGrid {
      * @throws {Error} If there is an error fetching the dataset list information.
      */
     async getDatasets() {
-        const args = this.type === "dataset" ? {permalink_share_id: this.shareId} : {layout_share_id: this.shareId};
+        let args = {layout_share_id: this.shareId};
+        if (this.type === "dataset") {
+            args = {permalink_share_id: this.shareId};
+        } else if (this.type === "datasets") {
+            args = {permalink_share_ids: this.shareId};   // comma-separated
+        }
 
         try {
             const data = await apiCallsMixin.fetchDatasetListInfo(args);
@@ -218,12 +217,94 @@ export class TileGrid {
      * @throws {Error} If there is an error while fetching the layout.
      */
     async getLayout() {
+        if (this.type === "datasets") {
+            return this.buildAutoLayout();
+        }
+
         try {
             const data = await apiCallsMixin.fetchDatasetCollectionMembers(this.shareId);
             return data["layout_members"];
         } catch (error) {
             throw error;
         }
+    }
+
+    /**
+     * Arranges this.datasets on the fly, with no saved dataset collection behind it.
+     * Each dataset uses the viewing user's default display if they set one, otherwise the dataset owner's,
+     * falling back to the owner's first display when no default exists. Tile widths come from the server
+     * (geardb.get_auto_layout_width): embedding plots are full width, otherwise the widest width used by a
+     * meaningful share of saved collections.  Anything without a suggested width uses the defaults above.  Datasets with no usable display are skipped.
+     * @returns {Promise<{single: string[], multi: string[]}>} A layout in the same shape as a saved collection's members.
+     */
+    async buildAutoLayout() {
+        const layout = {single: [], multi: []};
+
+        // Returns the display to use and its usual width, which is null when it isn't known
+        const getDisplay = async (dataset, isMulti) => {
+            try {
+                const {default_display_id: displayId, grid_width: gridWidth, width_counts: widthCounts, width_rule: widthRule} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, isMulti ? 1 : 0);
+                if (displayId) {
+                    return {displayId, gridWidth, widthCounts, widthRule, source: "default display"};
+                }
+            } catch (error) {
+                console.warn(`Could not fetch default display for dataset ${dataset.id}`);
+            }
+
+            const {owner: ownerDisplays} = await apiCallsMixin.fetchDatasetDisplays(dataset.id);
+            const filterKey = isMulti ? "gene_symbols" : "gene_symbol";
+            const fallback = ownerDisplays?.find((d) => d.plotly_config?.hasOwnProperty(filterKey));
+            return {displayId: fallback?.id, gridWidth: null, widthCounts: {}, widthRule: null, source: "owner's first display (no default set)"};
+        };
+
+        const members = await Promise.all(this.datasets.map(async (dataset) => ({
+            dataset,
+            single: await getDisplay(dataset, false),
+            multi: await getDisplay(dataset, true),
+        })));
+
+        for (const [type, defaultWidth] of [["single", AUTO_LAYOUT_SINGLE_WIDTH], ["multi", AUTO_LAYOUT_MULTI_WIDTH]]) {
+            let position = 0;
+            let row = 1;
+            let col = 1;    // next free column in the current row
+            for (const member of members) {
+                const {displayId, gridWidth, widthCounts, widthRule, source} = member[type];
+                if (!displayId) {
+                    console.warn(`No ${type}-gene display found for dataset '${member.dataset.title}'. Skipping.`);
+                    continue;
+                }
+
+                // Use the width this display is usually given in collections, kept within the 12-column grid
+                const width = Math.min(Math.max(parseInt(gridWidth) || defaultWidth, 1), 12);
+
+                // Uncomment to explain how each tile's width was chosen
+                // const reason = gridWidth
+                //     ? `${widthRule}; widths used in saved collections: ${JSON.stringify(widthCounts)}`
+                //     : `${widthRule || "no width information"}, so the ${type} default of ${defaultWidth} was used`;
+                // console.info(`[auto-layout:${type}] '${member.dataset.title}' (share_id=${member.dataset.share_id}): display ${displayId} from ${source}; width=${width} (server grid_width=${gridWidth}); ${reason}`);
+
+                // Start a new row if the tile doesn't fit in what remains of this one
+                if (col + width > 13) {
+                    row++;
+                    col = 1;
+                }
+
+                position++;
+                layout[type].push(JSON.stringify({
+                    dataset_id: member.dataset.id,
+                    display_id: displayId,
+                    grid_position: position,
+                    grid_width: width,
+                    grid_height: 1,
+                    start_row: row,
+                    start_col: col,
+                }));
+                // console.info(`[auto-layout:${type}]   -> placed at row ${row}, col ${col}-${col + width - 1}`);
+                col += width;
+            }
+        }
+
+        return layout;
     }
 
     /**
@@ -268,6 +349,14 @@ export class TileGrid {
             const tileElement = document.getElementById(`tile-${this.zoomId}`);
             tileElement.querySelector('.js-expand-display').click();
         }
+    }
+
+    /**
+     * Checks whether any tile in the grid is currently showing an SVG display.
+     * @returns {boolean} True if at least one tile's current display is an SVG.
+     */
+    hasSvgDisplay() {
+        return this.tiles.some((tile) => tile.currentPlotType === "svg");
     }
 
     warnGeneAnnotationNotFound() {
@@ -317,6 +406,7 @@ class DatasetTile {
         }
 
         this.svg = null; // The SVG element for the plot
+        this.currentPlotType = null;    // plot_type of the display currently rendered in this tile (e.g. "svg")
 
         // Projection information
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
@@ -564,6 +654,8 @@ class DatasetTile {
         if (this.controller) {
             otherOpts.signal = this.controller.signal;
         }
+
+        createCardMessage(this.tile.tileId, "info", `Checking for existing projection...`);
 
         const parentTileGrid = this.parentTileGrid;
         // check if any tiles share this tile's datasetId
@@ -981,6 +1073,18 @@ class DatasetTile {
             });
         }
 
+        // Link downloads (bundle, h5ad, projection) get the metadata first, then the file at the link's current href.
+        // ("download-image" handlers are set up when the plot type is known.)
+        const metadataFirstTools = ["download-bundle", "download-h5ad", "download-projection"];
+        for (const item of dropdownItems) {
+            if (!metadataFirstTools.includes(item.dataset.tool)) continue;
+            item.addEventListener("click", async (event) => {
+                event.preventDefault();
+                const url = event.currentTarget.href;
+                await downloadWithMetadata(shareId, () => triggerUrlDownload(url));
+            });
+        }
+
         // Add links to the dropdown above the download-bundle item
         if (links.length) {
             const downloadBundle = dropdownContent.querySelector('.dropdown-item[data-tool="download-bundle"]');
@@ -1189,8 +1293,9 @@ class DatasetTile {
 
         if (this.type === "single") {
             // Add userGoslingDisplays to userDisplays...
-            const userGoslingDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "gosling");
-            const ownerGoslingDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "gosling");
+            // (skipping those already included because their config has a gene_symbol)
+            const userGoslingDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "gosling" && !userDisplays.includes(d));
+            const ownerGoslingDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "gosling" && !ownerDisplays.includes(d));
             userDisplays.push(...userGoslingDisplays);
             ownerDisplays.push(...ownerGoslingDisplays);
         }
@@ -1325,6 +1430,12 @@ class DatasetTile {
             const displayType = displayElement.querySelector('.js-modal-display-type');
             displayType.textContent = display.plot_type;
 
+            // Name the display; saved Gosling views also get their panels and ranges, as they all share one preview image.
+            // Every Gosling card keeps room for the two panel lines (blank for upload defaults) so the images line up.
+            const isGosling = display.plot_type === "gosling";
+            const session = isGosling ? describeGoslingSession(display.plotly_config) : null;
+            setDisplayCardText(displayElement, display.label, session?.lines, session?.full, isGosling ? 2 : 0);
+
             displayElt.append(displayHTML);
         }
     }
@@ -1346,6 +1457,16 @@ class DatasetTile {
         // Store gene symbol for future use (i.e. changing display, etc.)
         // Since this method manipulates the geneSymbolInput, we need to store the original input
         this.geneInput = geneSymbolInput;
+
+        // Clear info about the previous display. renderSVG() sets this.svg again if the new display is an SVG,
+        // so pages do not try to rescore an SVG that is no longer shown.
+        this.currentPlotType = null;
+        this.svg = null;
+
+        // Clear inline styles that a previous display type (spatial, gosling) set on this tile
+        this.resetTileStyles();
+        // Stop routing Gosling location events to the previous display
+        clearGoslingTile(this.tile.tileId);
 
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
@@ -1427,20 +1548,9 @@ class DatasetTile {
                     display.plotly_config.expression_min_clip = minclip;
                 }
 
-                await this.renderSpatialPanelDisplay(display, otherOpts);
-
-                // Determine how "download_image" is handled for scanpy plots
-                const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadImage) {
-                    const newDownloadImage = downloadImage.cloneNode(true);
-                    downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
-
-                    newDownloadImage.classList.remove("is-hidden");
-                    newDownloadImage.addEventListener("click", async (event) => {
-                        // get the download URL
-                        await this.downloadSpatialHTML(display);
-                    });
-                }
+                const {render, download} = this.getDisplayHandlers(display);
+                await render(otherOpts);
+                this.bindDownloadImage(download);
                 return;
             }
 
@@ -1470,6 +1580,7 @@ class DatasetTile {
         if (display.plot_type === "tsne") {
             display.plot_type = "tsne_static";
         }
+        this.currentPlotType = display.plot_type;
 
         // Add gene or genes to plot config
         if (this.type === "multi") {
@@ -1499,134 +1610,14 @@ class DatasetTile {
             }
         }
 
-        // Render based on plot type + add event listeners after rendering
+        // Render based on plot type, then point the "Download image" menu item at this display
         try {
-            if (plotlyPlots.includes(display.plot_type)) {
-                await this.renderPlotlyDisplay(display, otherOpts);
-
-                const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadImage) {
-
-                    const newDownloadImage = downloadImage.cloneNode(true);
-                    downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
-
-                    newDownloadImage.classList.remove("is-hidden");
-                    newDownloadImage.addEventListener("click", async (event) => {
-                        await this.downloadPlotlyImage(display);
-                    });
-                }
-
-            } else if (scanpyPlots.includes(display.plot_type)) {
-                await this.renderScanpyDisplay(display, false, otherOpts);
-
-                // Determine how "download_png" is handled for scanpy plots
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
-
-                    // If I use the existing "download Image" button after switching displays, all previous tsne-static displays will
-                    // also be downloaded becuase event listeners are not removed. So, I will remove the button and re-add it.
-                    // Source -> https://stackoverflow.com/a/9251864
-
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
-
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
-                        // get the download URL
-                        await this.downloadScanpyImage(display, false);
-                    });
-                }
-
-            } else if (display.plot_type === "svg") {
-                await this.renderSVG(display, this.svgScoringMethod, otherOpts);
-
-                const downloadSVG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadSVG) {
-
-                    const newDownloadSVG = downloadSVG.cloneNode(true);
-                    downloadSVG.parentNode.replaceChild(newDownloadSVG, downloadSVG);
-
-                    newDownloadSVG.classList.remove("is-hidden");
-                    newDownloadSVG.addEventListener("click", async (event) => {
-                        await this.downloadSVG(display);
-                    });
-                }
-
-            } else if (display.plot_type === "spatial_panel") {
-                await this.renderSpatialPanelDisplay(display, otherOpts);
-                // Determine how "download_png" is handled for scanpy plots
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
-
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
-                        // get the download URL
-                        await this.downloadSpatialHTML(display);
-                    });
-                }
-            } else if (display.plot_type === "gosling") {
-
-                // Unset the autoGridRows of the parent selector
-                const parentSelector = this.parentTileGrid.selector;
-                if (parentSelector) {
-                    document.querySelector(parentSelector).style.gridAutoRows = "unset";
-                }
-
-                await this.renderGoslingDisplay(display, otherOpts);
-
-                // Determine how "download_png" is handled for gosling plots
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
-
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
-
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
-                        // get the download URL
-                        await this.downloadGoslingPNG(display);
-                    });
-                }
-
-            } else if (this.type === "multi") {
-                if (mgScanpyPlots.includes(display.plot_type)) {
-                    // Render multi-gene scanpy display
-                    await this.renderScanpyDisplay(display, true, otherOpts);
-
-                    // Determine how "download_png" is handled for scanpy plots
-                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                    if (downloadPNG) {
-                        // See note for single-gene TSNE static display
-                        const newDownloadPNG = downloadPNG.cloneNode(true);
-                        downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
-
-                        newDownloadPNG.classList.remove("is-hidden");
-                        newDownloadPNG.addEventListener("click", async (event) => {
-                            // get the download URL
-                            await this.downloadScanpyImage(display, true);
-                        });
-
-                    }
-
-                } else {
-                    await this.renderMultiGeneDisplay(display, otherOpts);
-                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                    if (downloadPNG) {
-
-                        const newDownloadPNG = downloadPNG.cloneNode(true);
-                        downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
-
-                        newDownloadPNG.classList.remove("is-hidden");
-                        newDownloadPNG.addEventListener("click", async (event) => {
-                            await this.downloadPlotlyImage(display, true);
-                        });
-                    }
-                }
-            } else {
+            const handlers = this.getDisplayHandlers(display);
+            if (!handlers) {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
             }
+            await handlers.render(otherOpts);
+            this.bindDownloadImage(handlers.download);
         } catch (error) {
             // we want to ensure other plots load even if one fails
             logErrorInConsole(error);
@@ -1634,6 +1625,100 @@ class DatasetTile {
             createCardMessage(this.tile.tileId, "danger", error.message);
         }
 
+        // Let the page know this tile's display changed (e.g. to show/hide SVG-only controls)
+        document.dispatchEvent(new CustomEvent("tile-display-rendered", {
+            detail: { tileId: this.tile.tileId, plotType: this.currentPlotType }
+        }));
+    }
+
+    /**
+     * Returns the render and download functions for a display's plot type.
+     *
+     * @param {Object} display - The display object.
+     * @returns {{render: function(Object): Promise<void>, download: function(): Promise<void>}|null}
+     *     render takes the request options (e.g. an abort signal). Null if the plot type is not supported.
+     */
+    getDisplayHandlers(display) {
+        const plotType = display.plot_type;
+
+        if (plotlyPlots.includes(plotType)) {
+            return {
+                render: (otherOpts) => this.renderPlotlyDisplay(display, otherOpts),
+                download: () => this.downloadPlotlyImage(display),
+            };
+        }
+        if (scanpyPlots.includes(plotType)) {
+            return {
+                render: (otherOpts) => this.renderScanpyDisplay(display, false, otherOpts),
+                download: () => this.downloadScanpyImage(display, false),
+            };
+        }
+        if (plotType === "svg") {
+            return {
+                render: (otherOpts) => this.renderSVG(display, this.svgScoringMethod, otherOpts),
+                download: () => this.downloadSVG(display),
+            };
+        }
+        if (plotType === "spatial_panel") {
+            return {
+                render: (otherOpts) => this.renderSpatialPanelDisplay(display, otherOpts),
+                download: () => downloadSpatialHTML(this.dataset.share_id, display.plotly_config.gene_symbol),
+            };
+        }
+        if (plotType === "gosling") {
+            return {
+                render: async (otherOpts) => {
+                    // Single-dataset views show the whole Gosling embedding, so lift this tile's max-height.
+                    // Only this tile is changed; changing the grid's rows would resize every other tile mid-render.
+                    if (this.parentTileGrid.type === "dataset") {
+                        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+                        if (tileElement) tileElement.style.maxHeight = "none";
+                    }
+                    await this.renderGoslingDisplay(display, otherOpts);
+                },
+                download: () => this.downloadGoslingPNG(display),
+            };
+        }
+        if (this.type === "multi") {
+            if (mgScanpyPlots.includes(plotType)) {
+                return {
+                    render: (otherOpts) => this.renderScanpyDisplay(display, true, otherOpts),
+                    download: () => this.downloadScanpyImage(display, true),
+                };
+            }
+            return {
+                render: (otherOpts) => this.renderMultiGeneDisplay(display, otherOpts),
+                download: () => this.downloadPlotlyImage(display, true),
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Shows the tile's "Download image" menu item and makes it download the current display.
+     *
+     * @param {function(): Promise<void>} downloadFn - Downloads the current display.
+     */
+    bindDownloadImage(downloadFn) {
+        const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+        if (!downloadImage) return;
+
+        // Replace the menu item to drop the previous display's click listener. Otherwise, after switching
+        // displays, one click would download every display shown so far. Source -> https://stackoverflow.com/a/9251864
+        const newDownloadImage = downloadImage.cloneNode(true);
+        downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
+
+        newDownloadImage.classList.remove("is-hidden");
+        newDownloadImage.addEventListener("click", async () => {
+            try {
+                await downloadWithMetadata(this.dataset.share_id, downloadFn);
+            } catch (error) {
+                // e.g. the server could not export the image
+                logErrorInConsole(error);
+                const serverMessage = error?.response?.data?.message;
+                createToast(`The image could not be downloaded${serverMessage ? ` (${serverMessage})` : ""}. Please contact the gEAR team if this continues.`);
+            }
+        });
     }
 
     /**
@@ -1646,24 +1731,16 @@ class DatasetTile {
      */
     async renderGoslingDisplay(display, otherOpts) {
         const datasetId = display.dataset_id;
-        const orgId = this.dataset.organism_id;
         const plotConfig = display.plotly_config;
-        const assembly = plotConfig.assembly;
-        const ucscHubUrl = plotConfig.hubUrl;
         const zoom = this.isZoomed;
-        const positionArr = ["", ""]; // [leftPosition, rightPosition]
-        let hiCFound = false;
 
-        let embedFn = null
+        let embedFn = null;
         try {
-            const gos = await import('https://esm.sh/gosling.js@1.0.6');
-            // prefer named export, then try default, then fallback to the module itself
-            embedFn = gos.embed ?? gos.default?.embed;
-        // use mod
+            embedFn = await loadGoslingEmbed();
         } catch (err) {
             logErrorInConsole(err);
             createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer.");
-            return
+            return;
         }
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
@@ -1671,23 +1748,16 @@ class DatasetTile {
         plotContainer.replaceChildren();    // erase plot
         createCardMessage(this.tile.tileId, "info", "Loading epigenome display...");
 
-        let spec;
+        // Saved ranges to reopen at, if this display is a saved view
+        const session = resolveGoslingSession(plotConfig, plotConfig.gene_symbol, zoom);
+
+        let data;
         try {
-            const data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
+            data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts, session)
             if (data?.success < 1) {
                 const message = data?.message || "Failed to fetch Gosling display data.";
                 throw new Error(message);
             }
-            // spec is a JSON string which needs to be a JSON object
-            spec = (typeof data.spec === "string") ? JSON.parse(data.spec) : data.spec;
-
-            positionArr[0] = data.position;
-            if (zoom) {
-                positionArr[1] = data.position;
-            }
-
-            hiCFound = data?.hic_found || false;
-
         } catch (error) {
             logErrorInConsole(error);
             const message = error?.message || "An error occurred while fetching the Gosling display data.";
@@ -1695,111 +1765,45 @@ class DatasetTile {
             return;
         }
 
-        //console.info(spec);
+        // spec is a JSON string which needs to be a JSON object
+        const spec = (typeof data.spec === "string") ? JSON.parse(data.spec) : data.spec;
 
-        const goslingContainer = document.createElement("div");
-        goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
-        goslingContainer.style.width = "100%";
-        goslingContainer.style.boxSizing = "border-box";
-        goslingContainer.style.marginTop = "5px";
-        plotContainer.replaceChildren();    // erase card message
-        plotContainer.append(goslingContainer);
-
-        // Themes -> https://gosling-lang.org/themes/
-        const embedOpts = { "padding": 0, "theme": null };
-        // NOTE: re-embedding does work but it causes some stability issues
-        let goslingApi = null;
         try {
-            goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
-            this.goslingApi = goslingApi; // Store the gosling API for future use (i.e. zooming to gene from search)
+            // Store the Gosling API for later use (e.g. PNG download)
+            this.goslingApi = await renderGoslingPlot(embedFn, plotContainer, spec, {
+                tileId: this.tile.tileId,
+                zoom,
+                position: data.position,
+                hicFound: data?.hic_found || false,
+                assembly: plotConfig.assembly,
+                hubUrl: plotConfig.hubUrl,
+                initialRegions: data?.regions || {},
+                panelBGene: session.panelBGene,
+                onSave: apiCallsMixin.sessionId ? (opts) => this.saveGoslingView(display, opts) : null,
+            });
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while rendering the Gosling display.");
-            return;
         }
+    }
 
-        if (!zoom) {
-            return;
-        }
-
-        // If the view is a zoomed view extra controls and events are added.
-        const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
-        const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
-
-        if (ucscHubUrl) {
-            // Add event listener to export button to open UCSC Genome Browser with hub URL and position
-            document.getElementById(exportButton.id).addEventListener('click', () => {
-                const url = "https://genome.ucsc.edu/cgi-bin/hgTracks";
-                // add DB and Hub parameters
-                const urlParams = new URLSearchParams({
-                    db: assembly,
-                    hubUrl: ucscHubUrl,    // preconfigured hub file
-                    ignoreCookie: 1, // Ignore cookie to ensure trackHub changes are respected. Unfortunately, adds default tracks.
-                })
-
-                if (positionArr) {
-                    // if an element in positionArr is not empty, add it to the URL, separated by a pipe
-                    const highlightedPositions = positionArr.filter(pos => pos).join('|');
-                    urlParams.set('highlight', highlightedPositions);
-                }
-
-                // open in a new tab
-                window.open(`${url}?${urlParams.toString()}`, '_blank');
-            });
-        }
-
-        // Add event listener to search button to zoom to gene in Panel B
-        document.getElementById(searchButton.id).addEventListener('click', async () => {
-            const geneInput = document.getElementById(`tile-${this.tile.tileId}-panel-b-gene-input`);
-            const gene = geneInput.value.trim();
-            if (!gene) {
-                alert("Please enter a gene name.");
-                return;
-            }
-
-            let panelBGeneResults = null;
-            try {
-                const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
-                panelBGeneResults = panelBData[gene.toLowerCase()];
-            } catch (error) {
-                console.error("Error searching for gene:", error);
-                createToast(`An error occurred while searching for gene: ${gene}`);
-            }
-
-            const geneData = panelBGeneResults?.by_organism[orgId];
-            if (!geneData || geneData.length === 0) {
-                alert(`Gene ${gene} not found.`);
-                return;
-            }
-            // Parse the first result (assuming it's the most relevant)
-            const geneInfo = JSON.parse(geneData[0]);
-            // Get start, end, strand, chromosome (as molecule
-            const start = geneInfo.start;
-            const end = geneInfo.stop;
-            //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
-            let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
-            // if chr is a number, convert it to a string with "chr" prefix
-            if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
-                chr = `chr${chr}`;
-            }
-            // if chr is MT, convert to "chrM"
-            if (chr === "MT") {
-                chr = "chrM";
-            }
-
-            const basePadding = 1500; // Base padding for zooming
-            //const basePadding = 0; // Base padding for zooming
-
-            const paddingToUse = hiCFound ? basePadding * 500 : basePadding;
-
-            const rightPosition = `${chr}:${start}-${end}`;
-            const positionStr = `${assembly}.${rightPosition}`; // Update the global position variable
-            positionArr[1] = positionStr;
-            await goslingApi.zoomTo("right-annotation", rightPosition, paddingToUse); // track name, position, padding, duration (ms)
-
-            // TODO:  if Hi-C data is found, add an annotation to the gene position
-
-        });
+    /**
+     * Saves the current Gosling view as a new display for this user. The tile keeps showing the
+     * current display; the new one is added to the dataset's display list so it can be chosen.
+     *
+     * @param {Object} display - The display being shown.
+     * @param {Object} opts - From the "Save display" form.
+     * @param {string} opts.label - Name for the new display.
+     * @param {boolean} opts.makeDefault - True to make it the user's default display for the dataset.
+     * @param {Object} opts.state - The current view ({panelA, panelB, panelBGene}).
+     * @returns {Promise<void>}
+     */
+    async saveGoslingView(display, { label, makeDefault, state }) {
+        const plotConfig = buildGoslingSessionConfig(display.plotly_config, display.plotly_config.gene_symbol, state);
+        const newDisplay = await saveGoslingSession({ datasetId: display.dataset_id, label, makeDefault, plotConfig });
+        if (!newDisplay) return;
+        // The zoomed tile shares its dataset object with the grid tile, so both see the new display
+        this.dataset.userDisplays?.push(newDisplay);
     }
 
     /**
@@ -1881,11 +1885,11 @@ class DatasetTile {
 
         // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
-        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
+        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "config");
         Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, customConfig);
         // ! Occasionally get a "something went wrong with axis scaling" error. This seems to arise if the colorbar is too small
 
-        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
         // Attach tooltips for any truncated axis labels
@@ -1953,9 +1957,9 @@ class DatasetTile {
         }
         // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
-        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
+        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "config");
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
-        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "layout");
         Plotly.relayout(plotlyPreview.id, customLayout);
 
         // Attach tooltips for any truncated axis labels
@@ -2264,251 +2268,25 @@ class DatasetTile {
         colorSVG(data, this.dataset.id, config, containerInfo, svgScoringMethod);
     }
 
+    /**
+     * Renders a spatial panel display.
+     *
+     * @param {Object} display - The display object.
+     * @param {Object} otherOpts - Request options (e.g. an abort signal).
+     * @returns {Promise<void>}
+     */
     async renderSpatialPanelDisplay(display, otherOpts) {
-
         const tileId = this.tile.tileId;
-        const tileElement = document.getElementById(`tile-${tileId}`);
+        const cardImage = document.querySelector(`#tile-${tileId} .card-image`);
+        if (!cardImage) return; // tile was removed
 
-        // Add loading message
-        createCardMessage(tileId, "info", "Loading spatial display...");
-
-        const plotConfig = display.plotly_config;
-
-        const prepPlotConfig = {
-            gene_symbol: plotConfig.gene_symbol,
-            projection_id: plotConfig.projection_id,
-            is_zoomed: this.isZoomed,
-            expression_min_clip: plotConfig.expression_min_clip,
-            disable_save: !apiCallsMixin.sessionId && this.isZoomed,  // If not logged in, then do not allow saving the display
-        }
-
-        // Grab the saved range from the global state if it exists and apply it to the prepPlotConfig
-        const savedRange = window.gearSpatialViewState?.[this.dataset.id];
-        if (savedRange) {
-            Object.assign(prepPlotConfig, savedRange);
-        }
-
-        try {
-            const data = await apiCallsMixin.prepSpatialPanelData(this.dataset.id, prepPlotConfig, otherOpts);
-            if (data?.success < 1) {
-                throw new Error (data?.message ? data.message : "Unknown error.")
-            }
-            if (! data?.script) {
-                throw new Error("Could not retrieve script for spatial display.");
-            }
-
-            const script = data.script;   // store the script for future use (i.e. when gene is switched)
-
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(script, 'text/html');
-            const parsedScript = doc.querySelector('script');
-
-            const cardImage = tileElement.querySelector('.card-image');
-            cardImage.replaceChildren();
-
-            // Enforce boundaries so Panel's stretch_both has walls to push against
-            cardImage.style.display = "block";
-            cardImage.style.width = "100%";
-            if (!self.isZoomed) {
-                cardImage.style.minHeight = "360px";
-            }
-
-            // inject the script into the card to trigger loading the Panel app (Bokeh server_document)
-            if (parsedScript) {
-                const scriptElement = document.createElement('script');
-
-                // Copy attributes over
-                Array.from(parsedScript.attributes).forEach(attr => {
-                    scriptElement.setAttribute(attr.name, attr.value);
-                });
-
-                // Copy the actual inline JavaScript payload
-                scriptElement.textContent = parsedScript.textContent;
-
-                // 1. Create a true absolute overlay to hide the empty white layout
-                const loader = document.createElement('div');
-                // Use your existing gEAR classes if you have them, or use this default spinner
-                loader.innerHTML = `
-                    <div style="width: 3rem; height: 3rem; border: 4px solid #f3f3f3; border-top: 4px solid #544A8E; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <div style="margin-top: 15px; font-weight: bold; color: #444;">Loading spatial architecture...</div>
-                    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-                `;
-                loader.style.position = "absolute";
-                loader.style.top = "0";
-                loader.style.left = "0";
-                loader.style.width = "100%";
-                loader.style.height = "100%";
-                loader.style.backgroundColor = "white"; // Solid white perfectly hides the rendering boxes
-                loader.style.display = "flex";
-                loader.style.flexDirection = "column";
-                loader.style.justifyContent = "center";
-                loader.style.alignItems = "center";
-                loader.style.zIndex = "9999";
-
-                // The parent container MUST be relative so the absolute overlay fits perfectly inside it
-                cardImage.style.position = "relative";
-                cardImage.appendChild(loader);
-
-                // 2. Indestructible Polling Loop
-                let attempts = 0;
-                const maxAttempts = 300; // 20 seconds maximum wait time (100ms * 300)
-
-                const checkRender = setInterval(() => {
-                    attempts++;
-
-                    // Look for ANY physical plot boundary Bokeh creates, not just a canvas.
-                    // .bk-panel-models-layout-Column
-                    const plotElements = cardImage.querySelectorAll('.bk-panel-models-layout-Column');
-
-                    if (plotElements.length > 0) {
-                        // The DOM structure has arrived! Stop polling.
-                        clearInterval(checkRender);
-
-                        loader.style.transition = "opacity 0.3s ease";
-                        loader.style.opacity = "0";
-
-                        // Give Datashader/WebGL an extra 300ms to push the final pixel colors
-                        // into those containers before lifting the curtain.
-                        setTimeout(() => {
-
-                            loader.remove();
-                        }, 300);
-                    }
-                    else if (attempts >= maxAttempts) {
-                        // FAILSAFE: If the backend crashed silently, do not trap the user.
-                        clearInterval(checkRender);
-                        createCardMessage(tileId, "danger", "Spatial display failed to load. Please check the dataset or refresh the page.");
-                        // Remove the loader after showing the error for 3 seconds so they can see any Bokeh error text
-                        setTimeout(() => loader.remove(), 200);
-                    }
-                }, 100); // Check the DOM every 1/10th of a second
-
-                // Append and execute
-                cardImage.appendChild(scriptElement);
-            }
-
-            // Listen to various events
-
-            const eventName = `save_spatial_display_${this.dataset.id}`;
-
-            // Remove any previously registered listener to prevent double-firing
-            if (this._saveSpatialHandler) {
-                window.removeEventListener(eventName, this._saveSpatialHandler);
-                this._saveSpatialHandler = null;
-            }
-
-            // Add the "save" event listener
-            this._saveSpatialHandler = async (event) => {
-                const { displayName, makeDefault } = event.detail;
-
-
-                try {
-                    if (!apiCallsMixin.sessionId) {
-                        createToast("Must be logged in to save as a display.");
-                        throw new Error("Must be logged in to save as a display.");
-                    }
-                    await this.saveSpatialParameters(displayName, makeDefault, plotConfig);
-                    createToast("Spatial display saved successfully!", "is-success");
-                } catch (error) {
-                    console.error(error);
-                }
-            };
-            if (this.isZoomed) {
-                window.addEventListener(eventName, this._saveSpatialHandler);
-            }
-
-        } catch (error) {
-            createToast(`Error rendering spatial display: ${error.message}`, "is-danger");
-            console.trace(error);
-        } finally {
-            return;
-        }
-    }
-
-    async downloadSpatialHTML(display) {
-        // These are grabbed from the state sync within the Panel app
-        if (!window.gearSpatialUrlParams) {
-            createToast("Cannot download HTML because spatial display parameters are not available.", "is-warning");
-            return;
-        }
-
-        const urlParams = window.gearSpatialUrlParams;
-        urlParams.append("_", Date.now());   // add timestamp to prevent caching issues
-
-        // Must hit regular URL and not websocket (ws) version
-        // because the HTTP version is unidirectional and will return response data
-        const url = `/panel/spatial_download?${urlParams.toString()}`;
-        // Call download endpoint which will download a PNG
-        try {
-            const response = await fetch(url, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "text/html",
-                    "X-Session-ID": apiCallsMixin.sessionId || "",
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(`Error downloading HTML: ${response.statusText}`);
-            }
-
-            // Wanted to convert to PDF but the plots are in JS, which is not executed inside the returned HTML
-            // when added to the DOM. So HTML will have to do.
-
-            // The response will be a blob representing the HTML file
-            const blob = await response.blob();
-            const downloadUrl = URL.createObjectURL(blob);
-
-            // Create a hidden link to trigger the download
-            const hiddenLink = document.createElement("a");
-            hiddenLink.href = downloadUrl;
-            hiddenLink.download = `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.html`;
-            document.body.appendChild(hiddenLink);
-            hiddenLink.click();
-
-            // Clean up
-            URL.revokeObjectURL(downloadUrl);
-            hiddenLink.remove();
-
-        } catch (error) {
-            console.error(error);
-            createToast(`Error downloading PNG: ${error.message}`, "is-danger");
-        }
-
-    }
-
-    async saveSpatialParameters(displayName, makeDefault, plotConfig) {
-        if (this.type === "multi" ) {
-            throw new Error("Saving spatial display is not supported for multi-gene displays.");
-        }
-        const datasetId = this.dataset.id;
-        const plotType = "spatial_panel";
-        const isMultigene = (this.type === "single") ? 0 : 1;  // Should be 0 for now.
-
-        const savedRange = window.gearSpatialViewState?.[this.dataset.id];
-        if (savedRange) {
-            Object.assign(plotConfig, savedRange);
-        }
-
-        try {
-            const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, plotConfig);
-            if (!saveSuccess) {
-                throw new Error("Could not save this new display. Please contact the gEAR team.");
-            }
-            createToast("Display saved.", "is-success");
-
-            if (!makeDefault) return;
-
-            const {success: defaultSuccess} = await apiCallsMixin.saveDefaultDisplay(datasetId, displayId, isMultigene);
-            if (!defaultSuccess) {
-                throw new Error("Could not make this display as your default, but it is saved. Please contact the gEAR team.");
-            }
-
-        } catch (error) {
-            logErrorInConsole(error);
-            createToast(error);
-            return
-        }
+        await renderSpatialPanel(cardImage, display.plotly_config, {
+            tileId,
+            datasetId: this.dataset.id,
+            isZoomed: this.isZoomed,
+            isMultigene: this.type === "multi",
+            showCardMessage: (level, message) => createCardMessage(tileId, level, message),
+        }, otherOpts);
     }
 
     /**
@@ -2521,6 +2299,24 @@ class DatasetTile {
         }
         this.controller = new AbortController(); // Create new controller for new set of frames
 
+    }
+
+    /**
+     * Clears inline styles that display-specific renderers set on this tile, so they do not carry
+     * over when the tile shows a different display type. The .card-image height is left alone,
+     * since resizeCardImage() and renderOrthologDropdown() manage it.
+     */
+    resetTileStyles() {
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!tileElement) return;
+        tileElement.style.maxHeight = "";    // set for gosling displays
+
+        const cardImage = tileElement.querySelector(".card-image");
+        if (!cardImage) return;
+        // set for spatial panel displays
+        for (const prop of ["display", "width", "minHeight", "position"]) {
+            cardImage.style[prop] = "";
+        }
     }
 
     /**
@@ -2586,54 +2382,4 @@ const createCardMessage = (tileId, level, message, id) => {
     messageElt.classList.add(textLevel, bgLevel, "p-2", "m-2", "has-text-weight-bold");
     messageElt.textContent = message;
     cardContent.append(messageElt);
-}
-
-const createExportButton = (tileId, selectorId) => {
-    // Add a button to export the current view to UCSC Genome Browser
-    const exportButton = document.createElement('button');
-    exportButton.id = `tile-${tileId}-ucsc-export-button`;
-    exportButton.textContent = 'View in UCSC Genome Browser';
-    // stylize the button
-    exportButton.style.zIndex = '1000';
-    exportButton.style.padding = '10px';
-    exportButton.style.marginBottom = '10px';
-    exportButton.style.marginRight = '10px';
-    exportButton.style.backgroundColor = 'purple'; // Purple background
-    exportButton.style.color = 'white'; // White text
-    exportButton.style.border = 'none';
-    exportButton.style.borderRadius = '5px';
-    exportButton.style.cursor = 'pointer';
-    document.getElementById(selectorId).prepend(exportButton);
-    return exportButton
-}
-
-const createPanelBSearchBox = (tileId, selectorId) => {
-    // Add a search box that will link to Panel B
-    const searchBox = document.createElement('div');
-    searchBox.id = `tile-${tileId}-panel-b-gene-input-search;`
-    searchBox.style.float = "right";
-
-    const searchInput = document.createElement('input');
-    searchInput.id = `tile-${tileId}-panel-b-gene-input`;
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Enter gene name';
-    searchInput.style.marginRight = '4px'; // for some reason the label and input are not aligned propely with the panel A search box outside the gosling container
-
-    // Add label for the input
-    const searchLabel = document.createElement('label');
-    searchLabel.setAttribute('for', searchInput.id);
-    searchLabel.textContent = 'Search for a gene in Panel B:';
-    searchLabel.style.fontWeight = 'bold';
-    searchLabel.style.color = "black";
-    searchLabel.style.marginRight = '4px';
-
-    const searchButton = document.createElement('button');
-    searchButton.id = `tile-${tileId}-panel-b-search-button`;
-    searchButton.textContent = 'Search';
-
-    searchBox.appendChild(searchLabel);
-    searchBox.appendChild(searchInput);
-    searchBox.appendChild(searchButton);
-    document.getElementById(selectorId).before (searchBox);
-    return searchButton;
 }

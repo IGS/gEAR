@@ -1,5 +1,14 @@
+"""
+gosling_spec.py - Build Gosling genome browser specs from UCSC track hubs.
+
+Serves /plot/<dataset_id>/gosling in www/api/api.py. Hub tracks (BigWig, BED,
+BigInteract, VCF, Hi-C, multiWig) are converted into a Gosling JSON spec
+zoomed to a requested gene.
+"""
+
 import ipaddress
 import os
+import re
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -10,11 +19,14 @@ import gosling as gos
 import requests
 from flask import request
 from flask_restful import Resource
+from gear.colorblind import categorical_colors
 from gear.trackhub import (
     fetch_trackdb_path,
     parse_hub_from_file,
     parse_tracks_from_trackdb,
 )
+
+from .common import ANNOTATION_BEDDB_UID, HIGLASS_URL
 
 """
 NOTE: The "gos" documentation kind of sucks, and requires some trial and error to figure out where things go.
@@ -52,7 +64,7 @@ ASSEMBLY_TO_CHROMSIZES_FILE = {
     "hg19": "hg19.chromInfo.txt",
     "hg38": "hg38.chromInfo.txt",
     "mm10": "mm10.chromInfo.txt",
-    # "mm39": "mm39.chromInfo.txt",
+    "mm39": "mm39.chromInfo.txt",
     "rn6": "rn6.chromInfo.txt",  # rat
     # "calJac3": "calJac3.chromInfo.txt", # marmoset
 }
@@ -74,6 +86,7 @@ def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
     Returns:
         str or None: The resolved URL, or None if URL cannot be determined.
     """
+
     # Gosling context: prefer gos_url if available
     if use_gosling and track.get("gos_url"):
         return track["gos_url"]
@@ -91,49 +104,49 @@ def _validate_hub_url(hub_url: str) -> None:
     Raises:
         ValueError: If URL is invalid or points to a disallowed host.
     """
+    domain_url = geardb._read_domain_url()
+
+    if not domain_url:
+        raise ValueError("Domain URL not configured. Cannot process track hub.")
+
+    # Build allowed domains list from configuration
+    domain_hostname = urlparse(domain_url).hostname
+    if not domain_hostname:
+        raise ValueError("Domain URL is not a valid URL. Cannot process track hub.")
+    allowed_domains = [domain_hostname.lower()]
+
+    # Allow internal Docker service name in development only
+    if os.getenv("ENVIRONMENT", "production").lower() == "development":
+        allowed_domains.append("umgear.org")    # A lot of testable data is on the main gEAR server
+        allowed_domains.extend(["web", "localhost", "127.0.0.1"])
+
+    parsed = urlparse(hub_url)
+
+    # Ensure scheme is http or https
+    if parsed.scheme not in ["http", "https"]:
+        raise ValueError("Invalid URL scheme. Only http and https are allowed.")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("Invalid URL: missing hostname.")
+    host = hostname.lower()
+
     try:
-        domain_url = geardb._read_domain_url()
-
-        if not domain_url:
-            raise ValueError("Domain URL not configured. Cannot process track hub.")
-
-        # Build allowed domains list from configuration
-        parsed_domain_url = urlparse(domain_url)
-        domain_url = parsed_domain_url.hostname
-        allowed_domains = [domain_url]
-
-        # Allow internal Docker service name in development only
-        if os.getenv("ENVIRONMENT", "production").lower() == "development":
-            allowed_domains.extend("umgear.org")    # A lot of testable data is on the main gEAR server
-            allowed_domains.extend(["web", "localhost", "127.0.0.1"])
-
-        parsed = urlparse(hub_url)
-
-        # Ensure scheme is http or https
-        if parsed.scheme not in ["http", "https"]:
-            raise ValueError("Invalid URL scheme. Only http and https are allowed.")
-
-        hostname = parsed.hostname
-        if not hostname:
-            raise ValueError("Invalid URL: missing hostname.")
-
-        # Reject private/internal IP addresses
-        try:
-            ip = ipaddress.ip_address(hostname)
-            if ip.is_private or ip.is_loopback or ip.is_link_local:
-                raise ValueError(f"Access to private/internal IP address {hostname} is not allowed.")
-        except ValueError as e:
-            # Not an IP address, check domain whitelist
-            error_msg = str(e)
-            if "does not appear to be" not in error_msg and "is not a valid" not in error_msg:
-                raise
-
-            # Check against whitelist (case-insensitive)
-            if not any(hostname.lower().endswith(domain.lower()) for domain in allowed_domains):
-                raise ValueError(f"Hub domain '{hostname}' is not in the allowed list.")
-
+        ip = ipaddress.ip_address(host)
     except ValueError:
-        raise
+        ip = None
+
+    if ip is not None:
+        # IP addresses must be listed exactly, e.g. a server with no DNS name yet, or 127.0.0.1 in development
+        if str(ip) in allowed_domains:
+            return
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            raise ValueError(f"Access to private/internal IP address {hostname} is not allowed.")
+        raise ValueError(f"Hub IP address '{hostname}' is not in the allowed list.")
+
+    # Check against whitelist (case-insensitive): the domain itself or a subdomain of it
+    if not any(host == d or host.endswith("." + d) for d in allowed_domains):
+        raise ValueError(f"Hub domain '{hostname}' is not in the allowed list.")
 
 
 def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
@@ -210,7 +223,7 @@ def build_assembly_array(assembly) -> list:
     Builds a 2D array of chromosome names and sizes for a given genome assembly.
     Given an assembly identifier (e.g., 'hg38', 'mm10'), this function retrieves the corresponding chromosome sizes file,
     parses its contents, and returns a list of [chromosome, size] pairs. The chromosome sizes file is expected to be
-    tab-delimited with at least three columns, where the first column is the chromosome name and the third column is the size.
+    whitespace-delimited, where the first column is the chromosome name and the last column is the size. Blank lines are skipped.
     Args:
         assembly (str): The genome assembly identifier (e.g., 'hg38', 'mm10').
     Returns:
@@ -228,7 +241,7 @@ def build_assembly_array(assembly) -> list:
     # Strip out the port so we can use requests.get on it.
     genomes_base_url = GENOMES_ROOT
 
-    chromosome_sizes_url = genomes_base_url + "/" + assembly + "/" + chromosome_sizes_name
+    chromosome_sizes_url = f"{genomes_base_url}{assembly}/{chromosome_sizes_name}"
     if not chromosome_sizes_url:
         raise ValueError(f"Chromosome sizes URL for assembly {assembly} is not valid.")
 
@@ -242,10 +255,11 @@ def build_assembly_array(assembly) -> list:
         )
 
     for line in response.text.splitlines():
-        chromosome, size = line.strip().split(
-            "\t"
-        )  # my chrom sizes file has 0 in the middle column
-        assembly_array.append([chromosome, int(size)])
+        fields = line.split()
+        if not fields:
+            continue
+        # The size is the last column (older files had a 0 in a middle column)
+        assembly_array.append([fields[0], int(fields[-1])])
     return assembly_array
 
 
@@ -279,7 +293,7 @@ def build_assembly_json_from_array(assembly_array) -> list:
         values.append({"chrom": chromosome, "chromStart": 1, "chromEnd": size})
     return values
 
-def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
+def build_bed_annotation_tracks(assembly, zoom=False, title="left", colorblind=False):
     """
     Builds a Gosling view for gene and exon annotation tracks based on BED files for a given genome assembly.
 
@@ -291,6 +305,8 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         If True, returns zoomed annotation tracks using `build_bed_zoomed_annotation_tracks`. Default is False.
     title : str, optional
         The title or identifier for the annotation view. Default is "left".
+    colorblind : bool, optional
+        If True, color the strands with colorblind-friendly colors instead of dark blue/red. Default is False.
 
     Returns
     -------
@@ -309,21 +325,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     - The view includes text, rule, and rect tracks for gene names, gene regions, and exon regions, respectively.
     """
 
-    # These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
-    # I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
-
-    ANNOTATION_BEDDB_UID = {
-        "danRer10": "YwOpmCgUSqKdJSGtGXWeJw", # zebrafish
-        #"galGal6": "galGal6.annotation.beddb", # chicken - could not get to load
-        "hg19": "XXcPeaTRSiy8_yxNwjtzEQ",
-        "hg38": "GhiCXRRHTH2u-24jRq0HRQ",
-        "mm10": "VNbLgNO3T8uAcp_5vRFqdQ",
-        # "mm39": "mm39.annotation.beddb",
-        "rn6": "C6Tw-g54Rl602PqE62qTHw", # rat
-        # "calJac3": "calJac3.annotation.beddb", # marmoset
-    }
-
-    ANNOTATION_CONDENSED_HEIGHT = EXPANDED_HEIGHT # Always taller for annotations
+    ANNOTATION_CONDENSED_HEIGHT = 60 # Always taller for annotations
     #ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT * 2
     ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT
 
@@ -333,7 +335,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
             f"Assembly {assembly} is not supported or does not have a BEDdb UID."
         )
 
-    beddb_url = f"https://higlass.umgear.org/api/v1/tileset_info/?d={beddb_uid}"
+    beddb_url = f"{HIGLASS_URL}/tileset_info/?d={beddb_uid}"
 
     # chrom, start, end, name, score, strand, exon_start, exon_end
     beddb_data = gos.beddb(
@@ -352,8 +354,9 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         ]
     )
 
-    #MINUS_ROW_POSITION = 50 if zoom else 35
-    MINUS_ROW_POSITION = 25
+    # Making these position and padding values precise, so the text from the first row
+    # does not overlap with the 2nd row while keeping track height as slim as possible
+    MINUS_ROW_POSITION = 51
 
     # These are shared amongst the genes and exons track
     condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION])  # type:ignore
@@ -361,7 +364,8 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     #row = expanded_row if zoom else condensed_row
     row=condensed_row
 
-    color = gos.Color(field="strand", type="nominal", domain=["+", "-"], range=["darkblue", "darkred"])  # type:ignore
+    strand_colors = categorical_colors(2) if colorblind else ["darkblue", "darkred"]
+    color = gos.Color(field="strand", type="nominal", domain=["+", "-"], range=strand_colors)  # type:ignore
     tooltip=[
                 gos.Tooltip(field="start", type="genomic", alt="Start Position"),  # type: ignore
                 gos.Tooltip(field="end", type="genomic", alt="End Position"),  # type: ignore
@@ -407,6 +411,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
 
     text_track = gene_track.mark_text().encode(
         text=gos.Text(field="name", type="nominal"),  # type: ignore
+        size=gos.Size(value=10),  # type: ignore
         style=gos.Style(dy=-10),  # type: ignore
     )
 
@@ -571,7 +576,7 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bool=False, prefix:str="", position_str:str="NA"):
+def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bool=False, prefix:str="", position_str:str="NA", colorblind:bool=False):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
@@ -582,6 +587,9 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
             - "bigDataUrl" (str): The URL to the data file for the track.
             - Optional: "color" (str), and other track-specific attributes.
         zoom (bool, optional): If True, builds both left and right tracks for zoomed-in views. Defaults to False.
+        colorblind (bool, optional): If True, replace the hub's track colors (including multiWig overlay members)
+            with colorblind-friendly colors, assigned in track order, and use a colorblind-friendly Hi-C colorscale.
+            Defaults to False.
 
     Returns:
         tuple:
@@ -600,11 +608,16 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
         "bigBed": BedSpec,
         "vcfTabix": VcfSpec,
         "hic": HiCSpec,
+        "bigInteract": BigInteractSpec,
     }
 
     hic_found = False
 
     multiwig_groups = {}
+
+    # In colorblind mode, data tracks take palette colors in hub order (so both zoom panels match).
+    # The first two colors are left to the gene annotation strands.
+    track_palette = iter(categorical_colors(len(track_descriptors) + 2)[2:]) if colorblind else None
 
     # Build each individual track based on its type
     for group_track in track_descriptors:
@@ -626,7 +639,8 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         track_type = group_track.get("type", "")
         spec_builder_class = TRACK_TYPE_2_SPEC.get(track_type, None)
-        if not spec_builder_class:
+
+        if spec_builder_class is None:
             print(
                 f"WARNING: Unsupported track type '{track_type}' for track '{group_track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
@@ -644,6 +658,8 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         # Get other attributes to pass to the class
         color = group_track.get("color", "orange")  # Default color if not specified
+        if track_palette is not None and spec_builder_class != HiCSpec:
+            color = next(track_palette)
 
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
         title = group_track.get("shortLabel", group_track.get("longLabel", "bigDataUrl"))
@@ -652,9 +668,16 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         ident = group_track.get("track") or title.replace(" ", "_").lower()  # Use track ID if available, otherwise a sanitized version of the title
 
+        # add any "gos_*" properties to kwargs
+        kwargs = {}
+        for key, value in group_track.items():
+            if key.startswith("gos_"):
+                kwargs[key] = value
+
         try:
             spec_builder = spec_builder_class(
                 data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility,
+                colorblind=colorblind, **kwargs
             )
 
             # If our datatype is HiC, do two things:
@@ -685,8 +708,8 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
         multiwig_view_obj = MultiWigSpec(title=parent_id, ident=parent_id, zoom=zoom, visibility=group_tracks["visibility"])
         for group_track in group_tracks["tracks"]:
             track_obj = BigWigSpec(
-                data_url=_resolve_track_url(group_track, use_gosling=True),
-                color=group_track.get("color", "orange"),
+                data_url = _resolve_track_url(group_track, use_gosling=True),
+                color=next(track_palette) if track_palette is not None else group_track.get("color", "orange"),
                 ident=group_track.get("track") or group_track.get("shortLabel", "").replace(" ", "_").lower(),
                 zoom=zoom
             )
@@ -735,45 +758,34 @@ def build_region_view(parent_view_left, parent_view_right=None):
 
     return region_view
 
-def get_gene_info(gene_symbol, dataset_id, assembly):
+def get_gene_info(gene_symbol, assembly):
     """
-    Fetches gene coordinate information for a given gene symbol from the geardb database.
-
-    Args:
-        gene_symbol (str): The gene symbol to look up.
-        dataset_id (str or int): The identifier for the dataset to query.
-        assembly (str): The genome assembly name (e.g., 'hg38', 'mm10').
+    Fetches gene coordinate information for a given gene symbol from the assembly stored in HiGlass
 
     Returns:
-        tuple:
-            - position_str (str): The genomic position in the format '{assembly}.chr:start-end', suitable for UCSC Genome Browser.
-            - gene_symbol (str): The canonical gene symbol as stored in the database.
-
-    Notes:
-        - If the gene symbol is not found in the dataset, returns ("NA", "NA").
-        - Chromosome names are normalized to UCSC-style (e.g., 'chr1', 'chrX', 'chrM').
+        tuple: A tuple containing (position_str, gene_symbol) where position_str is in the
+            format 'assembly.chromosome:start-end' and gene_symbol is the official gene name.
     """
-    # Fetch gene coordinates from geardb
-    gene_info = geardb.get_gene_by_gene_symbol(gene_symbol, dataset_id)
-    if not gene_info:
+
+    try:
+        response = requests.get(f"http://127.0.0.1/api/higlass/genes/{gene_symbol}", params={"assembly": assembly})
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Failed to retrieve gene information for {gene_symbol}", file=sys.stderr)
+        return ("NA", "NA")
+
+    gene_info = response.json()
+    if gene_info is None:
         print(
-            f"WARNING: Gene symbol '{gene_symbol}' not found in dataset {dataset_id}; cannot zoom track.",
+            f"WARNING: Gene symbol '{gene_symbol}' not found in assembly {assembly}; cannot zoom track.",
             file=sys.stderr,
         )
         return ("NA", "NA")
 
-    chrom = gene_info.molecule or "unknown"
-
-    # if chrom is a number, convert it to a string with "chr" prefix
-    if chrom.isdigit() or chrom in ["X", "Y"]:
-        chrom = f"chr{chrom}"
-    # if chrom is MT, convert to "chrM"
-    if chrom == "MT":
-        chrom = "chrM"
-
-    start = gene_info.start
-    end = gene_info.stop
-    gene_symbol = gene_info.gene_symbol # To use correct naming later
+    chrom = gene_info["chr"]
+    start = gene_info["txStart"]
+    end = gene_info["txEnd"]
+    gene_symbol = gene_info["geneName"] # To use correct naming later
 
     left_position = f"{chrom}:{start}-{end}"
     position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
@@ -799,6 +811,61 @@ def parse_position_str(position_str: str) -> tuple:
     except Exception as e:
         print(f"ERROR: Failed to parse position string '{position_str}': {e}", file=sys.stderr)
         return None, None, None, None
+
+REGION_RE = re.compile(r"^([\w.\-]+):(\d+)-(\d+)$")
+
+def parse_region_str(region_str, assembly_array=None):
+    """
+    Parses a saved panel range ("chromosome:start-end", no assembly prefix) such as the
+    "panel_a" and "panel_b" query parameters.
+
+    Args:
+        region_str (str): The range to parse.
+        assembly_array (list, optional): [chromosome, size] pairs from build_assembly_array(). When given,
+            the chromosome must be one of them and the end is clamped to the chromosome size.
+
+    Returns:
+        tuple: (chromosome, start, end), or None if the range is missing or invalid.
+    """
+    if not region_str:
+        return None
+    match = REGION_RE.match(region_str.strip())
+    if not match:
+        return None
+    chromosome, start, end = match.group(1), int(match.group(2)), int(match.group(3))
+
+    if assembly_array is not None:
+        chrom_sizes = {chrom: int(size) for chrom, size in assembly_array}
+        if chromosome not in chrom_sizes:
+            return None
+        end = min(end, chrom_sizes[chromosome])
+
+    start = max(1, start)
+    if start >= end:
+        return None
+    return chromosome, start, end
+
+def set_view_region(view, region):
+    """
+    Sets a view's xDomain to an exact range (no padding). A child view's xDomain overrides the
+    one inherited from its parent, so this can be used on one panel of the region view.
+
+    Args:
+        view: A Gosling view object.
+        region (tuple): (chromosome, start, end) from parse_region_str().
+
+    Returns:
+        The updated view.
+    """
+    chromosome, start, end = region
+    return view.properties(xDomain=gos.GenomicDomain(chromosome=chromosome, interval=[start, end]))
+
+def region_to_str(region):
+    """Formats a (chromosome, start, end) tuple as "chromosome:start-end", or None."""
+    if not region:
+        return None
+    chromosome, start, end = region
+    return f"{chromosome}:{start}-{end}"
 
 def zoom_view_to_domain(view, position_str, hic_found=False):
     """
@@ -832,11 +899,21 @@ class Component(ABC):
     """Base class for anything that can be rendered in a Gosling layout."""
     @abstractmethod
     def render(self):
+        """
+        Return the Gosling object for this component.
+        """
         pass
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full"):
+    """
+    Abstract base for a single Gosling track built from a remote data file.
+
+    Extra keyword arguments (e.g. hub stanza fields such as "gos_" options) are set
+    as instance attributes.
+    """
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full", colorblind=False, **kwargs):
         self.data_url = data_url
+        self.colorblind = colorblind  # Use colorblind-friendly colorscales (e.g. Hi-C)
         self.color = color  # Passed as RGB string
         self.zoom = zoom
         self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
@@ -850,6 +927,10 @@ class TrackSpec(ABC):
             self.height = 0 # effectively hide it
         elif self.visibility == "full":
             self.height *= 1.5
+
+        if kwargs:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     @abstractmethod
     def get_encoding(self, width, height, prefix="", is_child=False):
@@ -889,16 +970,25 @@ class TrackSpec(ABC):
 
     @staticmethod
     def _validate_url_extension(url: str, valid_extensions: list[str]) -> None:
-        """Validate URL ends with one of the valid extensions."""
-        if not any(url.endswith(ext) for ext in valid_extensions):
+        """Validate URL ends with one of the valid extensions (case-insensitive)."""
+        normalized_url = url.lower()
+        normalized_extensions = [ext.lower() for ext in valid_extensions]
+
+        if not any(normalized_url.endswith(ext) for ext in normalized_extensions):
             extensions_str = ", ".join(valid_extensions)
             raise ValueError(f"Invalid URL: must end with {extensions_str}")
 
 class BamSpec(TrackSpec):
+    """
+    BAM coverage track. Currently disabled; the constructor raises NotImplementedError.
+    """
     def __init__(self, *args, **kwargs):
         raise NotImplementedError("BAM tracks are currently not supported due to performance issues. Please use BigWig or BigBed formats instead.")
 
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a coverage bar track for the BAM file, or None if the URL is invalid.
+        """
         url = self.data_url
         color = self.color
 
@@ -937,7 +1027,13 @@ class BamSpec(TrackSpec):
 
 
 class BedSpec(TrackSpec):
+    """
+    Tabix-indexed BED (.bed.gz) interval track.
+    """
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a rect track of the BED intervals, or None if the URL is invalid.
+        """
         url = self.data_url
         color = self.color
 
@@ -975,7 +1071,13 @@ class BedSpec(TrackSpec):
         return track
 
 class BigWigSpec(TrackSpec):
+    """
+    BigWig signal track drawn as an area chart.
+    """
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return an area track of the BigWig signal, or None if the URL is invalid.
+        """
         url = self.data_url
         color = self.color
 
@@ -1019,8 +1121,68 @@ class BigWigSpec(TrackSpec):
 
         return track
 
-class VcfSpec(TrackSpec):
+class BigInteractSpec(TrackSpec):
+    """
+    Splice-junction/interaction track drawn as arcs within the track.
+    """
+    # This is based on STAR splice-junction output, which is a tab-delimited file with the following columns:
+    # chr, start, end, strand, intron_motif, annotated, unique_reads, multi_reads, max_overhang
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a withinLink arc track; arcs are flipped if the "gos_flip" field is truthy.
+        """
+        url = self.data_url
+        color = self.color
+
+        flip = False
+        if hasattr(self, 'gos_flip'):
+            flip = True if self.gos_flip.lower() in ["true", "yes", "1"] else False
+
+        biginteract_data = gos.beddb(
+            url=url,
+            genomicFields=[
+                {"index": 1, "name": "start"},
+                {"index": 2, "name": "end"}
+            ],
+            valueFields=[
+                {"index": 0, "name": "chr", "type": "nominal"},
+                {"index": 3, "name": "strand", "type": "nominal"},
+            ],
+        )
+
+        track = (
+            gos.Track(
+                data=biginteract_data,  # pyright: ignore[reportArgumentType]
+            )
+            .mark_withinLink()
+            .encode(
+                x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
+                xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(flip=flip),
+                stroke=gos.Stroke(value=color),
+                strokeWidth=gos.StrokeWidth(value=1)
+            ).properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
+            )
+        )
+
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title,
+            )
+
+        return track
+
+class VcfSpec(TrackSpec):
+    """
+    Tabix-indexed VCF (.vcf.gz) variant track drawn as points.
+    """
+    def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a point track of the VCF variants, or None if the URL is invalid.
+        """
         url = self.data_url
         color = self.color
 
@@ -1057,7 +1219,13 @@ class VcfSpec(TrackSpec):
         return track
 
 class HiCSpec(TrackSpec):
+    """
+    Hi-C contact matrix track.
+    """
     def get_encoding(self, width, height, prefix="", is_child=False):
+        """
+        Return a matrix track colored by contact value.
+        """
         url = self.data_url
         #color = self.color  # colorscale instead of single color
 
@@ -1091,7 +1259,7 @@ class HiCSpec(TrackSpec):
                 xe=gos.Xe(field="xe", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 y=gos.Y(field="ys", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 ye=gos.Ye(field="ye", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
-                color=gos.Color(field="value", type="quantitative", range="bupu", legend=True),  # pyright: ignore[reportArgumentType]
+                color=gos.Color(field="value", type="quantitative", range="cividis" if self.colorblind else "bupu", legend=True),  # pyright: ignore[reportArgumentType]
                 style=gos.Style(matrixExtent="full"), # pyright: ignore[reportArgumentType]
             ).properties(
                 width=width,
@@ -1108,6 +1276,12 @@ class HiCSpec(TrackSpec):
         return hic_track
 
     def add_annotation_track(self, position_str):
+        """
+        Return a translucent yellow overlay track highlighting the gene region on the matrix.
+
+        Args:
+            position_str (str): Gene position in the format accepted by parse_position_str.
+        """
         _, chrom, start, end = parse_position_str(position_str)
 
         json_data = gos.json(
@@ -1145,10 +1319,16 @@ class HiCSpec(TrackSpec):
 
 # Assembly track class
 class AssemblySpec:
+    """
+    Placeholder for an assembly track spec (not yet implemented).
+    """
     pass
 
 
 class ViewSpec(ABC):
+    """
+    Abstract base for a Gosling view that combines multiple TrackSpec members.
+    """
     def __init__(self, title="", zoom=False, ident="", visibility="full"):
         self.title = title
         self.ident = ident or title
@@ -1165,9 +1345,15 @@ class ViewSpec(ABC):
         self.members = [] # List of TrackSpec objects
 
     def add_member(self, track: TrackSpec):
+        """
+        Add a track to this view.
+        """
         self.members.append(track)
 
     def clear_members(self):
+        """
+        Remove all member tracks from this view.
+        """
         self.members = []
 
     @abstractmethod
@@ -1176,7 +1362,24 @@ class ViewSpec(ABC):
         pass
 
 class HiCViewSpec(ViewSpec):
+    """
+    Square view for a Hi-C track, optionally overlaid with a gene-region highlight.
+    """
     def render(self, hic_obj: HiCSpec,  prefix="", position_str="NA"):
+        """
+        Render the Hi-C track as a square view.
+
+        Args:
+            hic_obj (HiCSpec): The Hi-C track to render.
+            prefix (str): Prefix for the view ID.
+            position_str (str): Gene position string. If "NA", no highlight overlay is added.
+
+        Returns:
+            The Gosling track or overlay view, or None if the view is hidden.
+
+        Raises:
+            ValueError: If hic_obj is None.
+        """
         if self.visibility == "hide":
             return None
 
@@ -1184,7 +1387,7 @@ class HiCViewSpec(ViewSpec):
             raise ValueError("HiCViewSpec requires a hic_obj to render.")
 
         # Use "width" as "height" to maintain square aspect ratio
-        hic_track = hic_obj.get_encoding(width=self.width, height=self.width, is_child=True)
+        hic_track = hic_obj.get_encoding(width=self.width, height=self.width, prefix=prefix, is_child=True)
 
         if position_str == "NA":
             return hic_track
@@ -1201,6 +1404,9 @@ class MultiWigSpec(ViewSpec):
     """
 
     def render(self, prefix=""):
+        """
+        Render the member BigWig tracks as one overlay view, or None if the view is hidden.
+        """
         if self.visibility == "hide":
             return None
 
@@ -1230,25 +1436,46 @@ class MultiWigSpec(ViewSpec):
 
 
 class GoslingSpec(Resource):
+    """
+    Flask-RESTful resource that builds a Gosling spec from a dataset's track hub.
+    """
     def get(self, dataset_id):
+        """
+        Build a Gosling spec for a gene from the tracks in a track hub.
+
+        Query params: gene, assembly, and hub_url (all required), plus zoom ("true"/"false"),
+        and optionally panel_a and panel_b ("chromosome:start-end") to open Panel A or Panel B
+        (zoom only) at a saved range instead of around the gene.
+
+        Returns:
+            tuple: (response dict, HTTP status). The dict has "success", "spec" (JSON
+            string), "position" (gene position string or "NA"), "message", "hic_found", and
+            "regions" ({"left", "right"}: the saved ranges that were applied, or None).
+        """
         # session_id = request.cookies.get("gear_session_id", "")
         args = request.args
         gene_symbol = args.get("gene")
         assembly = args.get("assembly")
         hub_url = args.get("hub_url", "")
         zoom = args.get("zoom", "false")
+        # Optional saved panel ranges ("chromosome:start-end"). Invalid values are ignored and the gene is used instead.
+        panel_a = args.get("panel_a", "")
+        panel_b = args.get("panel_b", "")
         # Set zoom from string to bool
         if zoom.lower() == "true":
             zoom = True
         else:
             zoom = False
+        # Per-viewer setting; the spec is built per request and never stored
+        colorblind = args.get("colorblind_mode", "false").lower() == "true"
 
         response = {
             "success": 0,
             "spec": {},
             "position": "",  # will be filled with chr:start-end
             "message": "",
-            "hic_found": False  # If the spec has a HiC file, we need to adjust zooming behavior
+            "hic_found": False,  # If the spec has a HiC file, we need to adjust zooming behavior
+            "regions": {"left": None, "right": None},  # saved panel ranges that were applied, if any
         }
 
         if assembly is None:
@@ -1278,7 +1505,11 @@ class GoslingSpec(Resource):
             return response, 400
 
         # Let's get the coordinates of the gene_symbol.
-        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
+        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, assembly)
+
+        assembly_array = build_assembly_array(assembly)
+        region_left = parse_region_str(panel_a, assembly_array)
+        region_right = parse_region_str(panel_b, assembly_array) if zoom else None
 
         if new_gene_symbol != "NA":
             gene_symbol = new_gene_symbol
@@ -1287,25 +1518,27 @@ class GoslingSpec(Resource):
         # Add BED annotation tracks to left (and right if zoom) gos_tracks in the first index position
         # build left and right track
         # Insert into gos_tracks["left"] at index 0 (and gos_tracks["right"] if zoom)
-        gos_tracks["left"].append(build_bed_annotation_tracks(assembly, zoom, "left"))
+        gos_tracks["left"].append(build_bed_annotation_tracks(assembly, zoom, "left", colorblind=colorblind))
         (parent_view_left, hic_found) = build_gosling_tracks(
-            gos_tracks["left"], tracks, zoom=zoom, prefix="left-", position_str=position_str
+            gos_tracks["left"], tracks, zoom=zoom, prefix="left-", position_str=position_str, colorblind=colorblind
         )
+        if region_left:
+            parent_view_left = set_view_region(parent_view_left, region_left)
         parent_view_right = None
         if zoom:
             gos_tracks["right"].append(
-                build_bed_annotation_tracks(assembly, zoom, "right")
+                build_bed_annotation_tracks(assembly, zoom, "right", colorblind=colorblind)
             )
             (parent_view_right, _) = build_gosling_tracks(
-                gos_tracks["right"], tracks, zoom=zoom, prefix="right-", position_str=position_str
+                gos_tracks["right"], tracks, zoom=zoom, prefix="right-", position_str=position_str, colorblind=colorblind
             )
+            if region_right:
+                parent_view_right = set_view_region(parent_view_right, region_right)
 
         # Start building the Gosling spec
         region_view = build_region_view(parent_view_left, parent_view_right)
 
         base_views = []
-
-        assembly_array = build_assembly_array(assembly)
 
         genome_wide_view = build_genome_wide_view(assembly, assembly_array, zoom=zoom, gene_symbol=gene_symbol)
         base_views.append(genome_wide_view)
@@ -1333,17 +1566,27 @@ class GoslingSpec(Resource):
         response["spec"] = spec
         response["position"] = position_str
         response["hic_found"] = hic_found
+        response["regions"] = {"left": region_to_str(region_left), "right": region_to_str(region_right)}
         return response, 200
 
     def post(self, dataset_id):
+        """
+        Not implemented.
+        """
         # Implement your logic to create or update the Gosling spec for the given dataset_id
         pass
         # return view.save("gosling.json")
 
     def delete(self, dataset_id):
+        """
+        Not implemented.
+        """
         # Implement your logic to delete the Gosling spec for the given dataset_id
         pass
 
     def put(self, dataset_id):
+        """
+        Not implemented.
+        """
         # Implement your logic to replace the Gosling spec for the given dataset_id
         pass

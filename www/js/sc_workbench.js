@@ -7,7 +7,7 @@ import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
 import { DatasetTree } from "./classes/tree.js";
 import { resetStepperWithHrefs } from "./helpers/stepper-fxns.js";
-import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, GENE_LIST_MANAGER_LINK, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
@@ -175,7 +175,8 @@ const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
         datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
         datasetId = linkedDatasetId;
     } catch (error) {
-        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+        // The workbench dataset list only has the dataset types it supports (single-cell, not bulk RNA-seq, etc.)
+        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset, or its type is not supported by the single-cell workbench`);
         throw new Error(error);
     }
 }
@@ -285,7 +286,7 @@ const loadDatasetTree = async (shareId) => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId);
+        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId, "sc-workbench");
 
         let counter = 0;
 
@@ -487,7 +488,7 @@ const updateManualMarkerGeneEntries = (geneString) => {
  * @param {Object} geneCart - The saved marker gene list object.
  */
 const updateUiAfterMarkerGeneListSaveSuccess = (geneCart) => {
-    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+    createToast("Gene cart saved successfully.", "is-success", true, { link: GENE_LIST_MANAGER_LINK });
 }
 
 /**
@@ -508,7 +509,7 @@ const updateUiAfterMarkerGeneListSaveFailure = (geneCart, message) => {
  * @param {Object} geneCart - The saved gene list object.
  */
 const updateUiAfterPcaGeneListSaveSuccess = (geneCart) => {
-    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+    createToast("Gene cart saved successfully.", "is-success", true, { link: GENE_LIST_MANAGER_LINK });
 
 }
 
@@ -964,34 +965,16 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
 
     await currentAnalysis.getStoredAnalysis();    // await-able
 
-    if (currentAnalysis.type === 'primary') {
-        document.querySelector(UI.analysisPrimaryNotificationElt).classList.remove("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
-        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-    }
+    // Analysis options (rename, delete, make public, ...) depend on the analysis type
+    currentAnalysis.showHideAnalysisButtons();
+    document.querySelector(UI.analysisPrimaryNotificationElt).classList.toggle("is-hidden", currentAnalysis.type !== 'primary');
 
     if (currentAnalysis.type === 'user_saved') {
-        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
         createToast("This analysis is stored in your private user profile.", "is-info", true);
-        document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
-    }
-
-    if (currentAnalysis.type === 'user_unsaved') {
-        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
-        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
     }
 
     if (currentAnalysis.type === 'public') {
-        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         createToast("Changes made to this public analysis will create a local private copy within your profile.", "is-info", true);
-        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
     }
 
 });
@@ -1014,7 +997,7 @@ document.querySelector(UI.btnLabeledTsneRunElt).addEventListener("click", async 
 document.querySelector(UI.btnApplyPrimaryFilterElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Apply the primary filter to the dataset
-    await currentAnalysis.primaryFilter.applyPrimaryFilter();
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.primaryFilter.applyPrimaryFilter.bind(currentAnalysis.primaryFilter));
     event.target.classList.remove("is-loading");
 });
 
@@ -1022,7 +1005,7 @@ document.querySelector(UI.btnApplyPrimaryFilterElt).addEventListener("click", as
 document.querySelector(UI.btnDoAnalysisQcByMitoElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Run the QC by Mito analysis
-    await currentAnalysis.qcByMito.runAnalysis(0);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.qcByMito.runAnalysis.bind(currentAnalysis.qcByMito), 0);
     event.target.classList.remove("is-loading");
 });
 
@@ -1030,7 +1013,7 @@ document.querySelector(UI.btnQbmSaveElt).addEventListener("click", async (event)
     event.target.classList.add("is-loading");
     disableAndHideElement(document.querySelector(UI.btnDoAnalysisQcByMitoElt));
     // Save the QC by Mito analysis
-    await currentAnalysis.qcByMito.runAnalysis(1);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.qcByMito.runAnalysis.bind(currentAnalysis.qcByMito), 1);
     event.target.classList.remove("is-loading");
 });
 
@@ -1039,7 +1022,7 @@ document.querySelector(UI.btnQbmSaveElt).addEventListener("click", async (event)
 document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Run the select variable genes analysis
-    await currentAnalysis.selectVariableGenes.runAnalysis(0);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.selectVariableGenes.runAnalysis.bind(currentAnalysis.selectVariableGenes), 0);
     event.target.classList.remove("is-loading");
 });
 
@@ -1048,7 +1031,7 @@ document.querySelector(UI.btnAsvgSaveElt).addEventListener("click", async (event
     disableAndHideElement(document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt));
 
     // Save the select variable genes analysis
-    await currentAnalysis.selectVariableGenes.runAnalysis(1);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.selectVariableGenes.runAnalysis.bind(currentAnalysis.selectVariableGenes), 1);
     event.target.classList.remove("is-loading");
 });
 
@@ -1166,7 +1149,7 @@ document.querySelector(UI.btnMarkerGenesRunElt).addEventListener("click", async 
 document.querySelector(UI.btnVisualizeMarkerGenesElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Visualize the marker genes
-    await currentAnalysis.markerGenes.performMarkerGeneVisualization();
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.markerGenes.performMarkerGeneVisualization.bind(currentAnalysis.markerGenes));
     event.target.classList.remove("is-loading");
 });
 
@@ -1273,7 +1256,7 @@ document.querySelector(UI.queryClusterSelectElt).addEventListener("change", (eve
 document.querySelector(UI.btnCompareGenesRunElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Run the compare genes analysis
-    await currentAnalysis.compareGenes.runAnalysis();
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.compareGenes.runAnalysis.bind(currentAnalysis.compareGenes));
     event.target.classList.remove("is-loading");
 });
 

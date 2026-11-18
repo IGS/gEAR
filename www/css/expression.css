@@ -58,6 +58,28 @@ section#annotation-panel h4 {
     font-weight: bold;
     font-size: 90%;
 }
+/* The "Gene annotation" header controls the whole panel, so make it stand out from the section headers below it.
+   The divider sits on the body so it disappears when the panel is collapsed. */
+section#annotation-panel > h3 {
+    font-size: 115%;
+}
+div#annotation-panel-body {
+    border-top: 1px solid lightgrey;
+    padding-top: 0.75rem;
+}
+/* Collapse/expand toggles are real buttons (keyboard accessible), styled to look like the heading text */
+button.panel-toggle {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+button.panel-toggle:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
 span.option-label {
     font-weight: bold;
     font-size: 90%;
@@ -74,9 +96,8 @@ ul#gene-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
 ul#gene-result-list li.is-selected {
-    /* TODO: Make this a variable */
-    background-color: #483285;
-    color: white;
+    background-color: var(--gear-bg-primary, #362E5C);
+    color: var(--gear-text-on-primary, #fff);
 }
 ul#go-terms {
     max-height: 17em;
@@ -103,6 +124,14 @@ ul#go-terms li {
     /* But allow it to grow so that aspect ratio can be maintained for ultrawide screens */
     grid-auto-rows: minmax(400px, auto);
     gap: 8px;
+}
+
+/* A single dataset (share_id) or the expanded view: one full-width tile. Toggled by TileGrid in tilegrid.js.
+   The id is needed to beat the #result-panel-grid rule's 12 columns. */
+#result-panel-grid.is-single-tile,
+#zoomed-panel-grid.is-single-tile {
+    grid-template-columns: 1fr;
+    width: unset;   /* auto-size the grid to the content */
 }
 
 .js-tile {
@@ -139,6 +168,13 @@ ul#go-terms li {
     margin: auto;
     display: block; /* Removes the baseline gap at the bottom */
     object-fit: contain;
+}
+
+/* The grid row grows to fit its content, so max-height: 100% alone does not stop a tall image
+   from stretching the row. Cap images at 360px (400px row minus the ~40px title) so the tile keeps
+   its height and the image is pillarboxed instead. The zoomed view is not capped. (issue #1358) */
+#result-panel-grid .js-tile .card-image img {
+    max-height: 360px;
 }
 
 /* This is the main svg image */
@@ -192,6 +228,12 @@ ul#go-terms li {
     max-width: 100% !important;
     width: 100% !important;
     overflow: hidden;
+}
+
+/* show keyboard focus on a Gosling plot, which takes arrow keys and +/- for panning and zooming */
+.gosling-nav-target:focus-visible {
+    outline: 2px solid hsl(229, 53%, 53%);
+    outline-offset: 2px;
 }
 
 /* ensure internal canvases/svgs fill the container - Copilot generated */

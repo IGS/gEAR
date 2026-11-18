@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+process_contact.py - Save a contact-form submission to a timestamped file in user-submitted-comments/.
+
+Input: submitterName, InputEmail, keep_updated, super_impressive_security_check, comments.
+Output: text/html confirmation message.
+"""
+
 import cgi
 import datetime
 

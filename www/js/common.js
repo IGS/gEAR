@@ -318,10 +318,7 @@ function handle_login_ui_updates() {
             $('div#main_content').hide();
         }
 
-        if (document.URL.includes("manual.html")) {
-            $('a#user_guide_link').parent().addClass('active');
-
-        } else if (document.URL.includes("contact.html")) {
+        if (document.URL.includes("contact.html")) {
             $('a#comment_link').parent().addClass('active');
 
         } else if (document.URL.includes("projection.html")) {
@@ -365,9 +362,6 @@ function handle_login_ui_updates() {
     } else if (document.URL.includes("gene_cart_manager.html")) {
         // these are defined in dataset_explorer.js
         load_preliminary_data();
-
-    } else if (document.URL.includes("manual.html")) {
-        $('a#user_guide_link').parent().addClass('active');
 
     }
 
@@ -501,24 +495,9 @@ function show_video_link() {
     return false;
 }
 
-// If user guide link is clicked, navigate to manual page and potentially to the anchor
+// If user guide link is clicked, open the gEAR wiki (user documentation)
 $(document).on("click", ".js-user-guide-link", (e) => {
-    let anchor;
-    let manual_url = "/manual.html"
-
-    if (document.URL.includes("upload_dataset.html")) {anchor="uploading"}
-    if (document.URL.includes("analyze_dataset.html")) {anchor="workbench"}
-    if (document.URL.includes("dataset_curator.html")) {anchor="curation"}
-    if (document.URL.includes("dataset_explorer.html")) {anchor="profiles"}
-    //if (document.URL.includes("gene_cart_manager.html")) {}
-    if (document.URL.includes("compare_datasets.html")) {anchor="compare"}
-    if (document.URL.includes("multigene_curator.html")) {anchor="mg-curation"}
-
-    if (anchor) {
-        manual_url += `?doc=${anchor}`
-    }
-
-    window.open(manual_url);
+    window.open("https://github.com/IGS/gEAR/wiki");
     return false;
 });
 

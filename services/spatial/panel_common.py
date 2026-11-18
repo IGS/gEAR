@@ -1,7 +1,13 @@
+"""
+panel_common.py - Holoviz Panel viewer classes for spatial datasets.
+
+Defines BaseSpatialViewer and its condensed and expanded subclasses, served by
+panel_app.py and panel_app_expanded.py.
+"""
+
 import json
 import traceback
 
-import colorcet as cc
 import holoviews as hv
 import hvplot
 import hvplot.pandas  # noqa
@@ -13,34 +19,41 @@ from common import (
     autohide_toolbar,
     clip_expression_values,
     compute_aggregation_params,
-    create_datashader_agg,
     create_clusters_df,
+    create_datashader_agg,
     create_expression_df,
     create_spatial_plot,
     create_umap_plot,
     create_umap_sample,
     create_violin_plot,
+    downsample_image,
+    get_color_maps,
     link_crosshairs,
     link_ranges,
+    list_image_channels,
     normalize_expression_name,
     retrieve_dataframe,
     retrieve_image_array,
-    rotate_spatial,
+    retrieve_image_dims,
     sort_clusters,
 )
 
 # CRITICAL: Initialize the Bokeh backend for interactivity
 hvplot.extension('bokeh', logo=False) # type: ignore
-pn.extension(loading_indicator=True, defer_load=True, nthreads=4)  # type: ignore)
+pn.extension(loading_indicator=True, defer_load=True, nthreads=4)  # type: ignore
 
 MAX_CARD_WIDTH = 1800
 EXPANDED_PLOT_MIN_HEIGHT = 380
 EXPANDED_PLOT_MIN_WIDTH = 320
+DIMMED_IMAGE_ALPHA = 0.3    # Opacity of the background image under the expression and cluster plots
 
 class BaseSpatialViewer(pn.viewable.Viewer):
     """
     Base Viewer component. Handles state and linking.
     """
+
+    # Longest side (in pixels) of the background image sent to the browser. None keeps the full cached resolution.
+    MAX_DISPLAY_IMAGE_DIM = None
 
     def __init__(self, **params):
         # Override session_args if provided, otherwise use the default.
@@ -89,6 +102,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 if expression_min_clip is not None:
                     self.settings.expression_min_clip = float(expression_min_clip)
 
+            # User-defined expression colorbar bounds (validated by the gEAR API before reaching here)
+            for bound in ('vmin', 'vmax'):
+                if bound in args:
+                    value = get_arg(bound)
+                    if value is not None:
+                        setattr(self.settings, bound, float(value))
+
             if 'nosave' in args:
                 nosave = get_arg('nosave', True)
                 if nosave is not None:
@@ -98,6 +118,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
             if 'display_name' in args:
                 self.settings.display_name = get_arg('display_name', "")
+
+            if 'colorblind_mode' in args:
+                self.settings.colorblind_mode = get_arg('colorblind_mode', False) is True
 
             if 'make_default' in args:
                 make_default = get_arg('make_default', False)
@@ -121,22 +144,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
             self.restore_xlim = _get_restore_range('x_range_start', 'x_range_end')
             self.restore_ylim = _get_restore_range('y_range_start', 'y_range_end')
-
-            # Rotation state, same carry-forward mechanism as the view range.
-            self.rotation = 0
-            if "rotation" in args:
-                rotation_raw = get_arg('rotation')
-                try:
-                    self.rotation = int(rotation_raw) if rotation_raw is not None else 0
-                except (TypeError, ValueError):
-                    self.rotation = 0
-                if self.rotation not in (0, 90, 180, 270):
-                    self.rotation = 0
-
         else:
             self.restore_xlim = None
             self.restore_ylim = None
-            self.rotation = 0
 
         # Add a hidden widget to sync url parameter state to the JS context.
         # This is so we can pass the params to the download widget so it can recreate the plot.
@@ -156,29 +166,21 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 // Expose it globally to the frontend DOM
                 window.gearSpatialUrlParams = params;
 
-                // Sync zoom range and rotation state to frontend so switching genes
+                // Sync zoom range to frontend so switching genes
                 // (which spins up a brand new Panel session) can carry
                 // the last zoom/pan position forward into the next one.
-                if (state.x_range_start !== undefined && state.x_range_end !== undefined &&
+                if (state.dataset_id &&
+                    state.x_range_start !== undefined && state.x_range_end !== undefined &&
                     state.y_range_start !== undefined && state.y_range_end !== undefined) {
-
-                    // Store the current view range in a global object keyed by dataset_id, so it can be restored later.
                     window.gearSpatialViewState = window.gearSpatialViewState || {};
-                    const newState = {};
-
-                    if (state.x_range_start !== undefined && state.x_range_end !== undefined &&
-                        state.y_range_start !== undefined && state.y_range_end !== undefined) {
-                        newState.x_range_start = state.x_range_start;
-                        newState.x_range_end = state.x_range_end;
-                        newState.y_range_start = state.y_range_start;
-                        newState.y_range_end = state.y_range_end;
-                    }
-                    if (state.rotation !== undefined) {
-                        newState.rotation = state.rotation;
-                    }
-
-                    window.gearSpatialViewState[state.dataset_id] = newState;
+                    window.gearSpatialViewState[state.dataset_id] = {
+                        x_range_start: state.x_range_start,
+                        x_range_end: state.x_range_end,
+                        y_range_start: state.y_range_start,
+                        y_range_end: state.y_range_end,
+                    };
                 }
+
             }
         """)
 
@@ -189,34 +191,31 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.orig_df['clusters'] = self.orig_df['clusters'].astype('category')
         self.orig_df = clip_expression_values(self.orig_df, self.settings.expression_min_clip)
 
-        self.image_array = retrieve_image_array(self.settings.dataset_id)
-
-        # Rotate the raw inputs here, before anything else (img_height/width,
-        # y_plot, aggregation) is derived from them -- everything downstream
-        # then treats the rotated image/coordinates as if they were the
-        # originals, with no other change needed anywhere else.
-        if self.rotation != 0:
-            self.orig_df, self.image_array = rotate_spatial(self.orig_df, self.image_array, self.rotation)
-
         self.current_gene = normalize_expression_name(self.settings.filename)
 
         self.nosave = self.settings.nosave
+        self.channels = list_image_channels(self.settings.dataset_id)
 
-        # Set up the background image and its dimmed version for overlaying on the plots
+        # Retrieve the image array and its dimensions. If the dimensions are not available, infer them from the image array itself.
+        self.image_array = retrieve_image_array(self.settings.dataset_id, channel_name=self.channels[0] if self.channels else None)
+        orig_dims = retrieve_image_dims(self.settings.dataset_id)
+
+        self.img_height, self.img_width = None, None
+        if orig_dims is not None and orig_dims[0] is not None and orig_dims[1] is not None:
+            self.img_height, self.img_width = orig_dims
+        elif self.image_array is not None:
+            self.img_height, self.img_width = self.image_array.shape[0], self.image_array.shape[1]
+
+        # Downsample after the dimensions are set. The image bounds use the original dimensions, so it still lines up with the markers.
+        self.image_array = downsample_image(self.image_array, self.MAX_DISPLAY_IMAGE_DIM)
+
         self.bg_image = None
         self.bg_image_dimmed = None
-        self.img_height = None
-        self.img_width = None
-
         if self.image_array is not None:
-            # Ensure array contents are UInt8 (0-255) for proper display. If not, normalize to that range and convert.
-            if self.image_array.dtype != np.uint8:
-                self.image_array = (255 * (self.image_array - np.min(self.image_array)) / (np.ptp(self.image_array) + 1e-8)).astype(np.uint8)
 
-            # use image_array shape to build image bounds. Image is 3-dimensional where shape is (y, x, c)
-            img_bounds = (0, 0, self.image_array.shape[1], self.image_array.shape[0])
-            self.img_height = self.image_array.shape[0]
-            self.img_width = self.image_array.shape[1]
+            # use original image_array shape to build image bounds.
+            # Image is 3-dimensional where shape is (y, x, c)
+            img_bounds = (0, 0, self.img_width, self.img_height)
 
             # This is a fully opaque version
             self.bg_image = hv.RGB(self.image_array, bounds=img_bounds).opts(
@@ -225,20 +224,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                         hooks=[autohide_toolbar]
                     )
 
-            # Create a more opaque version of the image.
-            opacity_value = int(255 * 0.3)  # Adjust the multiplier to set the desired opacity level
-            alpha_channel = np.full((self.img_height, self.img_width, 1), opacity_value, dtype=np.uint8)
-
-            # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
-            if self.image_array.shape[-1] == 3:
-                dimmed_array = np.concatenate([self.image_array, alpha_channel], axis=-1)
-            else:
-                dimmed_array = self.image_array.copy()
-
-                # SAdkins note - '...' means all rows in this case.
-                dimmed_array[..., 3] = opacity_value
-
-            self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
+            # Dimmed version for under the expression and cluster plots.
+            # Uses the same array; the dimming is applied in _track_image_renderers so all plots can share one copy of the image.
+            self.bg_image_dimmed = hv.RGB(self.image_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None, responsive=True,
                         # No tools or toolbar as the composite plot takes care of this
                         tools=[], default_tools=[],
@@ -268,9 +256,18 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if self.expression_98 == 0:
             self.expression_98 = None
 
+        # Expression colorbar limits. User-defined bounds take priority over the defaults.
+        # The minimum defaults to 0, or the data minimum if there are negative values (e.g. log-transformed data).
+        data_min = float(self.df["raw_value"].min())
+        self.cbar_min = self.settings.vmin if self.settings.vmin is not None else min(0.0, data_min)
+        self.cbar_max = self.settings.vmax if self.settings.vmax is not None else self.expression_98
+        if self.settings.vmax is None and self.cbar_min is not None \
+            and self.cbar_max is not None and self.cbar_min >= self.cbar_max:
+            # The 98th-percentile is below the user's minimum, so let the data set the upper limit
+            self.cbar_max = None
+
         ### Set up some initial attributes to use when plotting
         self._init_widgets()
-        self._init_rotation_buttons()
 
         # Precompute the datashader aggregations since they can be shared across multiple plots
         # For some reason, the x and y values are swapped for aggregation compared to what we eventually plot, so we need to swap them here.
@@ -280,12 +277,11 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.expression_agg = self.agg["expression"]
         self.expression_df = create_expression_df(self.expression_agg)
         self.expression_df = self.expression_df[self.expression_df['raw_value'] > 0]
-        self.expression_cmap = cc.m_CET_L4_r
 
         self.clusters_agg = self.agg["clusters"]
         self.clusters_df = create_clusters_df(self.clusters_agg)
         self.clusters_df["clusters"] = self.clusters_df["clusters_cat_codes"].map(self.cluster_map)
-        self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
+        self.expression_cmap, self.cluster_cmap = get_color_maps(self.df, self.settings.colorblind_mode)
 
         # Precompute the UMAP aggregation and sample for the UMAP plots
         _, _, self.umap_marker_radius = compute_aggregation_params(self.df, x_col="UMAP1", y_col="UMAP2", target_markers=30_000)
@@ -297,12 +293,21 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         state = {
             "dataset_id": self.settings.dataset_id,
             "filename": self.settings.filename,
-            "rotation": self.rotation,
         }
+
+        # Keep the viewer's palette in downloaded HTML exports
+        if self.settings.colorblind_mode:
+            state["colorblind_mode"] = True
 
         # Include expression clip if it exists
         if self.settings.expression_min_clip is not None:
             state["expression_min_clip"] = self.settings.expression_min_clip
+
+        # Include user-defined colorbar bounds if they exist
+        if self.settings.vmin is not None:
+            state["vmin"] = self.settings.vmin
+        if self.settings.vmax is not None:
+            state["vmax"] = self.settings.vmax
 
         # Include the current view range, if zoomed in
         range_fig = getattr(self, '_range_figure', None)
@@ -337,42 +342,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             figure.x_range.start, figure.x_range.end = self.restore_xlim
             figure.y_range.start, figure.y_range.end = self.restore_ylim
 
-    def _init_rotation_buttons(self):
-        """
-        Set up the rotate buttons and their actions
-        """
-        self.rotate_cw_button = pn.widgets.ButtonIcon(
-            icon="rotate-clockwise", size="2em", description="Rotate 90\u00b0 clockwise"
-        )
-        self.rotate_ccw_button = pn.widgets.ButtonIcon(
-            icon="rotate-2", size="2em", description="Rotate 90\u00b0 counterclockwise"
-        )
-        self.rotate_cw_button.on_click(lambda event: self._rotate(90))
-        self.rotate_ccw_button.on_click(lambda event: self._rotate(-90))
-
-    def _rotate(self, delta):
-        """
-        Updates rotation state and triggers a full session rebuild with the
-        new value, the same way switching genes already does.
-        """
-        self.rotation = (self.rotation + delta) % 360
-
-        # Rebuild the state payload WITHOUT any saved view range -- rotating
-        # swaps width/height, so a range saved under the old orientation
-        # would no longer make sense in the new one.
-        state = {
-            "dataset_id": self.settings.dataset_id,
-            "filename": self.settings.filename,
-            "rotation": self.rotation,
-        }
-        if self.settings.expression_min_clip is not None:
-            state["expression_min_clip"] = self.settings.expression_min_clip
-        self.state_sync.value = json.dumps(state)
-
-        if pn.state.location is not None:
-            pn.state.location.search = "?" + "&".join(f"{k}={v}" for k, v in state.items())
-            pn.state.location.reload = True
-
     def _sync_cluster_legend_toggle(self, ghost_fig, real_renderers_by_cat):
         """
         Rewires the standalone (already-rendered) ghost legend's Bokeh Legend
@@ -398,7 +367,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         # toggles visibility
         legend.click_policy = 'hide'
-
 
     def _sync_range_updates(self, figure):
         """
@@ -426,7 +394,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         figure.x_range.on_change('end', cb)
         figure.y_range.on_change('start', cb)
         figure.y_range.on_change('end', cb)
-
 
     def _create_ghost_legend(self):
             """Creates a fake, invisible plot just to force Bokeh to draw a legend."""
@@ -491,6 +458,47 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         range_source_fig.y_range.js_on_change('start', force_redraw)
         range_source_fig.y_range.js_on_change('end', force_redraw)
 
+    def _on_channel_change(self, event):
+        """
+        Callback function to handle image channel changes.
+
+        This function retrieves the new image array for the selected channel
+        and updates the image data source shared by all image renderers.
+        """
+        new_array = retrieve_image_array(self.settings.dataset_id, channel_name=event.new)
+        new_array = downsample_image(new_array, self.MAX_DISPLAY_IMAGE_DIM)
+        bounds = (0, 0, self.img_width, self.img_height)
+
+        packed = hv.render(hv.RGB(new_array, bounds=bounds), backend='bokeh').renderers[0].data_source.data['image']
+
+        assert len(self.image_renderers) >= 1, "No ImageRGBA renderers found to update."
+
+        # Apply the mutation to the Bokeh document to ensure thread safety
+        def _apply():
+            self.image_renderers[0].data_source.data['image'] = packed
+        pn.state.execute(_apply)
+
+    def _track_image_renderers(self, bokeh_master, bokeh_expr, bokeh_cluster):
+        """
+        Store the ImageRGBA renderers for each figure so we can update their data when the channel changes.
+
+        The expression and cluster renderers are pointed at the master renderer's data source and dimmed with
+        global_alpha, so the image is only sent to the browser once instead of once per figure.
+        """
+        self.image_renderers = []
+        for fig in (bokeh_master, bokeh_expr, bokeh_cluster):
+            if fig is None:
+                continue
+            image_r = next((r for r in fig.renderers if type(r.glyph).__name__ == 'ImageRGBA'), None)
+            if image_r is not None:
+                self.image_renderers.append(image_r)
+
+        if not self.image_renderers:
+            return
+        shared_source = self.image_renderers[0].data_source
+        for r in self.image_renderers[1:]:
+            r.data_source = shared_source
+            r.glyph.global_alpha = DIMMED_IMAGE_ALPHA
 
     def _generate_spatial_plots(self):
         """
@@ -500,11 +508,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
     def _init_widgets(self):
         """
-        This is where you would initialize any Panel widgets (sliders, dropdowns, etc.) that you want to use in your app.
-        You can then reference these widgets in your _build_layout method to include them in the layout and set up callbacks.
+        Initializes widgets common to both views
         """
-
-        raise NotImplementedError("Subclasses must implement _init_widgets")
+        self.channel_select = None
+        if len(self.channels) > 1:
+            self.channel_select = pn.widgets.Select(name="Image Channel", options=self.channels, value=self.channels[0])
+            self.channel_select.param.watch(self._on_channel_change, 'value')
+            # NOTE: For any thing that requires param.watch or .on_click, the function needs a pn.state.execute() wrapper to ensure it runs in the Bokeh server thread context.
 
     def _build_layout(self):
         """
@@ -534,6 +544,9 @@ class CondensedSpatialViewer(BaseSpatialViewer):
     The specific component for your panel_app.py
     """
 
+    # The condensed plots are small, so a smaller image is enough here.
+    MAX_DISPLAY_IMAGE_DIM = 2000
+
     def _build_layout(self):
         """Builds the 3-panel condensed row."""
         try:
@@ -550,6 +563,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
                 bokeh_master = hv.render(master_image, backend='bokeh')
                 figures_to_link.insert(0, bokeh_master)
                 self.master_pane = pn.pane.Bokeh(bokeh_master, sizing_mode='stretch_width')
+                self._track_image_renderers(bokeh_master, bokeh_expr, bokeh_cluster)
             else:
                 self.master_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width')
 
@@ -580,17 +594,13 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             self._force_legend_redraw_on_range_change(bokeh_ghost, bokeh_expr)
             self.legend_pane = pn.Column(pn.pane.Bokeh(bokeh_ghost), width=200, height=300, scroll=True, margin=(0,0,0,0))
 
-            self.widget_row = pn.Row(
-                self.rotate_ccw_button, self.rotate_cw_button
-            )
-
             # Build the permanent layout row
             self.main_row = pn.Row(
                 self.master_pane, self.expr_pane, self.cluster_pane, self.legend_pane,
                 sizing_mode='stretch_both', min_width=1080, margin=(0, 0, 0, 0)
             )
 
-            return pn.Column(self.state_sync, self.widget_row, self.main_row, sizing_mode='stretch_both', max_width=MAX_CARD_WIDTH, margin=(0, 0, 0, 0))
+            return pn.Column(self.state_sync, self.pre_layout, self.main_row, sizing_mode='stretch_both', max_width=MAX_CARD_WIDTH, margin=(0, 0, 0, 0))
 
         except Exception as e:
             traceback.print_exc()
@@ -609,7 +619,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         # Generate base plots
         expr_plot = create_spatial_plot(self.expression_df, y_col="y_plot", color_col='raw_value',
                                         cmap=self.expression_cmap, title=f"Expression: {self.current_gene}",
-                                        cbar_max=self.expression_98, radius=self.marker_radius)
+                                        cbar_min=self.cbar_min, cbar_max=self.cbar_max, radius=self.marker_radius)
         cluster_plot = create_spatial_plot(self.clusters_df, y_col="y_plot", color_col='clusters',
                                         cmap=self.cluster_cmap, is_categorical=True, title="Clusters",
                                         category_renderers=category_renderers, radius=self.marker_radius)
@@ -625,8 +635,17 @@ class CondensedSpatialViewer(BaseSpatialViewer):
 
     def _init_widgets(self):
         """Initializes widgets and builds the condensed control bar."""
-        pass
+        super()._init_widgets()
+        self.left_pre = pn.Column(
+            pn.Row(
+                self.channel_select,
+                sizing_mode='stretch_width'
+            ),
+        )
 
+        self.pre_layout = pn.Row(
+            self.left_pre,
+        )
 
 class ExpandedSpatialViewer(BaseSpatialViewer):
     """
@@ -648,6 +667,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                 bokeh_master = hv.render(master_image, backend='bokeh')
                 figures_to_link.insert(0, bokeh_master)
                 self.master_pane = pn.pane.Bokeh(bokeh_master, sizing_mode='stretch_width')
+                self._track_image_renderers(bokeh_master, bokeh_expr, bokeh_cluster)
             else:
                 self.master_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width')
 
@@ -731,7 +751,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         # Main row
         expr_plot = create_spatial_plot(self.expression_df, y_col="y_plot", color_col='raw_value',
                                         cmap=self.expression_cmap, title=f"Expression: {self.current_gene}",
-                                        cbar_max=self.expression_98, min_height=EXPANDED_PLOT_MIN_HEIGHT,
+                                        cbar_min=self.cbar_min, cbar_max=self.cbar_max, min_height=EXPANDED_PLOT_MIN_HEIGHT,
                                         min_width=EXPANDED_PLOT_MIN_WIDTH, radius=self.marker_radius)
         cluster_plot = create_spatial_plot(self.clusters_df, y_col="y_plot", color_col='clusters',
                                         cmap=self.cluster_cmap, is_categorical=True, title="Clusters",
@@ -754,7 +774,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         umap_category_renderers = {}
         expr_umap = create_umap_plot(
             self.umap_df, color_col='raw_value', cmap=self.expression_cmap, is_categorical=False,
-            title=f"{self.current_gene} Expression", cbar_max=self.expression_98, radius=self.umap_marker_radius
+            title=f"{self.current_gene} Expression", cbar_min=self.cbar_min, cbar_max=self.cbar_max, radius=self.umap_marker_radius
             )
         cluster_umap = create_umap_plot(
             self.umap_df, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True,
@@ -763,6 +783,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         return expr_umap, cluster_umap, umap_category_renderers
 
     def _init_widgets(self):
+        super()._init_widgets()
         self.display_name = pn.widgets.TextInput(
             name="Display name",
             placeholder="Name this display to save...",
@@ -781,14 +802,13 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         # Build the pre_layout
         self.left_pre = pn.Column(
             pn.Row(
-                self.rotate_ccw_button, self.rotate_cw_button,
+                self.channel_select,
                 sizing_mode='stretch_width'
             ),
         )
 
         self.right_pre = pn.Column(
             pn.Row(
-
                 self.display_name,
                 self.save_button,
             ),
@@ -797,7 +817,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         )
 
         self.pre_layout = pn.Row(
-            #self.left_pre,
+            self.left_pre,
             self.right_pre
         )
 

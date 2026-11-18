@@ -51,9 +51,8 @@ ul#pattern-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
 ul#pattern-result-list li.is-selected {
-    /* TODO: Make this a variable */
-    background-color: #483285;
-    color: white;
+    background-color: var(--gear-bg-primary, #362E5C);
+    color: var(--gear-text-on-primary, #fff);
 }
 ul#go-terms {
     max-height: 17em;
@@ -70,6 +69,14 @@ ul#go-terms li {
     /* But allow it to grow so that aspect ratio can be maintained for ultrawide screens */
     grid-auto-rows: minmax(400px, auto);
     gap: 8px;
+}
+
+/* A single dataset (share_id) or the expanded view: one full-width tile. Toggled by TileGrid in tilegrid.js.
+   The id is needed to beat the #result-panel-grid rule's 12 columns. */
+#result-panel-grid.is-single-tile,
+#zoomed-panel-grid.is-single-tile {
+    grid-template-columns: 1fr;
+    width: unset;   /* auto-size the grid to the content */
 }
 
 .js-tile {
@@ -106,6 +113,13 @@ ul#go-terms li {
     margin: auto;
     display: block; /* Removes the baseline gap at the bottom */
     object-fit: contain;
+}
+
+/* The grid row grows to fit its content, so max-height: 100% alone does not stop a tall image
+   from stretching the row. Cap images at 360px (400px row minus the ~40px title) so the tile keeps
+   its height and the image is pillarboxed instead. The zoomed view is not capped. (issue #1358) */
+#result-panel-grid .js-tile .card-image img {
+    max-height: 360px;
 }
 
 .js-tile .card-image .svg svg {

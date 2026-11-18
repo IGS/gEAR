@@ -1,3 +1,9 @@
+"""
+gene_symbols.py - List the gene symbols in a dataset or analysis.
+
+Serves /h5ad/<dataset_id>/genes in www/api/api.py.
+"""
+
 import os
 
 import geardb
@@ -20,6 +26,9 @@ class GeneSymbols(Resource):
         All gene symbols in dataset
     """
     def get(self, dataset_id):
+        """
+        Return all gene symbols in the dataset (or in the analysis given by the "analysis" query param).
+        """
         analysis_id = request.args.get('analysis')
         session_id = request.cookies.get('gear_session_id')
 
@@ -49,6 +58,6 @@ class GeneSymbols(Resource):
 
         return {
             "success": 1,
-            # Convert from categorical to string, and fill in NaN values
-            "gene_symbols": adata.var.gene_symbol.astype(str).fillna("None").tolist()
+            # Fill in NaN values, then convert from categorical to string
+            "gene_symbols": adata.var.gene_symbol.astype(object).fillna("None").astype(str).tolist()
         }

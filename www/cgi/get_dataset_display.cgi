@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+get_dataset_display.cgi - Fetch a single dataset display by its ID.
+
+Input: display_id.
+Output: JSON of the display record (plot type, label, plotly_config, etc.) or null.
+"""
+
 import cgi, json
 import os, sys
 
@@ -12,7 +19,7 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    display_id = form.getvalue('display_id')
+    display_id = form.getfirst('display_id')
 
     display = geardb.get_display_by_id(display_id=display_id)
 

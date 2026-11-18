@@ -1,3 +1,9 @@
+"""
+top_pca_genes.py - Plot the top-loading genes of principal components.
+
+Serves /analysis/plotTopGenesPCA in www/api/api.py.
+"""
+
 import os
 
 import geardb
@@ -11,10 +17,22 @@ from .common import get_adata_from_analysis, get_spatial_adata
 class TopPCAGenes(Resource):
     """Plot Top Genes of Prinicpal Components"""
     def post(self):
+        """
+        Save a PCA loadings plot for the requested components to the analysis figures directory.
+
+        Form keys: dataset_id, session_id, analysis_id, analysis_type, and pcs
+        (comma-separated, 2 to 5 components). Returns a dict with "success".
+        """
         req = request.form
         analysis_id = req.get('analysis_id')
         analysis_type = req.get('analysis_type')
-        pcs = [int(pc.replace(' ', '')) for pc in req.get('pcs').split(',')]
+        try:
+            pcs = [int(pc.replace(' ', '')) for pc in (req.get('pcs') or '').split(',')]
+        except ValueError:
+            return {
+                "success": 0,
+                "message": "PCs must be a comma-separated list of integers",
+            }
         # Currently, ScanPy is throwing errors both when number
         # of PCs is less than 2 or greater than 5. Have an issue
         # open: https://github.com/theislab/scanpy/issues/431
@@ -52,14 +70,7 @@ class TopPCAGenes(Resource):
 
         ana = get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
 
-        dest_datafile_path = ana.dataset_path
-        dest_directory = os.path.dirname(dest_datafile_path)
-
-        #print("DEBUG: dest_directory: {0}".format(dest_directory), file=sys.stderr)
-
-        if not os.path.exists(dest_directory):
-            os.makedirs(dest_directory)
-
+        # Read from the requested analysis before redirecting where the figure is saved
         try:
             adata = ana.get_adata()
         except Exception as e:
@@ -67,6 +78,19 @@ class TopPCAGenes(Resource):
                 "success": -1,
                 "message": str(e),
             }
+
+        # primary or public analysis should not be overwritten (and the primary directory is shared
+        # by every dataset); save to the user's unsaved analysis, where get_analysis_image.cgi looks
+        if ana.type == 'primary' or ana.type == 'public':
+            ana.type = 'user_unsaved'
+
+        dest_datafile_path = ana.dataset_path
+        dest_directory = os.path.dirname(dest_datafile_path)
+
+        #print("DEBUG: dest_directory: {0}".format(dest_directory), file=sys.stderr)
+
+        if not os.path.exists(dest_directory):
+            os.makedirs(dest_directory)
 
 
         import scanpy as sc

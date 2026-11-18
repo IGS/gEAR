@@ -1,3 +1,10 @@
+"""
+api.py - Flask-RESTful application that registers the gEAR API resources.
+
+Maps each resource class in www/api/resources/ to its URL route. In production
+Apache serves these routes under the /api prefix.
+"""
+
 # Include our lib directory on system path
 # so we have access to modules
 import os
@@ -48,11 +55,11 @@ from resources.dataset_display import DatasetDisplay  # noqa: E402
 from resources.dataset_processing import DatasetProcessingStatus # noqa: E402
 from resources.gene_symbols import GeneSymbols  # noqa: E402
 from resources.gosling_spec import GoslingSpec  # noqa: E402
+from resources.higlass import HiGlassGene
 from resources.h5ad import H5ad  # noqa: E402
 from resources.mg_plotly_data import MGPlotlyData  # noqa: E402
 from resources.orthologs import Orthologs  # noqa: E402
 
-# Import resources
 from resources.plotly_data import PlotlyData  # noqa: E402
 from resources.projectr import (  # noqa: E402
     ProjectR,
@@ -76,6 +83,9 @@ api.add_resource(MGTSNEData, '/plot/<dataset_id>/mg_tsne')
 api.add_resource(GoslingSpec, '/plot/<dataset_id>/gosling')
 api.add_resource(SpatialPanel, '/plot/<dataset_id>/spatialpanel')
 api.add_resource(SpatialScanpyData, '/plot/<dataset_id>/spatial_scanpy')
+
+# HiGlass routes
+api.add_resource(HiGlassGene, '/higlass/genes/<gene_symbol>')
 
 # projectR routes
 api.add_resource(ProjectR, '/projectr/<dataset_id>')

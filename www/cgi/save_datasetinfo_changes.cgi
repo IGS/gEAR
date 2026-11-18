@@ -29,6 +29,9 @@ import sys
 import re
 import shutil
 
+import mysql.connector
+from mysql.connector import errorcode
+
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
@@ -39,16 +42,20 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
-    visibility = form.getvalue('visibility')
-    is_downloadable = form.getvalue('is_downloadable')
-    title = form.getvalue('title')
-    pubmed_id = form.getvalue('pubmed_id')
-    geo_id = form.getvalue('geo_id')
-    ldesc = form.getvalue('ldesc')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
+    visibility = form.getfirst('visibility')
+    is_downloadable = form.getfirst('is_downloadable')
+    title = form.getfirst('title')
+    pubmed_id = form.getfirst('pubmed_id')
+    geo_id = form.getfirst('geo_id')
+    ldesc = form.getfirst('ldesc')
 
     user = geardb.get_user_from_session_id(session_id)
+    if user is None:
+        print(json.dumps({'error': 'User must be logged in', 'success': 0}))
+        return
+
     dataset = geardb.get_dataset_by_id(d_id=dataset_id)
     if dataset is None:
         result = {'error': 'Dataset not found', 'success': 0}
@@ -58,26 +65,37 @@ def main():
     # Does user own the dataset...
     owns_dataset = check_dataset_ownership(cursor, user.id, dataset.id)
 
-    if owns_dataset == True:
+    if owns_dataset:
         # see what has changed and execute updates to the DB
         # ? SAdkins - Why are we checking for differences? Can't we just update regardless, or are we trying to reduce transactions?
-        if dataset.is_public != visibility:
-            dataset.save_change('is_public', visibility)
+        changes = [
+            ('is_public', visibility, 'visibility'),
+            ('is_downloadable', is_downloadable, 'downloadable setting'),
+            ('title', title, 'title'),
+            ('pubmed_id', pubmed_id, 'PubMed ID'),
+            ('geo_id', geo_id, 'GEO ID'),
+            ('ldesc', ldesc, 'description'),
+        ]
 
-        if dataset.is_downloadable != is_downloadable:
-            dataset.save_change("is_downloadable", is_downloadable)
+        # Save all changed fields in one transaction, so a rejected field leaves the dataset unchanged
+        changed = [(attribute, value, label) for attribute, value, label in changes
+                   if getattr(dataset, attribute) != value]
 
-        if dataset.title != title:
-            dataset.save_change('title', title)
+        for attribute, value, label in changed:
+            try:
+                cursor.execute("UPDATE dataset SET {0} = %s WHERE id = %s".format(attribute), (value, dataset.id))
+            except mysql.connector.Error as err:
+                cnx.rollback()
+                print("Error saving dataset {0} {1}: {2}".format(dataset.id, attribute, err), file=sys.stderr)
+                result = {'error': build_save_error_message(err, label), 'error_detail': str(err), 'success': 0}
+                print(json.dumps(result))
+                return
 
-        if dataset.pubmed_id != pubmed_id:
-            dataset.save_change('pubmed_id', pubmed_id)
+        cnx.commit()
 
-        if dataset.geo_id != geo_id:
-            dataset.save_change('geo_id', geo_id)
-
-        if dataset.ldesc != ldesc:
-            dataset.save_change('ldesc', ldesc)
+        # Update the attributes in the dataset object
+        for attribute, value, label in changed:
+            setattr(dataset, attribute, value)
 
         result = { 'dataset': dataset, 'success': 1 }
 
@@ -94,7 +112,27 @@ def main():
         print(json.dumps(result))
 
 
+def build_save_error_message(err, label):
+    """
+    Return a user-facing message explaining why saving the given field failed.
+    """
+    if err.errno == errorcode.ER_TRUNCATED_WRONG_VALUE_FOR_FIELD:
+        return ("Could not save the {0}: it contains characters that cannot be stored "
+                "(e.g. Greek letters, symbols, or \"smart\" quotes copied from a document). "
+                "Please use only plain ASCII characters. No changes were saved. "
+                "If you need help, contact us with the error details below.").format(label)
+
+    if err.errno == errorcode.ER_DATA_TOO_LONG:
+        return "Could not save the {0}: it is too long. No changes were saved.".format(label)
+
+    return ("Could not save the {0}. No changes were saved. "
+            "If you need help, contact us with the error details below.").format(label)
+
+
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d

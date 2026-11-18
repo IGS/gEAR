@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 
 """
+process_shield_pages.py - Extract SHIELD FACS chart image URLs from saved SHIELD gene pages.
 
+Parses gene pages downloaded from the SHIELD inner ear database (shield.hms.harvard.edu, see
+get_shield_pages.py) in a hard-coded directory, and prints SQL UPDATE statements that set
+gene.shield_facs_chart_url for each matching gene. It does not change the database itself;
+shield_urls_update.sql holds a saved run of its output, plus the ALTER TABLE that adds the
+column. The shield_facs_chart_url column is not defined in create_schema.sql, and nothing on
+the website reads it. Reads gear.ini from the
+current directory.
 """
 
 import mysql.connector
