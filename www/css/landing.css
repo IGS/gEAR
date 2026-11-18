@@ -1,0 +1,225 @@
+/* ------------------------------------------------------------------
+   landing.html: the full list of study landing pages (js/landing.js)
+   ------------------------------------------------------------------ */
+#content-c {
+    /* Brand colors from the per-portal theme build; fallbacks are gEAR's purple */
+    --st-primary: var(--gear-bg-primary, #362e5c);
+    --st-secondary: var(--gear-bg-secondary, #544a8e);
+    --st-tint: var(--gear-bg-tertiary, #efedf7);
+    --st-on-primary: var(--gear-text-on-primary, #fff);
+    --st-border: rgb(220, 218, 232);
+    --st-ink: #1f1f26;
+    --st-muted: rgb(91, 91, 104);
+    --st-radius: 12px;
+}
+
+.studies-intro {
+    max-width: 52rem;
+    margin-bottom: 1.5rem;
+}
+.studies-intro .title {
+    color: var(--st-primary);
+}
+.studies-intro p {
+    color: var(--st-muted);
+}
+
+/* -------------------------------------------------------------- toolbar */
+.studies-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+.studies-filter {
+    flex: 1 1 18rem;
+    max-width: 28rem;
+}
+.studies-count {
+    margin-left: auto;
+    font-size: 0.875rem;
+    color: var(--st-muted);
+}
+
+/* ---------------------------------------------------------------- cards */
+.studies-list {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0 0 2rem;
+    padding: 0;
+    list-style: none;
+}
+.studies-list[hidden] { display: none; }
+.studies-loading {
+    text-align: center;
+    padding: 3rem 0;
+    color: var(--st-secondary);
+}
+
+.study-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(200px, 300px) 1fr;
+    background: white;
+    border: 1px solid var(--st-border);
+    border-left: 4px solid var(--st-secondary);
+    border-radius: var(--st-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(54, 46, 92, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.study-card[hidden] { display: none; }
+.study-card:hover,
+.study-card:focus-within {
+    transform: translateY(-2px);
+    border-color: var(--st-secondary);
+    box-shadow: 0 10px 24px rgba(54, 46, 92, 0.14);
+}
+
+/* Figures are scientific, so show them whole (contain) on a soft backdrop rather than cropping */
+.study-media {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 190px;
+    padding: 1rem;
+    background: var(--st-tint);
+    border-right: 1px solid var(--st-border);
+}
+.study-media img {
+    max-width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+.study-media.is-placeholder {
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18) 0, transparent 45%),
+        linear-gradient(135deg, var(--st-secondary), var(--st-primary));
+    color: rgba(255, 255, 255, 0.9);
+}
+.study-media.is-placeholder .mdi {
+    font-size: 4rem;
+    line-height: 1;
+}
+
+.study-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1.25rem 1.5rem;
+    min-width: 0;
+}
+.study-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--st-muted);
+}
+.study-meta:empty { display: none; }
+.study-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    background: var(--st-secondary);
+    color: var(--st-on-primary);
+    font-weight: 600;
+}
+.study-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--st-primary);
+}
+/* The title link covers the whole card so the card is one click target */
+.study-title a {
+    color: inherit;
+}
+.study-title a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+.study-title a:focus-visible {
+    outline: none;
+}
+.study-card:has(.study-title a:focus-visible) {
+    outline: 2px solid var(--st-secondary);
+    outline-offset: 2px;
+}
+.study-summary {
+    color: var(--st-ink);
+    line-height: 1.5;
+}
+.study-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    font-size: 0.875rem;
+}
+.study-cta {
+    font-weight: 600;
+    color: var(--st-secondary);
+}
+/* Sits above the stretched title link so it stays independently clickable */
+.study-pubmed {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.7rem;
+    border-radius: 999px;
+    background: var(--st-tint);
+    color: var(--st-secondary);
+    font-weight: 600;
+}
+.study-pubmed:hover,
+.study-pubmed:focus-visible {
+    background: var(--st-secondary);
+    color: var(--st-on-primary);
+}
+
+/* ------------------------------------------------------- empty / error */
+.studies-message {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    margin-bottom: 2rem;
+    border: 1px dashed var(--st-border);
+    border-radius: var(--st-radius);
+    color: var(--st-muted);
+}
+.studies-message[hidden] { display: none; }
+.studies-message .icon { color: var(--st-secondary); }
+.studies-message p { margin: 0.5rem 0 0.75rem; }
+
+/* --------------------------------------------------------------- phone */
+@media screen and (max-width: 768px) {
+    .study-card {
+        grid-template-columns: 1fr;
+    }
+    .study-media {
+        min-height: 0;
+        aspect-ratio: 16 / 9;
+        border-right: 0;
+        border-bottom: 1px solid var(--st-border);
+    }
+    .study-media img { max-height: 100%; }
+    .studies-filter { max-width: none; }
+    .studies-count { margin-left: 0; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .study-card { transition: none; }
+    .study-card:hover,
+    .study-card:focus-within { transform: none; }
+}

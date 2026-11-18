@@ -25,6 +25,19 @@
     display: flex;
     gap: 0.5rem;
 }
+/* "Browse all studies" link to landing.html, kept on the right next to the arrows */
+#featured-studies .featured-all {
+    margin-left: auto;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--fs-secondary);
+    white-space: nowrap;
+}
+#featured-studies .featured-all:hover,
+#featured-studies .featured-all:focus-visible {
+    color: var(--fs-primary);
+    text-decoration: underline;
+}
 #featured-studies .featured-nav[hidden] { display: none; }
 #featured-studies .featured-nav .button {
     color: var(--fs-secondary);

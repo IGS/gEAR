@@ -425,6 +425,23 @@ main section[id] { scroll-margin-top: var(--intro-nav-h); }
     margin-bottom: 1.5rem;
 }
 .stat-tile[hidden] { display: none; }
+/* The landing pages tile links to landing.html */
+a.stat-tile.is-link {
+    display: block;
+    color: inherit;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+a.stat-tile.is-link:hover,
+a.stat-tile.is-link:focus-visible {
+    border-color: var(--intro-secondary);
+    box-shadow: 0 8px 20px var(--intro-shadow);
+    transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+    a.stat-tile.is-link { transition: none; }
+    a.stat-tile.is-link:hover,
+    a.stat-tile.is-link:focus-visible { transform: none; }
+}
 .stat-tile {
     background: var(--intro-surface);
     border-radius: var(--intro-radius);
