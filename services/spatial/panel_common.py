@@ -57,6 +57,9 @@ REVERSE_RANGE_JS = """
     }
 """
 
+# Light outline so the flip buttons' edges are visible
+FLIP_BUTTON_CSS = ".bk-btn {border: 1px solid #b5b5b5 !important;}"
+
 class BaseSpatialViewer(pn.viewable.Viewer):
     """
     Base Viewer component. Handles state and linking.
@@ -549,13 +552,17 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # NOTE: For any thing that requires param.watch or .on_click, the function needs a pn.state.execute() wrapper to ensure it runs in the Bokeh server thread context.
 
         # Flip the spatial plots along an axis. Wired up client-side in _wire_reverse_buttons once the figures exist.
+        # Tabler icon names follow Bokeh's bundled Tabler 1.68 font, where "flip-vertical" mirrors left-right
+        # (across a vertical axis). Newer Tabler versions swap the two names.
+        flip_button_opts = dict(
+            button_type="default", align="end", width=80, margin=(5, 3),
+            icon_size="1.3em", stylesheets=[FLIP_BUTTON_CSS],
+        )
         self.reverse_x_button = pn.widgets.Button(
-            name="Flip X", icon="flip-vertical", button_type="light", align="end", width=80,
-            description="Flip the spatial plots left to right",
+            name="Flip X", icon="flip-vertical", description="Flip the spatial plots left to right", **flip_button_opts
         )
         self.reverse_y_button = pn.widgets.Button(
-            name="Flip Y", icon="flip-horizontal", button_type="light", align="end", width=80,
-            description="Flip the spatial plots top to bottom",
+            name="Flip Y", icon="flip-horizontal", description="Flip the spatial plots top to bottom", **flip_button_opts
         )
 
         # Controls shown above the spatial plots. A missing channel select is left out, since Panel

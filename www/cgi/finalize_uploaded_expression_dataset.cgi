@@ -215,11 +215,6 @@ def main() -> dict:
             return result
 
         config = {
-            "min_genes": 0,
-            "selection_x1": None,
-            "selection_y1": None,
-            "selection_x2": None,
-            "selection_y2": None,
             "gene_symbol": "Pou4f3" # Just need a filler, really
         }
 
