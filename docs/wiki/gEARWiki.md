@@ -478,6 +478,7 @@ An SVG display colors parts of a drawing, such as a cochlea diagram, by the expr
 - **Averages:** if the dataset has a `cell_type` column, a shape with class `<cell type>--mean` (for example `Deiter3--mean`) is colored by that cell type's average expression.
 - **Colors:** in the curator you can set the "Low-expression color", "High-expression color" and, optionally, a "Mid-expression color", plus colorscale boundaries ("Colorscale minimum"/"Colorscale maximum"). How colors are scaled across genes, samples or tissues is set by the SVG expression scoring method in the [dataset panel menu](#dataset-panel-menu).
 - **Adding the drawing:** the SVG file isn't uploaded through the Dataset Uploader. If you want an SVG display for your dataset, prepare the drawing following the [SVG formatting guide](https://github.com/IGS/gEAR/blob/main/docs/analyst/svg_formatting.md) and [contact the gEAR team](https://umgear.org/contact.html).
+- **Drawing too large or cut off:** gEAR scales the drawing to the panel using the SVG's `viewBox`, which drawing programs set from the document's page or artboard. If parts of the drawing are outside the page, the display looks too big and its edges are cut off. Resize the page to the drawing (in Inkscape, "Resize to content" in Document Properties; in Illustrator, Object > Artboards > Fit to Artwork Bounds) and send the corrected file to the gEAR team. To check a file, open it in a web browser: what the browser shows is what gEAR shows.
 
 #### Category colors
 
