@@ -188,8 +188,9 @@ searchForm.addEventListener('submit', (event) => {
     const genes = searchInput.value.split(/[\s,;]+/).filter(Boolean);
     if (!genes.length) return;
 
-    const params = new URLSearchParams({ gene_symbol: genes.join(',') });
-    if (genes.length > 1) params.set('is_multigene', '1');
+    // Always single-gene display; with several symbols, expression.html lists them and shows
+    // the first, and the user can switch to multi-gene there
+    const params = new URLSearchParams({ gene_symbol: genes.join(','), is_multigene: '0' });
     window.location.href = `/expression.html?${params}`;
 });
 
