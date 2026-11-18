@@ -16,6 +16,7 @@ import panel as pn
 from bokeh.models import CustomJS
 from common import (
     Settings,
+    apply_range,
     autohide_toolbar,
     clip_expression_values,
     compute_aggregation_params,
@@ -46,6 +47,18 @@ MAX_CARD_WIDTH = 1800
 EXPANDED_PLOT_MIN_HEIGHT = 380
 EXPANDED_PLOT_MIN_WIDTH = 320
 DIMMED_IMAGE_ALPHA = 0.3    # Opacity of the background image under the expression and cluster plots
+
+# Reverses (flips) a Bokeh Range1d in the browser by swapping start/end.
+# The reset values are swapped too, so the Reset tool keeps the flip.
+REVERSE_RANGE_JS = """
+    rng.setv({start: rng.end, end: rng.start});
+    if (rng.reset_start != null && rng.reset_end != null) {
+        rng.setv({reset_start: rng.reset_end, reset_end: rng.reset_start});
+    }
+"""
+
+# Light outline so the flip buttons' edges are visible
+FLIP_BUTTON_CSS = ".bk-btn {border: 1px solid #b5b5b5 !important;}"
 
 class BaseSpatialViewer(pn.viewable.Viewer):
     """
@@ -333,14 +346,36 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         Applies self.restore_xlim/self.restore_ylim (parsed in __init__ from
         the x_range_start/end, y_range_start/end URL args) as the initial
         view range on the provided Bokeh figure, if
-        present. Call this before _wire_range_capture so we don't immediately
+        present. Call this before _sync_range_updates so we don't immediately
         "capture" our own restored range as a spurious change.
+
+        A restored range with start > end is a flipped axis; apply_range
+        orients the Reset tool to match so Reset keeps the flip.
         """
         if figure is None:
             return
-        if self.restore_xlim is not None and self.restore_ylim is not None:
-            figure.x_range.start, figure.x_range.end = self.restore_xlim
-            figure.y_range.start, figure.y_range.end = self.restore_ylim
+        restore = self.restore_xlim is not None and self.restore_ylim is not None
+        apply_range(figure.x_range, self.restore_xlim if restore else None)
+        apply_range(figure.y_range, self.restore_ylim if restore else None)
+
+        if restore:
+            # Report the restored range as the current view right away (the onload sync sends it),
+            # so the HTML download and "save display" keep it even before the user pans or zooms.
+            self._range_figure = figure
+
+    def _wire_reverse_buttons(self, figure):
+        """
+        Wires the "Flip X" and "Flip Y" buttons to reverse the figure's
+        x_range/y_range in the browser. The spatial figures share these range
+        models (link_ranges), so the image, expression and cluster plots all
+        flip together without a round-trip or re-render. Bokeh syncs the new
+        range back to the server, so _sync_range_updates saves it and the flip
+        carries over to the next gene, saved displays and HTML downloads.
+        """
+        if figure is None:
+            return
+        self.reverse_x_button.js_on_click(args={'rng': figure.x_range}, code=REVERSE_RANGE_JS)
+        self.reverse_y_button.js_on_click(args={'rng': figure.y_range}, code=REVERSE_RANGE_JS)
 
     def _sync_cluster_legend_toggle(self, ghost_fig, real_renderers_by_cat):
         """
@@ -516,6 +551,24 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.channel_select.param.watch(self._on_channel_change, 'value')
             # NOTE: For any thing that requires param.watch or .on_click, the function needs a pn.state.execute() wrapper to ensure it runs in the Bokeh server thread context.
 
+        # Flip the spatial plots along an axis. Wired up client-side in _wire_reverse_buttons once the figures exist.
+        # Tabler icon names follow Bokeh's bundled Tabler 1.68 font, where "flip-vertical" mirrors left-right
+        # (across a vertical axis). Newer Tabler versions swap the two names.
+        flip_button_opts = dict(
+            button_type="default", align="end", width=80, margin=(5, 3),
+            icon_size="1.3em", stylesheets=[FLIP_BUTTON_CSS],
+        )
+        self.reverse_x_button = pn.widgets.Button(
+            name="Flip X", icon="flip-vertical", description="Flip the spatial plots left to right", **flip_button_opts
+        )
+        self.reverse_y_button = pn.widgets.Button(
+            name="Flip Y", icon="flip-horizontal", description="Flip the spatial plots top to bottom", **flip_button_opts
+        )
+
+        # Controls shown above the spatial plots. A missing channel select is left out, since Panel
+        # would otherwise render None as an empty pane that pushes the buttons apart.
+        self.view_controls = [w for w in (self.channel_select, self.reverse_x_button, self.reverse_y_button) if w is not None]
+
     def _build_layout(self):
         """
         This is where the main Panel layout is built.
@@ -575,6 +628,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             # restored range as a fresh "change".
             self._apply_restored_range(bokeh_expr)
             self._sync_range_updates(bokeh_expr)
+            self._wire_reverse_buttons(bokeh_expr)
 
             # Worth noting the tradeoff in using the Bokeh pane instead of Holoviews is that we lose
             # some reactivity, but gain access to the underlying Bokeh figure.
@@ -638,7 +692,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         super()._init_widgets()
         self.left_pre = pn.Column(
             pn.Row(
-                self.channel_select,
+                *self.view_controls,
                 sizing_mode='stretch_width'
             ),
         )
@@ -679,6 +733,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             # restored range as a fresh "change".
             self._apply_restored_range(bokeh_expr)
             self._sync_range_updates(bokeh_expr)
+            self._wire_reverse_buttons(bokeh_expr)
 
             # Worth noting the tradeoff in using the Bokeh pane instead of Holoviews is that we lose
             # some reactivity, but gain access to the underlying Bokeh figure.
@@ -802,7 +857,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         # Build the pre_layout
         self.left_pre = pn.Column(
             pn.Row(
-                self.channel_select,
+                *self.view_controls,
                 sizing_mode='stretch_width'
             ),
         )

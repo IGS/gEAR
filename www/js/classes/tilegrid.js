@@ -5,7 +5,7 @@ import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurren
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 import { buildGoslingSessionConfig, clearGoslingTile, describeGoslingSession, loadGoslingEmbed, renderGoslingPlot, resolveGoslingSession, saveGoslingSession } from "../helpers/gosling-fxns.js";
-import { downloadSpatialHTML, renderSpatialPanel } from "../helpers/spatial-fxns.js";
+import { clearSpatialViewState, downloadSpatialHTML, renderSpatialPanel } from "../helpers/spatial-fxns.js";
 import { Citation } from "./citation.js";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
@@ -1363,6 +1363,8 @@ class DatasetTile {
                 displayElt.addEventListener("click", (event) => {
                     const displayElement = event.currentTarget;
                     const displayId = parseInt(displayElement.dataset.displayId);
+                    // A chosen spatial display should open at its own saved view, not the current page's view
+                    clearSpatialViewState(this.dataset.id);
                     // Render display
                     if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
                     this.renderDisplay(this.geneInput, displayId, this.svgScoringMethod);

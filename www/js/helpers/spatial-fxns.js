@@ -6,7 +6,8 @@ Spatial panel rendering for dataset tiles.
 The spatial panel is a Panel (Bokeh server) app in services/spatial. The API returns a <script> that loads
 the app into the tile. The app talks back to this page through globals and events set in
 services/spatial/panel_common.py:
-- window.gearSpatialViewState[datasetId]: current view range, so switching genes keeps the view
+- window.gearSpatialViewState[datasetId]: current view range, so switching genes keeps the view.
+  A flipped axis (the app's "Flip X"/"Flip Y" buttons) is stored as start > end, so it carries over too.
 - window.gearSpatialUrlParams: current app parameters, used by the HTML download
 - "save_spatial_display_<datasetId>" window event: the app's "save display" button (zoomed view only)
 */
@@ -15,6 +16,12 @@ import { apiCallsMixin, createToast, logErrorInConsole } from "../common.v2.js";
 
 const RENDER_POLL_INTERVAL = 100;   // ms between checks for the rendered app
 const RENDER_MAX_ATTEMPTS = 1800;   // 3 minute maximum wait (100 ms * 1800)
+
+// View range keys stored in a saved display's plotly_config and window.gearSpatialViewState
+const VIEW_RANGE_KEYS = ["x_range_start", "x_range_end", "y_range_start", "y_range_end"];
+
+// Display settings the spatial viewer reads (besides the view range); the only plotly_config keys saved with a display
+const SAVED_CONFIG_KEYS = ["gene_symbol", "projection_id", "expression_min_clip", "vmin", "vmax", ...VIEW_RANGE_KEYS];
 
 // "save display" listeners, by tile ID, so a re-render replaces the tile's previous listener
 const saveHandlers = new Map();  // tileId -> {eventName, handler}
@@ -47,7 +54,14 @@ export const renderSpatialPanel = async (cardImage, plotConfig, { tileId, datase
         disable_save: !apiCallsMixin.sessionId && isZoomed,  // If not logged in, then do not allow saving the display
     }
 
-    // Grab the saved range from the global state if it exists and apply it to the prepPlotConfig
+    // Start from the view range saved with the display, if any (start > end means a flipped axis)
+    for (const key of VIEW_RANGE_KEYS) {
+        if (plotConfig[key] != null) {
+            prepPlotConfig[key] = plotConfig[key];
+        }
+    }
+
+    // The current page's view (e.g. carried over from the previous gene) takes priority over the saved one
     const savedRange = window.gearSpatialViewState?.[datasetId];
     if (savedRange) {
         Object.assign(prepPlotConfig, savedRange);
@@ -201,6 +215,18 @@ const registerSaveHandler = ({ tileId, datasetId, isZoomed, isMultigene, plotCon
 }
 
 /**
+ * Forgets the current page's view range for a dataset, so the next render uses the display's saved view.
+ * Call this when the user picks a different display (not on gene switches, which should keep the view).
+ *
+ * @param {string} datasetId - The dataset ID.
+ */
+export const clearSpatialViewState = (datasetId) => {
+    if (window.gearSpatialViewState) {
+        delete window.gearSpatialViewState[datasetId];
+    }
+}
+
+/**
  * Downloads the current spatial panel as an HTML file.
  *
  * @param {string} shareId - The dataset share ID, used in the file name.
@@ -265,7 +291,7 @@ export const downloadSpatialHTML = async (shareId, geneSymbol) => {
  * @param {boolean} opts.isMultigene - True for multi-gene tiles (not supported).
  * @param {string} opts.displayName - Name for the new display.
  * @param {boolean} opts.makeDefault - True to make the new display the user's default.
- * @param {Object} opts.plotConfig - The display's plotly_config. The current view range is added to it.
+ * @param {Object} opts.plotConfig - The display's plotly_config. Only the keys in SAVED_CONFIG_KEYS are saved, plus the current view range. It is not modified.
  * @returns {Promise<void>}
  * @throws {Error} For multi-gene tiles.
  */
@@ -275,13 +301,26 @@ export const saveSpatialParameters = async ({ datasetId, isMultigene, displayNam
     }
     const plotType = "spatial_panel";
 
+    // Save only the settings the viewer reads, so stale keys from older displays are not copied forward
+    const newConfig = {};
+    for (const key of SAVED_CONFIG_KEYS) {
+        if (plotConfig[key] != null) {
+            newConfig[key] = plotConfig[key];
+        }
+    }
+
+    // Add the current view (zoom, pan and flip)
     const savedRange = window.gearSpatialViewState?.[datasetId];
     if (savedRange) {
-        Object.assign(plotConfig, savedRange);
+        for (const key of VIEW_RANGE_KEYS) {
+            if (savedRange[key] != null) {
+                newConfig[key] = savedRange[key];
+            }
+        }
     }
 
     try {
-        const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, plotConfig);
+        const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, newConfig);
         if (!saveSuccess) {
             throw new Error("Could not save this new display. Please contact the gEAR team.");
         }

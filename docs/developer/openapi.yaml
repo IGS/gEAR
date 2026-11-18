@@ -1306,10 +1306,6 @@ paths:
                   type: boolean
                   default: false
                   description: Use the expanded Panel app (panel_app_expanded).
-                min_genes:
-                  type: integer
-                  default: 0
-                  description: Parsed as int but otherwise unused by the handler.
                 expression_min_clip:
                   type: number
                   nullable: true
