@@ -22,6 +22,12 @@ const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
 // Plotly axis series selects. A series may only be chosen on one axis at a time.
 const AXIS_SERIES_CLASSES = ["js-plotly-x-axis", "js-plotly-y-axis", "js-plotly-z-axis"];
 
+// Plotly config settings that only apply to 3D scatter plots
+const Z_AXIS_PROPS = ["z_axis", "z_title", "z_min", "z_max", "hide_z_labels"];
+
+// Plotly booleans the API treats as false when missing, so a false value does not need to be saved
+const FALSE_BY_DEFAULT_PROPS = ["hide_x_labels", "hide_y_labels", "hide_z_labels", "hide_legend", "jitter", "reverse_palette"];
+
 /**
  * Represents a PlotlyHandler, a class that handles Plotly plots.
  * @class
@@ -281,6 +287,9 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
             // Return either objects or nothing (which will be filtered out)
             return vlinePos ? { "vl_pos": vlinePos, "vl_style": vlineStyle } : null;
         }).filter(x => x !== null);
+
+        // Keep only settings that apply to this plot type, so they are not saved with the display
+        this.plotConfig = pruneUnusedPlotlyConfig(this.plotType, this.plotConfig);
     }
 
     /**
@@ -1582,6 +1591,52 @@ const showZAxisOptions = () => {
         elt.closest(".field")?.classList.add("is-hidden");
     }
     document.getElementById("subplots-dropdown").classList.add("is-hidden");
+};
+
+/**
+ * Lists the Plotly config settings that do not apply to a plot type.
+ * @param {string} plotType - The curator plot type (e.g. "scatter", "tsne_dyna", "scatter3d").
+ * @returns {string[]} Config keys to drop.
+ */
+const unusedPlotlyProps = (plotType) => {
+    const unused = [];
+    if (plotType === "scatter3d") {
+        // 3D scatter plots cannot be faceted, jittered or given vertical lines
+        unused.push("facet_row", "facet_col", "jitter", "vlines");
+    } else {
+        unused.push(...Z_AXIS_PROPS);
+    }
+    if (["bar", "line", "violin"].includes(plotType)) {
+        // Marker sizes and vertical lines are scatter-only options
+        unused.push("size_by_group", "marker_size", "vlines");
+    }
+    if (["bar", "line"].includes(plotType)) {
+        unused.push("jitter");  // Only scatter and violin plots can add jitter
+    }
+    return unused;
+};
+
+/**
+ * Removes settings from a Plotly config that do not apply to the plot type or that only repeat an API default,
+ * so the saved display keeps just the choices that matter.
+ *
+ * Dropped: settings for other plot types, empty values (undefined, null, ""), false booleans that
+ * default to false, and an empty vlines list. The API fills in its defaults for anything missing.
+ *
+ * @param {string} plotType - The curator plot type.
+ * @param {Object} config - The Plotly config collected from the curator.
+ * @returns {Object} A new, pruned config.
+ */
+const pruneUnusedPlotlyConfig = (plotType, config) => {
+    const unused = unusedPlotlyProps(plotType);
+    const isUsed = ([key, value]) => {
+        if (unused.includes(key)) return false;
+        if (value === undefined || value === null || value === "") return false;
+        if (value === false && FALSE_BY_DEFAULT_PROPS.includes(key)) return false;
+        if (key === "vlines" && Array.isArray(value) && !value.length) return false;
+        return true;
+    };
+    return Object.fromEntries(Object.entries(config).filter(isUsed));
 };
 
 /**
