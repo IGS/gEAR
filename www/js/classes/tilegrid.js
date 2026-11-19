@@ -589,7 +589,8 @@ class DatasetTile {
         if (this.orthologsToPlot.length === 0) {
             const message = "Neither the given gene symbol(s) nor corresponding orthologs were found in this dataset.";
             // Fill in card-image with error message, plus links to the genes this dataset does have
-            this.renderGeneNotFoundHelp("danger", message, geneSymbolInput);
+            // Warning, not danger: a gene missing from a dataset is expected (e.g. small Xenium panels), not a failure
+            this.renderGeneNotFoundHelp("warning", message, geneSymbolInput);
             // skip to the next tile
             return;
         }
