@@ -164,6 +164,7 @@ class AvailableDisplayTypes(Resource):
 
         line = False
         scatter = True  # Should always have scatter as an option
+        scatter3d = False
         #contour = False
         tsne_static = False
         umap_static = False
@@ -222,6 +223,7 @@ class AvailableDisplayTypes(Resource):
           if ds.dtype == "svg-expression":
             available_display_types = {
               "scatter": scatter,
+              "scatter3d": False,
               "tsne_static": tsne_static,
               "umap_static": umap_static,
               "pca_static": pca_static,
@@ -281,8 +283,13 @@ class AvailableDisplayTypes(Resource):
           umap_static = True
           pca_static = True
 
+        # 3-D scatter needs three continuous axes. Expression is one, and the same
+        # condition as the dynamic embedding plot guarantees two more.
+        scatter3d = tsne_umap_pca_dynamic
+
         available_display_types = {
           "scatter": scatter,
+          "scatter3d": scatter3d,
           "tsne_static": tsne_static,
           "umap_static": umap_static,
           "pca_static": pca_static,

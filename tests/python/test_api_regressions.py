@@ -505,3 +505,65 @@ def test_projection_built_twice_from_backed_file_releases_it(monkeypatch, tmp_pa
     h5py.File(dataset_path, "r+").close()
     # No projection h5ad is left behind next to the CSV
     assert sorted(p.name for p in projection_dir.iterdir()) == ["proj1.csv"]
+
+
+# ---------------------------------------------------------------- 3-D scatter (#446)
+
+class TestScatter3d:
+    """#446: single-gene 3-D scatter plots through POST /plot/<dataset_id> and their availability."""
+
+    def test_z_axis_can_be_an_analysis_embedding(self, monkeypatch):
+        """#446: a z axis like X_umap_2 is read from adata.obsm, as x and y are."""
+        result = embedding_plot(
+            monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2", plot_type="scatter3d", z_axis="X_umap_2"
+        )
+        assert result["success"] == 1, result["message"]
+        trace = result["plot_json"]["data"][0]
+        assert trace["type"] == "scatter3d"
+        assert sorted(map(float, decode(trace["z"]))) == [50.0, 60.0, 70.0, 80.0]
+        assert result["z_axis"] == "X_umap_2"
+
+    def test_missing_z_axis_is_an_error(self, monkeypatch):
+        """#446: a 3-D scatter without a z axis is refused with a clear message."""
+        result = embedding_plot(monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2", plot_type="scatter3d")
+        assert result["success"] == -1
+        assert "Z-axis" in result["message"]
+
+    def test_unknown_z_axis_is_an_error(self, monkeypatch):
+        """#446: a z axis that is neither an obs column, an embedding axis nor raw_value is refused."""
+        result = embedding_plot(
+            monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2", plot_type="scatter3d", z_axis="nope"
+        )
+        assert result["success"] == -1
+        assert "Z-axis arg 'nope' not found" in result["message"]
+
+    def test_downloaded_image_keeps_the_rotated_camera(self, monkeypatch):
+        """#446: the tile's camera sent in custom_props.layout is applied without losing the scene axis settings."""
+        camera = {"eye": {"x": 0.1, "y": 2.0, "z": 0.5}}
+        result = embedding_plot(
+            monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2", plot_type="scatter3d", z_axis="raw_value",
+            z_title="Z", custom_props={"layout": {"scene": {"camera": camera}}},
+        )
+        assert result["success"] == 1, result["message"]
+        scene = result["plot_json"]["layout"]["scene"]
+        assert scene["camera"]["eye"] == camera["eye"]
+        assert scene["zaxis"]["title"]["text"] == "Z"
+
+    def test_z_axis_is_dropped_for_2d_plots(self, monkeypatch):
+        """#446: a z axis sent with a 2-D plot type does not change the plot."""
+        result = embedding_plot(monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2", z_axis="X_umap_2")
+        assert result["success"] == 1, result["message"]
+        assert result["plot_json"]["data"][0]["type"] == "scatter"
+
+    @pytest.mark.parametrize("obs_columns, obsm_key, expected", [
+        ({"Embeddings_1": "numeric", "Embeddings_2": "numeric"}, None, True),
+        ({}, "X_umap", True),
+        ({"only_one": "numeric"}, None, False),
+        ({"tSNE_group": "categorical"}, None, False),
+    ])
+    def test_available_with_two_continuous_series_besides_expression(
+        self, monkeypatch, tmp_path, obs_columns, obsm_key, expected
+    ):
+        """#446: scatter3d needs three continuous axes: expression plus two numeric obs columns or an embedding."""
+        types_ = display_types(monkeypatch, tmp_path, embedding_adata(obs_columns, obsm_key))
+        assert types_["scatter3d"] is expected

@@ -15,13 +15,16 @@
             <a href="#" class="dropdown-item">
                 Y-axis
             </a>
+            <a href="#" class="dropdown-item is-hidden" id="z-axis-dropdown" data-testid="z-axis-dropdown">
+                Z-axis
+            </a>
             <a href="#" class="dropdown-item">
                 Color
             </a>
             <a href="#" class="dropdown-item">
                 Marker Size
             </a>
-            <a href="#" class="dropdown-item">
+            <a href="#" class="dropdown-item" id="subplots-dropdown">
                 Subplots
             </a>
             <a href="#" class="dropdown-item">
@@ -41,7 +44,7 @@
     </p>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Title</span>
-        <input class="js-plotly-x-title" id="x-axis-title-post" class="input" type="text" placeholder="Name axis title" aria-label="X-axis title">
+        <input class="js-plotly-x-title input" id="x-axis-title-post" type="text" placeholder="Name axis title" aria-label="X-axis title">
     </p>
     <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
         <span class="has-text-weight-medium">Hide tickmarks</span>
@@ -68,7 +71,7 @@
     </p>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Title</span>
-        <input class="js-plotly-y-title" id="y-axis-title-post" class="input" type="text" placeholder="Name axis title" aria-label="Y-axis title">
+        <input class="js-plotly-y-title input" id="y-axis-title-post" type="text" placeholder="Name axis title" aria-label="Y-axis title">
     </p>
     <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
         <span class="has-text-weight-medium">Hide tickmarks</span>
@@ -83,6 +86,33 @@
         <input class="js-y-range js-plotly-y-max" id="ymax-value-post" type="number" aria-label="Y-axis maximum boundary" />
     </p>
     <p class="help">Set Y-axis plotting range to display. Both min and max must be filled in to work.</p>
+</section>
+
+<section id="z-axis-section-post" class="js-plot-config-section is-hidden">
+    <span class="subtitle is-4 is-underlined">Z-axis</span>
+    <p class="is-flex is-justify-content-space-between pr-3">
+        <span class="has-text-weight-medium">Series</span>
+        <span class="select is-small">
+            <select class="js-plot-order js-plotly-z-axis" id="z-axis-series-post" data-testid="z-axis-series-post" aria-label="Z-axis series"></select>
+        </span>
+    </p>
+    <p class="is-flex is-justify-content-space-between pr-3">
+        <span class="has-text-weight-medium">Title</span>
+        <input class="js-plotly-z-title input" id="z-axis-title-post" data-testid="z-axis-title-post" type="text" placeholder="Name axis title" aria-label="Z-axis title">
+    </p>
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Hide tickmarks</span>
+        <input class="js-plotly-hide-z-ticks" id="hide-z-ticks-post" data-testid="hide-z-ticks-post" type="checkbox">
+    </label>
+    <p class="is-flex is-justify-content-space-between pr-3">
+        <span class="has-text-weight-medium">Axis min boundary</span>
+        <input class="js-z-range js-plotly-z-min" id="zmin-value-post" data-testid="zmin-value-post" type="number" aria-label="Z-axis minimum boundary" />
+    </p>
+    <p class="is-flex is-justify-content-space-between pr-3 mb-1">
+        <span class="has-text-weight-medium">Axis max boundary</span>
+        <input class="js-z-range js-plotly-z-max" id="zmax-value-post" data-testid="zmax-value-post" type="number" aria-label="Z-axis maximum boundary" />
+    </p>
+    <p class="help">Set Z-axis plotting range to display. Both min and max must be filled in to work.</p>
 </section>
 
 <section id="color-section-post" class="js-plot-config-section is-hidden">
@@ -128,7 +158,7 @@
     </p>
     <p class="is-flex is-justify-content-space-between pr-3 mb-1">
         <span class="has-text-weight-medium">Min marker size</span>
-        <input class="js-plotly-marker-size" id="marker-size-post" type="range" min="1" max="15" aria-label="Min marker size" />
+        <input class="js-plotly-marker-size" id="marker-size-post" type="range" min="1" max="15" value="3" aria-label="Min marker size" />
     </p>
     <p class="help">Uniformly increase or decrease size of markers</p>
 </section>

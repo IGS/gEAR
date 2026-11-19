@@ -128,6 +128,7 @@ class PlotlyData(Resource):
         label = req.get('point_label')
         hide_x_labels = req.get('hide_x_labels', False)
         hide_y_labels = req.get('hide_y_labels', False)
+        hide_z_labels = req.get('hide_z_labels', False)
         hide_legend = req.get('hide_legend', False)
         color_name = req.get('color_name')
         color_map = req.get('colors')
@@ -142,10 +143,13 @@ class PlotlyData(Resource):
         jitter = req.get('jitter', False)
         x_min = req.get('x_min')
         y_min = req.get('y_min')
+        z_min = req.get('z_min')
         x_max = req.get('x_max')
         y_max = req.get('y_max')
+        z_max = req.get('z_max')
         x_title = req.get('x_title')
         y_title = req.get('y_title')    # Will set later if not provided
+        z_title = req.get('z_title')    # Will set later if not provided
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
         filters = req.get('obs_filters', {})   # Dict of lists
         projection_id = req.get('projection_id', None)    # projection id of csv output
@@ -169,10 +173,13 @@ class PlotlyData(Resource):
             "z_axis": z_axis,
             "x_min": x_min,
             "y_min": y_min,
+            "z_min": z_min,
             "x_max": x_max,
             "y_max": y_max,
+            "z_max": z_max,
             "x_title": x_title,
             "y_title": y_title,
+            "z_title": z_title,
             "vlines": vlines,
             "point_label": label,
             "size_by_group": size_by_group,
@@ -180,6 +187,7 @@ class PlotlyData(Resource):
             "jitter": jitter,
             "hide_x_labels": hide_x_labels,
             "hide_y_labels": hide_y_labels,
+            "hide_z_labels": hide_z_labels,
             "hide_legend": hide_legend,
             "color_name": color_name,
             "facet_row": facet_row,
@@ -240,6 +248,17 @@ class PlotlyData(Resource):
             if not y_axis == "raw_value":
                 return_dict["success"] = -1
                 return_dict["message"] = f"Y-axis arg '{y_axis}' not found in observation metadata for dataset. Please update curation."
+                return return_dict
+
+        # 3-D scatter plots need a z axis.  Other plot types ignore it.
+        if plot_type == "scatter3d":
+            if not z_axis:
+                return_dict["success"] = -1
+                return_dict["message"] = "Z-axis is required for 3D scatter plots."
+                return return_dict
+            if z_axis not in adata.obs.columns and not embedding_axis(adata, z_axis) and not z_axis == "raw_value":
+                return_dict["success"] = -1
+                return_dict["message"] = f"Z-axis arg '{z_axis}' not found in observation metadata for dataset. Please update curation."
                 return return_dict
 
         if color_name and color_name not in adata.obs.columns:
@@ -385,7 +404,7 @@ class PlotlyData(Resource):
         dataframe = pd.concat([dataframe,selected.obs], axis=1)
 
         # If analysis was performed on dataset, get embedding coordinates from the obsm table
-        for axis in dict.fromkeys([x_axis, y_axis]):
+        for axis in dict.fromkeys([x_axis, y_axis, z_axis]):
             obsm_axis = embedding_axis(selected, axis)
             if obsm_axis:
                 obsm_key, column = obsm_axis
@@ -481,7 +500,7 @@ class PlotlyData(Resource):
                         colorblind_map["NA"] = NA_COLOR
                     color_map = colorblind_map
 
-        if 'replicate' in dataframe and plot_type == 'scatter':
+        if 'replicate' in dataframe and plot_type in ['scatter', 'scatter3d']:
             dataframe = dataframe.drop(['replicate'], axis=1)
 
         # kwargs will equal various options that should be passed to various plotly update functions
@@ -491,7 +510,7 @@ class PlotlyData(Resource):
         kwargs['traces']['marker'] = dict()
 
         # Assign custom marker size for scatter plot if passed
-        if plot_type == "scatter":
+        if plot_type in ["scatter", "scatter3d"]:
             # Strip plots can only accept integer sizes
             if not jitter and size_by_group:
                 # Dataframe series-based sizes
@@ -514,8 +533,16 @@ class PlotlyData(Resource):
 
         if plot_type == "contour" and not z_axis:
             z_axis = "raw_value"
-        elif not plot_type == "contour":
+        elif plot_type not in ["contour", "scatter3d"]:
             z_axis = None   # Safeguard against unintended effects
+
+        # Modification to z_axis title if title not provided (same as y_axis)
+        if plot_type == "scatter3d" and not z_title:
+            z_title = z_axis
+            if z_axis == "raw_value":
+                z_title = "expression of {}".format(gene_symbol)
+                if projection_id is not None:
+                    z_title = "relative " + z_title
 
         # Create plot
         try:
@@ -539,11 +566,14 @@ class PlotlyData(Resource):
                 jitter=jitter,
                 hide_x_labels=hide_x_labels,
                 hide_y_labels=hide_y_labels,
+                hide_z_labels=hide_z_labels,
                 hide_legend=hide_legend,
                 x_range=[x_min, x_max],
                 y_range=[y_min, y_max],
+                z_range=[z_min, z_max],
                 x_title=x_title,
                 y_title=y_title,
+                z_title=z_title,
                 vlines=vlines,
                 is_projection=projection_id is not None,
                 non_interactive=return_image,
@@ -581,6 +611,8 @@ class PlotlyData(Resource):
         # This only affects JSON return value, not the plot itself
         if "expression of {}".format(gene_symbol) in y_title:
             y_title = None
+        if z_title and "expression of {}".format(gene_symbol) in z_title:
+            z_title = None
 
         return {
             "success": success,
@@ -592,10 +624,13 @@ class PlotlyData(Resource):
             "z_axis": z_axis,
             "x_min": x_min,
             "y_min": y_min,
+            "z_min": z_min,
             "x_max": x_max,
             "y_max": y_max,
+            "z_max": z_max,
             "x_title": x_title,
             "y_title": y_title,
+            "z_title": z_title,
             "vlines": vlines,
             "point_label": label,
             "size_by_group": size_by_group,
@@ -603,6 +638,7 @@ class PlotlyData(Resource):
             "jitter": jitter,
             "hide_x_labels": hide_x_labels,
             "hide_y_labels": hide_y_labels,
+            "hide_z_labels": hide_z_labels,
             "hide_legend": hide_legend,
             "color_name": color_name,
             "facet_row": facet_row,

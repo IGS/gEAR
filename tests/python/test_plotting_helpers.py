@@ -251,3 +251,50 @@ def test_bar_plot_with_numeric_categories(kwargs):
     df = pd.DataFrame({"x": pd.Categorical([1, 2, 1, 2]), "y": [1.0, 2.0, 3.0, 4.0], "f": pd.Categorical(["a", "a", "b", "b"])})
     fig = plot(df, "bar", **kwargs)
     assert {t.type for t in fig.data} == {"bar"}
+
+
+# ---------------------------------------------------------------- 3-D scatter (#446)
+
+class TestScatter3d:
+    """#446: single-gene 3-D scatter plots (px.scatter_3d) with three continuous axes."""
+
+    @pytest.fixture
+    def xyz_df(self):
+        return pd.DataFrame({
+            "x": [1.0, 2.0, 3.0, 4.0],
+            "y": [5.0, 6.0, 7.0, 8.0],
+            "raw_value": [0.0, 1.0, 2.0, 3.0],
+            "s": [1.0, 2.0, 3.0, 4.0],
+            "f": pd.Categorical(["a", "a", "b", "b"]),
+        })
+
+    def test_draws_one_scatter3d_trace_with_z_values(self, xyz_df):
+        fig = plot(xyz_df, "scatter3d", z="raw_value")
+        assert [t.type for t in fig.data] == ["scatter3d"]
+        assert list(fig.data[0].z) == [0.0, 1.0, 2.0, 3.0]
+
+    def test_axis_titles_ranges_and_hidden_ticks_go_to_the_scene(self, xyz_df):
+        fig = plot(
+            xyz_df, "scatter3d", z="raw_value", z_title="Z", x_range=[0, 5], z_range=[-1, 4], hide_y_labels=True
+        )
+        scene = fig.layout.scene
+        assert (scene.xaxis.title.text, scene.yaxis.title.text, scene.zaxis.title.text) == ("X", "Y", "Z")
+        assert tuple(scene.xaxis.range) == (0, 5)
+        assert tuple(scene.zaxis.range) == (-1, 4)
+        assert scene.yaxis.range is None    # no bounds given
+        assert scene.yaxis.visible is False
+
+    def test_scene_fills_the_plot_area(self, xyz_df):
+        """#446: small margins and a slightly pulled-back camera, so the cube is large but stays in view when rotated."""
+        fig = plot(xyz_df, "scatter3d", z="raw_value")
+        assert (fig.layout.margin.t, fig.layout.margin.b) == (20, 20)
+        assert fig.layout.scene.camera.eye.x == 1.45
+
+    def test_facets_are_ignored(self, xyz_df):
+        fig = plot(xyz_df, "scatter3d", z="raw_value", facet_row="f", facet_col="f")
+        assert [t.type for t in fig.data] == ["scatter3d"]
+        assert len(fig.data[0].x) == 4
+
+    def test_marker_size_by_group(self, xyz_df):
+        fig = plot(xyz_df, "scatter3d", z="raw_value", traces={"marker": {"size": "s", "sizemin": 2}})
+        assert list(fig.data[0].marker.size) == [2.0, 5.0, 8.0, 11.0]
