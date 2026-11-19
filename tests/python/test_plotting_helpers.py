@@ -202,12 +202,6 @@ def test_color_bound_beyond_data_is_plot_error(expr_df):
         plot(df, "scatter", color_name="c", palette="Viridis", vmin=5.0)
 
 
-def test_contour_color_bounds():
-    df = pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0], "y": [1.0, 2.0, 1.0, 2.0], "raw_value": [0.0, 1.0, 2.0, 8.0]})
-    fig = plot(df, "contour", z="raw_value", vmax=4.0)
-    assert (fig.data[0].zmin, fig.data[0].zmax) == (0.0, 4.0)
-
-
 def test_bar_plot_aggregates_with_error_bars(expr_df):
     fig = plot(expr_df, "bar")
     assert [t.type for t in fig.data] == ["bar"]
@@ -241,9 +235,10 @@ def test_violin_plot_trace_per_group(expr_df):
     assert sum(1 for t in fig.data if t.opacity == 0.0) == 1
 
 
-def test_invalid_plot_type():
+@pytest.mark.parametrize("plot_type", ["pie", "contour"])   # contour was removed in #446
+def test_invalid_plot_type(plot_type):
     with pytest.raises(plotting.PlotError, match="invalid"):
-        plot(pd.DataFrame({"x": ["a"], "y": [1.0]}), "pie")
+        plot(pd.DataFrame({"x": ["a"], "y": [1.0]}), plot_type)
 
 
 @pytest.mark.parametrize("kwargs", [{"facet_col": "f"}, {"category_orders": {"x": [1, 2]}}])

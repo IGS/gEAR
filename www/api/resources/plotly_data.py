@@ -160,6 +160,12 @@ class PlotlyData(Resource):
         return_image = req.get('return_image', False)   # Whether to return a base64 encoded image string in the response for direct use in the frontend
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
+        # Only 3-D scatter plots use the z-axis settings. Drop them for other plot types,
+        # so they are neither used nor echoed back in the response.
+        if plot_type != "scatter3d":
+            z_axis = z_min = z_max = z_title = None
+            hide_z_labels = False
+
         # Returning initial values in case plotting errors.
         # This is to help with unpredictable issues in the Vuex config where it expects to set values after the API call is done
         return_dict = {
@@ -530,11 +536,6 @@ class PlotlyData(Resource):
                 y_title = "expression of {}".format(gene_symbol)
                 if projection_id is not None:
                     y_title = "relative " + y_title
-
-        if plot_type == "contour" and not z_axis:
-            z_axis = "raw_value"
-        elif plot_type not in ["contour", "scatter3d"]:
-            z_axis = None   # Safeguard against unintended effects
 
         # Modification to z_axis title if title not provided (same as y_axis)
         if plot_type == "scatter3d" and not z_title:

@@ -99,7 +99,7 @@ All helpers normalize the `analysis` argument with `gear.analysis.normalize_anal
 
 ### PlotlyData: `POST /plot/<dataset_id>` and `/plot/<dataset_id>/plotly`
 
-Builds a single-gene Plotly figure with `gear.plotting`. Supported `plot_type` values include `bar`, `violin`, `box`, `strip`, `scatter`, `scattergl`, `scatter3d`, `line` and `contour`. `tsne_dynamic` and `tsne/umap_dynamic` are aliases for `scatter`.
+Builds a single-gene Plotly figure with `gear.plotting`. Supported `plot_type` values include `bar`, `violin`, `box`, `strip`, `scatter`, `scattergl`, `scatter3d` and `line`. `tsne_dynamic` and `tsne/umap_dynamic` are aliases for `scatter`.
 
 JSON body keys:
 
@@ -108,7 +108,7 @@ JSON body keys:
 | `gene_symbol` | Required. |
 | `plot_type` | See above. |
 | `analysis` | Analysis dict or ID. Omit to use the primary dataset. |
-| `x_axis`, `y_axis` (default `raw_value`), `z_axis` | Obs columns. `x_axis` and `y_axis` may also be an analysis embedding axis (`X_tsne_1/2`, `X_umap_1/2`, `X_pca_1/2`), read from the matching `adata.obsm` array; each axis is resolved on its own. `z_axis` is required for `scatter3d` and may be an obs column, `raw_value` or an embedding axis. For `contour`, `z_axis` defaults to `raw_value`. Other plot types ignore it. |
+| `x_axis`, `y_axis` (default `raw_value`), `z_axis` | Obs columns. `x_axis` and `y_axis` may also be an analysis embedding axis (`X_tsne_1/2`, `X_umap_1/2`, `X_pca_1/2`), read from the matching `adata.obsm` array; each axis is resolved on its own. `z_axis` is required for `scatter3d` and may be an obs column, `raw_value` or an embedding axis. Other plot types ignore it. |
 | `point_label`, `color_name`, `colors`, `color_palette`, `reverse_palette`, `colorblind_mode` | Color settings. |
 | `facet_row`, `facet_col` (ignored for `scatter3d`), `order`, `size_by_group`, `marker_size` (default 3), `jitter` | Layout settings. |
 | `x_min`, `x_max`, `y_min`, `y_max`, `x_title`, `y_title`, `vlines` | Axis settings. |
@@ -117,7 +117,7 @@ JSON body keys:
 | `obs_filters` | Dict of obs column to list of allowed values. |
 | `projection_id` | Plot a projectR pattern instead of a gene (see [ProjectR](#projectr-resources)). |
 | `expression_min_clip` | Lower clip for expression values. |
-| `vmin`, `vmax` | Colorscale bounds for a numeric color series (or the contour `z`). They bound the colorbar only; the data is not clipped. Numbers or numeric strings; `null` or `""` uses the data minimum or maximum. `vmax` must be greater than `vmin`, otherwise `success: -1`. Ignored for categorical colors. |
+| `vmin`, `vmax` | Colorscale bounds for a numeric color series. They bound the colorbar only; the data is not clipped. Numbers or numeric strings; `null` or `""` uses the data minimum or maximum. `vmax` must be greater than `vmin`, otherwise `success: -1`. Ignored for categorical colors. |
 | `return_image` | If true, return a base64 PDF instead of JSON. |
 | `custom_props` | Extra kwargs passed to the plotting function. |
 

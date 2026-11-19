@@ -550,10 +550,15 @@ class TestScatter3d:
         assert scene["zaxis"]["title"]["text"] == "Z"
 
     def test_z_axis_is_dropped_for_2d_plots(self, monkeypatch):
-        """#446: a z axis sent with a 2-D plot type does not change the plot."""
-        result = embedding_plot(monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2", z_axis="X_umap_2")
+        """#446: z-axis settings sent with a 2-D plot type do not change the plot and are not echoed back."""
+        result = embedding_plot(
+            monkeypatch, analysis_adata(), "X_tsne_1", "X_tsne_2",
+            z_axis="X_umap_2", z_min=0, z_max=1, z_title="Z", hide_z_labels=True,
+        )
         assert result["success"] == 1, result["message"]
         assert result["plot_json"]["data"][0]["type"] == "scatter"
+        assert [result[key] for key in ("z_axis", "z_min", "z_max", "z_title")] == [None] * 4
+        assert result["hide_z_labels"] is False
 
     @pytest.mark.parametrize("obs_columns, obsm_key, expected", [
         ({"Embeddings_1": "numeric", "Embeddings_2": "numeric"}, None, True),

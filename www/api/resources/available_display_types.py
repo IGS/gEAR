@@ -165,7 +165,6 @@ class AvailableDisplayTypes(Resource):
         line = False
         scatter = True  # Should always have scatter as an option
         scatter3d = False
-        #contour = False
         tsne_static = False
         umap_static = False
         pca_static = False
@@ -232,7 +231,6 @@ class AvailableDisplayTypes(Resource):
               "bar": True if len(columns) else False,
               "violin": True if len(columns) else False,
               "line": True if line or "time_point" in columns else False,
-              #"contour":True if len(columns) else False,
               "svg": svg_exists
             }
             if svg_exists:
@@ -298,7 +296,6 @@ class AvailableDisplayTypes(Resource):
           "bar": True if len(columns) else False,
           "violin": True if len(columns) else False,
           "line": True if line or "time_point" in columns else False,
-          #"contour":True if len(columns) else False,
           "svg": svg_exists
         }
 

@@ -24,7 +24,6 @@ PLOT_TYPE_TO_FUNCTION = {
     "scatter": px.scatter,
     "strip": px.strip,
     # "violin":px.violin,
-    "contour": px.density_contour,  # NOTE: Potentially add as secondary option to lay over scatter plot
     "scatter3d": px.scatter_3d,
 }
 
@@ -237,7 +236,6 @@ def _build_priority_groups(
         priority_groups.append(color_name)
     if x and x not in priority_groups:
         priority_groups.append(x)
-    # Only added for contour plots
     if y and y not in priority_groups:
         priority_groups.append(y)
 
@@ -457,14 +455,14 @@ def generate_plot(
     z_title: str | None = None,  # 3-D scatter only
     is_projection: bool = False,
     non_interactive: bool = False,  # If True, will skip certain formatting that causes issues for static images (e.g. truncated axis labels)
-    vmin: float | None = None,  # User-defined colorscale minimum (continuous color or contour only)
-    vmax: float | None = None,  # User-defined colorscale maximum (continuous color or contour only)
+    vmin: float | None = None,  # User-defined colorscale minimum (continuous color only)
+    vmax: float | None = None,  # User-defined colorscale maximum (continuous color only)
     **kwargs: dict,
 ) -> go.Figure:
     """Generates and returns figure for facet grid."""
 
     # If replicates are present, use mean and stdev of expression data as datapoints
-    if "replicate" in df.columns and plot_type not in ["violin", "contour", "scatter3d"]:
+    if "replicate" in df.columns and plot_type not in ["violin", "scatter3d"]:
         df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)  # noqa: PD901
     elif plot_type == "bar":
         # Later datasets do not have a replicate column. Bars need to be run through groupby,
@@ -566,7 +564,7 @@ def generate_plot(
                 plotting_args["size"] = [i + size_increase for i in scaled_range]
 
     # Some plottypes cannot use a certain colorscale
-    if plot_type in ["strip", "box", "violin", "contour", "line"]:
+    if plot_type in ["strip", "box", "violin", "line"]:
         plotting_args.pop("color_continuous_scale", None)
 
     # Bound the continuous colorscale if the user set a min and/or max.
@@ -594,22 +592,6 @@ def generate_plot(
             # Add standard deviation to hover data
             if not non_interactive:
                 plotting_args["hover_data"] = {x: False, y: False, "std": ":.2f"}
-
-    if plot_type == "contour":
-        plotting_args["z"] = z
-        plotting_args["histfunc"] = "avg"  # For expression data
-        # NOTE: Almost feel these below should be under "_update_by_plot_type()"
-        kwargs["traces"]["contours_coloring"] = "fill"
-        # For expression data, start scale at 0
-        if z == "raw_value":
-            kwargs["traces"]["zmin"] = 0.0
-            kwargs["traces"]["zmax"] = max(df[z].tolist())
-        # User-defined bounds override the defaults. zmin and zmax must be set together.
-        if vmin is not None or vmax is not None:
-            kwargs["traces"]["zmin"] = vmin if vmin is not None else kwargs["traces"].get("zmin", float(df[z].min()))
-            kwargs["traces"]["zmax"] = vmax if vmax is not None else kwargs["traces"].get("zmax", float(df[z].max()))
-            if kwargs["traces"]["zmin"] >= kwargs["traces"]["zmax"]:
-                raise PlotError("Colorscale minimum value must be less than the maximum value ({}).".format(kwargs["traces"]["zmax"]))
 
     ### CREATE THE PLOT
 
@@ -905,9 +887,7 @@ def generate_plot(
     if plot_type not in ["violin"]:
         fig.update_traces(
             dict(
-                opacity=None
-                if plot_type in ["contour"] or "color_continuous_scale" in plotting_args
-                else 0.6,
+                opacity=None if "color_continuous_scale" in plotting_args else 0.6,
             )
         )
 
@@ -946,10 +926,9 @@ def generate_plot(
 
     # Use kwargs marker information to update figure information
     # Pop off marker info since it is already loaded.
-    if plot_type not in ["contour"]:
-        _add_marker_info_to_traces(
-            fig, kwargs["traces"]["marker"], plot_type, color_name
-        )
+    _add_marker_info_to_traces(
+        fig, kwargs["traces"]["marker"], plot_type, color_name
+    )
     kwargs["traces"].pop("marker", None)
 
     if reverse_palette:
