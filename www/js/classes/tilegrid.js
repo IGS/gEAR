@@ -4,6 +4,7 @@
 import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurrentUser, logErrorInConsole, openModal, setDisplayCardText, triggerUrlDownload } from "../common.v2.js";
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
+import { fetchDatasetGeneSymbols, findSimilarGenes, getDatasetGeneListUrl, getGeneSearchUrl, hasGeneList } from "../helpers/dataset-genes.js";
 import { buildGoslingSessionConfig, clearGoslingTile, describeGoslingSession, loadGoslingEmbed, renderGoslingPlot, resolveGoslingSession, saveGoslingSession } from "../helpers/gosling-fxns.js";
 import { clearSpatialViewState, downloadSpatialHTML, renderSpatialPanel } from "../helpers/spatial-fxns.js";
 import { Citation } from "./citation.js";
@@ -18,6 +19,9 @@ For the given layout, a single-gene grid and a multi-gene grid are generated.
 const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  // "tsne_dynamic" is a legacy option
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
 const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
+
+// Most similar genes suggested in a gene-not-found message (one row of tags in a narrow tile)
+const MAX_SIMILAR_GENES = 5;
 
 // Auto-arranged tile widths on the 12-column grid, used when a display has no usual width: 3 tiles per row for single-gene, 2 for multi-gene
 const AUTO_LAYOUT_SINGLE_WIDTH = 4;
@@ -359,10 +363,15 @@ export class TileGrid {
         return this.tiles.some((tile) => tile.currentPlotType === "svg");
     }
 
-    warnGeneAnnotationNotFound() {
+    /**
+     * Shows every tile that the searched gene(s) are not in the annotation database,
+     * with links to the genes each dataset does have.
+     * @param {string[]} [searchedGenes=[]] - The searched gene symbol(s), used to suggest similar dataset genes.
+     */
+    warnGeneAnnotationNotFound(searchedGenes = []) {
         const warningMessage = "Searched gene(s) not found in our annotation database. Please search for another gene.";
         for (const tile of this.tiles) {
-            createCardMessage(tile.tile.tileId, "warning", warningMessage);
+            tile.renderGeneNotFoundHelp("warning", warningMessage, searchedGenes);
         }
     }
 
@@ -579,8 +588,8 @@ class DatasetTile {
 
         if (this.orthologsToPlot.length === 0) {
             const message = "Neither the given gene symbol(s) nor corresponding orthologs were found in this dataset.";
-            // Fill in card-image with error message
-            createCardMessage(tileId, "danger", message);
+            // Fill in card-image with error message, plus links to the genes this dataset does have
+            this.renderGeneNotFoundHelp("danger", message, geneSymbolInput);
             // skip to the next tile
             return;
         }
@@ -877,6 +886,72 @@ class DatasetTile {
 
         // Adjust height of card image to account for the dropdown
         document.querySelector(`#tile-${this.tile.tileId} .card-image`).style.height = "calc(100% - 80px)";
+    }
+
+    /**
+     * Shows a gene-not-found message in the tile, followed by help finding genes this dataset does have:
+     * a link to the full gene list (plain text, new tab) and, in single-gene view, similar genes in the dataset
+     * that each open a new search in a new tab.
+     * Datasets without a gene list (e.g. Gosling) only get the message.
+     *
+     * @param {string} level - Bulma message level (e.g. "warning", "danger").
+     * @param {string} message - The gene-not-found message.
+     * @param {string[]|string} searchedGenes - The searched gene symbol(s).
+     * @returns {Promise<void>}
+     */
+    async renderGeneNotFoundHelp(level, message, searchedGenes) {
+        const tileId = this.tile.tileId;
+        const cardImage = document.querySelector(`#tile-${tileId} .card-image`);
+        if (!cardImage) return;
+
+        if (!hasGeneList(this.dataset)) {
+            createCardMessage(tileId, level, message, "gene-not-found");
+            return;
+        }
+
+        // Same look as createCardMessage, with the help inside the message box
+        const helpHTML = document.getElementById("tmpl-tile-gene-not-found-help").content.cloneNode(true);
+        const helpElt = helpHTML.querySelector(".js-gene-not-found-help");
+        helpElt.id = `tile-${tileId}-gene-not-found`;
+        // Links use the message's text color instead of the bright link color, so they do not stand out
+        const textColor = `has-text-${level}-dark`;
+        helpElt.classList.add(textColor, `has-background-${level}-light`);
+        helpElt.querySelector(".js-gene-not-found-message").textContent = message;
+        const geneListLink = helpElt.querySelector(".js-gene-list-link");
+        geneListLink.href = getDatasetGeneListUrl(this.dataset.id);
+        geneListLink.classList.add(textColor);
+        cardImage.replaceChildren(helpHTML);
+
+        // Similar genes are only suggested for a single searched gene
+        const genes = Array.isArray(searchedGenes) ? searchedGenes : [searchedGenes];
+        if (this.type !== "single" || !genes[0]) return;
+
+        let similarGenes;
+        try {
+            const datasetGenes = await fetchDatasetGeneSymbols(this.dataset.id);
+            similarGenes = findSimilarGenes(datasetGenes, genes[0], MAX_SIMILAR_GENES);
+        } catch (error) {
+            // The gene list link still works, so only log this
+            logErrorInConsole(error);
+            return;
+        }
+
+        // The tile may have moved on (e.g. a new search) while the genes were loading
+        if (!helpElt.isConnected) return;
+        if (!similarGenes.length) return;
+
+        const tagsElt = helpElt.querySelector(".js-similar-genes-tags");
+        for (const gene of similarGenes) {
+            const tag = document.createElement("a");
+            tag.classList.add("tag", "is-white", textColor);
+            tag.href = getGeneSearchUrl(gene, this.dataset.share_id);
+            tag.target = "_blank";
+            tag.rel = "noopener";
+            tag.dataset.testid = "similar-gene-link";
+            tag.textContent = gene;
+            tagsElt.append(tag);
+        }
+        helpElt.querySelector(".js-similar-genes").classList.remove("is-hidden");
     }
 
     /**
@@ -1215,6 +1290,14 @@ class DatasetTile {
             tableElt.classList.add("table", "is-fullwidth");
         }
 
+
+        // Link to the dataset's gene list (plain text, new tab)
+        const geneListElt = modalDiv.querySelector('.modal-card-body .js-infobox-gene-list');
+        if (hasGeneList(this.dataset)) {
+            geneListElt.querySelector('.js-infobox-gene-list-link').href = getDatasetGeneListUrl(this.dataset.id);
+        } else {
+            geneListElt.remove();
+        }
 
         const img = modalDiv.querySelector('.modal-card-body .js-infobox-schematic');
         if (this.dataset.schematic_image) {

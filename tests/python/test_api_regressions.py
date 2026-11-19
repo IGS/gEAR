@@ -17,9 +17,19 @@ import pandas as pd
 import pytest
 from flask import Flask
 from flask_restful import Api
-from resources import available_display_types, common, h5ad, plotly_data
+from resources import (
+    aggregations,
+    available_display_types,
+    common,
+    gene_symbols,
+    h5ad,
+    plotly_data,
+    spatial_scanpy_data,
+    tsne_data,
+)
 
 SINGLE_CELL = types.SimpleNamespace(id="DS1", dtype="single-cell-rnaseq")
+SPATIAL = types.SimpleNamespace(id="SP1", dtype="spatial")
 
 
 def make_client(resource, route):
@@ -505,3 +515,170 @@ def test_projection_built_twice_from_backed_file_releases_it(monkeypatch, tmp_pa
     h5py.File(dataset_path, "r+").close()
     # No projection h5ad is left behind next to the CSV
     assert sorted(p.name for p in projection_dir.iterdir()) == ["proj1.csv"]
+
+
+# ---------------------------------------------------------------- dataset gene list (gene_symbols.GeneSymbols)
+
+class TestIssue1048DatasetGeneList:
+    """The dataset gene list behind the "genes in this dataset" links and the curator gene pickers."""
+
+    @pytest.fixture
+    def client(self, monkeypatch):
+        datasets = {"DS1": SINGLE_CELL, "SP1": SPATIAL}
+        monkeypatch.setattr(gene_symbols.geardb, "get_dataset_by_id", lambda dataset_id: datasets.get(dataset_id))
+        return make_client(gene_symbols.GeneSymbols, "/h5ad/<dataset_id>/genes")
+
+    @staticmethod
+    def use_genes(monkeypatch, symbols):
+        """Make both dataset loaders return an AnnData with these gene symbols; returns the call log."""
+        calls = []
+        var = pd.DataFrame({"gene_symbol": symbols}, index=[f"E{i}" for i in range(len(symbols))])
+        adata = anndata.AnnData(X=np.zeros((2, len(symbols)), dtype=np.float32), var=var)
+
+        def loader(name):
+            def _load(analysis_id, dataset_id, session_id, *args, **kwargs):
+                calls.append((name, analysis_id, dataset_id))
+                return adata
+            return _load
+
+        for name in ("get_adata_shadow", "get_spatial_adata"):
+            monkeypatch.setattr(gene_symbols, name, loader(name))
+        return calls
+
+    @pytest.mark.parametrize("dataset_id, loader", [("DS1", "get_adata_shadow"), ("SP1", "get_spatial_adata")])
+    def test_analysis_id_param_selects_the_analysis(self, client, monkeypatch, dataset_id, loader):
+        """Regression for #1048: ?analysis_id= (what fetchGeneSymbols in common.v2.js sends) loads that analysis's genes, not the primary dataset's."""
+        calls = self.use_genes(monkeypatch, ["Sox2"])
+        ok_json(client.get(f"/h5ad/{dataset_id}/genes?analysis_id=A1"))
+        assert calls == [(loader, "A1", dataset_id)]
+
+    def test_legacy_analysis_param_still_selects_the_analysis(self, client, monkeypatch):
+        """Regression for #1048: the older ?analysis= parameter keeps working."""
+        calls = self.use_genes(monkeypatch, ["Sox2"])
+        ok_json(client.get("/h5ad/DS1/genes?analysis=A1"))
+        assert calls == [("get_adata_shadow", "A1", "DS1")]
+
+    @pytest.mark.parametrize("dataset_id", ["DS1", "SP1"])
+    def test_text_format_lists_unique_genes_one_per_line(self, client, monkeypatch, dataset_id):
+        """Regression for #1048: ?format=text returns a plain-text list for a browser tab: unique, sorted case-insensitively, no missing symbols."""
+        self.use_genes(monkeypatch, pd.Categorical(["sox2", "Pou4f3", np.nan, "Atoh1", "Pou4f3"]))
+        resp = client.get(f"/h5ad/{dataset_id}/genes?format=text")
+        assert resp.status_code == 200
+        assert resp.mimetype == "text/plain"
+        assert resp.headers.get("Content-Disposition", "").startswith("inline")
+        assert resp.get_data(as_text=True).splitlines() == ["Atoh1", "Pou4f3", "sox2"]
+
+    def test_json_format_is_unchanged(self, client, monkeypatch):
+        """Regression for #1048: the default JSON response keeps file order, repeats and the "None" fill."""
+        self.use_genes(monkeypatch, pd.Categorical(["sox2", np.nan, "Pou4f3", "Pou4f3"]))
+        assert ok_json(client.get("/h5ad/DS1/genes")) == {
+            "success": 1,
+            "gene_symbols": ["sox2", "None", "Pou4f3", "Pou4f3"],
+        }
+
+    def test_text_format_unknown_dataset_is_a_plain_text_error(self, client):
+        """Regression for #1048: in text mode a missing dataset gives a readable plain-text error, not JSON with status 200."""
+        resp = client.get("/h5ad/NOPE/genes?format=text")
+        assert resp.status_code == 404
+        assert resp.mimetype == "text/plain"
+        assert resp.get_data(as_text=True).strip() == "No dataset found with that ID"
+
+
+# ---------------------------------------------------------------- analysis parameter contract (all routes)
+
+# Each route, the analysis parameter the frontend sends to it, and that parameter's value.
+# Plot routes take an analysis object as "analysis" (built in tilegrid.js and curator_common.js).
+# Dataset-info routes take an ID string as "analysis_id" (fetchAggregations, fetchAvailablePlotTypes,
+# fetchH5adInfo and fetchGeneSymbols in common.v2.js). Already covered elsewhere: plotTopGenesPCA
+# (test_api_top_pca_genes.py) and orthologs (test_api_orthologs.py); the gene list (#1048 class above).
+ANALYSIS_OBJECT = {"id": "A1"}
+ANALYSIS_PARAM_ROUTES = [
+    # (case id, module name, resource class, route, dataset id, HTTP method, request)
+    ("plotly", "plotly_data", "PlotlyData", "/plot/<dataset_id>", "DS1", "post",
+     {"json": {"gene_symbol": "G1", "plot_type": "violin", "analysis": ANALYSIS_OBJECT}}),
+    ("plotly-spatial", "plotly_data", "PlotlyData", "/plot/<dataset_id>", "SP1", "post",
+     {"json": {"gene_symbol": "G1", "plot_type": "violin", "analysis": ANALYSIS_OBJECT}}),
+    ("mg_plotly", "mg_plotly_data", "MGPlotlyData", "/plot/<dataset_id>/mg_plotly", "DS1", "post",
+     {"json": {"gene_symbols": ["G1", "G2"], "plot_type": "heatmap", "analysis": ANALYSIS_OBJECT}}),
+    ("tsne", "tsne_data", "TSNEData", "/plot/<dataset_id>/tsne", "DS1", "post",
+     {"json": {"gene_symbol": "G1", "plot_type": "tsne_static", "analysis": ANALYSIS_OBJECT}}),
+    ("mg_tsne", "tsne_data", "MGTSNEData", "/plot/<dataset_id>/mg_tsne", "DS1", "post",
+     {"json": {"gene_symbols": ["G1", "G2"], "plot_type": "tsne_static", "analysis": ANALYSIS_OBJECT}}),
+    ("spatial_scanpy", "spatial_scanpy_data", "SpatialScanpyData", "/plot/<dataset_id>/spatial_scanpy", "SP1", "post",
+     {"json": {"gene_symbols": ["G1"], "analysis": ANALYSIS_OBJECT}}),
+    ("aggregations", "aggregations", "Aggregations", "/h5ad/<dataset_id>/aggregations", "DS1", "post",
+     {"json": {"dataset_id": "DS1", "analysis_id": "A1", "filters": {}}}),
+    ("aggregations-filtered", "aggregations", "Aggregations", "/h5ad/<dataset_id>/aggregations", "DS1", "post",
+     {"json": {"dataset_id": "DS1", "analysis_id": "A1", "filters": {"cluster": ["a"]}}}),
+    ("availableDisplayTypes", "available_display_types", "AvailableDisplayTypes",
+     "/h5ad/<dataset_id>/availableDisplayTypes", "DS1", "post",
+     {"json": {"session_id": "sess", "dataset_id": "DS1", "analysis_id": "A1"}}),
+    ("mg_availableDisplayTypes", "available_display_types", "MGAvailableDisplayTypes",
+     "/h5ad/<dataset_id>/mg_availableDisplayTypes", "DS1", "post",
+     {"json": {"session_id": "sess", "dataset_id": "DS1", "analysis_id": "A1"}}),
+    ("h5ad", "h5ad", "H5ad", "/h5ad/<dataset_id>", "DS1", "get",
+     {"query_string": {"analysis_id": "A1"}}),
+    ("genes", "gene_symbols", "GeneSymbols", "/h5ad/<dataset_id>/genes", "DS1", "get",
+     {"query_string": {"analysis_id": "A1"}}),
+]
+
+
+class TestAnalysisParamContract:
+    """Every API route that loads a dataset uses the analysis parameter the frontend sends it.
+
+    A route reading "analysis" while the page sends "analysis_id" (or the reverse) silently plots or lists
+    the primary dataset instead of the chosen analysis (#362 for tSNE, #1048 for the gene list).
+    """
+
+    MODULES = {
+        "aggregations": aggregations,
+        "available_display_types": available_display_types,
+        "gene_symbols": gene_symbols,
+        "h5ad": h5ad,
+        "plotly_data": plotly_data,
+        "spatial_scanpy_data": spatial_scanpy_data,
+        "tsne_data": tsne_data,
+    }
+    LOADERS = ("get_adata_from_analysis", "get_adata_shadow", "get_spatial_adata")
+
+    def received_analysis(self, request, monkeypatch, module_name, resource_name, route, dataset_id, method, kwargs):
+        """Call the route as the frontend does; return the analysis value each dataset loader was given."""
+        if module_name == "mg_plotly_data":
+            module = request.getfixturevalue("mg_plotly_data")
+        else:
+            module = self.MODULES[module_name]
+
+        datasets = {"DS1": SINGLE_CELL, "SP1": SPATIAL}
+        monkeypatch.setattr(module.geardb, "get_dataset_by_id", lambda dataset_id, *a, **k: datasets.get(dataset_id))
+
+        received = []
+        if module is tsne_data:
+            # tSNE routes hand the analysis to validate_args, which looks up the analysis and loads it
+            def validate_args(dataset_id, gene_symbols, analysis, session_id, projection_id):
+                received.append(analysis)
+                return {"success": -1, "message": "stop after recording the analysis"}
+            monkeypatch.setattr(tsne_data, "validate_args", validate_args)
+        else:
+            def loader(analysis, dataset_id, session_id, *args, **kw):
+                received.append(analysis)
+                raise FileNotFoundError("stop after recording the analysis")
+            for name in self.LOADERS:
+                if hasattr(module, name):
+                    monkeypatch.setattr(module, name, loader)
+
+        client = make_client(getattr(module, resource_name), route)
+        client.set_cookie("gear_session_id", "sess")
+        getattr(client, method)(route.replace("<dataset_id>", dataset_id), **kwargs)
+        return received
+
+    @pytest.mark.parametrize(
+        "module_name, resource_name, route, dataset_id, method, kwargs",
+        [case[1:] for case in ANALYSIS_PARAM_ROUTES],
+        ids=[case[0] for case in ANALYSIS_PARAM_ROUTES],
+    )
+    def test_route_loads_the_analysis_the_frontend_sends(self, request, monkeypatch, module_name, resource_name, route, dataset_id, method, kwargs):
+        """Regression for #1048 (and #362): the analysis in the request, under the name the frontend uses, reaches the dataset loader."""
+        sent = kwargs.get("json", kwargs.get("query_string", {}))
+        expected = sent.get("analysis", sent.get("analysis_id"))
+        received = self.received_analysis(request, monkeypatch, module_name, resource_name, route, dataset_id, method, kwargs)
+        assert received == [expected]
