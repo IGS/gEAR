@@ -120,13 +120,19 @@ def test_search_text_is_converted_for_boolean_mode(script):
 
 @pytest.mark.parametrize("script, like_column", [("search_gene_carts.cgi", "gc.label"),
                                                   ("search_datasets.cgi", "d.title")])
-def test_search_matches_partial_words(script, like_column):
-    """#636: "Tono" finds "Tonotopic" (prefix), and words inside underscore names are found with LIKE."""
-    result = run_cgi(script, query={"search_terms": "Tono Groves_potential ab", "sort_by": "relevance"},
+@pytest.mark.parametrize("search_terms, fulltext, likes", [
+    # #636: "Tono" finds "Tonotopic" (prefix), and words inside underscore names are found with LIKE.
+    #  Several unquoted words also rank rows containing them as a phrase first (>"...").
+    ("Tono Groves_potential ab", 'Tono* Groves_potential* ab >"Tono Groves_potential ab"',
+     ["%Tono%", "%Groves\\_potential%"]),
+    # Quoted text matches only as that phrase, so "cell" alone doesn't match every dataset
+    ('"hair cell" cochlea', '"hair cell" cochlea*', ["%hair_cell%", "%cochlea%"]),
+])
+def test_search_matches_partial_words_and_phrases(script, like_column, search_terms, fulltext, likes):
+    result = run_cgi(script, query={"search_terms": search_terms, "sort_by": "relevance"},
                      fake_modules=USERHISTORY)
     assert result.json()["success"] == 1
     main_query, *count_queries = match_queries(result)
-    fulltext, likes = "Tono* Groves_potential* ab", ["%Tono%", "%Groves\\_potential%"]
     assert f"OR {like_column} LIKE %s OR {like_column} LIKE %s)" in main_query["query"]
     # SELECT (relevance score) gets only the full-text query; WHERE gets it followed by the LIKE patterns
     params = main_query["params"]
