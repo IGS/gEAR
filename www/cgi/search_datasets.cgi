@@ -153,9 +153,10 @@ def main():
     # Punctuation is an operator in boolean mode (e.g. "-" excludes a word), so the user's text
     #  is converted first; if nothing searchable is left, search as if no terms were given.
     #  Words also match as prefixes ("Tono" finds "Tonotopic"), and inside underscore names in the
-    #  title ("potential" finds "Groves_potential_targets"), which full-text search treats as one word (#636)
+    #  title ("potential" finds "Groves_potential_targets"), which full-text search treats as one word (#636).
+    #  Quoted text matches only as that phrase, and unquoted words found together as a phrase rank first.
     search_text = ' '.join(search_terms)
-    fulltext_query = to_boolean_mode_query(search_text, prefix=True)
+    fulltext_query = to_boolean_mode_query(search_text, prefix=True, boost_phrase=True)
 
     if fulltext_query:
         like_patterns = to_like_patterns(search_text)

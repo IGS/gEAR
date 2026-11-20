@@ -3,7 +3,6 @@
 import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
 import { GeneCart } from "./classes/genecart.v2.js";
 
-let firstSearch = true;
 let isAddFormOpen = false;
 const resultsPerPage = 20;
 let listView = "table";
@@ -1475,12 +1474,6 @@ const submitSearch = async (page) => {
     resultItems = [];
 
     const searchTerms = document.getElementById("search-terms").value;
-
-    // If this is the first time searching with terms, set the sort by to relevance
-    if (searchTerms && firstSearch) {
-        document.getElementById("sort-by").value = 'relevance';
-        firstSearch = false;
-    }
 
     const searchCriteria = {
         'session_id': getCurrentUser()?.session_id,
