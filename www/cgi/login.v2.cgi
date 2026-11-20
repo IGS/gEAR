@@ -7,15 +7,18 @@ For a given username and password, returns a JSON structure:
 
 Where the session_id is one of the following:
 
-   0 - The user name wasn't found at all.
-  -1 - User was found, but the password was incorrect
+  -1 - The e-mail wasn't found, or the password was incorrect. Both get the same
+       response so the login form can't be used to find registered e-mails; the
+       actual reason is logged to stderr.
    ? - Any other value is the session ID
 
 """
 
-import cgi, json
+import cgi
 import hashlib
-import os, sys
+import json
+import os
+import sys
 import uuid
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
@@ -29,11 +32,17 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    user_email = form.getvalue('user-email')
-    user_pass = form.getvalue('user-password')
-    encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
+    user_email = form.getfirst('user-email')
+    user_pass = form.getfirst('user-password')
+    if user_pass is None:
+        user_pass = ""
 
-    result = {'session_id': 0, 'is_admin': 0}
+    encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
+    encoded_256_pass = hashlib.sha3_256(user_pass.encode('utf-8')).hexdigest()
+
+    result = {}
+    result["session_id"] = 0
+    result["is_admin"] = 0
 
     user_qry = "SELECT id, user_name, pass, is_admin FROM guser WHERE email = %s"
     user_email_found = False
@@ -50,18 +59,29 @@ def main():
     for row in cursor:
         user_email_found = True
 
-        if row[2] == encoded_pass:
+        if row[2] == encoded_256_pass:
             password_correct = True
             user_id = row[0]
             user_name = row[1]
             is_admin = row[3]
             break
 
-    if user_email_found == False:
+        # Many older accounts may still be using the md5 encoding, so check that as well if the sha3_256 doesn't match
+        if not password_correct:
+            if row[2] == encoded_pass:
+                password_correct = True
+                user_id = row[0]
+                user_name = row[1]
+                is_admin = row[3]
+                break
+
+    if not user_email_found:
+        print("login.v2.cgi: login failed for {}: e-mail not found".format(user_email), file=sys.stderr)
+        result['session_id'] = -1
         print(json.dumps(result))
     else:
         # Check the password for the user
-        if password_correct == True:
+        if password_correct:
             # If the password is valid, check for an active session
             session_id = None
             cursor.execute(session_qry, (user_id,))
@@ -69,7 +89,7 @@ def main():
                 session_id = row[0]
 
             # If there isn't an active session, create one
-            if session_id == None:
+            if not session_id:
                 session_id = str(uuid.uuid4())
                 cursor.execute(add_session_qry, (user_id, session_id))
 
@@ -77,7 +97,7 @@ def main():
             cursor.execute(profile_qry, (user_id,))
             profile = "Hearing (site default)"
             profile_share_id = 0
-            
+
             for row in cursor:
                 profile = row[0]
                 profile_share_id = row[1]
@@ -90,6 +110,7 @@ def main():
             print(json.dumps(result))
         else:
             # If the password was invalid, return -1
+            print("login.v2.cgi: login failed for {}: incorrect password".format(user_email), file=sys.stderr)
             result['session_id'] = -1
             print(json.dumps(result))
 

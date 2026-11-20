@@ -1,10 +1,10 @@
 'use strict';
 
-import { convertToFormData, initCommonUI } from "./common.v2.js";
+import { convertToFormData, doLogin, initCommonUI } from "./common.v2.js";
 
 let verification_uuid = null;
 
-window.onload=function() {
+const initializePageUI = () => {
     // Set the page title
     document.getElementById('page-header-label').textContent = 'Create an account';
 
@@ -121,14 +121,15 @@ async function sendVerificationEmail(verification_uuid) {
 
 async function validateEmail() {
     const email = document.getElementById('email').value;
-    const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    // see https://github.com/IGS/gEAR/security/code-scanning/201
+    const email_regex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
     if (email_regex.test(email) ) {
-        document.getElementById('email').classList.remove('is-danger');
+        document.getElementById('email').classList.remove('has-text-danger-dark');
         document.getElementById('email-error-message').classList.add('is-hidden');
         document.getElementById('email-alert-icon').classList.add('is-hidden');
     } else {
         document.getElementById('email-error-message').innerHTML = 'Please enter a valid e-mail address';
-        document.getElementById('email').classList.add('is-danger');
+        document.getElementById('email').classList.add('has-text-danger-dark');
         document.getElementById('email-error-message').classList.remove('is-hidden');
         document.getElementById('email-alert-icon').classList.remove('is-hidden');
         return false;
@@ -141,7 +142,7 @@ async function validateEmail() {
 
     if (data['email_exists'] == 1) {
         document.getElementById('email-error-message').innerHTML = 'This e-mail address is already registered';
-        document.getElementById('email').classList.add('is-danger');
+        document.getElementById('email').classList.add('has-text-danger-dark');
         document.getElementById('email-error-message').classList.remove('is-hidden');
         return false;
     }
@@ -153,12 +154,12 @@ function validateFirstLast() {
     const first_last = document.getElementById('first-last').value;
 
     if ( first_last.length > 2 && first_last.includes(' ')) {
-        document.getElementById('first-last').classList.remove('is-danger');
+        document.getElementById('first-last').classList.remove('has-text-danger-dark');
         document.getElementById('first-last-error-message').classList.add('is-hidden');
         document.getElementById('first-last-alert-icon').classList.add('is-hidden');
         return true;
     }
-    document.getElementById('first-last').classList.add('is-danger');
+    document.getElementById('first-last').classList.add('has-text-danger-dark');
     document.getElementById('first-last-error-message').classList.remove('is-hidden');
     document.getElementById('first-last-alert-icon').classList.remove('is-hidden');
     return false;
@@ -212,14 +213,14 @@ function validatePassword(mode) {
     }
 
     if (complexity_met == false) {
-        document.getElementById('password1').classList.add('is-danger');
+        document.getElementById('password1').classList.add('has-text-danger-dark');
         document.getElementById('password1-error-message').innerHTML = 'Password does not meet complexity requirements';
         document.getElementById('password1-error-message').classList.remove('is-hidden');
         document.getElementById('password1-alert-icon').classList.remove('is-hidden');
         return false;
     }
 
-    document.getElementById('password1').classList.remove('is-danger');
+    document.getElementById('password1').classList.remove('has-text-danger-dark');
     document.getElementById('password1-error-message').classList.add('is-hidden');
     document.getElementById('password1-alert-icon').classList.add('is-hidden');
 
@@ -227,8 +228,8 @@ function validatePassword(mode) {
         return;
     }
     if (password1 != password2) {
-        document.getElementById('password1').classList.add('is-danger');
-        document.getElementById('password2').classList.add('is-danger');
+        document.getElementById('password1').classList.add('has-text-danger-dark');
+        document.getElementById('password2').classList.add('has-text-danger-dark');
         document.getElementById('password1-error-message').innerHTML = 'Passwords do not match';
         document.getElementById('password2-error-message').innerHTML = 'Passwords do not match';
         document.getElementById('password1-error-message').classList.remove('is-hidden');
@@ -237,8 +238,8 @@ function validatePassword(mode) {
         document.getElementById('password2-alert-icon').classList.remove('is-hidden');
         return false;
     }
-    document.getElementById('password1').classList.remove('is-danger');
-    document.getElementById('password2').classList.remove('is-danger');
+    document.getElementById('password1').classList.remove('has-text-danger-dark');
+    document.getElementById('password2').classList.remove('has-text-danger-dark');
     document.getElementById('password1-error-message').classList.add('is-hidden');
     document.getElementById('password2-error-message').classList.add('is-hidden');
     document.getElementById('password1-alert-icon').classList.add('is-hidden');
@@ -250,8 +251,8 @@ function validatePassword2() {
     // Here we only care about if the two passwords match, and we don't want to be
     //  annoying about it while the user is still typing
     if (document.getElementById('password1').value != document.getElementById('password2').value) {
-        document.getElementById('password1').classList.add('is-danger');
-        document.getElementById('password2').classList.add('is-danger');
+        document.getElementById('password1').classList.add('has-text-danger-dark');
+        document.getElementById('password2').classList.add('has-text-danger-dark');
         document.getElementById('password1-error-message').innerHTML = 'Passwords do not match';
         document.getElementById('password2-error-message').innerHTML = 'Passwords do not match';
         document.getElementById('password1-error-message').classList.remove('is-hidden');
@@ -259,14 +260,13 @@ function validatePassword2() {
         document.getElementById('password1-alert-icon').classList.remove('is-hidden');
         document.getElementById('password2-alert-icon').classList.remove('is-hidden');
         return false;
-    } else {
-        document.getElementById('password1').classList.remove('is-danger');
-        document.getElementById('password2').classList.remove('is-danger');
-        document.getElementById('password1-error-message').classList.add('is-hidden');
-        document.getElementById('password2-error-message').classList.add('is-hidden');
-        document.getElementById('password1-alert-icon').classList.add('is-hidden');
-        document.getElementById('password2-alert-icon').classList.add('is-hidden');
     }
+    document.getElementById('password1').classList.remove('has-text-danger-dark');
+    document.getElementById('password2').classList.remove('has-text-danger-dark');
+    document.getElementById('password1-error-message').classList.add('is-hidden');
+    document.getElementById('password2-error-message').classList.add('is-hidden');
+    document.getElementById('password1-alert-icon').classList.add('is-hidden');
+    document.getElementById('password2-alert-icon').classList.add('is-hidden');
 }
 
 function validatePasswordToggleRequirement(requirement, state) {
@@ -301,5 +301,6 @@ async function validateAccountCreationForm() {
     return true;
 }
 
-// Pre-initialize some stuff
+// Initialize common UI first, then initialize page-specific UI
 await initCommonUI();
+initializePageUI();

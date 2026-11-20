@@ -8,34 +8,92 @@ webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
 
 ```bash
-    sudo apt install libffi-dev libsqlite-dev libsqlite3-dev libhdf5-dev
-    sudo apt install libncursesw5-dev libssl-dev python3-tk tk-dev libgdbm-dev libc6-dev libbz2-dev lzma liblzma-dev
+    sudo apt -qq update
+    sudo DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+        apache2-dev \
+        libffi-dev \
+        libsqlite3-dev \
+        libreadline-dev \
+        libncursesw5-dev \
+        libssl-dev \
+        tk-dev \
+        libgdbm-dev \
+        libc6-dev \
+        liblzma-dev \
+        libbz2-dev \
+        zlib1g-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        libblosc-dev \
+        libhdf5-dev \
+        hdf5-helpers \
+        hdf5-tools \
+        libblas-dev \
+        liblapack-dev \
+        libcairo2-dev \
+        libxml2-dev \
+        libwebp-dev \
+        libpcre2-dev \
+        libicu-dev \
+        libdeflate-dev \
+        libssl3 \
+        libgfortran5 \
+        libuv1 \
+        libhdf5-dev \
+        pkg-config \
+        llvm \
+        apache2 \
+        php \
+        libapache2-mod-php \
+        php-gd
+    sudo apt -qq clean autoclean
+    sudo apt -qq autoremove -y
+    sudo rm -rf /var/lib/apt/lists/*
 
-    export PYTHONV=3.10.4
-    export PYTHON_MINORV=3.10
+    export PYTHONV=3.14.4
+    export PYTHON_MINORV=3.14
+
     sudo mkdir /opt/Python-${PYTHONV}
     sudo chown $USER /opt/Python-${PYTHONV}
     cd /tmp
     wget https://www.python.org/ftp/python/${PYTHONV}/Python-${PYTHONV}.tar.xz
     tar -xf Python-${PYTHONV}.tar.xz
     cd Python-${PYTHONV}/
-    ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared
-    make
+    # LDFLAGS, CPPFLAGS, and PKG_CONFIG_PATH are needed to ensure the build process can find the lzma library and headers,
+    # which are required for Python's lzma module.  Without these flags, the build process may fail to find lzma downstream.
+    ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared \
+        LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
+        CPPFLAGS="-I/usr/include" \
+        PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig"
     make install
+    cd /tmp
+    rm -rf Python-${PYTHONV}*
+
+    export LD_LIBRARY_PATH="/opt/Python-${PYTHONV}/lib:${LD_LIBRARY_PATH}"
 
     cd /opt/Python-${PYTHONV}/bin
     sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
 
+    sudo mkdir /opt/bin
+    sudo rm /opt/bin/python3 # if it exists.
+    sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
+
     sudo apt install r-base r-base-dev hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
+
+    # Disable user-installs to guarantee packages go into /opt/Python...
+    export PIP_USER=0
 ```
 
 ## pip install option A (reqs file)
 
 Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs. You can run `./pip3 install -r requirements.txt` as a shortcut.
 
+Previously only the "docker" path requirements.txt was necessary, but now that the pip installations are broken up amongst the various services, more requirements.txt files will be necessary to get a comprehensive package installation onto the monolith VM. For this reason, you may elect to use option B instead.
+
 `./pip3 install -r <git_repo_root/docker/requirements.txt`
-`./pip3 uninstall dask-expr -y`
-`./pip3 install -e <git_repo_root>/lib/`
+`./pip3 install -r <git_repo_root/services/spatial/requirements.txt`
+`./pip3 install -r <git_repo_root/services/projectr/requirements.txt`
 
 If the requirements.txt will not install due to a stack depth issue, you can use the `requirements.full.txt` instead, which was made using `pip freeze > requirements.full.txt`. This file contains all versioned scripts so pip does not have to compute the best version for non-mentioned packages.
 
@@ -46,9 +104,10 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
 
 NOTE 2: Really try to keep the requirements.txt in sync with the files below.  While you can use the file to do the installation, @jorvis prefers to have them explicitly listed here.
 
+I cannot add comments to the bash code without breaking the command.  So consult the requirements.txt file in the "docker" directory for any comments pertaining to why a version was installed.
+
 ```bash
     ./pip3 install --upgrade pip
-
     ./pip3 install \
       aiohttp==3.8.3 \
       aiohttp_retry==2.9.1 \
@@ -61,7 +120,6 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       datashader==0.18.0 \
       Flask==3.0.0 \
       Flask-RESTful==0.3.9 \
-      google-analytics-data==0.21.0 \
       gosling[all]==0.3.0 \
       gunicorn \
       h5py==3.10.0 \
@@ -120,18 +178,6 @@ Scanpy (or dependencies like numba) assumes it can write in several directories 
 ```bash
     cd /opt/Python-${PYTHONV}/lib/python${PYTHON_MINORV}/site-packages/
     find ./ -name __pycache__ -exec chmod 777 {} \;
-```
-
-NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time). It does not have a release tag, but fixes a NumPy bug occurs with older diffxpy commits and newer numpy releases.
-
-```bash
-    /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea
-```
-
-The MulticoreTSNE module currently fails with cmake 3.22.0 or greater.  I have a pending pull request to fix this but until then:
-
-```bash
-    /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/jorvis/Multicore-TSNE.git@68325753c4ab9758e3d242719cd4845d751a4b6c
 ```
 
 ## Note about Flask

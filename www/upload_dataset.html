@@ -159,6 +159,13 @@
                         <p class="is-size-7">Your dataset is processed and checked on the server.</p>
                       </div>
                     </li>
+                    <li id='step-post-process-dataset' class="steps-segment">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Dataset post-processing</p>
+                        <p class="is-size-7">Resolve ambiguities in the dataset.</p>
+                      </div>
+                    </li>
                     <li id='step-finalize-dataset' class="steps-segment">
                       <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
                       <div class="steps-content">
@@ -229,6 +236,7 @@
                             <select id="metadata-dataset-type" name="metadata-dataset-type">
                               <option value="">Select one</option>
                               <option value="single-cell-rnaseq">Single-cell RNA-seq</option>
+                              <option value="single-nucleus-rnaseq">Single-nucleus RNA-seq</option>
                               <option value="bulk-rnaseq">Bulk RNA-seq</option>
                               <option value="microarray">Microarray</option>
                               <option value="spatial">Spatial</option>
@@ -666,9 +674,9 @@
                       </div>
                     </div>
                     <div class="column format-column is-3 is-flex">
-                      <!-- Rdata/Seurat -->
+                      <!-- RDS/Seurat -->
                       <div class="box format-selection-box">
-                        <h3>Rdata / Seurat</h3>
+                        <h3>RDS / Seurat</h3>
                         <p class="format-description">
                           This is a binary format used by the Seurat package in R. If you've already been
                           working with your dataset in R, including clustering and other analyses, this is
@@ -682,21 +690,21 @@
                         <ul class="format-documentation-links">
                           <li>
                             <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
-                              <span><a href="https://bioinformatics.ccr.cancer.gov/docs/getting-started-with-scrna-seq/IntroToR_Seurat/" target="_blank">Rdata info</a></span>
+                              <span><a href="https://bioinformatics.ccr.cancer.gov/docs/getting-started-with-scrna-seq/IntroToR_Seurat/" target="_blank">RDS info</a></span>
                             </span>
                           </li>
                           <li>
                             <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
-                              <span>Rdata example</span>
+                              <span>RDS example</span>
                             </span>
                           </li>
                         </ul>
                         <div class="control">
-                          <button data-format="rdata" class="button is-primary is-fullwidth format-selector" disabled>
+                          <button data-format="rds" class="button is-primary is-fullwidth format-selector">
                             <span class="icon">
-                              <i class="mdi mdi-cancel"></i>
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
                             </span>
-                            <span class="format-status">Not yet available</span>
+                            <span class="format-status">Choose</span>
                           </button>
                         </div>
                       </div>
@@ -760,6 +768,7 @@
                           <div class="select is-fullwidth">
                             <select name="spatial-platform" id="select-spatial-platform">
                               <option value="">Select one</option>
+                              <option value="cosmx">CosMx SMI</option>
                               <option value="curio">Curio Seeker</option>
                               <option value="geomx">GeoMx DSP</option>
                               <option value="visium">10x Genomics Visium</option>
@@ -789,7 +798,7 @@
                         <p class="format-description">
                           If a UCSC track hub 'hub.txt' file is linked, it and its associated
                           metadata and track files will be cloned to the server.  Currently,
-                          only BigBed and BigWig files are supported.
+                          BigBed, BigWig, Hi-C and VCF files are supported (Hi-C and VCF are not available for human assemblies).
                         </p>
                         <p class="format-description">
                           Track hub information is converted into a spec that can be read in by the
@@ -808,7 +817,7 @@
                           </li>
                           <li>
                             <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
-                              <span><a href="https://umgear.org/tracks/Litao_bigwigs/hub.txt" target="_blank">hub.txt example</a></span>
+                              <span><a href="https://example.org/tracks/my_trackhub/hub.txt" target="_blank">hub.txt example</a></span>
                             </span>
                           </li>
                         </ul>
@@ -901,7 +910,7 @@
                             </span>
                           </h3>
                           <div class="control">
-                            <input class="input" type="text" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
+                            <input class="input" type="text" id="trackhub-url-input" placeholder="Ex: https://example.org/tracks/my_trackhub/hub.txt">
                           </div>
                         </div>
                       </div>
@@ -947,6 +956,7 @@ Currently Gosling only supports single-organism tracks">
                                 <option value="hg19">Human (hg19)</option>
                                 <option value="hg38">Human (hg38)</option>
                                 <option value="mm10">Mouse (mm10)</option>
+                                <option value="mm39">Mouse (mm39)</option>
                                 <option value="galGal6" disabled>Chicken (COMING SOON)</option>
                                 <option value="rn6">Rat</option>
                                 <option value="danRer10">Zebrafish</option>
@@ -1038,6 +1048,36 @@ Currently Gosling only supports single-organism tracks">
                   <div class="field">
                     <div class="control">
                       <button class="button is-primary" id="dataset-processing-submit" disabled>Continue</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="step-post-process-dataset-c" class="step-c is-hidden">
+                  <h1>Step - Dataset Post-Processing</h1>
+                  <p>
+                    Your dataset has been converted into a format that can be used by the gEAR platform. This step is optional, but asks questions that may clear up various issues, such as ambiguous data types.
+                  </p>
+                  <hr />
+
+                  <!--
+                  <div id="no-post-processing-c" class="field is-hidden">
+                    <p>
+                      No post-processing is required for this dataset. Click Continue to finalize submission.
+                    </p>
+                  </div>-->
+
+                  <div id="ambiguous-cols-dtypes-c" class="is-hidden">
+                    <h3>Resolve ambiguous column data types</h1>
+                    <p>
+                      The following columns have ambiguous data types and need to be resolved as "continuous" or "categorical" data.
+                    </p>
+                    <div id="ambiguous-cols-review-c" class="field columns is-multiline">
+                      <!-- Select dropdowns are rendered here -->
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <div class="control">
+                      <button class="button is-primary" id="dataset-post-processing-submit">Continue</button>
                     </div>
                   </div>
                 </div>
@@ -1195,10 +1235,8 @@ Currently Gosling only supports single-organism tracks">
         </section> <!-- end #main-c -->
       </div>
       <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
-        </div>
-      </footer>
+        <div id="funding"></div>
+</footer>
 
     <div id="spatial-reqs-modal" class="modal">
         <div class="modal-background"></div>
@@ -1218,21 +1256,42 @@ Currently Gosling only supports single-organism tracks">
         </div>
     </div>
 
-    <template id="curio-spatial-reqs">
-      A tar.gz file containing the following files with these standarized names:
+    <template id="cosmx-spatial-reqs">
+      A .tar or .tar.gz file containing the following files with these standarized names:
       <ul>
-          <li>(Required) 'anndata.h5ad': Counts and metadata file.</li>
-          <li>'cluster_assignment.txt': Cluster assignment file.</li>
-          <li>'Metrics.csv': Metrics file.</li>
-          <li>'variable_features_clusters.txt': Variable features clusters file.</li>
-          <li>'variable_features_spatial_moransi.txt': Variable features Moran’s I file.</li>
+        <li>(Required) exprMat_file.csv</li>
+        <li>(Required) metadata_file.csv</li>
+        <li>(Required) fov_positions_file.csv</li>
+        <li>(Required) 'CellComposite' directory</li>
+        <li>(Required) 'CellLabels' directory</li>
+        <li>tx_file.csv</li>
       </ul>
       <br />
+      The csv filenames may have an optional prefix (e.g. <code>Run1_exprMat_file.csv</code>); <code>exprMat_file.csv</code> with no prefix also works.
+      The csv files may also be gzipped (e.g. <code>exprMat_file.csv.gz</code>).
+      <br /><br />
+      The files and directories may sit at the top of the tarball or inside a single top-level folder.
+      <br /><br />
+      Gene IDs present in input must associate with an annotation from the source type indicated in the metadata upload.
+    </template>
+
+    <template id="curio-spatial-reqs">
+      A .tar or .tar.gz file containing the following files with these standarized names:
+      <ul>
+          <li>(Required) 'anndata.h5ad': Counts and metadata file.</li>
+          <li>(Required) 'cluster_assignment.txt': Cluster assignment file.</li>
+          <li>(Required) 'Metrics.csv': Metrics file.</li>
+          <li>(Required) 'variable_features_clusters.txt': Variable features clusters file.</li>
+          <li>(Required) 'variable_features_spatial_moransi.txt': Variable features Moran’s I file.</li>
+      </ul>
+      <br />
+      The files must sit at the top of the tarball. Their filenames can have an optional prefix (e.g. <code>Run1_anndata.h5ad</code>).
+      <br /><br />
       Gene IDs present in input must associate with an annotation from the source type indicated in the metadata upload.
     </template>
 
     <template id="geomx-spatial-reqs">
-      A tar.gz file containing the following files with these standarized names:
+      A .tar or .tar.gz file containing the following files with these standarized names:
 
       <ul>
         <li>(Required) 'xlsx' file with information.</li>
@@ -1251,7 +1310,7 @@ Currently Gosling only supports single-organism tracks">
     </template>
 
     <template id="visium-spatial-reqs">
-      A tar.gz file containing the following files with these standardized names in this directory structure:
+      A .tar or .tar.gz file containing the following files with these standardized names in this directory structure:
 
       <ul>
           <li>(Required) 'filtered_feature_bc_matrix.h5': Counts and metadata file.</li>
@@ -1260,20 +1319,20 @@ Currently Gosling only supports single-organism tracks">
           <li>(Required) 'spatial/tissue_lowres_image.png': Low resolution image.</li>
           <li>(Required) 'spatial/scalefactors_json.json': Scalefactors file.</li>
           <li>(Required) 'spatial/tissue_positions_list.csv' (SpaceRanger 1) or 'spatial/tissue_positions.csv' (SpaceRanger 2): Spots positions file.</li>
-          <li>(Required) 'fullres_image_file': Large microscopy image used as input for space ranger. Not used but needed to not break upload process.</li>
       </ul>
       <br />
       Recommended tar command to create tarball:
       <br />
-      <code>tar cvf spatialdata.tar spatialdata_filtered_feature_bc_matrix.h5 clusters.csv spatial</code>
+      <code>tar cvf spatialdata.tar filtered_feature_bc_matrix.h5 clusters.csv spatial</code>
       <br /><br />
-      For the "filtered_feature_bc_matrix.h5" file, it needs to be prepended with a prefix and underscore.  The prefix "spatialdata_" is used in the example tar command.
+      The "filtered_feature_bc_matrix.h5" filename can have an optional prefix (e.g. <code>Run1_filtered_feature_bc_matrix.h5</code>).
+      The large full-resolution microscopy image used as input for Space Ranger is not needed.
       <br /><br />
-      For the "clusters.csv" file, it is preferable if the"Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
+      For the "clusters.csv" file, it is preferable if the "Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
     </template>
 
     <template id="visiumhd-spatial-reqs">
-      A tar.gz file containing the following files with these standardized names in this directory structure:
+      A .tar or .tar.gz file containing the following files with these standardized names in this directory structure:
 
       <ul>
           <li>(Required) 'binned_outputs/square_008um/filtered_feature_bc_matrix.h5': Counts and metadata file.</li>
@@ -1297,7 +1356,7 @@ Currently Gosling only supports single-organism tracks">
     </template>
 
     <template id="xenium-spatial-reqs">
-      A tar.gz file containing the following files with these standardized names in this directory structure:
+      A .tar or .tar.gz file containing the following files with these standardized names in this directory structure:
 
       <ul>
           <li>(Required) 'experiment.xenium': File containing specifications.</li>
@@ -1308,7 +1367,7 @@ Currently Gosling only supports single-organism tracks">
           <li>'cell_boundaries.parquet': Polygons of cell boundaries.</li>
           <li>'transcripts.parquet': File containing transcripts.</li>
           <li>'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)</li>
-          <li>'clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
+          <li>(Required) 'clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
       </ul>
       <br />
       More information on Xenium outputs can be found here: https://www.10xgenomics.com/support/software/xenium-ranger/latest/analysis/outputs/XR-output-overview
@@ -1321,8 +1380,10 @@ Currently Gosling only supports single-organism tracks">
 
       <!-- Page-specific CSS/JS loading here -->
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/upload_dataset.js', prefs.cache_version);

@@ -69,7 +69,7 @@
                         <p>
                           Learn how to use the condition comparison tool
                         </p>
-                        <p class="mt-2"><a href="https://github.com/IGS/gEAR/wiki#multigene-curator">Documentation</a></p>
+                        <p class="mt-2"><a href="https://github.com/IGS/gEAR/wiki#comparison-tool">Documentation</a></p>
                       </div>
                     </div>
                   </div>
@@ -466,6 +466,10 @@
     </section>
   </div>
 
+  <footer>
+        <div id="funding"></div>
+</footer>
+
   <!-- Tree view/grid -->
   <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.umd.min.js"></script>
 
@@ -473,11 +477,13 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
   <script src="js/vendor/js.cookie.js"></script>
-  <script src="https://cdn.plot.ly/plotly-3.3.1.min.js" charset="utf-8"></script>
+  <script src="https://cdn.plot.ly/plotly-3.5.0.min.js" charset="utf-8"></script>
 
   <script type="module">
-    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
     const prefs = await getDomainPreferences();
+
+    await loadDomainFunding(prefs);
 
     // Load any local JS with cache-busting version parameter
     insertVersionedJS('js/compare_datasets.js', prefs.cache_version);

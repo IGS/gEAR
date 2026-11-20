@@ -7,7 +7,9 @@ RabbitMQ consumers are background worker processes that handle asynchronous job 
 - **Technology**: RabbitMQ message broker, Python consumers
 - **Location**: `listeners/` directory
 - **Deployment**: Systemd services
-- **Purpose**: Async processing of ProjectR, analysis, and other long-running tasks
+- **Purpose**: Async processing of dataset uploads (H5AD, spatial, Gosling tracks) and ProjectR jobs
+- **Queue client**: `lib/gearqueue.py` (`Connection`, `AsyncConnection`, built on pika)
+- **Logs**: each consumer appends to `/var/log/gEAR_queue/<queue_name>.log`, plus stdout/stderr in the journal
 
 ## Architecture
 
@@ -18,14 +20,24 @@ RabbitMQ Queue
     ↓
 Consumer Workers (systemd)
     ↓
-Job Processing (ProjectR, Analysis, etc.)
+Job Processing (uploads, ProjectR)
     ↓
 Result Storage (Database, File System)
 ```
 
 ## Available Consumers
 
-### Gosling Upload Consume
+### Anndata Upload Consumer
+
+Facilitates uploading of various file formats into Anndata (H5AD) format.
+
+- **Listener**: `listeners/anndata_upload_consumer.py`
+- **Queue**: `anndata_upload_jobs`
+- **Service Template**: `systemd/anndata-upload-consumer@.service`
+- **Service Group**: `systemd/anndata-upload-consumer.target`
+
+
+### Gosling Upload Consumer
 
 Facilitates uploading of track files for the epigenome uploader.
 
@@ -34,22 +46,77 @@ Facilitates uploading of track files for the epigenome uploader.
 - **Service Template**: `systemd/gosling-upload-consumer@.service`
 - **Service Group**: `systemd/gosling-upload-consumer.target`
 
+### Spatial Dataset Upload Consumer
+
+Facilitates uploading of spatial transcriptomics datasets (Visium, VisiumHD, Curio, GeoMx, CosMx, Xenium), converting them to a SpatialData object and writing the result as a Zarr store. Kept separate from the Anndata Upload Consumer since spatial uploads produce a different output format (Zarr, not H5AD) and depend on the spatialdata/spatialdata_io stack.
+
+- **Listener**: `listeners/spatial_upload_consumer.py`
+- **Queue**: `spatial_upload_jobs`
+- **Service Template**: `systemd/spatial-upload-consumer@.service`
+- **Service Group**: `systemd/spatial-upload-consumer.target`
+
 ### ProjectR Consumer
 
 Processes matrix projection jobs for dimensionality reduction.
 
 - **Listener**: `listeners/projectr_consumer.py`
-- **Queue**: `projectr_jobs`
+- **Queue**: `projectr`
 - **Service Template**: `systemd/projectr-consumer@.service`
 - **Service Group**: `systemd/projectr-consumer.target`
 
-### Additional Consumers
+### Queue Summary
 
-More consumers can be added following the same pattern:
+| Consumer | Queue | `gear.ini` section (`queue_host`) | Workers in `.target` |
+| --- | --- | --- | --- |
+| `anndata_upload_consumer.py` | `anndata_upload_jobs` | `[dataset_uploader]` | 2 |
+| `gosling_upload_consumer.py` | `trackhub_copy_jobs` | `[dataset_uploader]` | 3 |
+| `spatial_upload_consumer.py` | `spatial_upload_jobs` | `[dataset_uploader]` | 2 |
+| `projectr_consumer.py` | `projectr` | `[projectR_service]` | 3 |
 
-- Analysis pipeline consumer
-- Dataset processing consumer
-- Export generation consumer
+## How the Units Fit Together
+
+The unit files live in `systemd/`. They form three levels, with every worker in one shared memory slice:
+
+```text
+gear-consumers.target                      (everything)
+├── anndata-upload-consumer.target         (one family)
+│   ├── anndata-upload-consumer@1.service  (one worker process)
+│   └── anndata-upload-consumer@2.service
+├── gosling-upload-consumer.target
+│   └── gosling-upload-consumer@1..3.service
+├── spatial-upload-consumer.target
+│   └── spatial-upload-consumer@1..2.service
+└── projectr-consumer.target
+    └── projectr-consumer@1..3.service
+
+gear-consumers.slice  -- every @N.service runs in it (Slice=), giving an aggregate memory cap
+```
+
+- **`<name>@.service`** is a template. The `@` means systemd can make any number of instances from it: `projectr-consumer@1.service`, `projectr-consumer@2.service`, and so on. `%i` in the file is replaced with the instance number. Each instance is one worker process.
+- **`<name>.target`** is a consumer family. Its `Wants=` line lists which numbered instances to run, so the worker count is set there.
+- **`gear-consumers.target`** groups every family target.
+- **`gear-consumers.slice`** sets an aggregate memory limit across all workers. See [RabbitMQ setup](../setup/rabbitmq.md#preventing-runaway-memory).
+
+### Why `Wants=` and `PartOf=` both matter
+
+The two settings link the levels in opposite directions, and each controls different commands:
+
+- **`Wants=`** goes on the parent (`gear-consumers.target` wants each family target; a family target wants its workers). It is used **only for start**. Starting a parent starts any wanted unit that is not already running.
+- **`PartOf=`** goes on the child (each `@.service` is `PartOf=` its family target; each family target is `PartOf=gear-consumers.target`). It is used **only for stop and restart**. Stopping or restarting a parent also stops or restarts the children that are `PartOf` it.
+
+Both links are needed at every level. Without `PartOf=`, `systemctl restart gear-consumers.target` restarts only the target itself, and the workers keep running the old code.
+
+| Command | Effect on workers |
+| --- | --- |
+| `sudo systemctl start gear-consumers.target` | Starts any worker that is stopped. **Running workers are left alone**, so they do not pick up new code. |
+| `sudo systemctl restart gear-consumers.target` | Restarts every worker. Use this to load new code. |
+| `sudo systemctl stop gear-consumers.target` | Stops every worker. |
+| `sudo systemctl restart projectr-consumer.target` | Restarts only that family's workers. |
+| `sudo systemctl restart projectr-consumer@2.service` | Restarts one worker. |
+
+> Older installed copies of the unit files may not have these `PartOf=` lines. Check with `grep PartOf /etc/systemd/system/*consumer*`. Without them, stop and restart of `gear-consumers.target` (and of `projectr-consumer.target`) do not reach the workers. Copy in the current unit files once, as described in [Changing unit files](#changing-unit-files).
+
+When adding a new consumer, add its target to `Wants=` in `gear-consumers.target` **and** give the new target `PartOf=gear-consumers.target`. See [Creating Service File](#creating-service-file).
 
 ## Setup
 
@@ -63,91 +130,78 @@ More consumers can be added following the same pattern:
    sudo systemctl start rabbitmq-server
    ```
 
-   See also: `docs/developer/setup/rabbitmq.md`
+   See also: [../setup/rabbitmq.md](../setup/rabbitmq.md)
 
 2. **Python Dependencies**
 
    ```bash
-   pip install pika  # RabbitMQ Python client
+   pip install -r listeners/requirements.txt  # includes pika
    ```
 
 3. **R and Packages** (for ProjectR)
 
-   See: `docs/developer/setup/r_rpy2.md`
+   See: [../setup/r_rpy2.md](../setup/r_rpy2.md)
 
 ### Configuration
 
-Configure in `gear.ini`:
+Queue settings live in `gear.ini` (see `gear.ini.template`). Each section that uses RabbitMQ has the same two keys:
 
 ```ini
-[<service]
+[dataset_uploader]
+;; 0 - disable RabbitMQ, 1 - enable
+queue_enabled = 1
+queue_host = localhost
+
+[projectR_service]
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
 queue_enabled = 0
 queue_host = localhost
 ```
 
+`[dataset_uploader]` is read by the anndata, spatial and Gosling upload consumers; `[projectR_service]` by the ProjectR consumer. `[nemoarchive_import]` has the same keys for the NeMO Archive importer. There are no credential or virtual-host settings; connections use pika defaults on `queue_host`.
+
 ### Installing Services
 
-```bash
-# Copy service files to systemd directory
-cd systemd
-sudo cp projectr-consumer@.service /etc/systemd/system/
-sudo cp projectr-consumer.target /etc/systemd/system/
-sudo cp gosling-upload-consumer@.service /etc/systemd/system
-sudo cp gosling-upload-consumer.target /etc/systemd/system
+This is a one-time step on a new server. For later changes to the unit files, see [Changing unit files](#changing-unit-files).
 
-# Reload systemd
+```bash
+cd /path/to/gEAR/systemd
+sudo cp *-consumer@.service *-consumer.target gear-consumers.target gear-consumers.slice /etc/systemd/system/
+
+# Replace <gear_root> with the gEAR checkout path on this server, and check the
+# interpreter path (/opt/bin/python3) in each *@.service file.
+sudo sed -i 's|<gear_root>|/path/to/gEAR|g' /etc/systemd/system/*-consumer@.service
+
+# Size MemoryHigh/MemoryMax in gear-consumers.slice for the VM (see ../setup/rabbitmq.md).
+
 sudo systemctl daemon-reload
 
-# Enable services to start on boot
-sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
+# Start on boot, then start now. Enabling gear-consumers.target is enough: it
+# pulls in every family target, which pulls in every worker.
+sudo systemctl enable gear-consumers.target
+sudo systemctl start gear-consumers.target
 ```
 
-## Starting Services
+The log directory `/var/log/gEAR_queue/` must exist and be writable by `www-data` before the workers start. See [RabbitMQ setup](../setup/rabbitmq.md).
 
-### Using Service Target (Recommended)
+## Starting and Stopping
 
-Start all consumers in the group:
+Use `gear-consumers.target` for everything, a family target for one consumer type, or a numbered instance for one worker. See the table in [Why `Wants=` and `PartOf=` both matter](#why-wants-and-partof-both-matter) for what each command does.
 
 ```bash
-# Start all ProjectR consumers
-sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
+# All consumers
+sudo systemctl start gear-consumers.target
+sudo systemctl restart gear-consumers.target
+sudo systemctl stop gear-consumers.target
 
-# Check status
-sudo systemctl status projectr-consumer.target gosling-upload-consumer.target
+# One family
+sudo systemctl restart anndata-upload-consumer.target
+
+# One worker
+sudo systemctl restart projectr-consumer@2.service
 ```
 
-### Individual Workers
-
-Start specific numbered workers:
-
-Using projectr-consumer as an example.
-
-```bash
-# Start worker 1
-sudo systemctl start projectr-consumer@1.service
-
-# Start worker 2
-sudo systemctl start projectr-consumer@2.service
-
-# Check status
-sudo systemctl status projectr-consumer@1.service
-```
-
-### Scaling Workers
-
-Start multiple workers for parallel processing:
-
-```bash
-# Start 4 workers
-sudo systemctl start projectr-consumer@1.service
-sudo systemctl start projectr-consumer@2.service
-sudo systemctl start projectr-consumer@3.service
-sudo systemctl start projectr-consumer@4.service
-
-# Or use target to manage predefined workers
-sudo systemctl start projectr-consumer.target
-```
+`start` never restarts a worker that is already running. To load new code, use `restart`.
 
 ## Monitoring
 
@@ -194,123 +248,162 @@ Enable management plugin:
 sudo rabbitmq-plugins enable rabbitmq_management
 ```
 
-## Systemd Service Template
+## Rolling Out Updates
 
-The `@` symbol in service filenames indicates a template. This allows spawning multiple instances.
+Use this section when deploying new code to a server. There are two kinds of change, and they need different steps:
 
-**Example**: `projectr-consumer@.service`
+- **Code changes** in `listeners/`, `lib/`, or API code the consumers import (for example `www/api/resources/projectr.py`). The workers only need a restart.
+- **Unit file changes** in `systemd/`. These need the files copied into `/etc/systemd/system/` as well. See [Changing unit files](#changing-unit-files).
 
-```ini
-[Unit]
-Description=ProjectR Consumer Worker %i
-After=network.target rabbitmq-server.service
+### 1. Find out what changed
 
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/var/www/gEAR
-ExecStart=/usr/bin/python3 listeners/projectr_consumer.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=projectr-consumer.target
+```bash
+cd /path/to/gEAR
+git fetch
+git diff --stat HEAD origin/devel -- listeners/ lib/ www/api/ systemd/
 ```
 
-**Usage:**
+If nothing under `systemd/` changed, follow the code-only steps below. If it did, go to [Changing unit files](#changing-unit-files) instead.
 
-- `%i` is replaced with instance number
-- `projectr-consumer@1.service` → Worker 1
-- `projectr-consumer@2.service` → Worker 2
+### 2. Check for jobs in progress
 
-## Target Files
+A restart kills any job a worker is running at that moment. Workers acknowledge a job only after finishing it, and they do not shut down gracefully: systemd sends SIGTERM and the worker exits right away. RabbitMQ then puts the unacknowledged job back in the queue, and a worker runs it again **from the start** once it comes back up.
 
-Target files group related services together.
+For the anndata and spatial uploads, each run counts as an attempt (a `.attempt_count` file in the upload's staging directory, two attempts allowed). An upload that is killed by a restart has used one of its two attempts.
 
-**Example**: `projectr-consumer.target`
+Before restarting, check whether any worker is busy:
 
-```ini
-[Unit]
-Description=ProjectR Consumer Workers
-Wants=projectr-consumer@1.service projectr-consumer@2.service
-
-[Install]
-WantedBy=multi-user.target
+```bash
+sudo rabbitmqctl list_queues name messages_ready messages_unacknowledged consumers
 ```
 
-**Benefits:**
+- `messages_unacknowledged` is the number of jobs being worked on right now. If it is 0 for a queue, that family can be restarted safely.
+- `messages_ready` is the number of jobs waiting. These are safe; the queues are durable, so waiting jobs stay in the queue during a restart and are picked up afterwards.
 
-- Start/stop all workers with one command
-- Manage workers as a group
-- Ensure dependencies are met
+If a queue shows jobs in progress, either wait for them to finish, or restart only the idle families now (for example `sudo systemctl restart gosling-upload-consumer.target`) and come back for the busy ones. Large anndata uploads and projectR jobs can take a long time, so check the logs in `/var/log/gEAR_queue/` to see what is running.
+
+### 3. Pull and restart (code changes only)
+
+```bash
+cd /path/to/gEAR
+git pull origin devel
+sudo systemctl restart gear-consumers.target
+```
+
+No `daemon-reload` is needed when only Python code changed. `daemon-reload` is only for changes to the unit files.
+
+### 4. Verify
+
+```bash
+# Every target and worker should be "active". "Active: ... since" should show the restart time.
+systemctl list-units --all 'gear-consumers.target' '*-consumer.target' '*-consumer@*'
+systemctl status '*-consumer@*' | grep -E 'consumer@.*service -|Active:'
+
+# Each queue should have as many consumers as its target has workers (see Queue Summary above)
+sudo rabbitmqctl list_queues name consumers
+
+# Look for start-up errors
+sudo tail -n 20 /var/log/gEAR_queue/*.log
+sudo journalctl -u '*-consumer@*' --since '5 min ago' -p warning
+```
+
+### Changing Unit Files
+
+`sudo systemctl daemon-reload` reads the unit files again but does **not** change any worker that is already running. A running worker keeps the settings it started with (`User=`, `ExecStart=`, `Environment=`, `Slice=`, and so on) until it is restarted, and `start` does nothing to a worker that is already running. So after a unit file change, every affected worker must be stopped and started again.
+
+Use this sequence:
+
+```bash
+# 1. Check for jobs in progress (step 2 above). Then stop every worker while the
+#    old unit files are still installed.
+sudo systemctl stop gear-consumers.target
+
+# 2. Copy in the new unit files and fill in <gear_root>
+cd /path/to/gEAR/systemd
+sudo cp *-consumer@.service *-consumer.target gear-consumers.target gear-consumers.slice /etc/systemd/system/
+sudo sed -i 's|<gear_root>|/path/to/gEAR|g' /etc/systemd/system/*-consumer@.service
+
+# 3. Load the new unit files
+sudo systemctl daemon-reload
+
+# 4. Make any fixes the change needs (see the table below)
+
+# 5. Start every worker with the new settings, then verify (step 4 above)
+sudo systemctl start gear-consumers.target
+```
+
+Stopping **before** copying the files matters for two reasons:
+
+- systemd still has the old definitions loaded, so the stop reaches every running worker, including any instance or unit that the new files rename or remove. If you remove a unit file first, systemd lists the unit as `not-found` but the worker keeps running.
+- Nothing runs during the gap, so you can fix things like file ownership before any worker starts with the new settings.
+
+> **First time only:** if the installed unit files predate the `PartOf=` lines (`grep PartOf /etc/systemd/system/*consumer*` shows no target lines), `stop gear-consumers.target` does not reach the workers. In step 1, stop them directly instead: `sudo systemctl stop gear-consumers.target '*-consumer.target' '*-consumer@*'`.
+
+What each kind of change needs:
+
+| Change | What to do |
+| --- | --- |
+| Edit an existing setting (`ExecStart=`, `Environment=`, `Restart*=`, `StartLimit*=`) | The sequence above. A plain `daemon-reload` + `restart gear-consumers.target` also works. |
+| Change `User=` or `Group=` (for example root to www-data) | The sequence above, and in step 4 give the new user ownership of the files the old user created (see below). Otherwise the workers can't write their logs and fail to start. |
+| Rename or delete a unit file, or remove an instance from a target's `Wants=` | The sequence above. Stopping first is required here. Afterwards, run `sudo systemctl reset-failed` to clear leftover entries. |
+| Add an instance to a target's `Wants=` | Copy the files, `daemon-reload`, then `start` the target. Only the new instance starts. See [Scaling Workers](#scaling-workers). |
+| Change memory limits in `gear-consumers.slice` | Copy the file and `daemon-reload`. Check the limits with `systemctl show gear-consumers.slice -p MemoryHigh -p MemoryMax`. |
+| Change the `[Install]` section (`WantedBy=`) | Copy the files, `daemon-reload`, then `sudo systemctl reenable <unit>`. |
+
+Per-server memory overrides in drop-in directories (`/etc/systemd/system/<family>@.service.d/memory.conf`, see [RabbitMQ setup](../setup/rabbitmq.md#preventing-runaway-memory)) are separate files, so copying in new base unit files does not overwrite them.
+
+#### Changing the user a consumer runs as
+
+Files created while a worker ran as root stay owned by root, and a worker running as `www-data` can't write to them. The main ones are the consumer logs and the per-upload state files in each upload staging directory (`www/uploads/files/<session>/<share_uid>/`: `.job.lock`, `.attempt_count`, `status.json`). In step 4 of the sequence above:
+
+```bash
+sudo chown www-data:www-data /var/log/gEAR_queue/*.log
+sudo find /path/to/gEAR/www/uploads/files -user root -exec chown www-data:www-data {} +
+```
+
+To confirm which user each worker really runs as, and when it started:
+
+```bash
+ps -o user,pid,lstart,args -C python3 | grep listeners/
+```
+
+### Scaling Workers
+
+The number of workers in a family is set by the `Wants=` line in its target, for example `systemd/projectr-consumer.target`. Check memory before adding workers; see [Worker Count](#worker-count) and [RabbitMQ setup](../setup/rabbitmq.md#preventing-runaway-memory).
+
+To **add** a worker, add the instance (for example `projectr-consumer@4.service`) to `Wants=`, copy the target file into `/etc/systemd/system/`, run `sudo systemctl daemon-reload`, then `sudo systemctl start projectr-consumer.target`. Only the new instance starts.
+
+To **remove** a worker, stop it first, then update the target:
+
+```bash
+sudo systemctl stop projectr-consumer@3.service
+# remove projectr-consumer@3.service from Wants= in the target, copy it in, then:
+sudo systemctl daemon-reload
+```
+
+A removed instance is still `PartOf` the target, so if it is left running it keeps running, and it is restarted along with the target.
+
+To run an extra worker temporarily without editing any file, start the instance directly: `sudo systemctl start projectr-consumer@4.service`. It stops at the next reboot, or with `stop`.
 
 ## Writing Custom Consumers
 
-### Basic Consumer Template
+Use the existing consumers as templates rather than writing raw pika code. Each one:
 
-```python
-#!/usr/bin/env python3
-import pika
-import json
-import sys
+1. Adds `lib/` to `sys.path` and imports `gearqueue` and `ServerConfig`.
+2. Sets a module-level `queue_name` and a log file under `/var/log/gEAR_queue/`.
+3. Defines an `_on_request(channel, method_frame, properties, body)` callback that decodes the JSON message, does the work, and acknowledges the message.
+4. Wraps `gearqueue.AsyncConnection(host=..., publisher_or_consumer="consumer", queue_name=queue_name, on_message_callback=_on_request, ...)` in a `Consumer` class that reconnects with backoff.
+5. Reads `queue_host` from the relevant `gear.ini` section in `main()`.
 
-def callback(ch, method, properties, body):
-    """Process incoming job"""
-    job_data = json.loads(body)
-
-    # Process job
-    result = process_job(job_data)
-
-    # Acknowledge message
-    ch.basic_ack(delivery_tag=method.delivery_tag)
-
-    return result
-
-def process_job(data):
-    """Your job processing logic"""
-    # Implement your processing here
-    pass
-
-def main():
-    # Connect to RabbitMQ
-    credentials = pika.PlainCredentials('guest', 'guest')
-    parameters = pika.ConnectionParameters(
-        host='localhost',
-        credentials=credentials
-    )
-
-    connection = pika.BlockingConnection(parameters)
-    channel = connection.channel()
-
-    # Declare queue
-    channel.queue_declare(queue='my_jobs', durable=True)
-
-    # Set QoS (prefetch count)
-    channel.basic_qos(prefetch_count=1)
-
-    # Start consuming
-    channel.basic_consume(
-        queue='my_jobs',
-        on_message_callback=callback
-    )
-
-    print('Waiting for messages...')
-    channel.start_consuming()
-
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print('Interrupted')
-        sys.exit(0)
-```
+Publishers use `gearqueue.Connection(host=..., publisher_or_consumer="publisher")` and `publish(queue_name=..., message=...)` (see `www/api/resources/projectr.py` for an example).
 
 ### Creating Service File
 
-1. Create consumer script in `listeners/`
-2. Create systemd service file in `systemd/`
-3. Copy to `/etc/systemd/system/`
-4. Start service
+1. Create the consumer script in `listeners/`
+2. Add `systemd/<name>@.service` and `systemd/<name>.target` (copy an existing pair). Keep `Slice=gear-consumers.slice` and `PartOf=<name>.target` in the service, and `PartOf=gear-consumers.target` in the target
+3. Add the new target to `Wants=` in `systemd/gear-consumers.target`
+4. Optionally add `listeners/Dockerfile.<name>`, a `docker/docker-bake.hcl` target, and a compose service
+5. Copy the unit files to `/etc/systemd/system/`, fill in `<gear_root>`, `daemon-reload`, and start the target (see [Changing Unit Files](#changing-unit-files))
 
 ## Troubleshooting
 
@@ -334,8 +427,8 @@ sudo journalctl -u projectr-consumer@1.service -n 50
 
 **Verify gear.ini configuration:**
 
-- Check RabbitMQ credentials
-- Verify `use_rabbitmq = true`
+- Verify `queue_host` points at the RabbitMQ server
+- Verify `queue_enabled = 1` in the relevant section (otherwise the web side does not publish to the queue)
 
 ### Consumer Crashes
 
@@ -374,32 +467,28 @@ systemctl status 'projectr-consumer@*'
 **Purge queue (if needed):**
 
 ```bash
-sudo rabbitmqctl purge_queue projectr_jobs
+sudo rabbitmqctl purge_queue projectr
 ```
 
 **Warning:** This deletes all messages!
 
-### Connection Errors
+### Worker Shows `failed` with `start-limit-hit`
 
-**RabbitMQ not accessible:**
+`systemctl status` shows `Failed with result 'start-limit-hit'`. The worker crashed 5 times within 300 seconds (`StartLimitBurst=` / `StartLimitIntervalSec=`), so systemd stopped restarting it. `start` is refused until the failure is cleared. Find and fix the cause in the logs first, then:
 
 ```bash
-# Check if RabbitMQ is listening
-sudo netstat -tlnp | grep 5672
-
-# Verify firewall rules
-sudo ufw status
+sudo journalctl -u projectr-consumer@1.service -n 100
+sudo systemctl reset-failed 'projectr-consumer@*'
+sudo systemctl start projectr-consumer.target
 ```
 
-**Authentication errors:**
+### Worker Still Running Old Code or Settings
 
-- Verify credentials in `gear.ini`
-- Check RabbitMQ user permissions:
+`start` does not restart a worker that is already running, and `daemon-reload` does not change a running worker. Use `restart` after code changes, and follow [Changing Unit Files](#changing-unit-files) after unit file changes. To see when each worker started and which user it runs as:
 
-  ```bash
-  sudo rabbitmqctl list_users
-  sudo rabbitmqctl set_permissions -p / guest ".*" ".*" ".*"
-  ```
+```bash
+ps -o user,pid,lstart,args -C python3 | grep listeners/
+```
 
 ## Performance Tuning
 
@@ -459,15 +548,7 @@ channel.basic_publish(
 
 ## Maintenance
 
-### Updating Consumer Code
-
-```bash
-# Pull latest code
-git pull origin devel
-
-# Restart consumers
-sudo systemctl restart projectr-consumer.target
-```
+For deploying new code or unit files, see [Rolling Out Updates](#rolling-out-updates).
 
 ### Viewing Queue Statistics
 
@@ -485,15 +566,16 @@ If messages are stuck or invalid:
 
 ```bash
 # Purge specific queue
-sudo rabbitmqctl purge_queue projectr_jobs
+sudo rabbitmqctl purge_queue projectr
 ```
 
 ## Related Documentation
 
-- `docs/developer/setup/rabbitmq.md` - RabbitMQ setup
-- `docs/developer/setup/r_rpy2.md` - R setup for ProjectR
-- `systemd/README.md` - Systemd service management
-- RabbitMQ docs: https://www.rabbitmq.com/documentation.html
+- [RabbitMQ setup](../setup/rabbitmq.md) - installation and memory sizing
+- [systemd](../setup/systemd.md) - service management
+- [R / rpy2 setup](../setup/r_rpy2.md) - R setup for ProjectR
+- [ProjectR service](./projectr.md)
+- RabbitMQ docs: <https://www.rabbitmq.com/documentation.html>
 
 ## Getting Help
 

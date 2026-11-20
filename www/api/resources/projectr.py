@@ -1,5 +1,13 @@
+"""
+projectr.py - Project gene-list patterns onto a dataset with projectR.
+
+Serves /projectr/<dataset_id>, /projectr/<dataset_id>/output_file, and
+/projectr/<projection_id>/status in www/api/api.py. Projections run either
+inline or through the "projectr" RabbitMQ queue, and chunks are sent to the
+projectR Cloud Run service.
+"""
+
 import asyncio
-import fcntl
 import functools
 import gc
 import hashlib
@@ -8,21 +16,22 @@ import sys
 import traceback
 import uuid
 from io import StringIO
-from os import getpid
 from pathlib import Path
 from time import sleep
-from typing import TextIO
 
 import aiohttp
 import geardb
 import pandas as pd
 import scipy.stats as stats
 from aiohttp_retry import ExponentialRetry, RetryClient
-from flask import request
-from flask_restful import Resource, reqparse
-from gear.analysis import get_analysis, SpatialAnalysis
+from flask import abort, request
+from flask_restful import Resource, inputs, reqparse
+from gear.analysis import SpatialAnalysis, get_analysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
-from gear.utils import catch_memory_error
+from gear.utils.job_coordination import release_lock_file, try_acquire_lock_file
+from gear.utils.resource_limits import catch_memory_error
+import google.auth.transport.requests
+import google.oauth2.id_token
 from more_itertools import sliced
 from werkzeug.utils import secure_filename
 
@@ -80,77 +89,147 @@ parser.add_argument(
 parser.add_argument(
     "zscore",
     help="If true, compute z-score calculation before running projectR (or assume it has been calculated)",
-    type=bool,
+    type=inputs.boolean,
     default=False,
     required=False,
 )
 parser.add_argument(
     "full_output",
     help="If true, return the full output of the projection, which includes a p-value matrix",
-    type=bool,
-    default=True,
-    required=False,
+    type=inputs.boolean,
+    default=None,
+    required=False
 )
 parser.add_argument("analysis", type=str, required=False)  # not used at the moment
 
 run_projectr_parser = parser.copy()
 run_projectr_parser.add_argument("projection_id", type=str, required=False)
 
+def get_auth_headers(audience: str) -> dict:
+    """Generates a GCP OIDC Bearer token header in production, skips locally."""
+    if not this.servercfg.getboolean("projectR_service", "auth_enabled", fallback=False):
+        return {}
+
+    try:
+        # On a GCP Compute Engine VM, this queries the local metadata server for an ID Token.
+        # It also works locally if 'gcloud auth application-default login' is executed.
+        auth_req = google.auth.transport.requests.Request()
+        token = google.oauth2.id_token.fetch_id_token(auth_req, audience)
+        return {"Authorization": f"Bearer {token}"}
+    except Exception as e:
+        print(f"WARNING: Could not fetch GCP IAM token: {e}", file=sys.stderr)
+        return {}
 
 def build_projection_csv_path(dir_id: str, file_id: str, scope: str) -> Path:
     """Build the path to the csv file for a given projection. Returns a Path object."""
-    if scope == "pval":
+    safe_dir_id = secure_filename(dir_id)
+    safe_file_id = secure_filename(file_id)
+    safe_scope = secure_filename(scope)
+
+    # Reject unsafe path components (path traversal, separators, absolute paths, etc).
+    if (
+        not safe_dir_id
+        or not safe_file_id
+        or not safe_scope
+        or safe_dir_id != dir_id
+        or safe_file_id != file_id
+        or safe_scope != scope
+    ):
+        abort(400, "Invalid projection path parameters.")
+
+    if safe_scope == "pval":
         # pval files are extra output for the standard "dataset" projections
         return Path(PROJECTIONS_BASE_DIR).joinpath(
-            "by_dataset", dir_id, "{}_pval.csv".format(file_id)
+            "by_dataset", safe_dir_id, "{}_pval.csv".format(safe_file_id)
         )
 
     return Path(PROJECTIONS_BASE_DIR).joinpath(
-        "by_{}".format(scope), dir_id, "{}.csv".format(file_id)
+        "by_{}".format(safe_scope), safe_dir_id, "{}.csv".format(safe_file_id)
     )
 
 
 def build_projection_json_path(dir_id: str, scope: str) -> Path:
     """Build the path to the projections json for a given dataset or genecart directory. Returns a Path object."""
-    return Path(PROJECTIONS_BASE_DIR).joinpath(
-        "by_{}".format(scope), dir_id, PROJECTIONS_JSON_BASENAME
-    )
+    base_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope)).resolve()
+    safe_dir_id = secure_filename(dir_id)
+    if not safe_dir_id or safe_dir_id != dir_id:
+        raise ValueError("Invalid directory identifier")
 
-
-def create_lock_file(filepath: str) -> TextIO:
-    """Create an exclusive lock file for the given filepath.  Return the file descriptor."""
-    fd = open(filepath, "w+")
-    fd.write("{}\n".format(getpid()))
-    fcntl.flock(fd, fcntl.LOCK_EX)
-    return fd
-
-
-def remove_lock_file(fd: TextIO, filepath: str) -> None:
-    """Release the lock file."""
-    # fcntl.flock(fd, fcntl.LOCK_UN)
-    fd.close()
+    candidate = base_dir.joinpath(safe_dir_id, PROJECTIONS_JSON_BASENAME).resolve()
     try:
-        Path(filepath).unlink()
-    except FileNotFoundError:
-        # This is fine, as the lock file may have been removed by another process
-        pass
+        candidate.relative_to(base_dir)
+    except ValueError:
+        raise ValueError("Invalid directory path")
+
+    return candidate
+
+
+def get_existing_projection_result(
+    dataset_id: str, genecart_id: str, algorithm: str, zscore: bool, projection_id: str
+) -> dict:
+    """
+    After waiting for another worker's lock on this exact projection to clear, read back the
+    info that run recorded instead of redoing the (expensive) work ourselves.
+    """
+    result = {
+        "success": 1,
+        "message": "",
+        "projection_id": projection_id,
+    }
+    dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
+    try:
+        with open(dataset_projection_json_file) as fh:
+            projections_dict = json.load(fh)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return result
+
+    for config in projections_dict.get(genecart_id, []):
+        if "zscore" not in config:
+            config["zscore"] = False
+        if algorithm == config.get("algorithm") and zscore == config["zscore"]:
+            common = config.get("num_common_genes")
+            genecart_genes = config.get("num_genecart_genes")
+            dataset_genes = config.get("num_dataset_genes")
+            result.update(
+                {
+                    "num_common_genes": common,
+                    "num_genecart_genes": genecart_genes,
+                    "num_dataset_genes": dataset_genes,
+                }
+            )
+            if common:
+                result["message"] = (
+                    "Found {} common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
+                        common, dataset_genes, genecart_genes
+                    )
+                )
+            break
+    return result
 
 
 def write_to_json(projections_dict: dict, projection_json_file: Path) -> None:
+    """
+    Write the projections dict to the given JSON file.
+    """
     with open(projection_json_file, "w") as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
 
 
 def calculate_chunk_size(num_genes: int, num_samples: int) -> int:
     """
-    Calculate number of chunks to divide all samples into.
+    Calculate the number of samples to send in each chunk.
+
+    Raises:
+        ValueError: If there are no genes or no samples, since nothing can be projected.
     """
-    TOTAL_DATA_LIMIT = 1e6
-    total_data = num_genes * num_samples
-    total_data_chunks = total_data / TOTAL_DATA_LIMIT
-    return int(
-        num_samples / total_data_chunks
-    )  # take floor.  returned value * num_genes < total_data_limit
+    if num_genes <= 0:
+        raise ValueError("Cannot chunk a projection with no genes.")
+    if num_samples <= 0:
+        raise ValueError("Cannot chunk a projection with no samples.")
+
+    TOTAL_DATA_LIMIT = 1_000_000
+    # Floor so that returned value * num_genes <= TOTAL_DATA_LIMIT, but always send at least one sample
+    return max(TOTAL_DATA_LIMIT // num_genes, 1)
 
 
 def concat_fetch_results_to_dataframe(
@@ -198,12 +277,17 @@ def create_new_uuid(*args) -> uuid.UUID:
     """
 
     uuid_str = "-".join(map(str, args))
-    md5 = hashlib.md5()
+    # Not used for security purposes -- just a deterministic ID for caching/dedup,
+    # so the digest must stay stable to match IDs already written to disk.
+    md5 = hashlib.md5(usedforsecurity=False)
     md5.update(uuid_str.encode("utf-8"))
     return uuid.UUID(md5.hexdigest())
 
 
 def create_unweighted_loading_df(genecart: geardb.GeneCart) -> pd.DataFrame:
+    """
+    Build a loading dataframe from an unweighted gene cart, giving each gene a weight of 1.
+    """
     # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
     gene_collection = geardb.GeneCollection()
     genecart.get_genes()
@@ -223,7 +307,18 @@ def create_unweighted_loading_df(genecart: geardb.GeneCart) -> pd.DataFrame:
 
 
 def create_weighted_loading_df(genecart_id: str) -> pd.DataFrame:
-    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
+    """
+    Read the weighted gene cart's pattern file (genes x patterns) into a dataframe.
+
+    Raises:
+        ValueError: If genecart_id is not a plain file name component.
+        FileNotFoundError: If the pattern file does not exist.
+    """
+    safe_genecart_id = secure_filename(genecart_id)
+    if not safe_genecart_id or safe_genecart_id != genecart_id:
+        raise ValueError("Invalid gene list identifier")
+
+    file_path = Path(CARTS_BASE_DIR).joinpath("cart.{}.tab".format(safe_genecart_id))
     try:
         return pd.read_csv(file_path, sep="\t")
     except FileNotFoundError:
@@ -231,6 +326,9 @@ def create_weighted_loading_df(genecart_id: str) -> pd.DataFrame:
 
 
 def chunk_dataframe(df: pd.DataFrame, chunk_size: int):
+    """
+    Yield (chunk index, dataframe) pairs, splitting the dataframe by columns into chunks of chunk_size.
+    """
     # Chunk dataset by samples/cells (cols). Is a generator function
     # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
     index_slices = sliced(range(len(df.columns)), chunk_size)
@@ -239,9 +337,15 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int):
         yield idx, df.iloc[:, list(index_slice)]
 
 def init_job_status(projection_id: str) -> dict:
+    """
+    Return a new "pending" job status dict for the projection.
+    """
     return {"status": "pending", "result": {"projection_id":projection_id}, "error": None}
 
 def write_result_to_file(result, filename) -> None:
+    """
+    Write a chunk's projectR result as JSON to CHUNK_OUTPUTS_DIR.
+    """
     # Write chunked dataframe results to a file, using the projection ID and the dataframe indexes in the filename
     filepath = CHUNK_OUTPUTS_DIR.joinpath(filename)
     with open(filepath, "w") as f:
@@ -370,8 +474,15 @@ async def fetch_one(client: RetryClient, payload: dict) -> dict:
     # endpoint = 'https://my-cloud-run-service.run.app/my/awesome/url'
 
     audience = this.servercfg["projectR_service"]["hostname"]
-    endpoint = "{}/".format(audience)
-    headers = {"content_type": "application/json"}
+
+    # Fetch GCP IAM Authorization header
+    auth_headers = get_auth_headers(audience)
+
+    # Combine with application headers
+    headers = {
+        "Content-Type": "application/json",
+        **auth_headers
+    }
 
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
@@ -381,7 +492,7 @@ async def fetch_one(client: RetryClient, payload: dict) -> dict:
     try:
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
         async with client.post(
-            url=endpoint, json=payload, headers=headers, timeout=timeout
+            url=audience, json=payload, headers=headers, timeout=timeout
         ) as response:
             return await response.json()
     except aiohttp.ClientResponseError as cre:
@@ -402,10 +513,13 @@ async def fetch_one(client: RetryClient, payload: dict) -> dict:
     except asyncio.TimeoutError as te:
         print(f"{dataset_id} - ERROR: POST request timed out", file=sys.stderr)
         raise asyncio.TimeoutError(
-            f"POST request to {endpoint} timed out after {REQUEST_TIMEOUT} seconds"
+            f"POST request to {audience} timed out after {REQUEST_TIMEOUT} seconds"
         ) from te
 
 def write_projection_status(file, status):
+    """
+    Write the job status dict as JSON to the given file.
+    """
     with open(file, "w") as fh:
         json.dump(status, fh)
 
@@ -420,6 +534,25 @@ def projectr_callback(
     zscore: bool,
     full_output: bool,
 ) -> dict:
+    """
+    Run a projectR projection of a gene cart onto a dataset and save the results.
+
+    Uses a lock file so that only one worker runs a given projection; other workers
+    wait and reuse its output. Progress is written to the job status file.
+
+    Args:
+        dataset_id (str): Target dataset ID.
+        genecart_id (str): Gene cart (pattern) share ID.
+        projection_id (str): Projection UUID used for output and status file names.
+        session_id (str): User session ID, used to load the analysis.
+        scope (str): Gene cart scope, e.g. "unweighted-list".
+        algorithm (str): Projection algorithm (e.g. "pca", "binary", "nmf", "fixednmf").
+        zscore (bool): Whether to z-score the dataset before projecting.
+        full_output (bool): Whether to also compute a p-value matrix.
+
+    Returns:
+        dict: Job status with "status", "result", and "error" keys.
+    """
     success = 1
     message = ""
 
@@ -438,6 +571,56 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
+    # Try to acquire the lock for this exact projection BEFORE doing any expensive work (loading
+    # the dataset, densifying it, etc). dataset_id/genecart_id/projection_id are all we need to
+    # build the lock path, so this can happen up front.  It is non-blocking meaning we find out
+    # immediately if another worker is already running this exact projection, and we can wait for it to finish
+    dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
+    lockfile = str(dataset_projection_csv) + ".lock"
+
+    try:
+        lock_fh = try_acquire_lock_file(lockfile)
+        # NOTE: Will not trigger if process crashes or is forcibly killed off.
+    except IOError:
+        # This should ideally never be encountered - a genuine I/O error creating the lock file
+        # (e.g. permissions, disk full), as opposed to the lock simply being held by another run.
+        message = "Could not create lock file for this projectR run."
+        status["status"] = "failed"
+        status["error"] = message
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
+
+    # If a new lock fh was not made, it means another worker is running this exact projection.
+    # Wait for it to finish and steal its output, rather than running everything again.
+    if lock_fh is None:
+        print(
+            "INFO: Found an in-progress projectR run of {}. Going to wait for that run to finish and steal its output.".format(
+                projection_id
+            ),
+            file=sys.stderr,
+        )
+        # Wait (with a bound) for the lock to be released, then return the info the other run
+        # recorded, instead of running everything again.
+        LOCK_WAIT_TIMEOUT_SECONDS = 1800  # 30 minutes
+        waited_seconds = 0
+        while Path(lockfile).exists():
+            if waited_seconds >= LOCK_WAIT_TIMEOUT_SECONDS:
+                message = "Timed out waiting for an in-progress projectR run of this configuration to finish."
+                print(message, file=sys.stderr)
+                status["status"] = "failed"
+                status["error"] = message
+                write_projection_status(JOB_STATUS_FILE, status)
+                return status
+            sleep(1)
+            waited_seconds += 1
+
+        status["status"] = "complete"
+        status["result"] = get_existing_projection_result(
+            dataset_id, genecart_id, algorithm, zscore, projection_id
+        )
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
+
     """
     Steps
 
@@ -452,6 +635,7 @@ def projectr_callback(
     # Unweighted carts get a "1" weight for each gene
     genecart = geardb.get_gene_cart_by_share_id(genecart_id)
     if not genecart:
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "Could not find gene list in database."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -460,6 +644,7 @@ def projectr_callback(
     genecart.get_gene_counts()
 
     if not genecart.num_genes:
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "No genes found within this gene list."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -475,8 +660,16 @@ def projectr_callback(
         )
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = str(e)
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
+
+    if loading_df.empty:
+        release_lock_file(lock_fh, lockfile)
+        status["status"] = "failed"
+        status["error"] = "The gene list file is empty."
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
@@ -523,11 +716,16 @@ def projectr_callback(
             loading_df = map_dataframe_genes(loading_df, ortholog_file)
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["success"] = -1
         status["error"] = str(e)
         write_projection_status(JOB_STATUS_FILE, status)
         return status
+
+    # This is about the time I could consider this to be running, as this is when we get into potentially memory-intensive steps with the AnnData object
+    status["status"] = "running"
+    write_projection_status(JOB_STATUS_FILE, status)
 
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep="first")]
@@ -539,6 +737,7 @@ def projectr_callback(
         ana = get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "Analysis for this dataset is unavailable."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -551,6 +750,7 @@ def projectr_callback(
             adata = ana.get_adata(**args)
     except Exception:
         traceback.print_exc(file=sys.stderr)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "Could not create dataset object using analysis."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -580,9 +780,10 @@ def projectr_callback(
     intersection_size = index_intersection.size
 
     if intersection_size == 0:
-        message = "No common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+        message = "No common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
             num_target_genes, num_loading_genes
         )
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = message
         status["result"] =  {
@@ -594,7 +795,20 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
-    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+    if adata.shape[0] == 0:
+        release_lock_file(lock_fh, lockfile)
+        status["status"] = "failed"
+        status["error"] = "The target dataset has no samples to project onto."
+        status["result"] = {
+            "success": -1,
+            "num_common_genes": intersection_size,
+            "num_genecart_genes": num_loading_genes,
+            "num_dataset_genes": num_target_genes,
+        }
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
+
+    message = "Found {} common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
         intersection_size, num_target_genes, num_loading_genes
     )
 
@@ -618,8 +832,7 @@ def projectr_callback(
     target_df = target_df.fillna(0)  # Fill NaN values with 0
 
     # Ensure adata.obs.index is str, for reindex matching later
-    adata.obs.index = adata.obs.index.astype(str)
-    obs_index_list = adata.obs.index.tolist()
+    obs_index_list = adata.obs.index.astype(str).tolist()
 
     # Close adata so that we do not have a stale opened object
     if adata.isbacked:
@@ -627,62 +840,6 @@ def projectr_callback(
 
     if dedup_copy.exists():
         dedup_copy.unlink()
-
-    dataset_projection_csv = build_projection_csv_path(
-        dataset_id, projection_id, "dataset"
-    )
-
-    # This is about the time I could consider this to be running, as it is the start of the "long-running" part of the task
-    status["status"] = "running"
-    write_projection_status(JOB_STATUS_FILE, status)
-
-    # Create lock file if it does not exist
-    lockfile = str(dataset_projection_csv) + ".lock"
-    if Path(lockfile).exists():
-        print(
-            "INFO: Found lockfile for another current projectR run of {}.  Going to wait for that run to finish and steal its output.".format(
-                projection_id
-            ),
-            file=sys.stderr,
-        )
-        try:
-            # Test to see if the exclusive lock has expired
-            lock_fh = create_lock_file(lockfile)
-            print("INFO: Lock for {} seems to be stale. Removing it.".format(projection_id), file=sys.stderr)
-            remove_lock_file(lock_fh, lockfile)
-        except Exception:
-            print("INFO: Lock for {} seems to be valid.".format(projection_id), file=sys.stderr)
-            # If lock belongs to a valid run, wait for lock to be removed,
-            # then return info that is normally returned after projectR is run
-            while True:
-                sleep(1)
-                if not Path(lockfile).exists():
-                    status["result"] = {
-                        "success": 2,
-                        "message": message,
-                        "projection_id": projection_id,
-                        "num_common_genes": intersection_size,
-                        "num_genecart_genes": num_loading_genes,
-                        "num_dataset_genes": num_target_genes,
-                    }
-                    return status
-
-    try:
-        lock_fh = create_lock_file(lockfile)
-        # NOTE: Will not trigger if process crashes or is forcibly killed off.
-    except IOError:
-        # This should ideally never be encountered as the previous code should handle existing locked files
-        message = "Could not create lock file for this projectR run."
-        status["status"] = "failed"
-        status["error"] = message
-        status["result"] = {
-            "success": -1,
-            "num_common_genes": intersection_size,
-            "num_genecart_genes": num_loading_genes,
-            "num_dataset_genes": num_target_genes,
-        }
-        write_projection_status(JOB_STATUS_FILE, status)
-        return status
 
     # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
     chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
@@ -729,7 +886,7 @@ def projectr_callback(
             )
             print("INFO: All fetch tasks have completed", file=sys.stderr)
         except asyncio.TimeoutError:
-            remove_lock_file(lock_fh, lockfile)
+            release_lock_file(lock_fh, lockfile)
             status["status"] = "failed"
             status["error"] = "Timeout while waiting for projectR to complete."
             status["result"] = {
@@ -742,7 +899,7 @@ def projectr_callback(
         except Exception as e:
             print(str(e), file=sys.stderr)
             # Raises as soon as one "gather" task has an exception
-            remove_lock_file(lock_fh, lockfile)
+            release_lock_file(lock_fh, lockfile)
             status["status"] = "failed"
             status["error"] = "Something went wrong with the projection-creating step."
             status["result"] = {
@@ -773,7 +930,7 @@ def projectr_callback(
         if len(projection_patterns_df.index) != len(obs_index_list):
             message = "Not all chunked sample rows were returned by projectR. Saved partial results to disk. Refresh to try again."
             print(message, file=sys.stderr)
-            remove_lock_file(lock_fh, lockfile)
+            release_lock_file(lock_fh, lockfile)
             status["status"] = "failed"
             status["error"] = message
             status["result"] = {
@@ -850,15 +1007,11 @@ def projectr_callback(
                 if full_output and algorithm == "nmf":
                     projection_pval_df = projection_patterns[1].transpose()
 
-                projection_patterns = run_projectR_cmd(
-                    target_df, loading_df, algorithm, full_output
-                )
-
             else:
                 raise ValueError("Algorithm {} is not supported".format(algorithm))
         except Exception as e:
             # clear lock file
-            remove_lock_file(lock_fh, lockfile)
+            release_lock_file(lock_fh, lockfile)
             print(str(e), file=sys.stderr)
             status["status"] = "failed"
             status["error"] = "Something went wrong with the projection-creating step."
@@ -886,7 +1039,7 @@ def projectr_callback(
     # This could be due to an R code error or something in post-processing
     if projection_patterns_df.isna().to_numpy().any():
         message = "There are NaN values in the projection patterns.  Cannot proceed."
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = message
         status["result"] = {
@@ -978,7 +1131,7 @@ def projectr_callback(
 
     # Remove file lock
     print("INFO: Removing lock file for {}".format(projection_id), file=sys.stderr)
-    remove_lock_file(lock_fh, lockfile)
+    release_lock_file(lock_fh, lockfile)
 
     status["status"] = "complete"
     status["result"] = {
@@ -999,6 +1152,12 @@ class ProjectROutputFile(Resource):
     """
 
     def post(self, dataset_id: str) -> dict:
+        """
+        Return the projection ID of an existing projection matching the request, or None.
+
+        Request params: genecart_id, algorithm, zscore. Creates the projection
+        directories and JSON files if they do not exist.
+        """
         args = parser.parse_args()
         genecart_id = args["genecart_id"]
         algorithm = args["algorithm"]
@@ -1097,6 +1256,13 @@ class ProjectR(Resource):
     """
 
     def post(self, dataset_id: str) -> dict:
+        """
+        Start (or reuse) a projectR projection of a gene cart onto the dataset.
+
+        Request params: genecart_id, algorithm, scope, zscore, full_output, and
+        projection_id (optional). Returns a job status dict ("status", "result",
+        "error") that clients poll through ProjectRStatus.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = run_projectr_parser.parse_args()
 
@@ -1114,7 +1280,7 @@ class ProjectR(Resource):
                 full_output = True
 
         # Currently only NMF runs through the actual projectR code and can give full output
-        if algorithm not in ["nmf", "fixednmf"]:
+        if algorithm != "nmf":
             full_output = False
 
         uuid_args = (dataset_id, genecart_id, algorithm, zscore)
@@ -1123,6 +1289,9 @@ class ProjectR(Resource):
         dataset_projection_csv = build_projection_csv_path(
             dataset_id, projection_id, "dataset"
         )
+        resolved_dataset_projection_csv = dataset_projection_csv.resolve()
+        if not resolved_dataset_projection_csv.is_relative_to(Path(PROJECTIONS_BASE_DIR).resolve()):
+            abort(403, description="Invalid dataset path")
         dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
         run_projectr = True
@@ -1184,7 +1353,7 @@ class ProjectR(Resource):
 
                 message = ""
                 if common_genes:
-                    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+                    message = "Found {} common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
                         common_genes, dataset_genes, genecart_genes
                     )
 
@@ -1215,6 +1384,24 @@ class ProjectR(Resource):
                     Path(JOB_STATUS_FILE).unlink(missing_ok=True)
                     # Ensure "error" status is not written to file for new polling session
                     status = init_job_status(projection_id)
+
+        # Guard against dispatching a duplicate run of this exact projection while another
+        # worker still holds the lock for it -- e.g. if a client cleared a stale-looking
+        # job status file (above) and resubmitted while the original run was still in progress.
+        # Without this, a resubmit would spin up a second worker that reloads and densifies the
+        # whole dataset a second time before it ever discovers the conflict.
+        lockfile = str(resolved_dataset_projection_csv) + ".lock"
+        if Path(lockfile).is_file():
+            print(
+                "INFO: A run for projection {} is already in progress (lock file present). Not starting a duplicate.".format(
+                    projection_id
+                ),
+                file=sys.stderr,
+            )
+            status["status"] = "running"
+            status["result"] = {"projection_id": projection_id}
+            write_projection_status(JOB_STATUS_FILE, status)
+            return status
 
         # Write pending state
         write_projection_status(JOB_STATUS_FILE, status)
@@ -1296,14 +1483,20 @@ class ProjectRStatus(Resource):
     Get the status of a ProjectR job.
     """
     def get(self, projection_id):
+        """
+        Return the job status dict for the projection; the status file is deleted once complete.
+        """
         safe_projection_id = secure_filename(str(projection_id))
         JOB_STATUS_FILE = JOB_STATUS_DIR.joinpath(f"job_{safe_projection_id}.json")
         # Validate the final path is within the job status dir
         resolved_status_file = JOB_STATUS_FILE.resolve()
         if not resolved_status_file.is_relative_to(JOB_STATUS_DIR.resolve()):
             # Reject attempts to escape the directory
-            from flask import abort
             abort(403, description="Invalid job id/path")
+
+        if not resolved_status_file.is_file():
+            abort(404, description="Job status file not found")
+
         with open(resolved_status_file, "r") as fh:
             status = json.load(fh)
 

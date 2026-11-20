@@ -148,8 +148,8 @@ def get_fk_tables_referencing_layout(conn: Connection) -> list:
 
 def get_fk_tables_not_referencing_dataset(conn: Connection) -> list:
     """
-    Return list of (table_name, column_name) that have a foreign key the do not
-    referencing dataset(id). Uses INFORMATION_SCHEMA.KEY_COLUMN_USAGE.
+    Return list of (table_name, column_name) that have a foreign key that do not
+    reference dataset(id). Uses INFORMATION_SCHEMA.KEY_COLUMN_USAGE.
     """
 
     cur = conn.get_cursor()
@@ -253,14 +253,75 @@ def append_table_data_for_ids(servercfg: "configparser.ConfigParser", table: str
         total_written += len(chunk)
     return total_written
 
+def append_table_data_with_where(
+    servercfg: "configparser.ConfigParser",
+    table: str,
+    where_clause: str,
+    out_path: str,
+) -> bool:
+    """
+    Append all data rows for a table using an explicit WHERE clause string.
+
+    Args:
+        servercfg: Parsed server config.
+        table: Target table name.
+        where_clause: Raw SQL WHERE clause (without the 'WHERE' keyword).
+        out_path: Path to the output dump file (opened in append-binary mode).
+
+    Returns:
+        True if mysqldump succeeded, False otherwise.
+    """
+    if not shutil.which("mysqldump"):
+        raise RuntimeError("mysqldump not found on PATH")
+
+    mysql_cfg = servercfg["database"] if servercfg and "database" in servercfg else {}
+    user = mysql_cfg.get("user", "")
+    passwd = mysql_cfg.get("password", "")
+    host = mysql_cfg.get("host", "localhost")
+    db = mysql_cfg.get("name", "gear_portal")
+
+    cmd = [
+        "mysqldump",
+        "-h", host,
+        "-u", user,
+        "--single-transaction",
+        "--quick",
+        "--lock-tables=false",
+        "--skip-add-drop-table",
+        "--no-create-info",
+        db,
+        table,
+        "--where", where_clause,
+    ]
+    if passwd:
+        cmd.insert(3, f"--password={passwd}")
+
+    print(f"Dumping data for {table} WHERE {where_clause}")
+    with open(out_path, "ab") as fh:
+        proc = subprocess.run(cmd, stdout=fh)
+
+    if proc.returncode != 0:
+        print(f"Warning: mysqldump returned {proc.returncode} for table {table}", file=sys.stderr)
+        return False
+    return True
 
 def main(argv: list | None = None):
     parser = argparse.ArgumentParser(description="Dump only dataset-related rows referenced by layouts.")
     parser.add_argument("--layout-ids", "-l", nargs="+", type=int, required=True, help="Layout id(s) to include")
     parser.add_argument("--dump-file", "-o", required=True, help="Output mysqldump filename")
+    parser.add_argument("--user", "-u", help="MySQL user (overrides config)")
+    parser.add_argument("--password", "-p", help="MySQL password (overrides config)")
+    parser.add_argument("--host", "-H", help="MySQL host (overrides config)")
     args = parser.parse_args(argv)
 
     servercfg = ServerConfig().parse()
+    if args.user:
+        servercfg["database"]["user"] = args.user
+    if args.password:
+        servercfg["database"]["password"] = args.password
+    if args.host:
+        servercfg["database"]["host"] = args.host
+
     conn = Connection()
 
     try:
@@ -293,10 +354,12 @@ def main(argv: list | None = None):
                 tables_unique.append(t)
                 seen.add(t)
 
+
         # Step 1: dump schema for these tables
         success = run_mysqldump_schema(servercfg, tables_unique, args.dump_file)
         if not success:
             print("Schema dump failed. Aborting.", file=sys.stderr)
+            Path(args.dump_file).unlink(missing_ok=True)
             return
 
         # Step 2: append data per table
@@ -311,7 +374,19 @@ def main(argv: list | None = None):
             print(f"Appended ~{written} rows for {table[0]}")
 
         for table in other_tables:
-            # dump all rows (col "1" in (1) always true)
+            if table == "gene":
+                # Keep only rows from the highest ensembl_release per organism_id.
+                # Rows tied at the max release for a given organism are all included.
+                gene_where = (
+                    "(organism_id, ensembl_release) IN ("
+                    "SELECT organism_id, MAX(ensembl_release) "
+                    "FROM gene GROUP BY organism_id)"
+                )
+                ok = append_table_data_with_where(servercfg, table, gene_where, args.dump_file)
+                print(f"Appended filtered rows for {table} (success={ok})")
+                continue
+
+            # All other unrestricted tables: dump every row (col "1" in [1] always true)
             written = append_table_data_for_ids(servercfg, table, "1", [1], args.dump_file)  # where 1=1
             print(f"Appended ~{written} rows for {table}")
 

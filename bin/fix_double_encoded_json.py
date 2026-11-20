@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+"""
+fix_double_encoded_json.py - Repair dataset_display.plotly_config values that were JSON-encoded twice.
+
+Decodes each display's config, decodes it a second time if the result is still a string,
+and writes back a singly encoded JSON config for every display.
+
+Usage: fix_double_encoded_json.py -u <db_user> -p <db_password> -d <db_name>
+"""
+
 import argparse
 import mysql.connector
 import json

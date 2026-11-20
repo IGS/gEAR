@@ -21,6 +21,7 @@ Subject to additions
 * hg19
 * hg38
 * mm10
+* mm39
 * rn6
 
 ## Manual dataset upload process
@@ -36,7 +37,7 @@ Before uploading, you need to do the following:
 On the server to upload data, do the following:
 
 1. Add the metadata to the database to obtain a dataset ID
-  a. `cd <gear_root>/bin; /opt/Python-3.10.4/bin/python3 ./add_excel_metadata_to_db.py -i <metadata_file>.xlsx -oi <user_id>`
+  a. `cd <gear_root>/bin; /opt/Python-3.14.4/bin/python3 ./add_excel_metadata_to_db.py -i <metadata_file>.xlsx -oi <user_id>`
 2. In MySQL, insert an entry into the dataset_display table, so this becomes the owner's primary display
   a. `insert into dataset_display (dataset_id, user_id, label, plot_type, plotly_config) values (<dataset_id>, <user_id>, "<unused_display_label>", "gosling", '{"hubUrl":"http://umgear.org/tracks/<dataset_name>/hub.txt", "assembly":"mm10", "gene_symbol":"Atoh1"}');`
   b. `insert into dataset_preference (user_id, dataset_id, display_id) values (<user_id>, <dataset_id>, <new_display_id>);`
@@ -51,8 +52,9 @@ Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hubQuic
 
 ### Dataset organization
 
-```
+Legacy way
 
+```text
 <dataset_name>/
 ├── hub.txt
 ├── genomes.txt                   # Info must match directory name for genome
@@ -60,7 +62,15 @@ Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hubQuic
 │   └── file1.bw                  # Example track file
 │   └── file2.bw
 │   └── trackDb.txt                  # Contains track information for all tracks
+```
 
+Current (uploader) way
+
+```text
+<dataset_name>/
+├── hub.txt                       # Info about hub, genome, and tracks. Must have useOneFile=on
+├── file1.bw                      # Example track file
+├── file2.bw
 ```
 
 ### Supported trackDb.txt properties
@@ -77,7 +87,10 @@ Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hubQuic
 
 The trackDb.txt file also allows for custom metadata tags, which will be subject to future additon.
 
-* gos_url (filled in during upload if type is hic)
+* gos_url (filled in during upload if type is hic or bed)
+  * The URL for gosling to read so the original URL can be used in UCSC
+* gos_scope
+  * If track type is CSV/JSON allows for it to be processed for multiple purposes.
 
 ### Special considerations for certain file types
 

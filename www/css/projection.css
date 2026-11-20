@@ -28,7 +28,6 @@ div#results-main-c {
 }
 
 #result-panel {
-    overflow-x: auto; /* allow horizontal scrolling if needed */
     width: 100%;
 }
 
@@ -52,9 +51,8 @@ ul#pattern-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
 ul#pattern-result-list li.is-selected {
-    /* TODO: Make this a variable */
-    background-color: #483285;
-    color: white;
+    background-color: var(--gear-bg-primary, #362E5C);
+    color: var(--gear-text-on-primary, #fff);
 }
 ul#go-terms {
     max-height: 17em;
@@ -67,21 +65,42 @@ ul#go-terms li {
 #result-panel-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    /* Use a fixed base height so the tile can't "grow" uncontrollably */
     /* Using 400px to account for the card header */
-    grid-auto-rows: 400px;
+    /* But allow it to grow so that aspect ratio can be maintained for ultrawide screens */
+    grid-auto-rows: minmax(400px, auto);
     gap: 8px;
+}
+
+/* A single dataset (share_id) or the expanded view: one full-width tile. Toggled by TileGrid in tilegrid.js.
+   The id is needed to beat the #result-panel-grid rule's 12 columns. */
+#result-panel-grid.is-single-tile,
+#zoomed-panel-grid.is-single-tile {
+    grid-template-columns: 1fr;
+    width: unset;   /* auto-size the grid to the content */
 }
 
 .js-tile {
     display: flex;
     flex-direction: column;
-    height: 100%; /* Forces the tile to stay within the 360px row */
-    overflow: hidden;
+    overflow: visible;
+    min-width: 0; /* allow flex items to shrink below the content's natural width */
+}
+
+#result-panel-grid .js-tile {
+    height: 100%; /* Forces the tile to stay within the 400px row */
+    max-height: 80vh;
+}
+
+#zoomed-panel-grid .js-tile {
+    height: fit-content;
 }
 
 .js-tile .card-image {
     align-content: center;
+
+    /* Useful for spatial plots that use a min_width to ensure they do not bleed out of the container */
+    overflow-x: auto;
+    overflow-y: auto;
 }
 
 /* tSNE plots */
@@ -96,18 +115,11 @@ ul#go-terms li {
     object-fit: contain;
 }
 
-
-/* spatial embeds */
-#result-panel-grid .js-tile .card-image iframe {
-    width: 100%;
-    height: 100%;
-    margin: auto;
-}
-
-#zoomed-panel-grid .js-tile .card-image iframe {
-    width: 100%;
-    height: 1750px;  /* Enough room for the Panel app to be fully displayed without scrolling */
-    margin: auto;
+/* The grid row grows to fit its content, so max-height: 100% alone does not stop a tall image
+   from stretching the row. Cap images at 360px (400px row minus the ~40px title) so the tile keeps
+   its height and the image is pillarboxed instead. The zoomed view is not capped. (issue #1358) */
+#result-panel-grid .js-tile .card-image img {
+    max-height: 360px;
 }
 
 .js-tile .card-image .svg svg {
@@ -153,4 +165,9 @@ ul#go-terms li {
 
 .js-choose-display-modal .modal-content {
     width: 70%; /* make wider, which makes preview images larger */
+}
+
+#algo-explainer-modal .modal-card {
+    width: 100%;
+    max-width: 900px;
 }

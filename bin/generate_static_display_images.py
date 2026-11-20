@@ -37,10 +37,11 @@ def get_all_displays(cursor, desired_dataset_id=None):
 
     for (dataset_id, display_id, plot_type, plotly_config) in cursor:
         displays.setdefault(dataset_id, dict())
-        displays[dataset_id].setdefault(display_id, {"plot_type":plot_type, "config":plotly_config, "default":False})
+        displays[dataset_id].setdefault(display_id, {"plot_type":plot_type, "config":plotly_config, "default":None})
 
-    # Determine default display images (to be symlinked later)
-    defaults_query = "SELECT d.id AS dataset_id, dd.id AS display_id " \
+    # Determine default display images (to be symlinked later). "default" is "single" or "multi",
+    #  from the preference's is_multigene flag, matching the link save_default_display.cgi makes
+    defaults_query = "SELECT d.id AS dataset_id, dd.id AS display_id, dp.is_multigene " \
         "FROM dataset d " \
         "JOIN dataset_display dd ON dd.dataset_id=d.id " \
         "JOIN dataset_preference dp ON dp.display_id=dd.id " \
@@ -51,10 +52,26 @@ def get_all_displays(cursor, desired_dataset_id=None):
 
     cursor.execute(defaults_query, query_args)
 
-    for (dataset_id, display_id) in cursor:
-        displays[dataset_id][display_id]["default"] = True
+    for (dataset_id, display_id, is_multigene) in cursor:
+        displays[dataset_id][display_id]["default"] = "multi" if is_multigene else "single"
 
     return displays
+
+def link_default_image(filename, dataset_id, gene):
+    """
+    Point <dataset_id>.<single|multi>.default.png at filename, replacing a link that points at
+    a different image (e.g. an older default display, or one made under the wrong name).
+    """
+    symlink_path = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.default.png".format(dataset_id, gene))
+    if os.path.islink(symlink_path):
+        if os.readlink(symlink_path) == filename:
+            print("Symlink for {} to default already exists. Skipping".format(filename))
+            return
+        os.remove(symlink_path)
+    try:
+        os.symlink(filename, symlink_path)
+    except OSError as e:
+        print("Could not symlink {} to {}. Reason: {}".format(filename, symlink_path, str(e)))
 
 def make_static_plotly_graph(filename, config, url):
     """Create a static plotly PNG image using the existing config."""
@@ -145,17 +162,10 @@ def main():
             config = json.loads(props["config"])
             config['plot_type'] = props['plot_type']
 
-            gene = "single"
-
             if os.path.isfile(filename):
                 # Create symlink to filename for all the designated 'default' displays
                 if props["default"]:
-                    symlink_path = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.default.png".format(dataset_id, gene))
-                    # If running multiple times, we shouldn't need to recreate the symlink
-                    try:
-                        os.symlink(filename, symlink_path)
-                    except:
-                        print("Symlink for {} to default already exists. Skipping".format(filename))
+                    link_default_image(filename, dataset_id, props["default"])
                 continue
                 #print("Overwriting file {}".format(filename))
 
@@ -170,7 +180,6 @@ def main():
                     success = make_static_plotly_graph(filename, config, url)
                 elif props["plot_type"].lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
                     url += "/mg_plotly"
-                    gene = "multi"
                     if "gene_symbols" not in config:
                         config["gene_symbols"] = ["Pou4f3", "Atoh1", "Sox2"]
                     success = make_static_plotly_graph(filename, config, url)
@@ -182,7 +191,6 @@ def main():
                     success = make_static_tsne_graph(filename, config, url)
                 elif props["plot_type"].lower() in ["mg_tsne_static", "mg_umap_static", "mg_pca_static"]:
                     url += "/mg_tsne"
-                    gene = "multi"
                     if "gene_symbols" not in config:
                         config["gene_symbols"] = ["Pou4f3", "Atoh1", "Sox2"]
                     success = make_static_tsne_graph(filename, config, url)
@@ -218,12 +226,7 @@ def main():
 
             # Create symlink to filename for all the designated 'default' displays
             if props["default"]:
-                symlink_path = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.default.png".format(dataset_id, gene))
-                # If running multiple times, we shouldn't need to recreate the symlink
-                try:
-                    os.symlink(filename, symlink_path)
-                except:
-                    print("Symlink for {} to default already exists. Skipping".format(filename))
+                link_default_image(filename, dataset_id, props["default"])
 
     cursor.close()
     cnx.close()

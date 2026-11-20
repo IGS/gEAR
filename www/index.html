@@ -18,6 +18,13 @@
           -->
         <base href="/" />
 
+        <!-- First-time visitors (no returning-visitor or session cookie) are sent to the intro page, which sets the cookie. -->
+        <script>
+          if (!/(^|;\s*)(gear_returning_visitor|gear_session_id)=/.test(document.cookie)) {
+            window.location.replace('/intro.html');
+          }
+        </script>
+
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
         <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css" />
@@ -46,8 +53,11 @@
               <div class="column mt-0 mb-0 pt-0 pb-0 is-narrow has-text-right">
                 <div id="onboarding-c">
                   <button id="onboarding-btn" class="button is-primary is-dark">
-                    New to gEAR? Click here.
+                    New to&nbsp;<span id="onboarding-domain-short-label">gEAR</span>? Click for tour.
                   </button>
+                  <a id="intro-screen-link" href="/intro.html" class="button is-primary is-outlined ml-2">
+                    See intro screen again
+                  </a>
                 </div>
               </div>
             </div>
@@ -76,7 +86,7 @@
                             <div class="control has-icons-left mr-0">
                               <!-- TODO make example gene customizable by domain -->
                               <label for="genes-manually-entered" class="is-sr-only">Search gene symbols</label>
-                              <input class="input" type="search" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols, such as Sox2"\>
+                              <input class="input" type="search" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols"\>
                               <span class="icon is-small is-left" aria-hidden="true">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
@@ -200,6 +210,7 @@
                                       <option value="gosling">Epigenetic</option>
                                       <option value="microarray">Microarray</option>
                                       <option value="single-cell-rnaseq">scRNA-Seq</option>
+                                      <option value="single-nucleus-rnaseq">snRNA-Seq</option>
                                       <option value="spatial">Spatial</option>
                                     </select>
                                   </div>
@@ -381,9 +392,9 @@
               </span>
               <span class="is-size-4">Guides</span>
             </h3>
-            <div id="guides_c" class="columns">
+            <div id="guides_c" class="columns is-multiline">
 
-              <div class="column">
+              <div class="column is-one-third">
                 <div class="card">
                   <div class="card-image">
                     <figure class="image is-5by3">
@@ -409,7 +420,7 @@
                 </div>
               </div>
 
-              <div class="column">
+              <div class="column is-one-third">
                 <div class="card">
                   <div class="card-image">
                     <figure class="image is-5by3">
@@ -435,7 +446,7 @@
                 </div>
               </div>
 
-              <div class="column">
+              <div class="column is-one-third">
                 <div class="card">
                   <div class="card-image">
                     <figure class="image is-5by3">
@@ -461,7 +472,7 @@
                 </div>
               </div>
 
-              <div class="column">
+              <div class="column is-one-third is-offset-2">
                 <div class="card">
                   <div class="card-image">
                     <figure class="image is-5by3">
@@ -487,16 +498,40 @@
                 </div>
               </div>
 
+              <div class="column is-one-third">
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/7_oiT4Q5yag" target="_blank" aria-label="Video of the projection tool in gEAR">
+                        <img
+                          src="./img/gear_guide_preview_projection_with_play_button.png"
+                          alt="Preview of the projection tool"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
+                    <div class="media">
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">Transfer Learning</p>
+                        <p class="subtitle is-size-6">How to project gene signatures onto new domains</p>
+                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/7_oiT4Q5yag" target="_blank" aria-label="Video of the projection tool in gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
           </section><!-- end #content-c -->
         </section> <!-- end #main-c -->
       </div>
       <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
-        </div>
-      </footer>
+        <div id="funding"></div>
+</footer>
 
       <script src="js/vendor/js.cookie.js"></script>
       <script src="js/vendor/jsrender.20181003.min.js"></script>
@@ -508,8 +543,20 @@
 
       <!-- Page-specific CSS/JS loading here -->
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        const geneSearchInput = document.getElementById('genes-manually-entered');
+        if (geneSearchInput) {
+          geneSearchInput.placeholder = "Type here to search using specific gene symbols, such as " + (prefs.default_demo_gene || 'Sox2');
+        }
+
+        const onboardingDomainShortLabel = document.getElementById('onboarding-domain-short-label');
+        if (onboardingDomainShortLabel && typeof prefs.domain_short_display_label === 'string' && prefs.domain_short_display_label.trim().length > 0) {
+          onboardingDomainShortLabel.textContent = prefs.domain_short_display_label;
+        }
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/index.js', prefs.cache_version);

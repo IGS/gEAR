@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, createToast, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
+import { apiCallsMixin, getCurrentUser, createToast, GENE_LIST_MANAGER_LINK, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
 import { curatorCommon } from "./curator_common.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
@@ -33,6 +33,8 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
         , "js-dash-secondary": "secondary_col"
         , "js-dash-color-palette": "colorscale"
         , "js-dash-reverse-palette": "reverse_colorscale"
+        , "js-dash-vmin": "vmin"
+        , "js-dash-vmax": "vmax"
         , "js-dash-distance-metric": "distance_metric"
         , "js-dash-matrixplot": "matrixplot"
         , "js-dash-center-mean": "center_around_zero"
@@ -68,6 +70,7 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
                 const order = config["sort_order"][series];
                 const levels = curatorCommon.getLevels();
                 // sort "levels" series by order
+                if (!levels[series]) continue;   // too many categories to have a level list to sort
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 curatorCommon.renderOrderSortableSeries(series);
             }
@@ -179,6 +182,8 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
                     targetElt.closest(".is-justify-content-space-between").remove();
                 }
             }
+            // Remove colorscale min/max options since violin plots have no colorbar
+            document.querySelector(".js-dash-colorscale-range")?.remove();
 
             prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
             postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");
@@ -233,8 +238,14 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
     }
 
     async setupPlotSpecificEvents(datasetId) {
-        const catColumns = await getCategoryColumns(datasetId);
-        curatorCommon.setCatColumns(catColumns);
+        const analysisId = curatorCommon.getAnalysisId();
+        let catColumns;
+        try {
+            ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
+        } catch (error) {
+            document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+            return;
+        }
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -508,15 +519,15 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
             classElt.value = compareSeries;
         }
 
-        const levels = curatorCommon.getLevels();
         // populate group options
-        updateGroupOptions("js-dash-reference", levels[compareSeries]);
+        const groupValues = getGroupValuesForSeries(compareSeries);
+        updateGroupOptions("js-dash-reference", groupValues);
         for (const classElt of document.getElementsByClassName("js-dash-reference")) {
             classElt.value = refGroup;
         }
 
         if (this.plotType === "volcano") {
-            updateGroupOptions("js-dash-query", levels[compareSeries]);
+            updateGroupOptions("js-dash-query", groupValues);
             const queryCondition = config["query_condition"];
             const queryGroup = queryCondition.split(this.compareSeparator)[1];
             for (const classElt of document.getElementsByClassName("js-dash-query")) {
@@ -526,8 +537,8 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
 
         }
         if (this.plotType === "quadrant") {
-            updateGroupOptions("js-dash-compare1", levels[compareSeries]);
-            updateGroupOptions("js-dash-compare2", levels[compareSeries]);
+            updateGroupOptions("js-dash-compare1", groupValues);
+            updateGroupOptions("js-dash-compare2", groupValues);
 
             const compare1Condition = config["compare1_condition"];
             const compare1Group = compare1Condition.split(this.compareSeparator)[1];
@@ -706,9 +717,14 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
     }
 
     async setupPlotSpecificEvents(datasetId) {
-
-        const catColumns = await getCategoryColumns(datasetId);
-        curatorCommon.setCatColumns(catColumns);
+        const analysisId = curatorCommon.getAnalysisId();
+        let catColumns;
+        try {
+            ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
+        } catch (error) {
+            document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+            return;
+        }
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -718,18 +734,32 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
 
         updateSeriesOptions("js-dash-compare", catColumns);
 
-        const levels = curatorCommon.getLevels();
         // When compare series changes, update the compare groups
         for (const classElt of document.getElementsByClassName("js-dash-compare")) {
             classElt.addEventListener("change", async (event) => {
                 const compareSeries = event.target.value;
-                updateGroupOptions("js-dash-reference", levels[compareSeries]);
+                const groupValues = getGroupValuesForSeries(compareSeries);
+                if (!groupValues) {
+                    for (const cls of ["js-dash-reference", "js-dash-compare1", "js-dash-compare2", "js-dash-query"]) {
+                        for (const elt of document.getElementsByClassName(cls)) {
+                            elt.replaceChildren();
+                            elt.disabled = true;
+                        }
+                    }
+                    return;
+                }
+                for (const cls of ["js-dash-reference", "js-dash-compare1", "js-dash-compare2", "js-dash-query"]) {
+                    for (const elt of document.getElementsByClassName(cls)) {
+                        elt.disabled = false;
+                    }
+                }
+                updateGroupOptions("js-dash-reference", groupValues);
                 if (this.plotType === "quadrant") {
-                    updateGroupOptions("js-dash-compare1", levels[compareSeries]);
-                    updateGroupOptions("js-dash-compare2", levels[compareSeries]);
+                    updateGroupOptions("js-dash-compare1", groupValues);
+                    updateGroupOptions("js-dash-compare2", groupValues);
                 }
                 if (this.plotType === "volcano") {
-                    updateGroupOptions("js-dash-query", levels[compareSeries]);
+                    updateGroupOptions("js-dash-query", groupValues);
                 }
             });
         }
@@ -742,7 +772,9 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
                 const uniqueGroups = [...new Set(compareGroups)].filter(x => x);
                 // Get all unselected groups
                 const series = document.querySelector(".js-dash-compare").value;
-                const unselectedGroups = levels[series].filter((group) => !uniqueGroups.includes(group));
+                const seriesGroups = getGroupValuesForSeries(series);
+                if (!seriesGroups) return;
+                const unselectedGroups = seriesGroups.filter((group) => !uniqueGroups.includes(group));
 
                 for (const innerClassElt of document.getElementsByClassName("js-compare-groups")) {
                     // enable all unselected groups
@@ -780,6 +812,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-flip-x": "flip_x"
         , "js-tsne-flip-y": "flip_y"
         , "js-tsne-colorize-legend-by": "colorize_legend_by"
+        , "js-tsne-enforce-equal-aspect": "enforce_equal_aspect"
         , "js-tsne-max-columns": "max_columns"
         , "js-tsne-horizontal-legend": "horizontal_legend"
         , "js-tsne-marker-size": "marker_size"
@@ -810,6 +843,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 const order = config["order"][series];
                 const levels = curatorCommon.getLevels();
                 // sort "levels" series by order
+                if (!levels[series]) continue;   // too many categories to have a level list to sort
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 curatorCommon.renderOrderSortableSeries(series);
             }
@@ -878,10 +912,12 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
      */
     async createPlot(datasetId, analysisObj) {
         let image;
+        let image_format;
         try {
             const data = await fetchMgTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
-            ({ image } = data);
+            ({ image, image_format } = data);
         } catch (error) {
+            console.error("Error fetching multigene TSNE image:", error);
             return;
         }
 
@@ -903,7 +939,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             createToast("Could not retrieve plot image. Cannot make plot.");
             return;
         }
-        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format ?? "webp";
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
         tsnePreview.src = URL.createObjectURL(blob);
         tsnePreview.onload = () => {
             // Revoke the object URL to free up memory
@@ -929,6 +966,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Remove some single-gene options from the post-plot adjustments
         const plotBySeries = document.querySelector(".js-tsne-plot-by-series");
+        const hideGroupNonmembers = document.querySelector(".js-tsne-hide-group-nonmembers");
         const skipGenePlot = document.querySelector(".js-tsne-skip-gene-plot");
         const twoWayPalette = document.querySelector(".js-tsne-two-way-palette");
         for (const targetElt of [plotBySeries, skipGenePlot, twoWayPalette]) {
@@ -961,7 +999,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
-        const colorSeries = document.getElementById("colorize-legend-by-post").textContent;
+        const colorSeries = document.getElementById("colorize-legend-by-post").value;
         if (colorSeries && colorElts.length) {
             this.plotConfig["colors"] = {};
             [...colorElts].map((field) => {
@@ -1326,25 +1364,6 @@ const fetchMgTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
     }
 };
 
-const getCategoryColumns = async (datasetId) => {
-    const analysisId = curatorCommon.getAnalysisId();
-    let levels;
-    try {
-        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
-    } catch (error) {
-        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-        return;
-    }
-    // Filter out values we don't want of "levels", like "colors"
-    for (const key in levels) {
-        if (key.includes("_colors")) {
-            delete levels[key];
-        }
-    }
-    curatorCommon.setLevels(levels);
-    return Object.keys(levels);
-};
-
 // Invert a log function
 const invertLogFunction = (value, base = 10) => {
     return base ** value;
@@ -1371,9 +1390,11 @@ const populateGeneTable = (data, plotType) => {
     geneTableBody.replaceChildren();
 
     for (const gene of plotSelectedGenes) {
-        const row = document.createElement("tr");
-        row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.x}</td><td>${gene.y}</td>`;
-        geneTableBody.appendChild(row);
+        const row = geneTableBody.insertRow();
+        // Gene symbols come from user-uploaded datasets, so insert as text rather than HTML
+        for (const value of [gene.gene_symbol, gene.x, gene.y]) {
+            row.insertCell().textContent = value;
+        }
     }
 };
 
@@ -1463,34 +1484,21 @@ const saveWeightedGeneCart = () => {
  * @returns {Promise<void>} A promise that resolves when the setup is complete.
  */
 const setupScanpyOptions = async (datasetId) => {
-    const analysisId = curatorCommon.getAnalysisId();
     const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
-    let levels;
+    const analysisId = curatorCommon.getAnalysisId();
+    let catColumns;
     try {
-        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
-
-    // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
-    for (const key in levels) {
-        if (key.includes("_colors")) {
-            delete levels[key];
-        }
-    }
-
-    curatorCommon.setLevels(levels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
-
-    curatorCommon.setCatColumns(Object.keys(levels));
-    const catColumns = curatorCommon.getCatColumns();
 
     let xDefaultOption = null;
     let yDefaultOption = null;
@@ -1740,13 +1748,18 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
         for (const group of seriesArray.sort()) {
 
             const option = document.createElement("option");
-            option.textContent = group;
+            option.textContent = curatorCommon.decorateTruncatedCatLabel(group);
             option.value = group;
             elt.append(option);
         }
     }
 };
 
+
+// For a given series, get its group values whether "levels-manageable" or high-cardinality
+// (truncated). Used for plain compare/reference select dropdowns, which have no color/order
+// UI and so can still show all values for a truncated column.
+const getGroupValuesForSeries = (series) => curatorCommon.getLevels()[series] || curatorCommon.getTruncatedLevels()[series];
 
 // For a given categorical series (e.g. "celltype"), update the "group" options
 const updateGroupOptions = (classSelector, groupsArray) => {
@@ -1770,7 +1783,7 @@ const updateGroupOptions = (classSelector, groupsArray) => {
 };
 
 const updateUIAfterGeneCartSaveSuccess = (gc) => {
-    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+    createToast("Gene cart saved successfully.", "is-success", true, { link: GENE_LIST_MANAGER_LINK });
 };
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {

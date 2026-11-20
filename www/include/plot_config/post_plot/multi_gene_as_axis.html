@@ -20,6 +20,17 @@
     <span class="has-text-weight-medium">Reverse palette</span>
     <input class="js-dash-reverse-palette" id="reverse-palette-post" type="checkbox">
 </label>
+<div class="js-dash-colorscale-range">
+    <p class="is-flex is-justify-content-space-between pr-3">
+        <span class="has-text-weight-medium">Colorscale minimum value</span>
+        <input class="js-dash-vmin" id="vmin-post" type="number" aria-label="Colorscale minimum value" />
+    </p>
+    <p class="is-flex is-justify-content-space-between pr-3 mb-1">
+        <span class="has-text-weight-medium">Colorscale maximum value</span>
+        <input class="js-dash-vmax" id="vmax-post" type="number" aria-label="Colorscale maximum value" />
+    </p>
+    <p class="help">In the log-transformed units shown on the colorbar. Leave blank for the defaults. For heatmaps centered around zero, a single value is mirrored (i.e. a maximum of 2 gives -2 to 2), and two values that are not equally far from zero move the center off zero.</p>
+</div>
 
 <!-- Include plot-specific HTML here -->
 <section class="js-plot-specific-options" id="post-plot-specific-options"></section>

@@ -1,3 +1,9 @@
+"""
+userhistory.py - User activity history records.
+
+Provides UserHistory for adding and retrieving entries in a user's activity history.
+"""
+
 import geardb
 import re
 import sys
@@ -39,9 +45,10 @@ class UserHistory:
         self.label = label
         self.url = url
 
+        # Without a [history] section in gear.ini, history is off rather than an error
         server_config = ServerConfig().parse()
-        self.user_history_enabled = server_config.getboolean('history', 'enable_user_history')
-        self.history_count = server_config.getint('history', 'history_count')
+        self.user_history_enabled = server_config.getboolean('history', 'enable_user_history', fallback=False)
+        self.history_count = server_config.getint('history', 'history_count', fallback=10)
 
     def _serialize_json(self):
         # Called when json modules attempts to serialize
@@ -97,7 +104,7 @@ class UserHistory:
                 if 'gene_symbol' not in kwargs:
                     raise Exception("ERROR: If recording a gene_search category, 'gene_symbol' must be passed")
 
-                gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
+                gene_string = re.sub("[, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}".format(gene_string)
 
@@ -118,7 +125,7 @@ class UserHistory:
                 if 'gene_symbol' not in kwargs:
                     raise Exception("ERROR: If recording a multigene_search category, 'gene_symbol' must be passed")
 
-                gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
+                gene_string = re.sub("[, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}&multi=1&gsem=1".format(gene_string)
 
@@ -163,14 +170,14 @@ class UserHistory:
                  SELECT entry_date, entry_category, label, url
                    FROM user_history
                   WHERE user_id = %s
-                  ORDER BY entry_date DESC
         """
 
         if entry_category:
             qry += " AND entry_category = %s"
-            qry_args.append(self.entry_category)
+            qry_args.append(entry_category)
 
-        qry += f" LIMIT {entry_count}"
+        qry += " ORDER BY entry_date DESC LIMIT %s"
+        qry_args.append(int(entry_count))
 
         cursor.execute(qry, qry_args)
         entries = list()

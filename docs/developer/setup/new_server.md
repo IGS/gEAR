@@ -4,87 +4,127 @@
 
 Instances of a gEAR Portal are most often run within a cloud instance, where you can choose your own operating system and resources.  On Google Cloud for a starter instance I chose an e2-standard-2 (2 vCPUs and 48GB RAM) with 300GB of solid state disk space.  You'll definitely want to increase the CPU as you gain more simultaneous users and RAM depending on your dataset sizes.  Once you create and start the instance:
 
+NOTE: Extra apt install commands are present in the R setup and in the python setup.
+
 ```bash
     sudo apt update
     sudo apt upgrade
-    sudo apt install build-essential
+    sudo apt install build-essential \
+        curl \
+        git \
+        rsync \
+        vim \
+        unzip \
+        wget \
+        ca-certificates \
+        fonts-roboto \
+        fontconfig
+    sudo fc-cache -f -v    # cache the fonts
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
 
-```bash
-    cd && mkdir git
-    sudo apt install git
-    cd git
-    git clone https://github.com/IGS/gEAR.git
-```
+### If VM has Hyperdisks
+
+Doing a git checkout with the Hyperdisk mounted may overwrite the symlinked "datasets" and "uploads" directories.
+
+To fix:
+
+`ln -s  /mnt/disks/datastore/datasets /var/www/datasets`
+`ln -s  /mnt/disks/datastore/uploads /var/www/uploads`
 
 ### MYSQL
 
 `sudo apt install mysql-server`
 
-Follow instructions in our setup.mysql.md document
+Follow instructions in [the MySQL setup](./mysql.md) document
 
 ### R
 
 Not necessary if you want projectR to run on a Google Cloud Run service (configurable in gear.ini)
 
-Please consult `setup.r_rpy2.md` for packages to install in order to install R and requisite R packages
+Please consult [the R setup](./r_rpy2.md) for packages to install in order to install R and requisite R packages
 
 ### RabbitMQ
 
 Not necessary if you want projectR to run in the Apache environment or do not want to setup the RabbitMQ messaging service (configurable in gear.ini)
 
-Follow instructions in setup.rabbit_mq.md document
+`sudo mkdir -p /var/log/gEAR_queue`
+`sudo chown -R www-data:www-data /var/log/gEAR_queue`
+
+Follow instructions in [the RabbitMQ setup](./rabbitmq.md) document
 
 ### Python
 
-Follow instructions in setup.python.md document
+Follow instructions in [the Python setup](./python.md) document
 
 ### APACHE
 
 `sudo apt install apache2 apache2-dev`
 
-Follow instructions in setup.apache.md document
+Follow instructions in [the Apache setup](./apache.md) document
 
 ### Sass
 
-Used for changing theme colors between portal flavors.
-NOTE: Ruby Sass is end-of-life and they recommend switching to Dart Sass
+Used for changing theme colors between portal flavors (e.g. `www/css/gear-theme-purple.scss`).
 
-`sudo apt install ruby-sass`
+Ruby Sass (`ruby-sass`) is end-of-life and may not be packaged on current Ubuntu releases. Install Dart Sass 1.79.0 or newer instead, either via npm or a standalone release from <https://github.com/sass/dart-sass/releases>:
+
+```bash
+# Remove ruby sass if present, to avoid conflicts with dart-sass
+sudo apt remove ruby-sass
+
+# Change VER as needed
+VER=1.83.4
+cd /tmp
+wget https://github.com/sass/dart-sass/releases/download/$VER/dart-sass-$VER-linux-x64.tar.gz
+sudo tar -xzf dart-sass-$VER-linux-x64.tar.gz -C /opt
+sudo ln -sf /opt/dart-sass/sass /usr/local/bin/sass
+hash -r
+
+sass www/css/gear-theme-purple.scss www/css/gear-theme-purple.css
+```
+
+Select the desired portal's brand colors in the SCSS before compiling; if multiple
+sets are uncommented, the last set takes precedence. The compiled theme also exports
+the primary color and a contrast-safe text color used for selected results.
 
 ### gEAR portal
 
 ```bash
-cd ~jorvis/git
-git clone https://github.com/jorvis/gEAR.git
+cd ~/git
+git clone https://github.com/IGS/gEAR.git
 cd /var
-sudo rm -rf www && sudo ln -s ~jorvis/git/gEAR/www
+sudo rm -rf www && sudo ln -s ~/git/gEAR/www
 ```
 
 ### Systemd Services
 
-More information about these services can be found at `gEAR/systemd/README.md`
+More information about these services can be found in [systemd.md](./systemd.md), [RabbitMQ Consumers](../services/rabbitmq_consumers.md) and [Spatial Panel](../services/spatial.md).
 
 ```bash
-cd ~jorvis/git/gEAR/systemd
-sudo cp *target /etc/systemd/system/
-sudo cp *service /etc/systemd/system/
+cd ~/git/gEAR/systemd
+sudo cp *.target *.service *.slice /etc/systemd/system/
 
-echo "**IMPORTANT**: For the *service files, correct the <gEAR_path> to point to the gEAR root on this server"
+# Replace <gear_root> with the gEAR root on this server.
+# spatial-panel.service also has <domain url> and a Python path to check by hand.
+sudo sed -i 's|<gear_root>|/path/to/gEAR|g' /etc/systemd/system/*-consumer@.service /etc/systemd/system/spatial-panel.service
 
-# Start the services
-cd /etc/systemd/system
+# Reload systemd
+sudo systemctl daemon-reload
 
-sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
-sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
+# Enable and start every consumer at once. gear-consumers.target pulls in each
+# consumer's target, which pulls in its workers.
+sudo systemctl enable gear-consumers.target
+sudo systemctl start gear-consumers.target
 
 sudo systemctl enable spatial-panel.service
 sudo systemctl start spatial-panel.service
 
 # <Add more services here>
 ```
+
+To deploy code or unit file changes to the consumers later, follow [Rolling Out Updates](../services/rabbitmq_consumers.md#rolling-out-updates).
 
 ### Data transfer
 
@@ -103,7 +143,21 @@ cd /var/www
 chmod 777 datasets datasets/spatial analyses/* carts/ projections/ uploads/files/ img/dataset_previews/ cache/spatial_panel/
 ```
 
+### E-mail support
+
+The portal uses e-mail only when users create a new account or use the "forgot password" link
+functionality. Here are the steps for setting this up (assuming running on a GCP node):
+
+- $ sudo apt install sendmail
+- Go to your Google Account Settings
+- Make sure that 2-step verification is turned ON
+- Go to your Google Account App Passwords page (https://myaccount.google.com/apppasswords)
+- Give your app a custom name, like 'gear-emailer' and click Create
+- Copy the 16-character password that appears in the model
+- Put your email and this password in your portal's gear.ini file
+
+
 ### Undocumented currently
 
-- Setting up mail server so forgot password works
+
 - What to do for helpdesk config?

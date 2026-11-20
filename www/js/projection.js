@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, openModal, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, registerEventListeners as registerPatternEventListeners, selectPatternWeights, setSelectedPattern } from "../include/pattern-collection-selector/pattern-collection-selector.js";
 import { TileGrid } from "./classes/tilegrid.js";
@@ -46,13 +46,17 @@ const createSelectedPatternProxy = (selectedPattern) => {
                     document.getElementById("single-multi-single").checked = true;
                     isMulti = false;
                 }
-                // Enable or disable the "binary" option if all selectedWeights have "binary" property set to True
-                const binary = value.every((w) => w.binary);
-                algorithmElt.querySelector('option[value="binary"]').disabled = !binary;
+                // Binary Gene Count works with unweighted lists or weighted lists whose patterns are all 0/1 (#487, #666).
+                // The server flags those weights as "binary". An empty selection happens mid-change (switching lists,
+                // clearing weights), so leave the option alone until weights are actually selected.
+                if (value.length) {
+                    const binary = value.every((w) => w.binary);
+                    algorithmElt.querySelector('option[value="binary"]').disabled = !binary;
 
-                // if "binary" is selected, reset the algorithm "select" box to "pca"
-                if (algorithmElt.value === 'binary') {
-                    algorithmElt.value = 'pca';
+                    // Only fall back to "pca" if "binary" is selected but no longer valid
+                    if (!binary && algorithmElt.value === 'binary') {
+                        algorithmElt.value = 'pca';
+                    }
                 }
 
             } else if (key === "gctype") {
@@ -148,7 +152,7 @@ const populatePatternResultsList = () => {
 
     for (const label of sortedLabels) {
         const row = template.content.cloneNode(true);
-        row.querySelector('li').innerHTML = label;
+        row.querySelector('li').textContent = label;
         row.querySelector('li').dataset.weight = label;
         document.getElementById('pattern-result-list').appendChild(row);
 
@@ -211,10 +215,12 @@ const parsePatternCartURLParams = async () => {
         console.warn(`Pattern ${pattern} not found in pattern cart data. Perhaps the user does not have access to it.`);
         return;
     }
-    setSelectedPattern({ shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: [] });
-
-    // Update proxy so that multi-gene radio button can be enabled/disabled
-    selectedPattern = createSelectedPatternProxy(getSelectedPattern());
+    // Assign through the proxy (not a new object) so the algorithm and multi-pattern rules run.
+    // Order matters: gctype must be set before selectedWeights.
+    selectedPattern.shareId = foundPattern.share_id;
+    selectedPattern.label = foundPattern.label;
+    selectedPattern.gctype = foundPattern.gctype;
+    selectedPattern.selectedWeights = [];
 
     // we cannot the click event, since the pattern list items only render when an intiial category is selected
     // so we need to manually populate the pattern weights
@@ -253,7 +259,7 @@ const parseDatasetCollectionURLParams = () => {
 
     datasetCollectionState.selectedShareId = layoutShareId;
     datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[layoutShareId];
-    document.querySelector('#dropdown-dc-selector-label').innerHTML = datasetCollectionState.selectedLabel;
+    document.querySelector('#dropdown-dc-selector-label').textContent = datasetCollectionState.selectedLabel;
 };
 
 /**
@@ -337,8 +343,33 @@ const selectPatternWeightResult = async (label) => {
 
         const minclip = document.getElementById('minclip').checked ? 0 : null;
         await tilegrid.renderDisplays(label, isMulti, svgScoringMethod, minclip, projectionOpts);
+        updateScoringMethodVisibility();
     }
 };
+
+/**
+ * Sets up the algorithm explainer modal tabs, allowing users to switch between different algorithm explanations.
+ * This function adds click event listeners to each tab, enabling the display of the corresponding content pane when a tab is clicked.
+ * It also ensures that only one tab and its associated content pane are active at any given time.
+ * @returns {void}
+ */
+
+const setupAlgoExplainerModalTabs = () => {
+    const tabs = document.querySelectorAll('#algo-explainer-modal .tabs li');
+    const panes = document.querySelectorAll('#algo-explainer-modal .tab-pane');
+
+    for (const tab of tabs) {
+        tab.addEventListener('click', () => {
+            // Remove active status from tabs and hide all panes
+            tabs.forEach(item => item.classList.remove('is-active'));
+            panes.forEach(pane => pane.classList.add('is-hidden'));
+            // Activate clicked tab and target pane
+            tab.classList.add('is-active');
+            const targetId = tab.dataset.tab;
+            document.getElementById(targetId).classList.remove('is-hidden');
+        });
+    };
+}
 
 /**
  * Sets up the tile grid for a given shareId and type.
@@ -385,6 +416,7 @@ const setupTileGrid = async (shareId, type = "layout") => {
             // create array of selected weight labels
             const selectedWeights = Array.from(selectedPattern.selectedWeights).map((w) => w.label);
             await tilegrid.renderDisplays(selectedWeights, isMulti, svgScoringMethod, minclip, projectionOpts);
+            updateScoringMethodVisibility();
         }
     } catch (error) {
         logErrorInConsole(error);
@@ -432,11 +464,27 @@ const validateProjectionSearchForm = () => {
 };
 
 /**
+ * Shows the SVG scoring method dropdown only when it applies: single-pattern mode with at least
+ * one tile currently showing an SVG display. Re-checked whenever a tile renders a display.
+ */
+const updateScoringMethodVisibility = () => {
+    const isVisible = !isMulti && Boolean(tilegrid?.hasSvgDisplay());
+    for (const id of ["scoring-method-div", "result-panel-options-divider"]) {
+        document.getElementById(id).classList.toggle("is-hidden", !isVisible);
+    }
+}
+
+// Tiles announce each rendered display (including display switches from a tile's display chooser)
+document.addEventListener("tile-display-rendered", updateScoringMethodVisibility);
+
+/**
  * Handles the UI updates specific to the page login.
  * @param {Event} event - The event object.
  * @returns {Promise<void>} - A promise that resolves when the UI updates are completed.
  */
 const handlePageSpecificLoginUIUpdates = async (event) => {
+
+    setupAlgoExplainerModalTabs();
 
     // Set the page header title
     document.getElementById('page-header-label').textContent = 'Projection Search';
@@ -454,7 +502,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     registerPatternEventListeners(apiCallsMixin);
     registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
 
+    // Hand the proxy back to the selector module so its writes trigger the proxy's set trap.
+    // ES modules don't share the global, so without this the algorithm/multi-pattern rules never run.
     selectedPattern = createSelectedPatternProxy(getSelectedPattern());
+    setSelectedPattern(selectedPattern);
 
     // add event listener for when the submit-projection-search button is clicked
     document.getElementById('submit-projection-search').addEventListener('click', async (event) => {
@@ -480,15 +531,15 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // if multi, clear the selected pattern symbol and hide the pattern-result-list container
         document.getElementById("pattern-result-list-c").classList.remove('is-hidden');
-        document.getElementById("scoring-method-div").classList.remove('is-hidden');
         if (isMulti) {
             document.getElementById("pattern-result-list-c").classList.add('is-hidden');
-            document.getElementById("scoring-method-div").classList.add('is-hidden');
         }
 
         try {
             const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
             tilegrid = await setupTileGridFn;
+            // Hidden until the new displays render; tiles showing an SVG will bring it back
+            updateScoringMethodVisibility();
 
             // auto-select the first pattern in the list
             const firstPattern = document.querySelector('.pattern-result-list-item');
@@ -595,9 +646,19 @@ document.getElementById('svg-scoring-method').addEventListener('change', (event)
 
     // Loop through all tiles with svgData and update the display based on the selected method
     for (const tile of tilegrid.tiles) {
+        // Remembered by the tile so a later display switch uses the current method
+        tile.svgScoringMethod = svgScoringMethod;
         if (tile.svg) {
             tile.updateSVGDisplay(svgScoringMethod);
         }
     }
 
+});
+
+// Show modal of upload requirements if clicked
+document.getElementById("algo-explainer").addEventListener("click", (e) => {
+    e.preventDefault();
+    const modalId = e.target.dataset.target;
+    const modalElt = document.getElementById(modalId);
+    openModal(modalElt);
 });

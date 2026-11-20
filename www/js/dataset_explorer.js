@@ -1,8 +1,8 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, downloadWithMetadata, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, setDisplayCardText, SHARE_ID_MAX_LENGTH, triggerUrlDownload, validateShareId } from "./common.v2.js";
+import { describeGoslingSession } from "./helpers/gosling-fxns.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
-
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
@@ -36,6 +36,7 @@ const getAnalysisTools = dtype => {
     const dict =  {
         "dataset-curator": [
             "single-cell-rnaseq",
+            "single-nucleus-rnaseq",
             "bulk-rnaseq",
             "bargraph-standard",
             "microarray",
@@ -48,6 +49,7 @@ const getAnalysisTools = dtype => {
         ],
         "multigene-viewer": [
             "single-cell-rnaseq",
+            "single-nucleus-rnaseq",
             "bulk-rnaseq",
             "bargraph-standard",
             "microarray",
@@ -59,6 +61,7 @@ const getAnalysisTools = dtype => {
         ],
         "compare-tool": [
             "single-cell-rnaseq",
+            "single-nucleus-rnaseq",
             "bulk-rnaseq",
             "bargraph-standard",
             "microarray",
@@ -70,6 +73,7 @@ const getAnalysisTools = dtype => {
         ],
         "sc-workbench": [
             "single-cell-rnaseq",
+            "single-nucleus-rnaseq",
             "atac-seq",
             "spatial",
             "sc-rna-seq"
@@ -499,19 +503,19 @@ class ResultItem {
         if (downloadSelector) {
 
             downloadSelector.addEventListener("click", async (e) => {
-                e.currentTarget.classList.add("is-loading");
+                // currentTarget is null after the await, so keep a reference to the button
+                const button = e.currentTarget;
+                button.classList.add("is-loading");
                 try {
-                    // download the h5ad
-                    const datasetId = this.datasetId;
-                    const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${this.shareId}`;
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.click();
+                    // download the metadata, then the h5ad
+                    const safeShareId = encodeURIComponent(String(this.shareId || ""));
+	                const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${safeShareId}`;
+                    await downloadWithMetadata(this.shareId, () => triggerUrlDownload(url));
                 } catch (error) {
                     logErrorInConsole(error);
                     createToast("Failed to download dataset");
                 } finally {
-                    e.currentTarget.classList.remove("is-loading");
+                    button.classList.remove("is-loading");
                 }
             });
 
@@ -572,6 +576,14 @@ class ResultItem {
 
             try {
                 const data = await apiCallsMixin.saveDatasetInfoChanges(this.datasetId, intNewVisibility, intIsDownloadable, newTitle, newPubmedId, newGeoId, newLdesc);
+                if (!data?.success) {
+                    let msg = data?.error || "Failed to save dataset changes";
+                    if (data?.error_detail) {
+                        msg += `\nDetails: ${data.error_detail}`;
+                    }
+                    createToast(msg, "is-danger", true);
+                    return;
+                }
                 createToast("Dataset changes saved", "is-success");
 
             } catch (error) {
@@ -891,9 +903,10 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.dataset}' value='${escapeHtml(this.shareId)}'>
                         </div>
                     </div>
+                    <p id='dataset-link-name-help' class='help has-text-danger-dark'></p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
                             <button id='confirm-dataset-link-rename' class='button is-primary' disabled>Update</button>
@@ -947,15 +960,14 @@ class ResultItem {
                 });
             });
 
-            document.getElementById("dataset-link-name").addEventListener("keyup", () => {
-                const newLinkName = document.getElementById("dataset-link-name");
-                const confirmRenameLink = document.getElementById("confirm-dataset-link-rename");
+            // "input" also catches pasted text; explain an invalid permalink instead of sending it
+            document.getElementById("dataset-link-name").addEventListener("input", () => {
+                const newLinkName = document.getElementById("dataset-link-name").value;
+                const unchanged = newLinkName === this.shareId;
+                const problem = unchanged ? "" : validateShareId(newLinkName, "dataset");
 
-                if (newLinkName.value.length === 0 || newLinkName.value === this.shareId) {
-                    confirmRenameLink.disabled = true;
-                    return;
-                }
-                confirmRenameLink.disabled = false;
+                document.getElementById("dataset-link-name-help").textContent = problem;
+                document.getElementById("confirm-dataset-link-rename").disabled = unchanged || Boolean(problem);
             });
 
             // Add event listener to cancel button
@@ -1650,7 +1662,7 @@ const createNewCollectionPopover = () => {
                 <p>Please provide a name for the new dataset collection</p>
                 <div class='field'>
                     <div class='control'>
-                        <input id='collection-name' class='input' type='text' placeholder='Collection name'>
+                        <input id='collection-name' class='input' maxlength='110' type='text' placeholder='Collection name'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1745,7 +1757,7 @@ const createNewCollectionPopover = () => {
                 }
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to create new collection");
+                createToast(error.message || "Failed to create new collection");
             } finally {
                 event.target.classList.remove("is-loading");
                 popoverContent.remove();
@@ -1780,7 +1792,7 @@ const createRenameCollectionPopover = () => {
                 <p>Please provide a new name for the dataset collection</p>
                 <div class='field'>
                     <div class='control'>
-                        <input id='collection-name' class='input' type='text' placeholder='Collection name'>
+                        <input id='collection-name' class='input' maxlength='110' type='text' placeholder='Collection name'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1874,7 +1886,7 @@ const createRenameCollectionPopover = () => {
                 }
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to rename collection");
+                createToast(error.message || "Failed to rename collection");
             } finally {
                 event.target.classList.remove("is-loading");
                 popoverContent.remove();
@@ -1915,9 +1927,10 @@ const createRenameCollectionPermalinkPopover = () => {
                         </a>
                     </div>
                     <div class='control'>
-                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${datasetCollectionState.selectedShareId}>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' maxlength='${SHARE_ID_MAX_LENGTH.layout}'>
                     </div>
                 </div>
+                <p id='collection-link-name-help' class='help has-text-danger-dark'></p>
                 <div class='field is-grouped' style='width:250px'>
                     <p class="control">
                         <button id='confirm-collection-link-rename' class='button is-primary' disabled>Update</button>
@@ -1932,6 +1945,11 @@ const createRenameCollectionPermalinkPopover = () => {
 
         // append element to DOM to get its dimensions
         document.body.appendChild(popoverContent);
+
+        const collectionLinkNameInput = document.getElementById('collection-link-name');
+        if (collectionLinkNameInput) {
+            collectionLinkNameInput.value = datasetCollectionState.selectedShareId || "";
+        }
 
         const arrowElement = document.getElementById('arrow');
 
@@ -1971,15 +1989,15 @@ const createRenameCollectionPermalinkPopover = () => {
             });
         });
 
-        document.getElementById("collection-link-name").addEventListener("keyup", () => {
-            const newLinkName = document.getElementById("collection-link-name");
-            const confirmRenameLink = document.getElementById("confirm-collection-link-rename");
+        // "input" also catches pasted text; explain an invalid permalink instead of sending it
+        //  (layout.share_id holds at most 24 characters)
+        document.getElementById("collection-link-name").addEventListener("input", () => {
+            const newLinkName = document.getElementById("collection-link-name").value;
+            const unchanged = newLinkName === datasetCollectionState.selectedShareId;
+            const problem = unchanged ? "" : validateShareId(newLinkName, "layout");
 
-            if (newLinkName.value.length === 0 || newLinkName.value === datasetCollectionState.selectedShareId) {
-                confirmRenameLink.disabled = true;
-                return;
-            }
-            confirmRenameLink.disabled = false;
+            document.getElementById("collection-link-name-help").textContent = problem;
+            document.getElementById("confirm-collection-link-rename").disabled = unchanged || Boolean(problem);
         });
 
         // Add event listener to cancel button
@@ -2450,6 +2468,12 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
             displayType.textContent = display.plot_type;
         }
 
+        // Name the display; saved Gosling views also get their panels and ranges, as they all share one preview image.
+        // Every Gosling card keeps room for the two panel lines (blank for upload defaults) so the images line up.
+        const isGosling = display.plot_type === "gosling";
+        const session = isGosling ? describeGoslingSession(display.plotly_config) : null;
+        setDisplayCardText(displayElement, display.label, session?.lines, session?.full, isGosling ? 2 : 0);
+
         // Determine number of times display is in current layout
         const displayCount = displayElement.querySelector('.js-collection-display-count');
 
@@ -2744,6 +2768,12 @@ const submitSearch = async (page=1) => {
         // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
         clearResultsViews();
 
+        // The CGI reports bad input or a failed query as success 0 with a "problem" message
+        if (!data.success) {
+            createToast(data.problem || "Failed to search datasets");
+            return;
+        }
+
         processSearchResults(data);
         setupPagination(data.pagination);
     } catch (error) {
@@ -2825,13 +2855,19 @@ const updateDatasetCollectionButtons = (collection=null) => {
 
     // Add event to update the collection visibility on the server
     collectionVisibilityInput.addEventListener("change", async (event) => {
-        const visibility = event.target.checked;
+        let visibility = event.target.checked;
         try {
-            await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
+            const data = await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
+            if (!data?.success) {
+                throw new Error(data?.error || "Failed to update collection visibility");
+            }
             createToast("Collection visibility updated", "is-success");
         } catch (error) {
             logErrorInConsole(error);
-            createToast("Failed to update collection visibility");
+            createToast(error.message || "Failed to update collection visibility");
+            // Revert the checkbox so it matches what is stored on the server
+            visibility = !visibility;
+            event.target.checked = visibility;
         }
         // update label
         event.target.closest(".field").querySelector("label").textContent = visibility ? "Public collection" : "Private collection";

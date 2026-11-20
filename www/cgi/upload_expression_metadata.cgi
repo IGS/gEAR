@@ -21,13 +21,14 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 from gear.metadata import Metadata
+from werkzeug.utils import secure_filename
 
 
 def main() -> dict:
     user_upload_file_base = '/tmp'
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('metadata-dataset-id')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('metadata-dataset-id')
     fileitem = form['metadata-file-input']
     user = geardb.get_user_from_session_id(session_id)
     result = {'success':0, 'message':'', 'metadata':{}}
@@ -43,7 +44,12 @@ def main() -> dict:
         result['message'] = 'Metadata file must be in Excel format (with .xls or .xlsx extension)'
         return result
 
-    #filename = os.path.basename(form.getvalue('metadata-file-input'))
+    dataset_id = secure_filename(dataset_id or '')
+    if not dataset_id:
+        result['message'] = 'Invalid dataset_id.'
+        return result
+
+    #filename = os.path.basename(form.getfirst('metadata-file-input'))
     dest_filepath = os.path.join(user_upload_file_base, "{0}.xlsx".format(dataset_id))
 
     fh = open(dest_filepath, 'wb')

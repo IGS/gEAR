@@ -1,6 +1,7 @@
 #!/opt/bin/python3
 
 """
+<<<<<<< HEAD
 stats.cgi — Google Analytics 4 statistics endpoint
 
 Query Parameters
@@ -76,6 +77,13 @@ Response Shape (JSON)
     ]
   }
 }
+=======
+stats.cgi - Report site usage statistics from the Google Analytics 4 Data API.
+
+Input: query string: days (1-365, default 30), top_n (1-50, default 10), realtime (0/false/no to skip).
+Output: JSON {ok, range, summary, timeseries, topPages, trafficSources, countries, topEvents, realtime?},
+        or {ok: false, error, details?} on failure.
+>>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
 """
 
 import json
@@ -117,6 +125,9 @@ MAX_DAYS = 365
 
 
 def print_json_response(payload, status="200 OK"):
+    """
+    Print CGI headers (status, no-cache, optional CORS) and the JSON payload.
+    """
     print(f"Status: {status}")
     print("Content-Type: application/json")
     print("Cache-Control: no-store, no-cache, must-revalidate, max-age=0")
@@ -128,6 +139,9 @@ def print_json_response(payload, status="200 OK"):
 
 
 def error_response(message, status="500 Internal Server Error", details=None):
+    """
+    Print a JSON error payload with the given HTTP status and exit.
+    """
     payload = {
         "ok": False,
         "error": message,
@@ -139,6 +153,9 @@ def error_response(message, status="500 Internal Server Error", details=None):
 
 
 def parse_int(value, default, minimum=None, maximum=None):
+    """
+    Parse an int, returning default on failure and clamping to [minimum, maximum].
+    """
     try:
         ivalue = int(value)
     except (TypeError, ValueError):
@@ -152,6 +169,9 @@ def parse_int(value, default, minimum=None, maximum=None):
 
 
 def safe_int(value):
+    """
+    Convert a GA metric string to int (via float if needed); 0 on failure.
+    """
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -187,6 +207,9 @@ def parse_iso_date_param(value, name):
 
 
 def get_query_params():
+    """
+    Parse days, top_n and include_realtime from QUERY_STRING with defaults and bounds.
+    """
     raw = os.environ.get("QUERY_STRING", "")
     qs = parse_qs(raw, keep_blank_values=False)
 
@@ -227,6 +250,9 @@ def get_query_params():
 
 
 def build_client():
+    """
+    Return a GA4 BetaAnalyticsDataClient using default credentials.
+    """
     return BetaAnalyticsDataClient()
 
 
@@ -240,6 +266,9 @@ def run_report(
     limit=10,
     order_by_metric=None,
 ):
+    """
+    Run a GA4 report over a date range, optionally ordered by a metric descending.
+    """
     request = RunReportRequest(
         property=f"properties/{property_id}",
         dimensions=[Dimension(name=d) for d in dimensions],
@@ -260,6 +289,9 @@ def run_report(
 
 
 def run_realtime_report(client, property_id, dimensions, metrics, limit=10):
+    """
+    Run a GA4 realtime report for the given dimensions and metrics.
+    """
     request = RunRealtimeReportRequest(
         property=f"properties/{property_id}",
         dimensions=[Dimension(name=d) for d in dimensions],
@@ -274,7 +306,14 @@ def run_realtime_report(client, property_id, dimensions, metrics, limit=10):
 # -----------------------------------------------------------------------------
 
 
+<<<<<<< HEAD
 def get_summary(client, property_id, start_date, end_date):
+=======
+def get_summary(client, property_id, days):
+    """
+    Return site-wide totals (users, sessions, page views, engaged sessions, events) for the last N days.
+    """
+>>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -310,7 +349,14 @@ def get_summary(client, property_id, start_date, end_date):
     }
 
 
+<<<<<<< HEAD
 def get_daily_timeseries(client, property_id, start_date, end_date, limit):
+=======
+def get_daily_timeseries(client, property_id, days):
+    """
+    Return per-day users, sessions and page views for the last N days.
+    """
+>>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -335,7 +381,14 @@ def get_daily_timeseries(client, property_id, start_date, end_date, limit):
     return rows
 
 
+<<<<<<< HEAD
 def get_top_pages(client, property_id, start_date, end_date, top_n):
+=======
+def get_top_pages(client, property_id, days, top_n):
+    """
+    Return the top N page paths by page views.
+    """
+>>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -360,7 +413,14 @@ def get_top_pages(client, property_id, start_date, end_date, top_n):
     return rows
 
 
+<<<<<<< HEAD
 def get_traffic_sources(client, property_id, start_date, end_date, top_n):
+=======
+def get_traffic_sources(client, property_id, days, top_n):
+    """
+    Return the top N session source/medium pairs by sessions.
+    """
+>>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -384,7 +444,14 @@ def get_traffic_sources(client, property_id, start_date, end_date, top_n):
     return rows
 
 
+<<<<<<< HEAD
 def get_countries(client, property_id, start_date, end_date, top_n):
+=======
+def get_countries(client, property_id, days, top_n):
+    """
+    Return the top N countries by active users.
+    """
+>>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -409,7 +476,14 @@ def get_countries(client, property_id, start_date, end_date, top_n):
     return rows
 
 
+<<<<<<< HEAD
 def get_top_events(client, property_id, start_date, end_date, top_n):
+=======
+def get_top_events(client, property_id, days, top_n):
+    """
+    Return the top N events by event count.
+    """
+>>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -434,6 +508,9 @@ def get_top_events(client, property_id, start_date, end_date, top_n):
 
 
 def get_realtime(client, property_id, top_n):
+    """
+    Return current active users, total and broken down by country.
+    """
     response = run_realtime_report(
         client=client,
         property_id=property_id,

@@ -6,6 +6,150 @@ let SITE_PREFS = null;
 
 const getCurrentUser = () => CURRENT_USER;
 
+// Utility function to escape HTML special characters to prevent XSS attacks when inserting user-generated content into the DOM
+const escapeHtml = (value) => {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+	}
+
+// Longest permalink (share_id) each scope's database column can hold
+const SHARE_ID_MAX_LENGTH = {dataset: 50, genecart: 50, layout: 24};
+
+// Characters update_share_id.cgi accepts (anything werkzeug's secure_filename() leaves unchanged):
+//  letters, digits, "-", "_" and ".", not starting or ending with "_" or "."
+const SHARE_ID_PATTERN = /^[A-Za-z0-9-](?:[A-Za-z0-9_.-]*[A-Za-z0-9-])?$/;
+
+/**
+ * Checks a proposed permalink (share_id) before it is sent to update_share_id.cgi.
+ *
+ * @param {string} value - The proposed permalink.
+ * @param {string} scope - "dataset", "genecart" or "layout".
+ * @returns {string} A message explaining why the permalink is invalid, or "" if it is valid.
+ */
+const validateShareId = (value, scope) => {
+    const maxLength = SHARE_ID_MAX_LENGTH[scope];
+    if (!value) {
+        return "Please enter a permalink.";
+    }
+    if (value.length > maxLength) {
+        return `A permalink can be at most ${maxLength} characters long.`;
+    }
+    if (!SHARE_ID_PATTERN.test(value)) {
+        return "Use only letters, numbers, hyphens, underscores and periods, and don't start or end with an underscore or period.";
+    }
+    return "";
+}
+
+const normalizeDomainCitations = (citationConfig) => {
+    const citationEntries = Array.isArray(citationConfig) ? citationConfig : [];
+
+    const normalizedCitations = [];
+    for (const entry of citationEntries) {
+        if (typeof entry === 'string' && entry.trim().length > 0) {
+            normalizedCitations.push({lines: [entry.trim()], links: []});
+            continue;
+        }
+
+        if (!entry || typeof entry !== 'object') {
+            continue;
+        }
+
+        const lines = Array.isArray(entry.lines)
+            ? entry.lines.filter((line) => typeof line === 'string' && line.trim().length > 0)
+            : [];
+
+        const links = Array.isArray(entry.links)
+            ? entry.links
+                .filter((link) => link && typeof link === 'object')
+                .map((link) => ({
+                    label: typeof link.label === 'string' ? link.label.trim() : '',
+                    url: typeof link.url === 'string' ? link.url.trim() : ''
+                }))
+                .filter((link) => link.label.length > 0 && link.url.length > 0)
+            : [];
+
+        if (lines.length > 0 || links.length > 0) {
+            normalizedCitations.push({lines, links});
+        }
+    }
+
+    return normalizedCitations;
+}
+
+const buildCitationCopyText = (citations) => citations
+    .map((citation) => {
+        const lines = [...citation.lines];
+        for (const link of citation.links) {
+            lines.push(`${link.label} (${link.url})`);
+        }
+        return lines.join('\n');
+    })
+    .join('\n\n');
+
+const renderDomainCitations = (domainPreferences = null) => {
+    const citationContainer = document.getElementById('citation-content');
+    const citationCard = document.getElementById('citation-c');
+    if (!citationContainer) {
+        return '';
+    }
+
+    const citations = normalizeDomainCitations(domainPreferences?.citations);
+
+    if (citations.length === 0) {
+        citationContainer.innerHTML = '';
+        if (citationCard) {
+            citationCard.dataset.hasCitations = 'false';
+            citationCard.classList.add('is-hidden');
+        }
+        return '';
+    }
+
+    if (citationCard) {
+        citationCard.dataset.hasCitations = 'true';
+        citationCard.classList.remove('is-hidden');
+    }
+
+    citationContainer.innerHTML = '';
+
+    for (let citationIndex = 0; citationIndex < citations.length; citationIndex++) {
+        const citation = citations[citationIndex];
+        const citationEntry = document.createElement('div');
+
+        for (const line of citation.lines) {
+            citationEntry.append(document.createTextNode(line));
+            citationEntry.append(document.createElement('br'));
+        }
+
+        for (let linkIndex = 0; linkIndex < citation.links.length; linkIndex++) {
+            const link = citation.links[linkIndex];
+            const linkElement = document.createElement('a');
+            linkElement.href = link.url;
+            linkElement.target = '_blank';
+            linkElement.rel = 'noopener noreferrer';
+            linkElement.textContent = link.label;
+            citationEntry.append(linkElement);
+
+            if (linkIndex < citation.links.length - 1) {
+                citationEntry.append(document.createElement('br'));
+            }
+        }
+
+        citationContainer.append(citationEntry);
+
+        if (citationIndex < citations.length - 1) {
+            const divider = document.createElement('hr');
+            divider.classList.add('my-2');
+            citationContainer.append(divider);
+        }
+    }
+
+    return buildCitationCopyText(citations);
+}
+
 // If a page wants to use this action, it can register a callback function
 let pageSpecificLoginUIUpdates = () => {};
 const registerPageSpecificLoginUIUpdates = (fn) => pageSpecificLoginUIUpdates = fn;
@@ -36,6 +180,8 @@ window.addEventListener("unhandledrejection", (event) => {
  * @returns {void}
  */
 const initCommonUI = async () => {
+    let citationCopyText = renderDomainCitations();
+
     // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
@@ -47,10 +193,23 @@ const initCommonUI = async () => {
 
         // insert the page logo based on the site preferences
         const logoNormal = document.getElementById('navbar-logo-normal');
-        logoNormal.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-normal.png"
+        logoNormal.src = `/img/by_domain/${SITE_PREFS.domain_label}/logo-main-normal.png`
 
         const logoSmall = document.getElementById('navbar-logo-small');
-        logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
+        logoSmall.src = `/img/by_domain/${SITE_PREFS.domain_label}/logo-main-small.png`
+
+        const domainTaglineElement = document.getElementById('domain-tagline');
+        if (domainTaglineElement) {
+            const domainTagline = SITE_PREFS.domain_tagline;
+            if (typeof domainTagline === 'string' && domainTagline.trim().length > 0) {
+                domainTaglineElement.textContent = domainTagline;
+                domainTaglineElement.classList.remove('is-hidden');
+            } else {
+                domainTaglineElement.classList.add('is-hidden');
+            }
+        }
+
+        citationCopyText = renderDomainCitations(SITE_PREFS);
 
         // Load analytics
         const head = document.getElementsByTagName('head')[0];
@@ -108,14 +267,20 @@ const initCommonUI = async () => {
 
     // Makes the logo clickable as it was in v1
     document.getElementById('logo-c').addEventListener('click', () => {
-        window.location.replace('./index.html');
+        window.location.replace('/index.html');
     });
 
-    document.getElementById('citation-copy').addEventListener('click', () => {
-        const citationText = `gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.
-Orvis J, et al. Nat Methods. 2021 Jun 25.
-doi: 10.1038/s41592-021-01200-9
-PMID: 34172972`;
+    const citationCopyButton = document.getElementById('citation-copy');
+    citationCopyButton?.addEventListener('click', () => {
+        const citationText = citationCopyText
+            || document.getElementById('citation-content')?.textContent?.trim()
+            || '';
+
+        if (citationText.length === 0) {
+            createToast("No citation text available to copy.", "is-danger");
+            return;
+        }
+
         copyToClipboard(citationText).then((copied) => {
             if (copied) {
                 createToast("Citation copied to clipboard.", "is-success");
@@ -194,7 +359,9 @@ PMID: 34172972`;
         toggleClass('#navbar-logo-normal', 'is-hidden', false);
         toggleClass('#logo-c-text', 'is-hidden', false);
         toggleClass('#navbar-logo-small', 'is-hidden', true);
-        toggleClass('#citation-c', 'is-hidden', false);
+        const citationCard = document.getElementById('citation-c');
+        const shouldShowCitationCard = citationCard?.dataset.hasCitations === 'true';
+        toggleClass('#citation-c', 'is-hidden', !shouldShowCitationCard);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", true);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", false);
 
@@ -242,7 +409,6 @@ PMID: 34172972`;
         event.preventDefault(); // Prevent the default form submission
 
         // reset any UI elements
-        document.getElementById('user-email-help').classList.add('is-hidden');
         document.getElementById('user-password-help').classList.add('is-hidden');
 
         // try to log in
@@ -262,8 +428,16 @@ PMID: 34172972`;
 
 
 const getDomainPreferences = async () => {
-    const response = await fetch('/site_domain_prefs.json');
-    return response.json();
+    const prefsResponse = await fetch('/site_domain_prefs.json');
+    const prefs = await prefsResponse.json();
+
+    const cacheResponse = await fetch('/cache_version.json');
+    const cacheData = await cacheResponse.json();
+
+    // Merge cache_version into the preferences object
+    prefs.cache_version = cacheData.cache_version;
+
+    return prefs;
 }
 
 /**
@@ -288,6 +462,38 @@ const insertVersionedJS = (href, cacheVersion) => {
     script.type = 'module';
     script.src = `${href}?v=${cacheVersion}`;
     document.body.appendChild(script);
+}
+
+/**
+ * Loads the domain-specific funding HTML into a target container.
+ *
+ * @param {Object|null} domainPreferences - Optional domain preferences object.
+ * @param {string} fundingContainerId - The ID of the container that receives funding HTML.
+ * @returns {Promise<void>}
+ */
+const loadDomainFunding = async (domainPreferences = null, fundingContainerId = 'funding') => {
+    try {
+        const fundingContainer = document.getElementById(fundingContainerId);
+        if (!fundingContainer) {
+            return;
+        }
+
+        const prefs = domainPreferences || await getDomainPreferences();
+        if (!prefs || !prefs.domain_label) {
+            logErrorInConsole('Missing domain_label in domain preferences while loading funding include.');
+            return;
+        }
+
+        const fundingResponse = await fetch(`/include/by_domain/${prefs.domain_label}/funding.html`);
+        if (!fundingResponse.ok) {
+            logErrorInConsole(`Failed to load funding include for domain ${prefs.domain_label}.`);
+            return;
+        }
+
+        fundingContainer.innerHTML = await fundingResponse.text();
+    } catch (error) {
+        logErrorInConsole('Unexpected error loading domain funding include.', error);
+    }
 }
 
 /**
@@ -365,9 +571,10 @@ const checkForLogin = async () => {
             if (data.success) {
                 CURRENT_USER = new User({session_id, ...data});
                 document.getElementById('current-user-name').textContent = data.user_name;
-                handleLoginUIUpdates();
 
+                // Set before the page-specific login updates run, since they may request plots
                 apiCallsMixin.colorblindMode = CURRENT_USER.colorblind_mode;
+                handleLoginUIUpdates();
 
             } else {
                 // session_id is invalid, so remove cookie
@@ -400,12 +607,8 @@ const doLogin = async (doReload=true) => {
     const formdata = new FormData(document.getElementById("login-form"));
     const data = await apiCallsMixin.login(formdata);
 
-    if (data.session_id == 0) {
-        // user name wasn't found at all
-        document.getElementById('user-email-help').classList.remove('is-hidden');
-
-    } else if (data.session_id == -1) {
-        // User was found, password was incorrect
+    if (data.session_id == 0 || data.session_id == -1) {
+        // E-mail not found or password incorrect (the server does not say which)
         document.getElementById('user-password-help').classList.remove('is-hidden');
 
     } else if (data.session_id.toString().length > 10) {
@@ -572,6 +775,51 @@ const logErrorInConsole = (error) => {
 }
 
 /**
+ * Downloads a dataset's metadata CSV first, then runs the requested dataset download (bundle, h5ad, image, projection).
+ * The metadata always goes with the data to follow FAIR/TRUST principles, so if the metadata is missing
+ * or cannot be downloaded, the dataset download is cancelled.
+ * @param {string} shareId - The share ID of the dataset.
+ * @param {Function} downloadFn - The dataset download to run (and await) once the metadata is handled.
+ * @returns {Promise<boolean>} - True if downloadFn ran, false if the download was cancelled.
+ */
+const downloadWithMetadata = async (shareId, downloadFn) => {
+    const params = new URLSearchParams({ type: "metadata", share_id: shareId || "" });
+    try {
+        const {data} = await axios.get(`./cgi/download_source_file.cgi?${params.toString()}`, {responseType: 'blob'});
+        const downloadUrl = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `${shareId}.metadata.csv`;
+        a.click();
+        // Give the browser time to start the download before freeing the blob
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+        logErrorInConsole(error);
+        // ? Do we want to have a popover to ask if the user wants to download anyways?
+        if (error.response?.status === 404) {
+            createToast("No metadata was found for this dataset, so the download was cancelled. Please contact the gEAR team.");
+        } else {
+            createToast("The dataset metadata could not be downloaded, so the download was cancelled.");
+        }
+        return false;
+    }
+
+    await downloadFn();
+    return true;
+}
+
+/**
+ * Starts a browser download of the given URL without navigating away from the page.
+ * @param {string} url - The URL to download.
+ */
+const triggerUrlDownload = (url) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "";
+    a.click();
+}
+
+/**
  * Copies the specified text to the clipboard.
  * @param {string} text - The text to be copied.
  * @returns {Promise<boolean>} - A promise that resolves to true if the text was successfully copied, false otherwise.
@@ -603,15 +851,24 @@ const convertToFormData = (object) => {
     return formData;
 }
 
+// Link shown in the toast after a gene list is saved
+const GENE_LIST_MANAGER_LINK = {
+    href: "/gene_list_manager.html?sort_by=date_created",
+    text: "Open Gene List Manager",
+    newTab: true,
+};
+
 /**
  * Creates a toast notification with the given message.
  *
  * @param {string} msg - The message to display in the toast.
  * @param {string} [levelClass="is-danger"] - The CSS class for the toast level. Defaults to "is-danger".
  * @param {boolean} [closeManually=false] - Indicates whether the toast can be closed manually or after a timeout. Defaults to false.
- * @param {Object} [opts={ isHTML: false }] - Additional options for the toast.
+ * @param {Object} [opts={}] - Additional options for the toast.
+ * @param {Object} [opts.link] - A link to show after the message: {href, text, newTab}. The message itself is always
+ *   shown as plain text, so it is safe to include server or user text in it.
  */
-const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { isHTML: false }) => {
+const createToast = (msg, levelClass="is-danger", closeManually=false, opts = {}) => {
     const toast = document.createElement("div");
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
@@ -622,23 +879,28 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
         notification.remove();
     });
     toast.appendChild(toastButton);
-    toast.appendChild(opts?.isHTML ? (() => {
-        const span = document.createElement("span");
-        const lines = String(msg).split("\n");
-        for (let i = 0; i < lines.length; i++) {
-            span.appendChild(document.createTextNode(lines[i]));
-            if (i < lines.length - 1) {
-                span.appendChild(document.createElement("br"));
-            }
+
+    // Plain text: keep it literal, but render "\n" as line breaks for multi-line messages.
+    const span = document.createElement("span");
+    const lines = String(msg).split("\n");
+    for (let i = 0; i < lines.length; i++) {
+        span.appendChild(document.createTextNode(lines[i]));
+        if (i < lines.length - 1) {
+            span.appendChild(document.createElement("br"));
         }
-        lines.forEach((line, index) => {
-            if (index > 0) {
-                span.appendChild(document.createElement("br"));
-            }
-            span.appendChild(document.createTextNode(line));
-        });
-        return span;
-    })() : document.createTextNode(msg));
+    }
+
+    if (opts?.link) {
+        const a = document.createElement("a");
+        a.href = opts.link.href;
+        a.textContent = opts.link.text;
+        if (opts.link.newTab) {
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+        }
+        span.append(" ", a);
+    }
+    toast.appendChild(span);
 
     const numToasts = document.querySelectorAll(".js-toast.notification").length;
     const numToastsThisLevel = document.querySelectorAll(`.js-toast.notification.${levelClass}`).length;
@@ -811,18 +1073,71 @@ const resetSteps = (event) => {
  * @returns {string} The generated unique identifier.
  */
 const guid = (uidLength) => {
+    // Use the crypto API to generate a UUID if it's available, otherwise fallback to a custom implementation
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        if (uidLength == 'long') {
+            return crypto.randomUUID();
+        }
+        if (uidLength == 'short') {
+            return crypto.randomUUID().split('-')[0];
+        }
+    }
+
+    // Fallback implementation
+    const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     if (uidLength == 'long') {
-        return crypto.randomUUID();
+        return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
     }
     if (uidLength == 'short') {
-        return crypto.randomUUID().split('-')[0];
+        return `${s4()}${s4()}`;
     }
-}
+};
 
 for (const jsStep of jsSteps) {
     // Add "capture=true" to trigger parent before children events
     // This helps with manually triggering click events to open up the next section.
     jsStep.addEventListener("click", resetSteps, {capture: true});
+}
+
+/**
+ * Fills the name line (and optional detail lines) at the top of a display picker card
+ * (.js-modal-display, from the "Choose display" or dataset explorer "View displays" templates).
+ * The name line always keeps its height, so cards in a row line up even when a display has no label.
+ * Each line is cut off with an ellipsis if too long; hovering the text or preview image shows the full text.
+ *
+ * @param {HTMLElement} displayElement - The card.
+ * @param {string|null} label - The display's label.
+ * @param {string[]} [detailLines=[]] - Extra short lines (e.g. a saved Gosling view's panels and ranges).
+ * @param {string} [detailTitle=""] - Hover text for the detail lines (defaults to the lines themselves).
+ * @param {number} [reserveLines=0] - Keep room for at least this many detail lines, so cards of the same
+ *     kind line up even when some have fewer (or no) lines.
+ */
+const setDisplayCardText = (displayElement, label, detailLines = [], detailTitle = "", reserveLines = 0) => {
+    const labelElt = displayElement.querySelector(".js-modal-display-label");
+    if (labelElt) {
+        labelElt.textContent = label || "\u00a0";  // keep the line's height when there is no label
+    }
+    const detailElt = displayElement.querySelector(".js-modal-display-detail");
+    if (detailElt) {
+        const lines = [...(detailLines || [])];
+        while (lines.length < reserveLines) lines.push("\u00a0");  // blank line, same height as text
+        detailElt.replaceChildren(...lines.map((line) => {
+            const lineElt = document.createElement("span");
+            lineElt.classList.add("is-block");
+            lineElt.style.overflow = "hidden";
+            lineElt.style.textOverflow = "ellipsis";
+            lineElt.textContent = line;
+            return lineElt;
+        }));
+        detailElt.classList.toggle("is-hidden", !lines.length);
+    }
+    // One tooltip on the name, details and preview image, since the text lines may be cut off.
+    // Not on the whole card: the dataset explorer's add/remove buttons inside it have their own tooltips.
+    const fullDetail = detailTitle || (detailLines || []).join("\n");
+    const tooltip = [label, fullDetail].filter(Boolean).join("\n");
+    for (const elt of [labelElt, detailElt, displayElement.querySelector("figure > img")]) {
+        if (elt) elt.title = tooltip;
+    }
 }
 
 /* API Calls Mixin */
@@ -1005,10 +1320,16 @@ const apiCallsMixin = {
     },
     /**
      * Fetches all datasets asynchronously.
+     * @param {string|null} shareId - Share ID of a dataset to include even if the user can't otherwise see it.
+     * @param {string|null} [tool=null] - Analysis tool name (e.g. "sc-workbench", see lib/gear/analysis_tools.py);
+     *        only dataset types that tool supports are returned. Omit to get every type.
      * @returns {Promise<any>} The fetched data.
      */
-    async fetchAllDatasets(shareId) {
+    async fetchAllDatasets(shareId, tool=null) {
         const payload = {session_id: apiCallsMixin.sessionId, share_id: shareId};
+        if (tool) {
+            payload.tool = tool;
+        }
         const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
         return data;
     },
@@ -1040,6 +1361,37 @@ const apiCallsMixin = {
         };
 		const {data} = await axios.post("cgi/get_dataset_comparison.cgi", convertToFormData(payload));
 		return data;
+    },
+    /**
+     * Fetches the available DominoSignal output files, and the selectable parameters for one of them.
+     * @param {string|null} filename - The DominoSignal .parquet file to get parameter options for (optional).
+     * @returns {Promise<Object>} - A promise that resolves to the file list and parameter options.
+     */
+    async fetchDominoOptions(filename=null) {
+        const payload = filename ? {filename} : {};
+        const {data} = await axios.post("cgi/get_domino_options.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches DominoSignal cell-cell communication plots (Plotly JSON) for the given parameters.
+     * @param {Object} params - The filename, selections, thresholds and requested plots.
+     * @returns {Promise<Object>} - A promise that resolves to the plots, keyed by plot type.
+     */
+    async fetchDominoPlots(params) {
+        // Sent as 1/0 since FormData would otherwise stringify the flag (including null for logged-out users)
+        const payload = { ...params, colorblind_mode: apiCallsMixin.colorblindMode ? 1 : 0 };
+        const {data} = await axios.post("cgi/get_domino_plots.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches a single DominoSignal plot as an image file (e.g. PDF), rendered on the server.
+     * @param {Object} params - The plot parameters, with a single plot in "plots" and "image_format" set.
+     * @returns {Promise<{data: Blob, headers: Object}>} - The image file (or a JSON error, as a Blob) and response headers.
+     */
+    async fetchDominoPlotImage(params) {
+        const payload = { ...params, colorblind_mode: apiCallsMixin.colorblindMode ? 1 : 0 };
+        const {data, headers} = await axios.post("cgi/get_domino_plots.cgi", convertToFormData(payload), { responseType: "blob" });
+        return {data, headers};
     },
     /**
      * Fetches dataset information from the server.
@@ -1221,9 +1573,12 @@ const apiCallsMixin = {
      * @param {object} plotConfig - The configuration object for the Gosling plot.
      * @param {boolean} [zoom=false] - Whether to enable zoom in the display.
      * @param {object} [otherOpts={}] - Additional options for the request.
+     * @param {object} [regions={}] - Saved panel ranges ("chromosome:start-end") to open at instead of around the gene.
+     * @param {string|null} [regions.panelA] - Panel A range.
+     * @param {string|null} [regions.panelB] - Panel B range (zoomed view only).
      * @returns {Promise<Object>} The data returned from the Gosling display API.
      */
-    async fetchGoslingDisplay(datasetId, plotConfig, zoom=false, otherOpts={}) {
+    async fetchGoslingDisplay(datasetId, plotConfig, zoom=false, otherOpts={}, regions={}) {
         const urlParams = new URLSearchParams();
         const {gene_symbol: geneSymbol, assembly, hubUrl} = plotConfig;
 
@@ -1231,6 +1586,9 @@ const apiCallsMixin = {
         urlParams.append('assembly', assembly);
         urlParams.append('hub_url', hubUrl);
         urlParams.append('zoom', zoom);
+        urlParams.append('colorblind_mode', Boolean(apiCallsMixin.colorblindMode));
+        if (regions.panelA) urlParams.append('panel_a', regions.panelA);
+        if (regions.panelB) urlParams.append('panel_b', regions.panelB);
 
         // JSON is returned
         const {data} = await axios.get(`/api/plot/${datasetId}/gosling?${urlParams.toString()}`, otherOpts);
@@ -1247,6 +1605,20 @@ const apiCallsMixin = {
         let url = `/api/h5ad/${datasetId}`
         if (analysisId) url += `?analysis_id=${analysisId}`;
         const {data} = await axios.get(url);
+        return data;
+    },
+    /**
+     * Fetches coordinate information for the passed gene symbol from the assembly on the HiGlass server
+     *
+     * @param {string} geneSymbol - The gene symbol to search for. Single-gene only
+     * @param {string} assembly - The genome assembly to use for the search.
+     * @returns {Promise<any>} - The fetched gene coords.
+     */
+    async fetchHiglassGeneCoords(geneSymbol, assembly) {
+        const urlParams = new URLSearchParams();
+        urlParams.append('assembly', assembly);
+
+        const {data} = await axios.get(`/api/higlass/genes/${geneSymbol}?${urlParams.toString()}`);
         return data;
     },
     /**
@@ -1482,7 +1854,7 @@ const apiCallsMixin = {
      */
     async prepSpatialPanelData(datasetId, plotConfig, otherOpts={}) {
         // NOTE: gene_symbol should already be already passed to plotConfig
-        const payload = { ...plotConfig };
+        const payload = { ...plotConfig, colorblind_mode: apiCallsMixin.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/spatialpanel`, payload, otherOpts);
         return data;
     },
@@ -1587,8 +1959,9 @@ const apiCallsMixin = {
      * @param {string} ldesc - The description of the gene list.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
-    async saveGeneListInfoChanges(gcId, visibility, title, organismId, ldesc) {
-        const payload = {session_id: apiCallsMixin.sessionId, gc_id: gcId, visibility, title, organism_id: organismId, ldesc};
+    async saveGeneListInfoChanges(gcId, changes={}) {
+        const {visibility, title, organismId, ldesc, genes} = changes;
+        const payload = {session_id: apiCallsMixin.sessionId, gc_id: gcId, visibility, title, organism_id: organismId, ldesc, genes};
         const {data} = await axios.post("/cgi/save_genecart_changes.cgi", convertToFormData(payload));
         return data;
     },
@@ -1647,6 +2020,7 @@ const apiCallsMixin = {
 export {
     apiCallsMixin,
     createToast,
+    escapeHtml,
     getCurrentUser,
     getDomainPreferences,
     getRootUrl,
@@ -1658,12 +2032,20 @@ export {
     rebindUrlParam,
     disableAndHideElement,
     enableAndShowElement,
+    GENE_LIST_MANAGER_LINK,
     commonDateTime,
     copyToClipboard,
     convertToFormData,
+    doLogin,
+    downloadWithMetadata,
     trigger,
     openModal,
     closeModal,
     insertVersionedCSS,
     insertVersionedJS,
+    loadDomainFunding,
+    SHARE_ID_MAX_LENGTH,
+    setDisplayCardText,
+    triggerUrlDownload,
+    validateShareId,
 };
