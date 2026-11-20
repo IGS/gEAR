@@ -1,89 +1,11 @@
 #!/opt/bin/python3
 
 """
-<<<<<<< HEAD
-stats.cgi — Google Analytics 4 statistics endpoint
-
-Query Parameters
-----------------
-days : int, optional
-    Number of past days to include in the report window.
-    Default: 30. Minimum: 1. Maximum: 365.
-    Example: ?days=7
-
-start_date : str, optional
-    Absolute start date in YYYY-MM-DD format.
-    If provided, it overrides the start date implied by `days`.
-    Example: ?start_date=2026-01-01
-
-end_date : str, optional
-    Absolute end date in YYYY-MM-DD format.
-    If provided, it overrides the default end date of "today".
-    Example: ?end_date=2026-01-31
-
-top_n : int, optional
-    Maximum number of rows to return for ranked reports
-    (top pages, traffic sources, countries, top events).
-    Default: 10. Minimum: 1. Maximum: 50.
-    Example: ?top_n=5
-
-realtime : str, optional
-    Whether to include real-time active-user data.
-    Truthy values: any value other than "0", "false", or "no".
-    Default: 1 (enabled).
-    Example: ?realtime=0
-
-Response Shape (JSON)
----------------------
-{
-  "ok": true,
-  "range": {
-    "days": <int>,
-        "startDate": "<effective start date>",
-        "endDate": "<effective end date>"
-  },
-  "summary": {
-    "activeUsers": <int>,
-    "sessions": <int>,
-    "screenPageViews": <int>,
-    "engagedSessions": <int>,
-    "eventCount": <int>
-  },
-  "timeseries": [
-    {"date": "YYYYMMDD", "activeUsers": <int>, "sessions": <int>, "screenPageViews": <int>},
-    ...
-  ],
-  "topPages": [
-    {"pagePath": <str>, "screenPageViews": <int>, "activeUsers": <int>, "sessions": <int>},
-    ...
-  ],
-  "trafficSources": [
-    {"sessionSourceMedium": <str>, "sessions": <int>, "activeUsers": <int>},
-    ...
-  ],
-  "countries": [
-    {"country": <str>, "activeUsers": <int>, "sessions": <int>, "screenPageViews": <int>},
-    ...
-  ],
-  "topEvents": [
-    {"eventName": <str>, "eventCount": <int>, "activeUsers": <int>},
-    ...
-  ],
-  "realtime": {                  // only present when realtime=1 (default)
-    "activeUsersNow": <int>,
-    "byCountry": [
-      {"country": <str>, "activeUsers": <int>},
-      ...
-    ]
-  }
-}
-=======
 stats.cgi - Report site usage statistics from the Google Analytics 4 Data API.
 
 Input: query string: days (1-365, default 30), top_n (1-50, default 10), realtime (0/false/no to skip).
 Output: JSON {ok, range, summary, timeseries, topPages, trafficSources, countries, topEvents, realtime?},
         or {ok: false, error, details?} on failure.
->>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
 """
 
 import json
@@ -306,14 +228,10 @@ def run_realtime_report(client, property_id, dimensions, metrics, limit=10):
 # -----------------------------------------------------------------------------
 
 
-<<<<<<< HEAD
-def get_summary(client, property_id, start_date, end_date):
-=======
 def get_summary(client, property_id, days):
     """
     Return site-wide totals (users, sessions, page views, engaged sessions, events) for the last N days.
     """
->>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -349,14 +267,10 @@ def get_summary(client, property_id, days):
     }
 
 
-<<<<<<< HEAD
-def get_daily_timeseries(client, property_id, start_date, end_date, limit):
-=======
 def get_daily_timeseries(client, property_id, days):
     """
     Return per-day users, sessions and page views for the last N days.
     """
->>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -381,14 +295,10 @@ def get_daily_timeseries(client, property_id, days):
     return rows
 
 
-<<<<<<< HEAD
-def get_top_pages(client, property_id, start_date, end_date, top_n):
-=======
 def get_top_pages(client, property_id, days, top_n):
     """
     Return the top N page paths by page views.
     """
->>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -413,14 +323,10 @@ def get_top_pages(client, property_id, days, top_n):
     return rows
 
 
-<<<<<<< HEAD
-def get_traffic_sources(client, property_id, start_date, end_date, top_n):
-=======
 def get_traffic_sources(client, property_id, days, top_n):
     """
     Return the top N session source/medium pairs by sessions.
     """
->>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -444,14 +350,10 @@ def get_traffic_sources(client, property_id, days, top_n):
     return rows
 
 
-<<<<<<< HEAD
-def get_countries(client, property_id, start_date, end_date, top_n):
-=======
 def get_countries(client, property_id, days, top_n):
     """
     Return the top N countries by active users.
     """
->>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
@@ -476,14 +378,10 @@ def get_countries(client, property_id, days, top_n):
     return rows
 
 
-<<<<<<< HEAD
-def get_top_events(client, property_id, start_date, end_date, top_n):
-=======
 def get_top_events(client, property_id, days, top_n):
     """
     Return the top N events by event count.
     """
->>>>>>> ceb7fb64f9cdb16fdc2f5e0979d5fb27e86e85a3
     response = run_report(
         client=client,
         property_id=property_id,
