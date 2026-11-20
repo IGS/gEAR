@@ -7,7 +7,7 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
         <title>gEAR Analytics</title>
-        <meta name="description" content="">
+        <meta name="description" content="Site traffic and content statistics for this gEAR portal">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
         <meta http-equiv="Expires" content="-1">
@@ -25,586 +25,548 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
         <style>
+            :root {
+                --dash-border: #dcd9eb;
+                --dash-muted: #5c5877;
+                --dash-surface: #ffffff;
+                --dash-accent: var(--gear-bg-secondary, #544A8E);
+                --live-blue: #2f7ee8;
+                --dash-radius: 8px;
+                --dash-shadow: 0 1px 2px rgba(54, 46, 92, 0.06);
+            }
+
             body {
+                background-color: #f6f5fb;
+                color: #2b2740;
+                min-height: 100vh;
+            }
+
+            /* ---------- Page header ---------- */
+            .dash-header {
+                background: linear-gradient(135deg, var(--gear-bg-primary, #362E5C), var(--gear-bg-secondary, #544A8E));
+                color: #fff;
+                padding: 1.25rem 2rem;
                 display: flex;
-                flex-direction: column;
-                height: 100vh;
-                margin: 0;
-                padding: 0;
-            }
-            .main-content {
-                display: flex;
-                flex: 1;
-                overflow: hidden;
-            }
-            .sidebar {
-                width: 25vw;
-                border-left: 1px solid #dbdbdb;
-                overflow-y: auto;
-                background-color: #fafafa;
-                padding: 1.5rem;
-            }
-            .content-area {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                overflow: auto;
-                padding: 1.5rem;
-            }
-            .chart-container {
-                flex: 1;
-                position: relative;
-                background-color: #fff;
-                border: 1px solid #dbdbdb;
-                border-radius: 4px;
-                padding: 1rem;
-            }
-            .chart-header {
-                position: absolute;
-                top: 0.75rem;
-                left: 0.75rem;
-                z-index: 10;
-            }
-            .sidebar-section {
-                margin-bottom: 2rem;
-            }
-            .sidebar-section h3 {
-                font-size: 0.875rem;
-                font-weight: 700;
-                margin-bottom: 0.75rem;
-                color: #363636;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-            .sidebar-content {
-                line-height: 1.6;
-                font-size: 0.875rem;
-                color: #606060;
-            }
-
-            .stat-cards {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 1.5rem;
-                margin-bottom: 2rem;
-            }
-
-            .stat-card {
-                background-color: #f8f9fa;
-                border: 1px solid #dbdbdb;
-                border-radius: 8px;
-                padding: 1.5rem;
-                text-align: center;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-                transition: all 0.2s ease;
-            }
-
-            .stat-card:hover {
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                border-color: #b5b5b5;
-            }
-
-            .stat-value {
-                font-size: 2rem;
-                font-weight: 700;
-                color: #3273dc;
-                margin-bottom: 0.5rem;
-            }
-
-            .stat-label {
-                font-size: 0.875rem;
-                font-weight: 600;
-                color: #606060;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-
-            .info-section {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 2rem;
-                margin-top: 2rem;
-            }
-
-            .info-column {
-                background-color: #f8f9fa;
-                border: 1px solid #dbdbdb;
-                border-radius: 8px;
-                padding: 1.5rem;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            }
-
-            .info-column h4 {
-                margin-top: 0;
-                margin-bottom: 1rem;
-                font-size: 1rem;
-                font-weight: 700;
-                color: #363636;
-                border-bottom: 2px solid #3273dc;
-                padding-bottom: 0.5rem;
-            }
-
-            .info-column p {
-                margin: 0.5rem 0;
-                font-size: 0.875rem;
-                line-height: 1.5;
-                color: #606060;
-            }
-
-            .info-column strong {
-                color: #363636;
-                font-weight: 600;
-            }
-
-            .loading-indicator {
-                display: none;
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                flex-direction: column;
+                flex-wrap: wrap;
                 align-items: center;
-                justify-content: center;
-                background-color: rgba(255, 255, 255, 0.95);
-                padding: 2rem;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                z-index: 100;
+                justify-content: space-between;
+                gap: 1rem;
+            }
+            .dash-header h1 {
+                font-size: 1.5rem;
+                font-weight: 700;
+                line-height: 1.2;
+            }
+            .dash-header-actions {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.75rem;
+                font-size: 0.8125rem;
             }
 
-            .spinner {
-                border: 4px solid #f0f0f0;
-                border-top: 4px solid #3273dc;
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                animation: spin 1s linear infinite;
+            /* ---------- Layout ---------- */
+            .dash-main {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 1.5rem 2rem 3rem;
+            }
+            .dash-section + .dash-section {
+                margin-top: 2.5rem;
+            }
+            .dash-section-title {
+                display: flex;
+                align-items: baseline;
+                flex-wrap: wrap;
+                gap: 0.25rem 0.75rem;
                 margin-bottom: 1rem;
-            }
-
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-
-            .loading-text {
-                font-size: 0.875rem;
-                color: #606060;
-                font-weight: 500;
-            }
-
-            .sidebar-stat-card {
-                background-color: #fff;
-                border-left: 4px solid #3273dc;
-                padding: 0.75rem;
-                margin-bottom: 0.75rem;
-                border-radius: 4px;
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            }
-
-            .sidebar-stat-value {
+                padding-bottom: 0.5rem;
+                border-bottom: 2px solid var(--dash-accent);
                 font-size: 1.25rem;
                 font-weight: 700;
-                color: #3273dc;
-                margin-bottom: 0.25rem;
+                color: var(--gear-bg-primary, #362E5C);
             }
-
-            .sidebar-stat-label {
-                font-size: 0.75rem;
-                font-weight: 600;
-                color: #606060;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
+            .dash-section-title small {
+                font-size: 0.8125rem;
+                font-weight: 400;
+                color: var(--dash-muted);
             }
-
-            /* Analytics Dashboard Styles */
-            .analytics-section {
-                margin-bottom: 2rem;
+            .dash-section .columns {
+                margin-top: 0;
+                margin-bottom: 0;
             }
-
-            .analytics-section h3 {
-                font-size: 1.125rem;
-                font-weight: 700;
-                margin-bottom: 1rem;
-                color: #363636;
-                border-bottom: 2px solid #3273dc;
-                padding-bottom: 0.5rem;
+            .dash-section .column {
+                display: flex;
             }
-
-            .summary-cards {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 1rem;
-                margin-bottom: 2rem;
-            }
-
-            .card {
-                background-color: white;
-                color: #363636;
-
-                text-align: center;
-
-                transition: all 0.2s ease;
-            }
-            .card:hover {
-                transform: translateY(-4px);
-                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-            }
-
-            .summary-value {
-                font-size: 2.5rem;
-                font-weight: 700;
-                margin-bottom: 0.5rem;
-            }
-
-            .summary-label {
-                font-size: 0.875rem;
-                font-weight: 600;
-                letter-spacing: 0.5px;
-                text-transform: uppercase;
-            }
-
-            .summary-sublabel {
-                font-size: 0.75rem;
-                opacity: 0.9;
-                margin-top: 0.25rem;
-            }
-
-            .analytics-table {
+            .dash-section .column > .panel-box {
                 width: 100%;
-                border-collapse: collapse;
-                background-color: #fff;
-                border: 1px solid #dbdbdb;
-                border-radius: 4px;
-                overflow: hidden;
             }
 
-            .analytics-table thead {
-                background-color: #f5f5f5;
-                border-bottom: 2px solid #dbdbdb;
-            }
-
-            .analytics-table th {
-                padding: 0.75rem 1rem;
-                text-align: left;
-                font-weight: 600;
-                color: #363636;
-                font-size: 0.875rem;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
-            }
-
-            .analytics-table th.number {
-                text-align: right;
-
-                border-radius: 0px;
-
-                display: table-cell;
-            }
-
-            .analytics-table tbody tr {
-                border-bottom: 1px solid #f0f0f0;
-                transition: background-color 0.2s ease;
-            }
-
-            .analytics-table tbody tr:hover {
-                background-color: #fafafa;
-            }
-
-            .analytics-table tbody tr:last-child {
-                border-bottom: none;
-            }
-
-            .analytics-table td {
-                padding: 0.75rem 1rem;
-                color: #606060;
-                font-size: 0.875rem;
-            }
-
-            .analytics-table td.number {
-                text-align: right;
-                font-weight: 500;
-
-                display: table-cell;
-
-                border-radius: 0px;
-
-                background: transparent;
-            }
-
-            .analytics-table td code {
-                background-color: #f5f5f5;
-                padding: 0.2rem 0.4rem;
-                border-radius: 3px;
-                font-family: 'Courier New', monospace;
-                color: #e83e8c;
-            }
-
-            .table-container {
-                background-color: #fff;
-                border: 1px solid #dbdbdb;
-                border-radius: 4px;
-                padding: 1rem;
+            /* ---------- KPI cards ---------- */
+            .kpi-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+                gap: 1rem;
                 margin-bottom: 1.5rem;
+            }
+            .kpi {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                background: var(--dash-surface);
+                border: 1px solid var(--dash-border);
+                border-radius: var(--dash-radius);
+                padding: 0.875rem 1rem;
+            }
+            .kpi-icon {
+                flex: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--dash-accent);
+                opacity: 0.8;
+            }
+            .kpi-value {
+                font-size: 1.5rem;
+                font-weight: 600;
+                line-height: 1.1;
+                white-space: nowrap;
+                color: var(--gear-bg-primary, #362E5C);
+            }
+            .kpi-label {
+                font-size: 0.8125rem;
+                color: var(--dash-muted);
+            }
+
+            /* ---------- Panels ---------- */
+            .panel-box {
+                display: flex;
+                flex-direction: column;
+                background: var(--dash-surface);
+                border: 1px solid var(--dash-border);
+                border-radius: var(--dash-radius);
+                box-shadow: var(--dash-shadow);
+                padding: 1rem 1.25rem 1.25rem;
+                min-width: 0;
+            }
+            .panel-box h3 {
+                font-size: 0.9375rem;
+                font-weight: 700;
+                color: var(--gear-bg-primary, #362E5C);
+                margin-bottom: 0.75rem;
+            }
+            .panel-box h3 small {
+                font-weight: 400;
+                color: var(--dash-muted);
+            }
+            .chart-box {
+                position: relative;
+                height: 320px;
+            }
+
+            /* ---------- Tables ---------- */
+            .table-scroll {
                 overflow-x: auto;
             }
-
-            .chart-wrapper {
-                position: relative;
-                height: 400px;
-                background-color: #fff;
-                border: 1px solid #dbdbdb;
-                border-radius: 4px;
-                padding: 1rem;
+            .dash-table {
+                width: 100%;
+                font-size: 0.8125rem;
+                border-collapse: collapse;
+            }
+            .dash-table th {
+                padding: 0.5rem 0.5rem;
+                text-align: left;
+                font-size: 0.6875rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                color: var(--dash-muted);
+                border-bottom: 2px solid var(--dash-border);
+                white-space: nowrap;
+            }
+            .dash-table td {
+                padding: 0.5rem;
+                border-bottom: 1px solid #efedf7;
+                vertical-align: middle;
+            }
+            .dash-table tbody tr:last-child td {
+                border-bottom: none;
+            }
+            .dash-table tbody tr:hover {
+                background: #faf9fe;
+            }
+            .dash-table .num {
+                text-align: right;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+            .dash-table .label-cell {
+                max-width: 22rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .dash-table code {
+                background: transparent;
+                padding: 0;
+                color: var(--gear-bg-primary, #362E5C);
+                font-size: 0.8125rem;
+            }
+            .bar-cell {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 0.625rem;
+            }
+            .bar-track {
+                flex: none;
+                width: 5rem;
+                height: 6px;
+                border-radius: 3px;
+                background: #efedf7;
+                overflow: hidden;
+            }
+            .bar-fill {
+                display: block;
+                height: 100%;
+                border-radius: 3px;
+                background: var(--dash-accent);
+            }
+            .empty-state {
+                padding: 1.5rem 0;
+                text-align: center;
+                font-size: 0.875rem;
+                color: var(--dash-muted);
             }
 
+            /* ---------- Live users ---------- */
+            .live-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 0.5rem;
+            }
+            .live-head h3 {
+                margin-bottom: 0;
+            }
+            .live-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: var(--live-blue);
+            }
+            .live-dot {
+                width: 0.5rem;
+                height: 0.5rem;
+                border-radius: 50%;
+                background: var(--live-blue);
+                animation: live-pulse 2s ease-in-out infinite;
+            }
+            @keyframes live-pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.35; }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .live-dot { animation: none; }
+            }
+            .live-hero {
+                text-align: center;
+                padding: 1.25rem 0 1.5rem;
+            }
+            .live-number {
+                font-size: 4rem;
+                font-weight: 800;
+                line-height: 1;
+                color: #1f5fc4;
+            }
+            .live-caption {
+                margin-top: 0.5rem;
+                font-size: 0.8125rem;
+                color: var(--dash-muted);
+            }
+            .live-subtitle {
+                margin-bottom: 0.25rem;
+                padding-top: 0.75rem;
+                border-top: 1px solid var(--dash-border);
+                font-size: 0.6875rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                color: var(--dash-muted);
+            }
+            .live-list {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                font-size: 0.8125rem;
+            }
+            .live-list li {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 4.5rem 1.5rem;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.4rem 0;
+            }
+            .live-country {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .live-list strong {
+                text-align: right;
+                color: #1f5fc4;
+            }
+            .live-bar {
+                height: 6px;
+                border-radius: 3px;
+                background: #e3eeff;
+                overflow: hidden;
+            }
+            .live-bar > span {
+                display: block;
+                height: 100%;
+                border-radius: 3px;
+                background: var(--live-blue);
+            }
 
-
-            .dataset-chart-container {
+            /* ---------- Date range ---------- */
+            .range-toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.5rem 1rem;
+                margin-bottom: 1.25rem;
+            }
+            .range-toolbar .buttons {
+                margin-bottom: 0;
+            }
+            .range-toolbar .buttons .button {
+                margin-bottom: 0;
+            }
+            .range-toolbar .buttons .button.is-active {
+                background: var(--gear-bg-primary, #362E5C);
+                border-color: var(--gear-bg-primary, #362E5C);
+                color: #fff;
+            }
+            .range-label {
+                font-size: 0.75rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                color: var(--dash-muted);
+            }
+            .range-custom {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.8125rem;
+            }
+            .range-custom input[type="date"] {
+                width: auto;
+            }
+            #rangeError {
+                flex-basis: 100%;
+                margin: 0;
+            }
+            #rangeError:empty {
                 display: none;
             }
 
-            .sidebar-chart-wrapper {
-                height: 250px;
-                position: relative;
-                background-color: #fff;
-                border: 1px solid #dbdbdb;
-                border-radius: 4px;
-                padding: 1rem;
-            }
-
-            /* Realtime Section Styles */
-            .realtime-active-users {
-                background-color: #fff;
-                border: 2px solid #3273dc;
-                border-radius: 4px;
-                padding: 1.5rem;
-                text-align: center;
-                margin-bottom: 1.5rem;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(50, 115, 220, 0.2);
-                position: relative;
-                animation: liveGlow 2s ease-in-out infinite;
-            }
-
-            @keyframes liveGlow {
-                0%, 100% {
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(50, 115, 220, 0.2);
-                }
-                50% {
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 12px 3px rgba(50, 115, 220, 0.15);
-                }
-            }
-
-            .realtime-active-users::before {
-                content: '';
-                position: absolute;
-                top: 8px;
-                left: 8px;
-                width: 12px;
-                height: 12px;
-                background-color: #3273dc;
-                border-radius: 50%;
-                animation: livePulse 1.5s ease-in-out infinite;
-            }
-
-            @keyframes livePulse {
-                0% {
-                    scale: 1;
-                    opacity: 1;
-                }
-                50% {
-                    scale: 1.2;
-                    opacity: 0.8;
-                }
-                100% {
-                    scale: 1;
-                    opacity: 1;
-                }
-            }
-
-            .realtime-active-users::after {
-                content: 'LIVE';
-                position: absolute;
-                top: 6px;
-                left: 27px;
-                font-size: 0.7rem;
-                font-weight: 800;
-                color: #3273dc;
-                letter-spacing: 2px;
-            }
-
-            .active-users-count {
-                font-size: 2.5rem;
-                font-weight: 700;
-                margin-bottom: 0.5rem;
-                color: #3273dc;
-            }
-
-            .active-users-label {
-                font-size: 0.875rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                color: #606060;
-                margin-bottom: 0.5rem;
-                padding-bottom: 1.25rem;
-                border-bottom: 1px solid #e0e0e0;
-            }
-
-            .realtime-countries {
-                margin-top: 0;
-            }
-
-            .realtime-country {
-                background-color: transparent;
-                border-left: none;
-                border-bottom: 1px solid #f0f0f0;
-                padding: 0.75rem;
-                margin-bottom: 0;
-                border-radius: 5px;
-                display: flex;
-                justify-content: space-between;
+            /* ---------- Sortable headers ---------- */
+            .sort-btn {
+                display: inline-flex;
                 align-items: center;
-                transition: all 0.2s ease;
-                box-shadow: none;
-                position: relative;
+                gap: 0.125rem;
+                padding: 0;
+                border: none;
+                background: transparent;
+                font: inherit;
+                letter-spacing: inherit;
+                text-transform: inherit;
+                color: inherit;
+                cursor: pointer;
+            }
+            .sort-btn .icon {
+                opacity: 0.45;
+            }
+            .sort-btn:hover,
+            .sort-btn.is-active {
+                color: var(--gear-bg-primary, #362E5C);
+            }
+            .sort-btn:hover .icon,
+            .sort-btn.is-active .icon {
+                opacity: 1;
+            }
+            .sort-btn:focus-visible {
+                outline: 2px solid var(--dash-accent);
+                outline-offset: 2px;
+                border-radius: 3px;
             }
 
-            .realtime-country:last-child {
-                border-bottom: none;
+            /* ---------- Misc ---------- */
+            #loadingBar,
+            #errorRegion .notification {
+                margin-bottom: 1rem;
+            }
+            .dash-header .button.is-light {
+                color: var(--gear-bg-primary, #362E5C);
             }
 
-            .realtime-country:hover {
-                background-color: rgba(50, 115, 220, 0.05);
-                box-shadow: none;
-            }
-
-            .country-name {
-                font-weight: 500;
-                color: #363636;
-                font-size: 0.8rem;
-            }
-
-            .realtime-country .active-users {
-                font-size: 0.75rem;
-                color: #3273dc;
-                font-weight: 700;
-            }
-
-            @media (max-width: 768px) {
-                .summary-cards {
-                    grid-template-columns: repeat(2, 1fr);
-                }
-
-                .realtime-section {
-                    grid-template-columns: 1fr;
-                }
-
-                .analytics-table {
-                    font-size: 0.75rem;
-                }
-
-                .analytics-table th,
-                .analytics-table td {
-                    padding: 0.5rem;
-                }
-
-                .active-users-count {
-                    font-size: 2rem;
-                }
-
-                .realtime-country {
-                    flex-direction: column;
-                    align-items: flex-start;
-                }
-
-                .realtime-country .active-users {
-                    margin-top: 0.5rem;
+            @media (max-width: 1023px) {
+                .dash-header,
+                .dash-main {
+                    padding-left: 1rem;
+                    padding-right: 1rem;
                 }
             }
         </style>
     </head>
     <body>
-        <div class="main-content">
-            <div class="content-area">
-                <div id="analyticsLoader" class="loading-indicator">
-                    <div class="spinner"></div>
-                    <div class="loading-text">Loading analytics...</div>
-                </div>
+        <a href="#main-content" class="is-sr-only">Skip to main content</a>
 
-                <!-- Summary Cards Section -->
-                <div id="analyticsSummary"></div>
-
-                <!-- Timeseries Chart -->
-                <div class="analytics-section">
-                    <h3>Activity Trends</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="timeseriesChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Top Pages -->
-                <div class="analytics-section">
-                    <h3>Top Pages</h3>
-                    <div class="table-container">
-                        <div id="topPagesContainer"></div>
-                    </div>
-                </div>
-
-                <!-- Traffic Sources -->
-                <div class="analytics-section">
-                    <h3>Traffic Sources</h3>
-                    <div class="table-container">
-                        <div id="trafficSourcesContainer"></div>
-                    </div>
-                </div>
-
-                <!-- Countries -->
-                <div class="analytics-section">
-                    <h3>Geographic Distribution</h3>
-                    <div class="table-container">
-                        <div id="countriesContainer"></div>
-                    </div>
-                </div>
-
-                <!-- Top Events -->
-                <div class="analytics-section">
-                    <h3>Top Events</h3>
-                    <div class="table-container">
-                        <div id="topEventsContainer"></div>
-                    </div>
-                </div>
+        <header class="dash-header">
+            <div>
+                <h1>
+                    <span class="icon-text">
+                        <span class="icon" aria-hidden="true"><i class="mdi mdi-chart-box-outline"></i></span>
+                        <span>gEAR Analytics</span>
+                    </span>
+                </h1>
             </div>
+            <div class="dash-header-actions">
+                <span id="lastUpdated" aria-live="polite"></span>
+                <button id="refreshBtn" type="button" class="button is-light is-small">
+                    <span class="icon" aria-hidden="true"><i class="mdi mdi-refresh"></i></span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </header>
 
-            <aside class="sidebar" id="datasetSidebar">
-                <div class="sidebar-section" id="realtimeSidebar"></div>
-                <div class="sidebar-section" id="databaseStatsSidebar"></div>
-                <div class="sidebar-section" id="datasetDatesSidebar">
-                    <h3>Datasets Added Over Time</h3>
-                    <div class="sidebar-chart-wrapper">
-                        <canvas id="datasets-dates-chart"></canvas>
+        <main id="main-content" class="dash-main">
+            <div id="errorRegion" role="alert"></div>
+            <progress id="loadingBar" class="progress is-small is-primary is-hidden" max="100" aria-label="Loading analytics"></progress>
+
+            <section class="dash-section" aria-labelledby="traffic-heading">
+                <h2 id="traffic-heading" class="dash-section-title">
+                    Site traffic
+                    <small id="trafficRangeLabel"></small>
+                </h2>
+
+                <div class="range-toolbar" role="group" aria-label="Date range">
+                    <span class="range-label" id="rangeLabel">Date range</span>
+                    <div class="buttons has-addons" aria-labelledby="rangeLabel">
+                        <button type="button" class="button is-small" data-range-days="7" aria-pressed="false">7 days</button>
+                        <button type="button" class="button is-small" data-range-days="30" aria-pressed="true">30 days</button>
+                        <button type="button" class="button is-small" data-range-days="90" aria-pressed="false">90 days</button>
+                        <button type="button" class="button is-small" data-range-days="365" aria-pressed="false">1 year</button>
+                        <button type="button" id="rangeCustomBtn" class="button is-small" aria-pressed="false">Custom</button>
+                    </div>
+                    <form id="customRangeForm" class="range-custom is-hidden" novalidate>
+                        <label for="rangeStart">From</label>
+                        <input id="rangeStart" class="input is-small" type="date">
+                        <label for="rangeEnd">to</label>
+                        <input id="rangeEnd" class="input is-small" type="date">
+                        <button type="submit" class="button is-primary is-small">Apply</button>
+                        <p id="rangeError" class="help is-danger" role="alert"></p>
+                    </form>
+                </div>
+
+                <div id="summaryCards" class="kpi-grid"></div>
+
+                <div class="columns is-multiline">
+                    <div class="column is-8-desktop is-12-tablet">
+                        <div class="panel-box">
+                            <h3>Activity trends</h3>
+                            <div class="chart-box">
+                                <canvas id="timeseriesChart" role="img" aria-label="Line chart of daily active users, sessions and page views"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-4-desktop is-12-tablet">
+                        <div class="panel-box">
+                            <div class="live-head">
+                                <h3>Live now</h3>
+                                <span class="live-badge"><span class="live-dot" aria-hidden="true"></span>Live</span>
+                            </div>
+                            <div id="realtimeContainer" aria-live="polite"></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="sidebar-section">
-                    <h3>Database Status</h3>
-                    <div class="sidebar-chart-wrapper">
-                        <canvas id="database-status"></canvas>
+                <div class="columns is-multiline">
+                    <div class="column is-7-desktop is-12-tablet">
+                        <div class="panel-box">
+                            <h3>Top pages</h3>
+                            <div id="topPagesContainer" class="table-scroll" data-sortable-table></div>
+                        </div>
+                    </div>
+                    <div class="column is-5-desktop is-12-tablet">
+                        <div class="panel-box">
+                            <h3>Traffic sources</h3>
+                            <div id="trafficSourcesContainer" class="table-scroll" data-sortable-table></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="sidebar-section">
-                    <h3>Database Type</h3>
-                    <div class="sidebar-chart-wrapper">
-                        <canvas id="database-type"></canvas>
+                <div class="columns is-multiline">
+                    <div class="column is-7-desktop is-12-tablet">
+                        <div class="panel-box">
+                            <h3>Countries</h3>
+                            <div id="countriesContainer" class="table-scroll" data-sortable-table></div>
+                        </div>
+                    </div>
+                    <div class="column is-5-desktop is-12-tablet">
+                        <div class="panel-box">
+                            <h3>Top events</h3>
+                            <div id="topEventsContainer" class="table-scroll" data-sortable-table></div>
+                        </div>
                     </div>
                 </div>
-            </aside>
-        </div>
+            </section>
+
+            <section class="dash-section" aria-labelledby="platform-heading">
+                <h2 id="platform-heading" class="dash-section-title">
+                    Platform content
+                    <small>Datasets and registered content</small>
+                </h2>
+
+                <div id="platformCards" class="kpi-grid"></div>
+
+                <div class="columns is-multiline">
+                    <div class="column is-6-desktop is-12-tablet">
+                        <div class="panel-box">
+                            <h3>Datasets over time <small>(cumulative)</small></h3>
+                            <div class="chart-box">
+                                <canvas id="datasetsDatesChart" role="img" aria-label="Line chart of the cumulative number of datasets added over time"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3-desktop is-6-tablet">
+                        <div class="panel-box">
+                            <h3>Datasets by type</h3>
+                            <div class="chart-box">
+                                <canvas id="datasetsTypeChart" role="img" aria-label="Doughnut chart of datasets by type"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3-desktop is-6-tablet">
+                        <div class="panel-box">
+                            <h3>Dataset load status</h3>
+                            <div class="chart-box">
+                                <canvas id="datasetsStatusChart" role="img" aria-label="Doughnut chart of datasets by load status"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
 
         <!-- Chart.js Library -->
         <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
-        <script src="./js/analytics-dashboard.js"></script>
+        <script type="module" src="./js/analytics-dashboard.js"></script>
     </body>
 </html>

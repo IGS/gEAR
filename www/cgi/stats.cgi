@@ -228,7 +228,7 @@ def run_realtime_report(client, property_id, dimensions, metrics, limit=10):
 # -----------------------------------------------------------------------------
 
 
-def get_summary(client, property_id, days):
+def get_summary(client, property_id, start_date, end_date):
     """
     Return site-wide totals (users, sessions, page views, engaged sessions, events) for the last N days.
     """
@@ -267,7 +267,7 @@ def get_summary(client, property_id, days):
     }
 
 
-def get_daily_timeseries(client, property_id, days):
+def get_daily_timeseries(client, property_id, start_date, end_date, limit):
     """
     Return per-day users, sessions and page views for the last N days.
     """
@@ -295,7 +295,7 @@ def get_daily_timeseries(client, property_id, days):
     return rows
 
 
-def get_top_pages(client, property_id, days, top_n):
+def get_top_pages(client, property_id, start_date, end_date, top_n):
     """
     Return the top N page paths by page views.
     """
@@ -323,7 +323,7 @@ def get_top_pages(client, property_id, days, top_n):
     return rows
 
 
-def get_traffic_sources(client, property_id, days, top_n):
+def get_traffic_sources(client, property_id, start_date, end_date, top_n):
     """
     Return the top N session source/medium pairs by sessions.
     """
@@ -350,7 +350,7 @@ def get_traffic_sources(client, property_id, days, top_n):
     return rows
 
 
-def get_countries(client, property_id, days, top_n):
+def get_countries(client, property_id, start_date, end_date, top_n):
     """
     Return the top N countries by active users.
     """
@@ -378,7 +378,7 @@ def get_countries(client, property_id, days, top_n):
     return rows
 
 
-def get_top_events(client, property_id, days, top_n):
+def get_top_events(client, property_id, start_date, end_date, top_n):
     """
     Return the top N events by event count.
     """
