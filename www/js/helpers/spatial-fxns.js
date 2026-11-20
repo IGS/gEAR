@@ -7,7 +7,7 @@ The spatial panel is a Panel (Bokeh server) app in services/spatial. The API ret
 the app into the tile. The app talks back to this page through globals and events set in
 services/spatial/panel_common.py:
 - window.gearSpatialViewState[datasetId]: current view range, so switching genes keeps the view.
-  A flipped axis (the app's "Flip X"/"Flip Y" buttons) is stored as start > end, so it carries over too.
+  A flipped axis (the app's "Flip Horizontal"/"Flip Vertical" buttons) is stored as start > end, so it carries over too.
 - window.gearSpatialUrlParams: current app parameters, used by the HTML download
 - "save_spatial_display_<datasetId>" window event: the app's "save display" button (zoomed view only)
 */
