@@ -90,6 +90,36 @@ export const plotly2MatplotlibNames = {
 // invert the plotly2MatplotlibNames object
 const matplotlib2PlotlyNames = Object.fromEntries(Object.entries(plotly2MatplotlibNames).map(([key, value]) => [value, key]));
 
+// Modebar buttons hidden on every Plotly display
+const MODEBAR_BUTTONS_TO_REMOVE = [
+    "zoom2d",
+    "autoScale2d",
+    "hoverClosestCartesian",
+    "hoverCompareCartesian",
+    "zoom3d",
+    "pan3d",
+    "resetCameraDefault3d",
+    "resetCameraLastSave3d",
+    "hoverClosest3d",
+    "orbitRotation",
+    "tableRotation",
+    "zoomInGeo",
+    "zoomOutGeo",
+    "resetGeo",
+    "hoverClosestGeo",
+    "sendDataToCloud",
+    "hoverClosestGl2d",
+    "hoverClosestPie",
+    "toggleHover",
+    "resetViews",
+    "toggleSpikelines",
+    "resetViewMapbox"
+];
+
+// 3D plots keep the camera controls (rotate, zoom, pan and reset), matching the spatial viewer
+const MODEBAR_3D_BUTTONS = ["orbitRotation", "tableRotation", "zoom3d", "pan3d", "resetCameraDefault3d"];
+const MODEBAR_BUTTONS_TO_REMOVE_3D = MODEBAR_BUTTONS_TO_REMOVE.filter((button) => !MODEBAR_3D_BUTTONS.includes(button));
+
 export const postPlotlyConfig = {
     expression: [
         {
@@ -98,30 +128,7 @@ export const postPlotlyConfig = {
                 showLink: false
                 , displaylogo: false
                 , responsive: true
-                , modeBarButtonsToRemove: [
-                    "zoom2d",
-                    "autoScale2d",
-                    "hoverClosestCartesian",
-                    "hoverCompareCartesian",
-                    "zoom3d",
-                    "pan3d",
-                    "resetCameraDefault3d",
-                    "resetCameraLastSave3d",
-                    "hoverClosest3d",
-                    "orbitRotation",
-                    "tableRotation",
-                    "zoomInGeo",
-                    "zoomOutGeo",
-                    "resetGeo",
-                    "hoverClosestGeo",
-                    "sendDataToCloud",
-                    "hoverClosestGl2d",
-                    "hoverClosestPie",
-                    "toggleHover",
-                    "resetViews",
-                    "toggleSpikelines",
-                    "resetViewMapbox"
-                ]
+                , modeBarButtonsToRemove: MODEBAR_BUTTONS_TO_REMOVE
             }, layout: {
                 autosize: true,
                 modebar: {
@@ -133,6 +140,12 @@ export const postPlotlyConfig = {
                         size: 12,
                         color: '#333333'
                 },
+            }
+        }, {
+            // Merged over the "all" entry, so only the modebar list changes
+            plot_type: "scatter3d"
+            , config: {
+                modeBarButtonsToRemove: MODEBAR_BUTTONS_TO_REMOVE_3D
             }
         }, {
             plot_type: "volcano"
@@ -161,34 +174,17 @@ export const postPlotlyConfig = {
                 showLink: false
                 , displaylogo: false
                 , responsive: true
-                , modeBarButtonsToRemove: [
-                    "zoom2d",
-                    "autoScale2d",
-                    "hoverClosestCartesian",
-                    "hoverCompareCartesian",
-                    "zoom3d",
-                    "pan3d",
-                    "resetCameraDefault3d",
-                    "resetCameraLastSave3d",
-                    "hoverClosest3d",
-                    "orbitRotation",
-                    "tableRotation",
-                    "zoomInGeo",
-                    "zoomOutGeo",
-                    "resetGeo",
-                    "hoverClosestGeo",
-                    "sendDataToCloud",
-                    "hoverClosestGl2d",
-                    "hoverClosestPie",
-                    "toggleHover",
-                    "resetViews",
-                    "toggleSpikelines",
-                    "resetViewMapbox"
-                ]
+                , modeBarButtonsToRemove: MODEBAR_BUTTONS_TO_REMOVE
             }, layout:{
                 dragMode: "select"
                 , height: window.innerHeight * 0.8
                 , autosize: true
+            }
+        }, {
+            // Merged over the "all" entry, so only the modebar list changes
+            plot_type: "scatter3d"
+            , config: {
+                modeBarButtonsToRemove: MODEBAR_BUTTONS_TO_REMOVE_3D
             }
         }
     ]

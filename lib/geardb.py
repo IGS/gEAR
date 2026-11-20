@@ -925,7 +925,7 @@ def get_default_display(user_id, dataset_id, is_multigene=0):
 
 # Embedding plots (tSNE/UMAP/PCA) need room to be readable, so auto-arranged layouts give them the full row
 EMBEDDING_PLOT_TYPES = (
-    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic",
+    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic", "scatter3d",
     "mg_tsne_static", "mg_umap_static", "mg_pca_static",
 )
 AUTO_LAYOUT_EMBEDDING_WIDTH = 12

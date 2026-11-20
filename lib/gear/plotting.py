@@ -24,7 +24,7 @@ PLOT_TYPE_TO_FUNCTION = {
     "scatter": px.scatter,
     "strip": px.strip,
     # "violin":px.violin,
-    "contour": px.density_contour,  # NOTE: Potentially add as secondary option to lay over scatter plot
+    "scatter3d": px.scatter_3d,
 }
 
 
@@ -79,7 +79,7 @@ def _add_marker_info_to_traces(
     else:
         # In scatter plots, the 'size' was set during initial figure generation.
         # The UI Marker size slider will be used to set the minimum marker size
-        if plot_type == "scatter" and not isinstance(marker_info["size"], int):
+        if plot_type in ["scatter", "scatter3d"] and not isinstance(marker_info["size"], int):
             marker_info.setdefault("sizemode", "diameter")
             marker_info.setdefault("sizeref", 0.5)
             marker_info.pop("size", None)
@@ -236,7 +236,6 @@ def _build_priority_groups(
         priority_groups.append(color_name)
     if x and x not in priority_groups:
         priority_groups.append(x)
-    # Only added for contour plots
     if y and y not in priority_groups:
         priority_groups.append(y)
 
@@ -364,6 +363,38 @@ def _update_axis_titles(
         fig.update_xaxes(title_font=dict(size=16))
 
 
+def _update_3d_scene(
+    fig: go.Figure,
+    axes: dict[str, dict],
+) -> None:
+    """Apply title, range and visibility settings to the axes of a 3-D scene.  Updates 'fig' inplace.
+
+    3-D axes live in layout.scene, so update_xaxes()/update_yaxes() do not reach them.
+    'axes' maps "xaxis"/"yaxis"/"zaxis" to a dict with "title", "range" and "hide" keys.
+    A range is only applied when both its min and max are set.
+    """
+    scene = {
+        "aspectmode": "cube",  # Axes usually have different units, so give each the same length
+        # Camera sits about 15% farther back than Plotly's default (1.25), so the cube stays
+        # inside the plot area when the user rotates it
+        "camera": dict(eye=dict(x=1.45, y=1.45, z=1.45)),
+    }
+    for axis_name, opts in axes.items():
+        axis_range = opts.get("range")
+        has_range = axis_range is not None and len(axis_range) == 2 and None not in axis_range
+        scene[axis_name] = dict(
+            title=dict(text=opts.get("title")),
+            range=[float(v) for v in axis_range] if has_range else None,
+            visible=False if opts.get("hide") else True,
+            zeroline=False,
+        )
+    fig.update_scenes(scene)
+
+    # The cube keeps a square shape, so its size is limited by the plot height.
+    # The default margins (top 100, bottom 80) take much of a short tile, so trim them.
+    fig.update_layout(margin=dict(l=0, r=0, t=20, b=20))
+
+
 def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
     """Updates specific to certain plot types.  Updates 'fig' inplace."""
 
@@ -411,24 +442,27 @@ def generate_plot(
     plot_type: str = "scatter",
     hide_x_labels: bool = False,
     hide_y_labels: bool = False,
+    hide_z_labels: bool = False,  # 3-D scatter only
     hide_legend: bool = False,
     text_name: str | None = None,
     jitter: bool = False,
     x_range: list | None = None,
     y_range: list | None = None,
+    z_range: list | None = None,  # 3-D scatter only
     vlines: list = [],
     x_title: str | None = None,
     y_title: str | None = None,
+    z_title: str | None = None,  # 3-D scatter only
     is_projection: bool = False,
     non_interactive: bool = False,  # If True, will skip certain formatting that causes issues for static images (e.g. truncated axis labels)
-    vmin: float | None = None,  # User-defined colorscale minimum (continuous color or contour only)
-    vmax: float | None = None,  # User-defined colorscale maximum (continuous color or contour only)
+    vmin: float | None = None,  # User-defined colorscale minimum (continuous color only)
+    vmax: float | None = None,  # User-defined colorscale maximum (continuous color only)
     **kwargs: dict,
 ) -> go.Figure:
     """Generates and returns figure for facet grid."""
 
     # If replicates are present, use mean and stdev of expression data as datapoints
-    if "replicate" in df.columns and plot_type not in ["violin", "contour"]:
+    if "replicate" in df.columns and plot_type not in ["violin", "scatter3d"]:
         df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)  # noqa: PD901
     elif plot_type == "bar":
         # Later datasets do not have a replicate column. Bars need to be run through groupby,
@@ -478,6 +512,14 @@ def generate_plot(
     # if plotting_args["hover_name"] not in [x, y, facet_row, facet_col, color_name]:
     #    raise PlotError("Selected label {} is not the same as one of the 'x', 'y', 'facet', or 'color' conditions".format(plotting_args["hover_name"]))
 
+    # 3-D scatter plots take a z axis, and px.scatter_3d does not support facets
+    if plot_type == "scatter3d":
+        plotting_args["z"] = z
+        labels_dict[z] = z_title or z
+        plotting_args.pop("facet_row")
+        plotting_args.pop("facet_col")
+        facet_row = facet_col = None
+
     plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
 
     # If jitter is needed for scatter plot, convert to a strip plot
@@ -501,7 +543,7 @@ def generate_plot(
 
     # Scatter plots are the only types that let you set marker size by group
     # TODO: SAdkins - this is ugly... come up with better way to handle 'integer size' vs 'size by group'
-    if plot_type == "scatter":
+    if plot_type in ["scatter", "scatter3d"]:
         if not isinstance(kwargs["traces"]["marker"]["size"], int):
             group_size = kwargs["traces"]["marker"]["size"]
             size_increase = (
@@ -522,7 +564,7 @@ def generate_plot(
                 plotting_args["size"] = [i + size_increase for i in scaled_range]
 
     # Some plottypes cannot use a certain colorscale
-    if plot_type in ["strip", "box", "violin", "contour", "line"]:
+    if plot_type in ["strip", "box", "violin", "line"]:
         plotting_args.pop("color_continuous_scale", None)
 
     # Bound the continuous colorscale if the user set a min and/or max.
@@ -550,22 +592,6 @@ def generate_plot(
             # Add standard deviation to hover data
             if not non_interactive:
                 plotting_args["hover_data"] = {x: False, y: False, "std": ":.2f"}
-
-    if plot_type == "contour":
-        plotting_args["z"] = z
-        plotting_args["histfunc"] = "avg"  # For expression data
-        # NOTE: Almost feel these below should be under "_update_by_plot_type()"
-        kwargs["traces"]["contours_coloring"] = "fill"
-        # For expression data, start scale at 0
-        if z == "raw_value":
-            kwargs["traces"]["zmin"] = 0.0
-            kwargs["traces"]["zmax"] = max(df[z].tolist())
-        # User-defined bounds override the defaults. zmin and zmax must be set together.
-        if vmin is not None or vmax is not None:
-            kwargs["traces"]["zmin"] = vmin if vmin is not None else kwargs["traces"].get("zmin", float(df[z].min()))
-            kwargs["traces"]["zmax"] = vmax if vmax is not None else kwargs["traces"].get("zmax", float(df[z].max()))
-            if kwargs["traces"]["zmin"] >= kwargs["traces"]["zmax"]:
-                raise PlotError("Colorscale minimum value must be less than the maximum value ({}).".format(kwargs["traces"]["zmax"]))
 
     ### CREATE THE PLOT
 
@@ -850,13 +876,18 @@ def generate_plot(
         )
     )
 
+    if plot_type == "scatter3d":
+        _update_3d_scene(fig, {
+            "xaxis": {"title": x_title or x, "range": x_range, "hide": hide_x_labels},
+            "yaxis": {"title": y_title or y, "range": y_range, "hide": hide_y_labels},
+            "zaxis": {"title": z_title or z, "range": z_range, "hide": hide_z_labels},
+        })
+
     # More general trace updates
     if plot_type not in ["violin"]:
         fig.update_traces(
             dict(
-                opacity=None
-                if plot_type in ["contour"] or "color_continuous_scale" in plotting_args
-                else 0.6,
+                opacity=None if "color_continuous_scale" in plotting_args else 0.6,
             )
         )
 
@@ -879,8 +910,9 @@ def generate_plot(
         # However it is added per facet for the other plot types
         _update_axis_titles(fig, df, x, y, facet_col, facet_row, x_title, y_title)
 
-    # Add vertical lines
-    [_add_vertical_lines(fig, vl) for vl in vlines]
+    # Add vertical lines (2-D plots only)
+    if plot_type != "scatter3d":
+        [_add_vertical_lines(fig, vl) for vl in vlines]
 
     # More general layout updates
     fig.update_layout(
@@ -894,10 +926,9 @@ def generate_plot(
 
     # Use kwargs marker information to update figure information
     # Pop off marker info since it is already loaded.
-    if plot_type not in ["contour"]:
-        _add_marker_info_to_traces(
-            fig, kwargs["traces"]["marker"], plot_type, color_name
-        )
+    _add_marker_info_to_traces(
+        fig, kwargs["traces"]["marker"], plot_type, color_name
+    )
     kwargs["traces"].pop("marker", None)
 
     if reverse_palette:

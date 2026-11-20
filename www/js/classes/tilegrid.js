@@ -15,7 +15,7 @@ This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
 For the given layout, a single-gene grid and a multi-gene grid are generated.
 */
 
-const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  // "tsne_dynamic" is a legacy option
+const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin", "scatter3d"];  // "tsne_dynamic" is a legacy option
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
 const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
@@ -1964,6 +1964,10 @@ class DatasetTile {
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, plotType, "layout");
         Plotly.relayout(plotlyPreview.id, customLayout);
 
+        if (plotType === "scatter3d") {
+            scale3dMarkersToPlotHeight(plotlyPreview.id);
+        }
+
         // Attach tooltips for any truncated axis labels
         attachAxisLabelTooltips(plotlyPreview.id);
 
@@ -2002,7 +2006,8 @@ class DatasetTile {
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
         const plotType = display.plot_type;
-        const plotConfig = display.plotly_config;
+        // Copy the config so the download options below do not leak into later renders of this tile
+        const plotConfig = structuredClone(display.plotly_config);
 
         // Used in building the downloadable file name
         const geneSymbol = isMultigene ? "multigene" : plotConfig.gene_symbol;
@@ -2010,6 +2015,16 @@ class DatasetTile {
 
         // add return image to the plot config so that the API returns the image for download
         plotConfig.return_image = true;
+
+        // The server rebuilds 3D plots with the default camera, so send the view the user rotated to
+        const camera = document.getElementById(this.plotlyDiv)?.layout?.scene?.camera;
+        if (plotType === "scatter3d" && camera) {
+            const customProps = plotConfig.custom_props || {};
+            plotConfig.custom_props = {
+                ...customProps,
+                layout: {...customProps.layout, scene: {...customProps.layout?.scene, camera}}
+            };
+        }
 
         const func = isMultigene ? apiCallsMixin.fetchMgPlotlyData : apiCallsMixin.fetchPlotlyData;
 
@@ -2362,6 +2377,35 @@ const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
         }
     }
     return updates;
+}
+
+/**
+ * Shrinks the markers of a 3D scatter plot to suit the plot's height.
+ *
+ * 3D marker sizes are in screen pixels, and curators pick them while looking at the curator preview,
+ * which is about 80% of the window height (see the "curator" layout in plot-display-config.js).
+ * A shorter expression tile would look crowded at the same size, so markers are scaled by
+ * plot height / curator preview height, between 0.4 and 1.
+ *
+ * @param {string} plotDivId - The ID of the rendered Plotly div.
+ */
+const scale3dMarkersToPlotHeight = (plotDivId) => {
+    const plotDiv = document.getElementById(plotDivId);
+    if (!plotDiv?.data?.length) return;
+
+    const curatorPlotHeight = window.innerHeight * 0.8;
+    const scale = Math.min(1, Math.max(0.4, plotDiv.clientHeight / curatorPlotHeight));
+    if (scale === 1) return;
+
+    // A constant size is a number, kept at 2px or more so points stay visible.
+    // Sizes by group are an array drawn relative to marker.sizeref (a bigger sizeref gives smaller
+    // markers), and their marker.sizemin already keeps them visible.
+    const MIN_MARKER_SIZE = 2;
+    const hasConstantSize = typeof plotDiv.data[0].marker?.size === "number";
+    const update = hasConstantSize
+        ? { "marker.size": plotDiv.data.map((trace) => Math.max(MIN_MARKER_SIZE, trace.marker.size * scale)) }
+        : { "marker.sizeref": plotDiv.data.map((trace) => (trace.marker?.sizeref ?? 1) / scale) };
+    Plotly.restyle(plotDiv, update);
 }
 
 /**
