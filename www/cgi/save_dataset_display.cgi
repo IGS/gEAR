@@ -214,7 +214,7 @@ def main():
         url = alt_url
 
     try:
-        if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+        if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'tsne_dynamic', 'tsne/umap_dynamic', 'scatter3d']:
             image_success = make_static_plotly_graph(filename, config, url)
         elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
             url += "/mg_plotly"
@@ -241,7 +241,7 @@ def main():
         try:
             print("Attempting to use alt_url: {}".format(alt_url), file=sys.stderr)
             url = alt_url
-            if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+            if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'tsne_dynamic', 'tsne/umap_dynamic', 'scatter3d']:
                 image_success = make_static_plotly_graph(filename, config, url)
             elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
                 url += "/mg_plotly"
