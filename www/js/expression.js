@@ -141,7 +141,8 @@ document.getElementById('submit-expression-search').addEventListener('click', as
         updateScoringMethodVisibility();
 
         if (!annotRes.value) {
-            tilegrid.warnGeneAnnotationNotFound();
+            // Pass the searched genes so tiles can suggest similar genes in their datasets
+            tilegrid.warnGeneAnnotationNotFound(Array.from(geneCollectionState.selectedGenes));
             return;
         }
 
