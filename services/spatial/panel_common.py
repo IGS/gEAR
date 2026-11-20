@@ -57,8 +57,8 @@ REVERSE_RANGE_JS = """
     }
 """
 
-# Light outline so the flip buttons' edges are visible
-FLIP_BUTTON_CSS = ".bk-btn {border: 1px solid #b5b5b5 !important;}"
+# Light outline so the flip buttons' edges are visible, and a slightly smaller font for their longer labels
+FLIP_BUTTON_CSS = ".bk-btn {border: 1px solid #b5b5b5 !important; font-size: 0.875em;}"
 
 class BaseSpatialViewer(pn.viewable.Viewer):
     """
@@ -365,8 +365,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
     def _wire_reverse_buttons(self, figure):
         """
-        Wires the "Flip X" and "Flip Y" buttons to reverse the figure's
-        x_range/y_range in the browser. The spatial figures share these range
+        Wires the "Flip Horizontal" and "Flip Vertical" buttons to reverse the
+        figure's x_range/y_range in the browser. The spatial figures share these range
         models (link_ranges), so the image, expression and cluster plots all
         flip together without a round-trip or re-render. Bokeh syncs the new
         range back to the server, so _sync_range_updates saves it and the flip
@@ -552,17 +552,22 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # NOTE: For any thing that requires param.watch or .on_click, the function needs a pn.state.execute() wrapper to ensure it runs in the Bokeh server thread context.
 
         # Flip the spatial plots along an axis. Wired up client-side in _wire_reverse_buttons once the figures exist.
-        # Tabler icon names follow Bokeh's bundled Tabler 1.68 font, where "flip-vertical" mirrors left-right
-        # (across a vertical axis). Newer Tabler versions swap the two names.
+        # The labels follow the usual image-editor wording: "Flip Horizontal" mirrors left to right (reverses the
+        # X axis) and "Flip Vertical" mirrors top to bottom (reverses the Y axis).
+        # Tabler icon names follow Bokeh's bundled Tabler 1.68 font, where "flip-vertical" is the left-right mirror
+        # icon (drawn across a vertical line). Newer Tabler versions swap the two names.
+        # No fixed width, so each button fits its label and icon.
         flip_button_opts = dict(
-            button_type="default", align="end", width=80, margin=(5, 3),
+            button_type="default", align="end", margin=(5, 3),
             icon_size="1.3em", stylesheets=[FLIP_BUTTON_CSS],
         )
         self.reverse_x_button = pn.widgets.Button(
-            name="Flip X", icon="flip-vertical", description="Flip the spatial plots left to right", **flip_button_opts
+            name="Flip Horizontal", icon="flip-vertical", description="Mirror the spatial plots left to right",
+            **flip_button_opts
         )
         self.reverse_y_button = pn.widgets.Button(
-            name="Flip Y", icon="flip-horizontal", description="Flip the spatial plots top to bottom", **flip_button_opts
+            name="Flip Vertical", icon="flip-horizontal", description="Mirror the spatial plots top to bottom",
+            **flip_button_opts
         )
 
         # Controls shown above the spatial plots. A missing channel select is left out, since Panel
