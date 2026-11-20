@@ -29,7 +29,24 @@ DATASET_TYPE_LABELS = {"gosling": "epigenome"}
 # Choices offered in the template's dataset_type dropdown
 TEMPLATE_DATASET_TYPES = tuple(DATASET_TYPE_LABELS.get(t, t) for t in DATASET_TYPES + GEAR_ONLY_DATASET_TYPES)
 
-LOG_TRANSFORMATIONS = ("No Transformation", "log2 transformation", "log10 transformation")
+# Natural log covers scanpy's sc.pp.log1p and Seurat's NormalizeData, which both use ln(x+1)
+LOG_TRANSFORMATIONS = ("No Transformation", "natural log transformation", "log2 transformation", "log10 transformation")
+
+# Other ways people write a log transformation, keyed in lowercase without spaces. A pseudocount
+#  (x+1) doesn't change the choice.
+LOG_TRANSFORMATION_SHORTCUTS = {
+    "none": "No Transformation",
+    "ln": "natural log transformation",
+    "ln(x+1)": "natural log transformation",
+    "log1p": "natural log transformation",
+    "loge": "natural log transformation",
+    "naturallog": "natural log transformation",
+    "naturallogarithm": "natural log transformation",
+    "log2": "log2 transformation",
+    "log2(x+1)": "log2 transformation",
+    "log10": "log10 transformation",
+    "log10(x+1)": "log10 transformation",
+}
 
 YES_NO = ("Yes", "No")
 
@@ -194,13 +211,13 @@ FIELDS = (
     ),
     MetadataField(
         name="normalization_method",
-        instructions="Normalization method used on the data, e.g. TPM, RPM/CPM, RPKM/FPKM, SCnorm, GeTMM, DESeq2, ComBat-Seq, QN.",
+        instructions="Normalization method used on the data, e.g. TPM, RPM/CPM, RPKM/FPKM, SCnorm, GeTMM, DESeq2, ComBat-Seq, QN. Use None (raw counts) if the values are not normalized.",
         example="TPM",
         required=True, max_length=100, column="normalization_method",
     ),
     MetadataField(
         name="log_transformation",
-        instructions="Transformation applied to the count data.",
+        instructions="Log transformation applied to the values. A log of x+1 counts as that log: scanpy's sc.pp.log1p and Seurat's NormalizeData use the natural log. No Transformation means the values are not logged; say in normalization_method whether they are raw counts or normalized.",
         example="No Transformation",
         required=True, choices=LOG_TRANSFORMATIONS, column="log_transformation",
     ),
@@ -369,6 +386,10 @@ def normalize_value(name: str, value):
         if lowered in DATASET_TYPES + GEAR_ONLY_DATASET_TYPES:
             return lowered
     elif name in ("log_transformation", "primary_analysis_completed"):
+        if name == "log_transformation":
+            shortcut = LOG_TRANSFORMATION_SHORTCUTS.get(re.sub(r"\s+", "", value.lower()))
+            if shortcut:
+                return shortcut
         for choice in FIELDS_BY_NAME[name].choices:
             if value.lower() == choice.lower():
                 return choice

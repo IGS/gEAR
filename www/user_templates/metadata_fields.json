@@ -233,7 +233,7 @@
     },
     {
       "name": "normalization_method",
-      "instructions": "Normalization method used on the data, e.g. TPM, RPM/CPM, RPKM/FPKM, SCnorm, GeTMM, DESeq2, ComBat-Seq, QN.",
+      "instructions": "Normalization method used on the data, e.g. TPM, RPM/CPM, RPKM/FPKM, SCnorm, GeTMM, DESeq2, ComBat-Seq, QN. Use None (raw counts) if the values are not normalized.",
       "example": "TPM",
       "required": true,
       "required_if": {},
@@ -246,7 +246,7 @@
     },
     {
       "name": "log_transformation",
-      "instructions": "Transformation applied to the count data.",
+      "instructions": "Log transformation applied to the values. A log of x+1 counts as that log: scanpy's sc.pp.log1p and Seurat's NormalizeData use the natural log. No Transformation means the values are not logged; say in normalization_method whether they are raw counts or normalized.",
       "example": "No Transformation",
       "required": true,
       "required_if": {},
@@ -255,6 +255,7 @@
       "pattern_hint": "",
       "choices": [
         "No Transformation",
+        "natural log transformation",
         "log2 transformation",
         "log10 transformation"
       ],

@@ -6648,6 +6648,7 @@ paths:
                   type: string
                   enum:
                   - No Transformation
+                  - natural log transformation
                   - log2 transformation
                   - log10 transformation
                 primary_analysis_completed:

@@ -558,13 +558,14 @@
                               <label class="label" for="metadata-normalization-method">
                                 Normalization method <span class="has-text-danger-dark">*</span>
                                 <span class="icon has-tooltip-right has-tooltip-arrow has-tooltip-multiline"
-                                      data-tooltip="Normalization method used on the data. Choose a common method from the list or type your own.">
+                                      data-tooltip="Normalization method used on the data. Choose a common method from the list or type your own. Choose None (raw counts) if the values are not normalized.">
                                     <i class="mdi mdi-information"></i>
                                 </span>
                               </label>
                               <div class="control">
                                 <input class="input" type="text" id="metadata-normalization-method" name="metadata-normalization-method" placeholder="Ex: TPM" list="metadata-normalization-method-options">
                                 <datalist id="metadata-normalization-method-options">
+                                  <option value="None (raw counts)"></option>
                                   <option value="TPM"></option>
                                   <option value="RPM/CPM"></option>
                                   <option value="RPKM/FPKM"></option>
@@ -582,7 +583,7 @@
                               <label class="label" for="metadata-log-transformation">
                                 Log transformation <span class="has-text-danger-dark">*</span>
                                 <span class="icon has-tooltip-right has-tooltip-arrow has-tooltip-multiline"
-                                      data-tooltip="Transformation applied to the count data">
+                                      data-tooltip="Log transformation applied to the values. A log of x+1 counts as that log: scanpy's log1p and Seurat's NormalizeData use the natural log. Choose No transformation if the values are not logged.">
                                     <i class="mdi mdi-information"></i>
                                 </span>
                               </label>
@@ -591,6 +592,7 @@
                                   <select id="metadata-log-transformation" name="metadata-log-transformation">
                                     <option value="">Select one</option>
                                     <option value="No Transformation">No transformation</option>
+                                    <option value="natural log transformation">Natural log (ln, e.g. log1p)</option>
                                     <option value="log2 transformation">log2</option>
                                     <option value="log10 transformation">log10</option>
                                   </select>
