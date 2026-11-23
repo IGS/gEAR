@@ -64,6 +64,10 @@ Follow instructions in [the Python setup](./python.md) document
 
 Follow instructions in [the Apache setup](./apache.md) document
 
+### Plotly image export
+
+Install Chromium for kaleido so "Download image" and display thumbnails work. Follow [Plotly image export](./plotly_image_export.md).
+
 ### Sass
 
 Used for changing theme colors between portal flavors (e.g. `www/css/gear-theme-purple.scss`).
