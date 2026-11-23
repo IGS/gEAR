@@ -156,9 +156,9 @@ class TestHydrate:
         assert ["Dataset", "Adult mouse cochlear epithelium"] in result["meta"]
         assert result["links"] == [{"label": "Read paper", "url": "https://doi.org/10.1000/xyz"},
                                    {"label": "PubMed", "url": "https://pubmed.ncbi.nlm.nih.gov/424242/"}]
-        assert result["actions"]["primary"] == {"label": "Open signaling results",
+        assert result["actions"]["primary"] == {"label": "View signaling results",
                                                 "url": "./cell_cell.html?domino_file=linked_net.parquet"}
-        assert result["actions"]["secondary"] == {"label": "Open in Gene Expression", "url": "./p?s=ds1share"}
+        assert result["actions"]["secondary"] == {"label": "View in Gene Expression", "url": "./p?s=ds1share"}
         assert result["actions"]["share_url"] == "./cell_cell.html?domino_file=linked_net.parquet"
 
     def test_unlinked_result_is_public_with_no_dataset_action(self, searcher, lookups):

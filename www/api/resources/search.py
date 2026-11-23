@@ -20,6 +20,7 @@ from flask import request
 from flask_restful import Resource
 from gear.search import parse_criteria, run_search
 from gear.search.cell_cell import CellCellSearcher
+from gear.search.datasets import DatasetSearcher
 from gear.search.gene_lists import GeneListSearcher
 from gear.search.layouts import CollectionSearcher
 from gear.search.projections import ProjectionSearcher
@@ -28,23 +29,10 @@ from gear.search.study_pages import StudyPageSearcher
 SEARCH_FAILED = "The search could not be run. Please try different search terms."
 
 
-class _NoDatasetSearcher:
-    """
-    Stands in for the dataset searcher.
-    TODO #1383: replace when the dataset searcher lands (after the domain-specific landing page merge).
-    """
-
-    def find(self, criteria, user, cursor):
-        return []
-
-    def hydrate(self, keys, user, cursor):
-        return {}
-
-
 def build_searchers():
     """One searcher per result type in gear.search.TYPES."""
     return {
-        "dataset": _NoDatasetSearcher(),
+        "dataset": DatasetSearcher(),
         "collection": CollectionSearcher(),
         "genelist": GeneListSearcher(),
         # Only this site's study pages are searched

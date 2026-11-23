@@ -163,7 +163,7 @@ class GeneListSearcher:
             "chips": [organism] if organism else [],
             "links": [],
             "actions": {
-                "primary": {"label": "Open in Gene Expression", "url": url},
+                "primary": {"label": "View in Gene Expression", "url": url},
                 "secondary": {"label": "Open in Gene List Manager",
                               "url": f"./gene_list_manager.html?{urlencode({'share_id': share_id})}"},
                 "share_url": url,

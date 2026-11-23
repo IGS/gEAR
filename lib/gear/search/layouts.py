@@ -210,7 +210,7 @@ class CollectionSearcher:
             "meta": [row for row in meta if row[1]],
             "chips": organisms,
             "links": [],
-            "actions": {"primary": {"label": "Open in Gene Expression", "url": url},
+            "actions": {"primary": {"label": "View in Gene Expression", "url": url},
                         "secondary": None,
                         "share_url": url},
             "extra": {

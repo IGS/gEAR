@@ -163,9 +163,9 @@ class TestBuildSearchers:
         # Study pages are filtered to this site's portal
         assert searchers["study"].domain_label == "nemo"
 
-    def test_datasets_find_nothing_until_their_searcher_is_written(self):
-        # TODO #1383: replace when the dataset searcher lands (after the domain-specific landing page merge)
-        assert search.build_searchers()["dataset"].find(search.parse_criteria({}), None, None) == []
+    def test_datasets_use_the_dataset_searcher(self):
+        from gear.search.datasets import DatasetSearcher
+        assert isinstance(search.build_searchers()["dataset"], DatasetSearcher)
 
 
 def test_route_is_registered():

@@ -199,7 +199,8 @@ class TestFind:
 class TestHydrate:
     def test_result_fields(self, searcher, lookups):
         result = searcher.hydrate(["DS1/cartA"], OWNER, None)["DS1/cartA"]
-        first_run = "./projection.html?share_id=ds1share&projection_source=cartA&projection_algorithm=pca&zscore=0"
+        # Saved runs open through the projection permalink, as the Projection Tool's own share links do
+        first_run = "./p?p=p&s=ds1share&c=cartA&algo=pca&zscore=0"
 
         assert result["type"] == "projection"
         assert result["id"] == "DS1/cartA"
@@ -212,15 +213,14 @@ class TestHydrate:
         assert result["subline"] == "Projection · Hair cell markers · 2 saved runs"
         assert ["Pattern source", "Hair cell markers"] in result["meta"]
         assert ["Owner", "Ann Owner"] in result["meta"]
-        assert result["actions"]["primary"] == {"label": "Open in Projection Tool", "url": first_run}
-        # Only the pattern source, so the user can project it onto other datasets
-        assert result["actions"]["secondary"] == {"label": "Open pattern source in Projection Tool",
-                                                  "url": "./projection.html?projection_source=cartA"}
+        assert result["actions"]["primary"] == {"label": "View in Projection Tool", "url": first_run}
+        # The result is the dataset and pattern pair; an action for the pattern alone would be about something else
+        assert "secondary" not in result["actions"]
         assert result["actions"]["share_url"] == first_run
         assert result["extra"]["runs"] == [
             {"label": "PCA", "url": first_run},
             {"label": "NMF · z-scored",
-             "url": "./projection.html?share_id=ds1share&projection_source=cartA&projection_algorithm=nmf&zscore=1"},
+             "url": "./p?p=p&s=ds1share&c=cartA&algo=nmf&zscore=1"},
         ]
 
     def test_one_run_is_singular(self, searcher, lookups):

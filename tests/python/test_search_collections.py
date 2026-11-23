@@ -138,7 +138,7 @@ class TestHydrate:
                          {"title": "Adult utricle", "url": "./p?s=ds3"}],
             "dataset_count": 3,
         }
-        assert result["actions"] == {"primary": {"label": "Open in Gene Expression", "url": url},
+        assert result["actions"] == {"primary": {"label": "View in Gene Expression", "url": url},
                                      "secondary": None, "share_url": url}
 
     @pytest.mark.parametrize("layout, user, access", [

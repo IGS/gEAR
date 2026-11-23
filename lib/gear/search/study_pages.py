@@ -258,7 +258,7 @@ class StudyPageSearcher:
                      if page.pmid.isdigit() else [],
             "actions": {
                 "primary": {"label": "Open study page", "url": page_url},
-                "secondary": {"label": "Open linked collection", "url": collections[0]["url"]} if collections else None,
+                "secondary": {"label": "View linked collection", "url": collections[0]["url"]} if collections else None,
                 "share_url": page_url,
             },
             "extra": {

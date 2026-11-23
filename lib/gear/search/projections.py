@@ -121,9 +121,9 @@ def _pair_key(dataset_id, cart_id):
 
 
 def _run_url(dataset, cart_id, run):
-    params = {"share_id": dataset["share_id"], "projection_source": cart_id,
-              "projection_algorithm": run.algorithm, "zscore": int(run.zscore)}
-    return f"./projection.html?{urlencode(params)}"
+    # The projection permalink (www/p), the same form as the Projection Tool's share links
+    params = {"p": "p", "s": dataset["share_id"], "c": cart_id, "algo": run.algorithm, "zscore": int(run.zscore)}
+    return f"./p?{urlencode(params)}"
 
 
 def _run_label(run):
@@ -218,9 +218,8 @@ class ProjectionSearcher:
             "chips": [dataset["organism"]] if dataset["organism"] else [],
             "links": [],
             "actions": {
-                "primary": {"label": "Open in Projection Tool", "url": runs[0]["url"]},
-                "secondary": {"label": "Open pattern source in Projection Tool",
-                              "url": f"./projection.html?{urlencode({'projection_source': cart_id})}"},
+                # No second action: the result is the dataset and pattern pair, which this opens
+                "primary": {"label": "View in Projection Tool", "url": runs[0]["url"]},
                 "share_url": runs[0]["url"],
             },
             "extra": {"runs": runs},

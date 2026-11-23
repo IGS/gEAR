@@ -45,7 +45,7 @@ def test_access_label(user, owner_id, is_public, is_shared, label):
 
 class TestVisibleDatasets:
     ROW = ("DS1", "ds1share", "Cochlea atlas", "Hair cells.", 1, "Mouse", 7, "Ann Owner", 0,
-           datetime(2026, 1, 2, 3, 4), 0)
+           datetime(2026, 1, 2, 3, 4), "single-cell-rnaseq", "GSE12345", "31234567", 0)
 
     def test_nothing_to_look_up_runs_no_query(self):
         cursor = RecordingCursor()
@@ -76,6 +76,7 @@ class TestVisibleDatasets:
             "id": "DS1", "share_id": "ds1share", "title": "Cochlea atlas", "ldesc": "Hair cells.",
             "organism_id": 1, "organism": "Mouse", "owner_id": 7, "owner_name": "Ann Owner",
             "is_public": 0, "date_added": "2026-01-02", "access": "Yours",
+            "dtype": "single-cell-rnaseq", "geo_id": "GSE12345", "pubmed_id": "31234567",
         }]
 
 

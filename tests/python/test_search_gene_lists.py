@@ -125,7 +125,7 @@ class TestHydrate:
         assert ["Owner", "Ann Owner"] in result["meta"]
         # Gene symbols keep their stored casing
         assert result["extra"] == {"genes": ["Myo7a", "Pou4f3", "Atoh1"], "gene_count": 3}
-        assert result["actions"]["primary"] == {"label": "Open in Gene Expression", "url": "./p?c=cartA"}
+        assert result["actions"]["primary"] == {"label": "View in Gene Expression", "url": "./p?c=cartA"}
         assert result["actions"]["secondary"] == {"label": "Open in Gene List Manager",
                                                   "url": "./gene_list_manager.html?share_id=cartA"}
         assert result["actions"]["share_url"] == "./p?c=cartA"

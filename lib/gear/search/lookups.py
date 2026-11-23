@@ -29,7 +29,8 @@ def visible_datasets(cursor, user, ids=(), share_ids=(), ownership=(), organism_
     """
     Datasets with one of the given ids or share_ids that the user may see, optionally narrowed by
     the ownership and organism filters. Returns a list of dicts with keys: id, share_id, title,
-    ldesc, organism_id, organism, owner_id, owner_name, is_public, date_added, access.
+    ldesc, organism_id, organism, owner_id, owner_name, is_public, date_added, dtype, geo_id,
+    pubmed_id, access.
     """
     ids = list(ids)
     share_ids = list(share_ids)
@@ -64,7 +65,7 @@ def visible_datasets(cursor, user, ids=(), share_ids=(), ownership=(), organism_
     cursor.execute(
         f"""
         SELECT d.id, d.share_id, d.title, d.ldesc, d.organism_id, o.label, d.owner_id, g.user_name,
-               d.is_public, d.date_added, {is_shared}
+               d.is_public, d.date_added, d.dtype, d.geo_id, d.pubmed_id, {is_shared}
           FROM dataset d
                JOIN organism o ON o.id = d.organism_id
                LEFT JOIN guser g ON g.id = d.owner_id
@@ -75,7 +76,7 @@ def visible_datasets(cursor, user, ids=(), share_ids=(), ownership=(), organism_
 
     datasets = []
     for (dataset_id, share_id, title, ldesc, organism_id, organism, owner_id, owner_name,
-         is_public, date_added, shared) in cursor.fetchall():
+         is_public, date_added, dtype, geo_id, pubmed_id, shared) in cursor.fetchall():
         datasets.append({
             "id": dataset_id,
             "share_id": share_id,
@@ -87,6 +88,9 @@ def visible_datasets(cursor, user, ids=(), share_ids=(), ownership=(), organism_
             "owner_name": owner_name,
             "is_public": is_public,
             "date_added": date_added.strftime("%Y-%m-%d") if date_added else None,
+            "dtype": dtype,
+            "geo_id": geo_id,
+            "pubmed_id": pubmed_id,
             "access": access_label(user, owner_id, is_public, shared),
         })
     return datasets

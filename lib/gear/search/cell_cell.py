@@ -183,7 +183,7 @@ class CellCellSearcher:
 
         secondary = None
         if dataset:
-            secondary = {"label": "Open in Gene Expression", "url": f"./p?s={quote(dataset['share_id'], safe='')}"}
+            secondary = {"label": "View in Gene Expression", "url": f"./p?s={quote(dataset['share_id'], safe='')}"}
 
         return {
             "type": "ccc",
@@ -198,7 +198,7 @@ class CellCellSearcher:
             "meta": [row for row in meta if row[1]],
             "chips": [organism] if organism else [],
             "links": links,
-            "actions": {"primary": {"label": "Open signaling results", "url": url},
+            "actions": {"primary": {"label": "View signaling results", "url": url},
                         "secondary": secondary,
                         "share_url": url},
             "extra": {"dataset": {"title": dataset["title"], "url": secondary["url"]} if dataset else None},
