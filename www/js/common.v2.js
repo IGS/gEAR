@@ -339,6 +339,7 @@ const initCommonUI = async () => {
         toggleClass('#logo-c-text', 'is-hidden', true);
         toggleClass('#navbar-logo-small', 'is-hidden', false);
         toggleClass('#citation-c', 'is-hidden', true);
+        toggleClass('#nav-search-c', 'is-hidden', true);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", false);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", true);
 
@@ -362,6 +363,7 @@ const initCommonUI = async () => {
         const citationCard = document.getElementById('citation-c');
         const shouldShowCitationCard = citationCard?.dataset.hasCitations === 'true';
         toggleClass('#citation-c', 'is-hidden', !shouldShowCitationCard);
+        toggleClass('#nav-search-c', 'is-hidden', false);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", true);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", false);
 

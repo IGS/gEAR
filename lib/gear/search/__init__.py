@@ -127,7 +127,17 @@ def _sort_hits(hits, sort):
     def scaled(hit):
         return (hit.score or 0) / best[hit.type] if best[hit.type] > 0 else 0
 
-    return sorted(newest_first, key=scaled, reverse=True)
+    # Hits with the same scaled score take turns by type, so one type with many recent ties
+    #  can't fill the first page. A hit's turn is its place among same-type, same-score hits,
+    #  counted newest first; within a turn the order stays newest first.
+    seen = {}
+    turn = {}
+    for hit in newest_first:
+        group = (hit.type, scaled(hit))
+        turn[id(hit)] = seen.get(group, 0)
+        seen[group] = turn[id(hit)] + 1
+
+    return sorted(newest_first, key=lambda hit: (-scaled(hit), turn[id(hit)]))
 
 
 def _pagination(total, page, limit):

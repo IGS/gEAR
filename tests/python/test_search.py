@@ -188,6 +188,19 @@ class TestRunSearch:
         response = run_search(Criteria(q="hair"), None, None, searchers)
         assert keys(response) == ["X", "A", "B", "Y"]
 
+    def test_relevance_ties_take_turns_between_types(self):
+        # Many hits of one type can share the top scaled score. Ties take turns between types
+        #  (newest first within each turn), so one recent type can't fill the first page.
+        searchers = stub_searchers(
+            projection=[Hit("projection", "p1", 5, date="2026-03-01"),
+                        Hit("projection", "p2", 5, date="2026-02-01"),
+                        Hit("projection", "p3", 5, date="2026-01-01")],
+            collection=[Hit("collection", "c1", 3), Hit("collection", "c2", 2)],
+            genelist=[Hit("genelist", "g1", 1, date="2022-01-01")],
+        )
+        response = run_search(Criteria(q="hair"), None, None, searchers)
+        assert keys(response) == ["p1", "g1", "c1", "p2", "p3", "c2"]
+
     def test_relevance_without_scores_falls_back_to_newest_first(self):
         searchers = stub_searchers(
             dataset=[Hit("dataset", "old", date="2025-01-01"), Hit("dataset", "undated")],
