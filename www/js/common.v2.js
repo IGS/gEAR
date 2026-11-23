@@ -1520,6 +1520,21 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Runs the unified search across datasets, collections, gene lists, study pages, projections
+     * and cell-cell communication analyses (#1383). The user comes from the session cookie.
+     *
+     * A bad request rejects with HTTP 400 and a failed search with 500; either way the response
+     * body's "problem" says what went wrong (error.response.data.problem).
+     *
+     * @param {Object} params - Any of q, types, organism_ids, ownership, date_added, sort, page and
+     *  limit. Lists (types, organism_ids, ownership) are comma-separated strings.
+     * @returns {Promise<Object>} - {success, problem, counts, results, pagination}.
+     */
+    async fetchUnifiedSearch(params) {
+        const {data} = await axios.get("/api/search", {params});
+        return data;
+    },
+    /**
      * Fetches the members of a gene cart.
      * @param {string} shareId - The share ID of the gene list.
      * @returns {Promise<any>} - A promise that resolves to the data of the gene cart members.
