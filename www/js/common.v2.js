@@ -339,6 +339,7 @@ const initCommonUI = async () => {
         toggleClass('#logo-c-text', 'is-hidden', true);
         toggleClass('#navbar-logo-small', 'is-hidden', false);
         toggleClass('#citation-c', 'is-hidden', true);
+        toggleClass('#nav-search-c', 'is-hidden', true);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", false);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", true);
 
@@ -362,6 +363,7 @@ const initCommonUI = async () => {
         const citationCard = document.getElementById('citation-c');
         const shouldShowCitationCard = citationCard?.dataset.hasCitations === 'true';
         toggleClass('#citation-c', 'is-hidden', !shouldShowCitationCard);
+        toggleClass('#nav-search-c', 'is-hidden', false);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", true);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", false);
 
@@ -1517,6 +1519,21 @@ const apiCallsMixin = {
     async fetchGeneLists(searchCriteria) {
         const payload = {session_id: apiCallsMixin.sessionId, ...searchCriteria};
         const {data} = await axios.post(`/cgi/search_gene_carts.cgi`, convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Runs the unified search across datasets, collections, gene lists, study pages, projections
+     * and cell-cell communication analyses (#1383). The user comes from the session cookie.
+     *
+     * A bad request rejects with HTTP 400 and a failed search with 500; either way the response
+     * body's "problem" says what went wrong (error.response.data.problem).
+     *
+     * @param {Object} params - Any of q, types, organism_ids, ownership, date_added, sort, page and
+     *  limit. Lists (types, organism_ids, ownership) are comma-separated strings.
+     * @returns {Promise<Object>} - {success, problem, counts, results, pagination}.
+     */
+    async fetchUnifiedSearch(params) {
+        const {data} = await axios.get("/api/search", {params});
         return data;
     },
     /**

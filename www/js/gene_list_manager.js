@@ -1,11 +1,16 @@
 "use strict";
 
-import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
+import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, validateShareId } from "./common.v2.js";
 import { GeneCart } from "./classes/genecart.v2.js";
 
 let isAddFormOpen = false;
 const resultsPerPage = 20;
 let listView = "table";
+
+// A share_id from the URL (a link from the unified search, #1383). The first search shows only
+//  that gene list; the next search, filter change or "Show all" shows everything again.
+let linkedShareId = null;
+let showingLinkedItem = false;
 
 let resultItems = [];   // array of ResultItem objects (with different views of a dataset)
 
@@ -1463,12 +1468,41 @@ const setupPagination = (pagination) => {
 }
 
 /**
+ * Ends the single-gene-list view that a share_id link opened (#1383): removes share_id from the URL,
+ * without adding a history entry, and hides the notice.
+ */
+const leaveLinkedItemView = () => {
+    showingLinkedItem = false;
+    document.getElementById("linked-item-notice").classList.add("is-hidden");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("share_id");
+    window.history.replaceState({}, "", url);
+}
+
+/**
+ * Shows the notice above the results of a share_id link.
+ *
+ * @param {boolean} found - Whether the linked gene list was found (it may not exist, or be private).
+ */
+const showLinkedItemNotice = (found) => {
+    document.getElementById("linked-item-message").textContent = found
+        ? "Showing the gene list from your link."
+        : "The gene list from your link wasn't found, or you don't have access to it.";
+    document.getElementById("linked-item-notice").classList.remove("is-hidden");
+}
+
+/**
  * Submits a search request with the specified search terms and filters.
  *
  * @param {number} page - The page number of the search results.
  * @returns {Promise<void>} - A promise that resolves when the search results are processed.
  */
 const submitSearch = async (page) => {
+
+    // Any new search leaves the single-gene-list view of a share_id link
+    if (showingLinkedItem) {
+        leaveLinkedItemView();
+    }
 
     // destroy current ResultItem objects
     resultItems = [];
@@ -1487,6 +1521,13 @@ const submitSearch = async (page) => {
     searchCriteria.ownership = buildFilterString('controls-ownership');
     searchCriteria.limit = resultsPerPage;
     searchCriteria.page = page || 1;
+
+    if (linkedShareId) {
+        // The CGI ignores the other criteria when given a share_id
+        searchCriteria.share_id = linkedShareId;
+        linkedShareId = null;
+        showingLinkedItem = true;
+    }
 
     const searchParams = Object.fromEntries(new URLSearchParams(window.location.search));
     if (searchParams['sort_by']) {
@@ -1513,6 +1554,10 @@ const submitSearch = async (page) => {
 
         processSearchResults(data);
         setupPagination(data.pagination);
+
+        if (showingLinkedItem) {
+            showLinkedItemNotice(data.gene_carts.length > 0);
+        }
     } catch (error) {
         logErrorInConsole(error);
         createToast("Failed to search gene lists");
@@ -1593,6 +1638,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
     if (defaultDateAddedView && getCurrentUser()?.session_id) {
         document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
+    }
+
+    // A link to one gene list (from the unified search, #1383) shows just that gene list, expanded
+    const linkedShareIdParam = getUrlParameter("share_id")?.trim();
+    if (linkedShareIdParam) {
+        linkedShareId = linkedShareIdParam;
+        listView = "list-expanded";
     }
 
     await submitSearch();
@@ -1682,6 +1734,12 @@ searchTermsElt.addEventListener("keyup", async (event) => {
 
 // Changing sort by criteria should update the search results
 document.getElementById("sort-by").addEventListener("change", async () => {
+    await submitSearch();
+});
+
+// Leave the single-gene-list view of a share_id link, back in the default table view
+document.getElementById("linked-item-show-all").addEventListener("click", async () => {
+    listView = "table";
     await submitSearch();
 });
 

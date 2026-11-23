@@ -326,6 +326,12 @@
 
                         </section> <!-- #view-controls -->
 
+                        <!-- Shown when the page was opened from a link to one gene list (share_id URL parameter) -->
+                        <div id="linked-item-notice" class="notification is-info is-light is-hidden py-2 px-4" role="status" data-testid="linked-item-notice">
+                            <span id="linked-item-message"></span>
+                            <button type="button" id="linked-item-show-all" class="button is-small is-text" data-testid="linked-item-show-all">Show all gene lists</button>
+                        </div>
+
                         <!-- results view -->
                         <section id="results-container">
                             <table id="results-table" class="table is-narrow is-striped is-fullwidth">

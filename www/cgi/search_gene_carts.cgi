@@ -3,6 +3,9 @@
 """
 Used by gene_cart_manager.html, this script focuses on searching gene carts and
 returns a list of matches with extended attributes.
+
+Passing share_id returns only that gene list, if the user may see it (links from the unified
+search, #1383).
 """
 
 import cgi
@@ -45,6 +48,14 @@ def main():
     if sort_by_str is None:
         sort_by_str = ''
     sort_by = re.sub("[^[a-z]]", "", sort_by_str)
+    share_id = form.getfirst('share_id')
+
+    # A link to one gene list (#1383). The page's remembered filters and search words must not
+    #  hide it, so only the share_id and the default visibility apply.
+    if share_id:
+        search_terms = []
+        organism_ids = date_added = ownership = None
+
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 0, 'problem': '', 'gene_carts': []}
 
@@ -128,6 +139,10 @@ def main():
                                     ) \
                                 )")
             qry_params.extend([user.id, user.id])
+
+    if share_id:
+        wheres.append("gc.share_id = %s")
+        qry_params.append(share_id)
 
     # Punctuation is an operator in boolean mode (e.g. "-" excludes a word), so the user's text
     #  is converted first; if nothing searchable is left, search as if no terms were given.
