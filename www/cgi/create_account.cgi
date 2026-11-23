@@ -14,7 +14,6 @@ The returned session ID has some informational content:
 """
 
 import cgi
-import hashlib
 import json
 import os
 import sys
@@ -23,6 +22,7 @@ import uuid
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear import passwords
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -83,7 +83,7 @@ def main():
     else:
         print("DEBUG: adding user to database", file=sys.stderr)
         try:
-            encoded_pass = hashlib.sha3_256(user_pass.encode('utf-8')).hexdigest()
+            encoded_pass = passwords.hash_password(user_pass)
             help_id = str(uuid.uuid4())
             cursor.execute(add_user_sql, (user_name, user_email, institution, encoded_pass, colorblind_mode, get_updates, help_id))
             user_id = cursor.lastrowid

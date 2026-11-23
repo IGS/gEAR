@@ -1,10 +1,10 @@
 """Account page CGIs: session info, profile changes, password-reset links and the user's history."""
 
-import hashlib
 import uuid
 from pathlib import Path
 
 import pytest
+from gear import passwords
 from helpers.cgi_harness import run_cgi
 
 FAKES = Path(__file__).resolve().parent / "fakes"
@@ -79,7 +79,9 @@ class TestSaveUserAccountChanges:
         assert result.json() == {"success": 1}
         password, help_id = result.writes()
         assert password["query"] == "UPDATE guser SET pass = %s WHERE help_id = %s"
-        assert password["params"] == [hashlib.sha3_256(b"hunter22").hexdigest(), "H1"]
+        encoded_pass, where_help_id = password["params"]
+        assert where_help_id == "H1"
+        assert encoded_pass.startswith("scrypt$") and passwords.verify_password("hunter22", encoded_pass)
         assert help_id["query"] == "UPDATE guser SET help_id = %s WHERE help_id = %s"
         new_help_id, old_help_id = help_id["params"]
         assert old_help_id == "H1"
@@ -93,8 +95,9 @@ class TestSaveUserAccountChanges:
         (update,) = result.writes()
         assert update["query"] == ("UPDATE guser SET email = %s, institution = %s, colorblind_mode = %s, "
                                    "updates_wanted = %s, pass = %s, help_id = %s WHERE id = %s")
-        *params, new_help_id, user_id = update["params"]
-        assert params == ["new@example.org", "JHU", 1, 0, hashlib.sha3_256(b"hunter22").hexdigest()]
+        *params, encoded_pass, new_help_id, user_id = update["params"]
+        assert params == ["new@example.org", "JHU", 1, 0]
+        assert encoded_pass.startswith("scrypt$") and passwords.verify_password("hunter22", encoded_pass)
         assert user_id == 1 and str(uuid.UUID(new_help_id)) == new_help_id
 
     def test_settings_change_keeps_password_when_blank(self):

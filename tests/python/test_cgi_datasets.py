@@ -160,6 +160,8 @@ class TestCreateAccount:
         body = result.json()
         assert body["success"] == 1 and body["session_id"] not in (0, -1)
         assert [w["query"].split()[2] for w in result.writes()] == ["guser", "user_session"]
+        encoded_pass = result.writes()[0]["params"][3]
+        assert encoded_pass.startswith("scrypt$") and encoded_pass != "pw"
         assert result.logged("commit")
 
 
