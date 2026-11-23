@@ -10,6 +10,7 @@ There are a few main categories of search:
 2. A search with no terms, where we're filtering on attributes instead
 3. A search with terms and optionally attributes on which to filter
 4. A listing of datasets in a single layout
+5. A single dataset, given by its share_id (links from the unified search, #1383)
 """
 
 import cgi
@@ -61,6 +62,14 @@ def main():
     sort_by_str = form.getfirst('sort_by', '')
     if sort_by_str is None:
         sort_by_str = ''
+    share_id = form.getfirst('share_id')
+
+    # A link to one dataset (#1383). The page's remembered filters and search words must not hide
+    #  it, so only the share_id and the default visibility apply.
+    if share_id:
+        custom_list = layout_share_id = organism_ids = date_added = ownership = None
+        search_terms = []
+        dtypes = []
     sort_by = re.sub("[^[a-z]]", "", sort_by_str)
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 1, 'problem': '', 'datasets': []}
@@ -149,6 +158,10 @@ def main():
 
     else:
         wheres.append("d.is_public = 1")
+
+    if share_id:
+        wheres.append("d.share_id = %s")
+        qry_params.append(share_id)
 
     # Punctuation is an operator in boolean mode (e.g. "-" excludes a word), so the user's text
     #  is converted first; if nothing searchable is left, search as if no terms were given.
