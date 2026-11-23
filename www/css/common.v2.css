@@ -123,6 +123,15 @@ p.menu-label {
     min-height: 1.5rem;
 }
 
+/* The search box above the menu: slightly rounded outer corners, square where input and button meet */
+#nav-search-c .input {
+    border-radius: 6px 0 0 6px;
+}
+
+#nav-search-c .button {
+    border-radius: 0 6px 6px 0;
+}
+
 span.menu-label-text {
     font-size: 120%;
     font-weight: bold;
