@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/bin/python3
 
 """
 generate_intro_stats.py - Build the JSON file that feeds the statistics and "What's new"
