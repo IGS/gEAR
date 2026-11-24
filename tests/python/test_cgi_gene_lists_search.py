@@ -120,13 +120,19 @@ def test_search_text_is_converted_for_boolean_mode(script):
 
 @pytest.mark.parametrize("script, like_column", [("search_gene_carts.cgi", "gc.label"),
                                                   ("search_datasets.cgi", "d.title")])
-def test_search_matches_partial_words(script, like_column):
-    """#636: "Tono" finds "Tonotopic" (prefix), and words inside underscore names are found with LIKE."""
-    result = run_cgi(script, query={"search_terms": "Tono Groves_potential ab", "sort_by": "relevance"},
+@pytest.mark.parametrize("search_terms, fulltext, likes", [
+    # #636: "Tono" finds "Tonotopic" (prefix), and words inside underscore names are found with LIKE.
+    #  Several unquoted words also rank rows containing them as a phrase first (>"...").
+    ("Tono Groves_potential ab", 'Tono* Groves_potential* ab >"Tono Groves_potential ab"',
+     ["%Tono%", "%Groves\\_potential%"]),
+    # Quoted text matches only as that phrase, so "cell" alone doesn't match every dataset
+    ('"hair cell" cochlea', '"hair cell" cochlea*', ["%hair_cell%", "%cochlea%"]),
+])
+def test_search_matches_partial_words_and_phrases(script, like_column, search_terms, fulltext, likes):
+    result = run_cgi(script, query={"search_terms": search_terms, "sort_by": "relevance"},
                      fake_modules=USERHISTORY)
     assert result.json()["success"] == 1
     main_query, *count_queries = match_queries(result)
-    fulltext, likes = "Tono* Groves_potential* ab", ["%Tono%", "%Groves\\_potential%"]
     assert f"OR {like_column} LIKE %s OR {like_column} LIKE %s)" in main_query["query"]
     # SELECT (relevance score) gets only the full-text query; WHERE gets it followed by the LIKE patterns
     params = main_query["params"]
@@ -177,3 +183,51 @@ class TestGetDatasetListScopeSearch:
         assert result.returncode == 0, result.stderr[-2000:]
         assert match_queries(result) == []
         assert not result.logged("sql", "dataset_tag")
+
+
+@pytest.mark.parametrize("script, table, alias", [("search_datasets.cgi", "dataset d", "d"),
+                                                  ("search_gene_carts.cgi", "gene_cart gc", "gc")])
+class TestSearchByShareId:
+    """
+    #1383: the unified search links to one dataset in Dataset Explorer, or one gene list in Gene List
+    Manager, by share_id. The search then returns only that item, if the user may see it.
+    """
+
+    def main_query(self, result, table):
+        (entry,) = [e for e in result.logged("sql") if f"FROM {table}" in e["query"] and "COUNT(" not in e["query"]]
+        return entry
+
+    def test_share_id_narrows_to_that_item(self, script, table, alias):
+        result = run_cgi(script, fake_modules=USERHISTORY, query={"share_id": "ABC123"})
+        assert result.json()["success"] == 1
+        entry = self.main_query(result, table)
+        assert f"{alias}.share_id = %s" in entry["query"]
+        assert "ABC123" in entry["params"]
+
+    def test_visibility_still_applies(self, script, table, alias):
+        # Logged out: still public only
+        result = run_cgi(script, fake_modules=USERHISTORY, query={"share_id": "ABC123"})
+        assert f"{alias}.is_public = 1" in self.main_query(result, table)["query"]
+
+    def test_other_filters_are_ignored(self, script, table, alias):
+        # The page's remembered filters must not hide the linked item, so the search uses only the
+        #  share_id and the default visibility (which includes public items, unlike ownership=yours)
+        result = run_cgi(script, db={"sessions": SESSIONS}, fake_modules=USERHISTORY,
+                         query={"session_id": "owner", "share_id": "ABC123", "search_terms": "hair",
+                                "ownership": "yours", "organism_ids": "1", "date_added": "week"})
+        assert result.json()["success"] == 1
+        entry = self.main_query(result, table)
+        query = entry["query"]
+        assert "MATCH(" not in query and "LIKE" not in query
+        assert "organism_id in" not in query.lower() and "INTERVAL" not in query
+        assert f"{alias}.is_public = 1" in query
+        assert "hair" not in str(entry["params"])
+
+
+def test_dataset_search_by_share_id_counts_only_that_dataset():
+    """#1383: the result count (and so the pagination) uses the same share_id condition."""
+    db = {"sql": [{"match": "SELECT d.id", "rows": [["DS1"]]}, {"match": "SELECT COUNT(*)", "rows": [[1]]}]}
+    result = run_cgi("search_datasets.cgi", db=db, fake_modules=USERHISTORY, query={"share_id": "ABC123"})
+    assert result.json()["pagination"]["total_results"] == 1
+    (count,) = result.logged("sql", "COUNT(*)")
+    assert "d.share_id = %s" in count["query"] and "ABC123" in count["params"]

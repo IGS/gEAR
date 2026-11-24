@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>gEAR - Search</title>
+        <meta name="description" content="Search gEAR datasets, collections, gene lists, studies, projections and cell-cell communication analyses">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+             to be changed for any hosts where gEAR is not at the webserver root.
+          -->
+        <base href="/" />
+
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+    </head>
+    <body>
+      <div id="main-layout-c" class="columns is-fullheight">
+
+        <!--#include virtual="/include/primary_nav.html" -->
+
+        <section id="main-c" class="column pl-0 pt-0">
+
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content-c" role="main" class="m-3" data-nav-link="search_gear">
+            <div id="search-page">
+
+              <!-- Search box and filters -->
+              <section id="search-card" class="search-card" aria-label="Search">
+                <p class="search-intro">
+                  Find datasets, collections, gene lists, studies, projections and cell-cell communication
+                  analyses in one place. Results are view-only.
+                </p>
+
+                <form id="search-form" class="search-form" role="search" data-testid="search-form">
+                  <label for="search-q" class="is-sr-only">Search terms</label>
+                  <div class="control has-icons-left search-input-c">
+                    <input id="search-q" class="input is-medium" type="search" name="q" autocomplete="off"
+                           placeholder="Gene symbol, tissue, organism, author, GEO ID…" data-testid="search-q">
+                    <span class="icon is-left"><i class="mdi mdi-24px mdi-magnify" aria-hidden="true"></i></span>
+                  </div>
+                  <button id="search-submit" type="submit" class="button is-primary is-medium" data-testid="search-submit">Search</button>
+                </form>
+
+                <!-- Stage 2 (question search) is not built yet -->
+                <p id="question-hint" class="search-hint is-hidden">
+                  Or ask a question, for example
+                  <a href="#">find datasets where Pou4f3 is underexpressed in hair cells</a>
+                </p>
+
+                <div class="type-filter-c">
+                  <span id="type-filter-label" class="type-filter-label">
+                    Filter by type <span class="has-text-weight-normal">(pick one or more)</span>
+                  </span>
+                  <div id="type-filter" class="type-filter" role="group" aria-labelledby="type-filter-label" data-testid="type-filter">
+                    <button type="button" class="type-button" data-type="all" aria-pressed="true">
+                      <span class="type-button-label">All</span><span class="type-count" data-count-for="all">0</span>
+                    </button>
+                    <button type="button" class="type-button" data-type="dataset" aria-pressed="false">
+                      <span class="type-button-label">Datasets</span><span class="type-count" data-count-for="dataset">0</span>
+                    </button>
+                    <button type="button" class="type-button" data-type="collection" aria-pressed="false">
+                      <span class="type-button-label">Collections</span><span class="type-count" data-count-for="collection">0</span>
+                    </button>
+                    <button type="button" class="type-button" data-type="genelist" aria-pressed="false">
+                      <span class="type-button-label">Gene lists</span><span class="type-count" data-count-for="genelist">0</span>
+                    </button>
+                    <button type="button" class="type-button" data-type="study" aria-pressed="false">
+                      <span class="type-button-label">Studies</span><span class="type-count" data-count-for="study">0</span>
+                    </button>
+                    <button type="button" class="type-button" data-type="projection" aria-pressed="false">
+                      <span class="type-button-label">Projections</span><span class="type-count" data-count-for="projection">0</span>
+                    </button>
+                    <button type="button" class="type-button" data-type="ccc" aria-pressed="false">
+                      <span class="type-button-label">Cell-cell communication</span><span class="type-count" data-count-for="ccc">0</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="search-filters">
+                  <div class="field">
+                    <label class="label is-small" for="search-organism">Organism</label>
+                    <div class="select is-small">
+                      <select id="search-organism" data-testid="search-organism">
+                        <option value="">All organisms</option>
+                      </select>
+                    </div>
+                  </div>
+                  <!-- Hidden when logged out: logged-out searches see only public items -->
+                  <div id="search-ownership-field" class="field is-hidden">
+                    <label class="label is-small" for="search-ownership">Ownership</label>
+                    <div class="select is-small">
+                      <select id="search-ownership" data-testid="search-ownership">
+                        <option value="">Everything I can see</option>
+                        <option value="yours">Yours</option>
+                        <option value="shared">Shared with you</option>
+                        <option value="group">Group-affiliated</option>
+                        <option value="public">Public</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="label is-small" for="search-date-added">Date added</label>
+                    <div class="select is-small">
+                      <select id="search-date-added" aria-describedby="search-date-added-help" data-testid="search-date-added">
+                        <option value="">Any time</option>
+                        <option value="week">Within the last week</option>
+                        <option value="month">Within the last month</option>
+                        <option value="year">Within the last year</option>
+                      </select>
+                    </div>
+                    <p id="search-date-added-help" class="help">
+                      Collections and cell-cell communication analyses have no date, so a date leaves them out.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Results -->
+              <section id="results-section" class="results-section" aria-labelledby="results-summary">
+                <div class="results-header">
+                  <div class="results-status">
+                    <span id="results-loading" class="icon" aria-hidden="true" data-testid="results-loading"><i class="mdi mdi-24px mdi-loading mdi-spin"></i></span>
+                    <h2 id="results-summary" class="results-summary" aria-live="polite">Searching…</h2>
+                  </div>
+                  <div class="field is-horizontal results-sort">
+                    <label class="label is-small mr-2 mb-0" for="search-sort">Sort by</label>
+                    <div class="select is-small">
+                      <select id="search-sort" data-testid="search-sort">
+                        <option value="relevance">Relevance</option>
+                        <option value="title">Title (A–Z)</option>
+                        <option value="date">Date added (newest)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="no-results" class="no-results is-hidden" data-testid="no-results">
+                  <h3 class="title is-5 mb-2">No matches</h3>
+                  <p class="mb-3">Try fewer words, a gene symbol, or switch the type filter back to All.</p>
+                  <button id="clear-search" type="button" class="button is-primary is-outlined" data-testid="clear-search">Clear search</button>
+                </div>
+
+                <div id="results-pager-top" class="results-pager is-hidden">
+                  <span class="results-range"></span>
+                  <nav class="pagination is-small results-pagination" aria-label="Result pages, top" data-testid="results-pagination-top"></nav>
+                </div>
+
+                <div id="results-layout" class="results-layout is-hidden">
+                  <ol id="results-list" class="results-list" aria-label="Results" data-testid="results-list"></ol>
+                  <section id="result-preview" class="result-preview" aria-label="Selected result" data-testid="result-preview"></section>
+                </div>
+
+                <div id="results-pager-bottom" class="results-pager is-hidden">
+                  <span class="results-range"></span>
+                  <nav class="pagination is-small results-pagination" aria-label="Result pages, bottom" data-testid="results-pagination-bottom"></nav>
+                </div>
+              </section>
+            </div>
+
+            <!-- One row in the results list -->
+            <template id="result-row-template">
+              <li>
+                <button type="button" class="result-row" aria-pressed="false">
+                  <span class="type-icon" aria-hidden="true"><i class="mdi mdi-18px"></i></span>
+                  <span class="result-text">
+                    <span class="result-title"></span>
+                    <span class="result-subline"></span>
+                  </span>
+                </button>
+              </li>
+            </template>
+
+            <!-- The preview of the selected result. The type-specific part is filled in by search.js. -->
+            <template id="result-preview-template">
+              <div class="preview-band">
+                <span class="preview-type"><i class="mdi mdi-18px" aria-hidden="true"></i><span class="preview-type-label"></span></span>
+                <span class="access-badge"></span>
+              </div>
+              <div class="preview-body">
+                <div>
+                  <h3 class="preview-title"></h3>
+                  <p class="preview-desc"></p>
+                </div>
+                <div class="preview-actions">
+                  <a class="button is-primary preview-primary" data-testid="preview-primary"></a>
+                  <a class="button preview-secondary" data-testid="preview-secondary"></a>
+                  <button type="button" class="button is-text preview-copy" data-testid="preview-copy">Copy share link</button>
+                </div>
+                <dl class="preview-meta"></dl>
+                <div class="preview-extra"></div>
+                <div class="preview-links"></div>
+              </div>
+            </template>
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div id="funding"></div>
+      </footer>
+
+      <script src="js/vendor/js.cookie.js"></script>
+
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+      <!-- Page-specific CSS/JS loading here -->
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
+
+        insertVersionedJS('js/search.js', prefs.cache_version);
+
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/search.css', prefs.cache_version);
+      </script>
+
+      <!-- WCAG accessibility widget -->
+      <script>
+      window.ACCESSIBILITY_WIDGET_CONFIG = {
+        // Position on left side
+        widgetPosition: {
+          side: 'left',
+          left: '20px',
+          bottom: '20px'
+        }
+      };
+      </script>
+      <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
+
+    </body>
+</html>

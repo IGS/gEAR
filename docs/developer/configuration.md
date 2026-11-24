@@ -8,7 +8,7 @@ See also: [Setup overview](./setup/README.md), [RabbitMQ setup](./setup/rabbitmq
 
 ### `gear.ini`
 
-`gear.ini` sits at the repository root (for example `/opt/gEAR/gear.ini`). Git ignores it (see `.gitignore`). Make it by copying `gear.ini.template`, or `docker/gear.ini.docker.template` for Docker (which `docker/Dockerfile` copies in as `gear.ini.docker`), then fill in the placeholders. Never commit a filled-in `gear.ini`.
+`gear.ini` sits at the repository root (for example `/opt/gEAR/gear.ini`). Git ignores it (see `.gitignore`). Make it by copying `gear.ini.template`, or `docker/gear.ini.docker.template` for Docker, then fill in the placeholders. `docker/Dockerfile` copies the unfilled Docker template into the image as `gear.ini`, so the published image holds no secrets. docker-compose.yml mounts your checkout over it, so the running container uses the `gear.ini` in your checkout. Never commit a filled-in `gear.ini`.
 
 **Canonical loader: `lib/gear/serverconfig.py`**
 
@@ -200,13 +200,15 @@ Checked by grepping tracked code under `lib/`, `www/`, `listeners/`, `services/`
 
 ## `www/site_domain_prefs.json`
 
-This file holds branding and feature switches for each deployment (for example umgear.org or a NeMO portal). It is tracked in git, and each deployment edits it in place. A `site_domain_prefs.json.bak` file sits next to it. There are no `site_domain_prefs.<domain>.json` variants in the repository.
+This file holds branding and feature switches for each deployment (for example umgear.org or a NeMO portal). Git ignores it, like `gear.ini`. Make it by copying `www/site_domain_prefs.json.template`, then replace the placeholder values. Never commit a filled-in `site_domain_prefs.json`.
 
 | Key | Meaning | Read by |
 |---|---|---|
-| `domain_label` | Internal domain ID (`gear`, `nemo`, ...). Used for per-domain images under `img/by_domain/<label>/` and for domain-specific UI | `lib/geardb.py` (`geardb.domain_label`), `www/cgi/send_email.cgi`, `www/js/common.js`, `www/js/common.v2.js` |
-| `domain_short_display_label` | Short brand name shown in the UI and in e-mails (for example `gEAR`) | `lib/geardb.py` (`geardb.domain_short_label`), `www/js/common*.js`, `www/index.html`, `www/include/navigation_bar.html` |
-| `domain_tagline` | Tagline under the brand name | `www/js/common.v2.js` |
+| `domain_label` | Internal domain ID (`gear`, `nemo`, ...). Used for per-domain images under `img/by_domain/<label>/` and for domain-specific UI | `lib/geardb.py` (`geardb.domain_label`), `www/cgi/send_email.cgi`, `www/js/common.js`, `www/js/common.v2.js`, `www/js/intro.js` |
+| `domain_short_display_label` | Short brand name shown in the UI and in e-mails (for example `gEAR`) | `lib/geardb.py` (`geardb.domain_short_label`), `www/js/common*.js`, `www/js/intro.js`, `www/index.html`, `www/include/navigation_bar.html` |
+| `domain_tagline` | Tagline under the brand name | `www/js/common.v2.js`, `www/js/intro.js` |
+| `default_demo_gene` | Gene used as an example search. The intro page's fallback when `intro_example_genes` is unset | `www/js/intro.js` |
+| `intro_example_genes` | Optional. Example searches shown as "Try:" links under the intro page search box. Each entry is one gene or a comma-separated set, searched together (for example `["Sox2", "Myo7a,Pou4f3,Gfi1"]`) | `www/js/intro.js` |
 | `citations` | List of `{lines: [...], links: [{label, url}]}` shown in the "cite us" UI | `www/js/common.v2.js` |
 | `domain_url` | Public base URL of the site | `lib/geardb.py` (`geardb.domain_url`), `www/cgi/send_email.cgi`, `www/cgi/finalize_uploaded_expression_dataset.cgi`, `www/api/resources/{gosling_spec,spatialpanel,track_hub}.py`, `bin/migrate_epiviz_to_gosling.py` |
 | `enabled_plugins` | Map of plugin name to the list of pages it loads on. See [Plugins](./services/plugins.md) | `www/js/common.js`, `www/js/common.v2.js` |

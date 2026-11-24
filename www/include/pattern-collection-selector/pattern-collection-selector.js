@@ -432,17 +432,10 @@ export const populatePatternWeights = async () => {
 
         // Event listener to select the weight and update the selectedPattern.selectedWeights
         // Multiple weights can be selected
-
         thisRow.addEventListener("click", (event) => {
-            // create object from event.currentTarget.dataset
-            const obj = {};
-            for (const key in event.currentTarget.dataset) {
-                obj[key] = event.currentTarget.dataset[key];
-            }
-
             if (event.currentTarget.classList.contains('is-selected')) {
                 event.currentTarget.classList.remove('is-selected');
-                selectedPattern.selectedWeights = selectedPattern.selectedWeights.filter((weight) => weight.label !== obj.label);
+                selectedPattern.selectedWeights = selectedPattern.selectedWeights.filter((w) => w.label !== weight.label);
                 // change mdi-plus to mdi-minus
                 event.currentTarget.querySelector('.mdi').classList.remove('mdi-check');
                 event.currentTarget.querySelector('.mdi').classList.add('mdi-plus');
@@ -450,9 +443,10 @@ export const populatePatternWeights = async () => {
             }
             event.currentTarget.classList.add('is-selected');
 
+            // Re-add the original weight object from the API so fields like "binary" are kept.
             // This is done so that the Proxy object can detect the change
             const currentWeights = selectedPattern.selectedWeights;
-            currentWeights.push(obj);
+            currentWeights.push(weight);
             selectedPattern.selectedWeights = currentWeights;
 
             // change mdi-minus to mdi-plus
@@ -483,15 +477,15 @@ const selectPatternList = (shareId) => {
     updatePatternListSelectorLabel();
 }
 
+/**
+ * Toggles the selection of the pattern weights with the provided labels by clicking each row.
+ * Selected rows become deselected and unselected rows become selected, keeping
+ * selectedPattern.selectedWeights and the row checkmarks in sync.
+ * NOTE: Rows are not cleared first. Callers that want an exact selection must clear the rows
+ * and selectedPattern.selectedWeights beforehand (see the Top N / All shortcut buttons).
+ * @param {string[]} labels - The labels of the weights to toggle.
+ */
 export const selectPatternWeights = (labels) => {
-
-    // uncheck all the existing rows
-    const rows = document.getElementsByClassName('.dropdown-weight-item');
-    for (const row of rows) {
-        row.classList.remove('is-selected');
-    };
-
-    // select our labels
     for (const label of labels) {
         document.querySelector(`.dropdown-weight-item[data-label="${CSS.escape(label)}"]`).click();
     }

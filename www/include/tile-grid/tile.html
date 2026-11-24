@@ -189,7 +189,9 @@
 </template>
 
 <template id="tmpl-tile-grid-choose-display-modal-display">
-    <div class="js-modal-display column is-3 is-clickable p-1">
+    <div class="js-modal-display column is-3 is-clickable p-1 mb-3">
+        <p class="js-modal-display-label is-size-6 has-text-weight-semibold has-text-grey-dark mb-1" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></p>
+        <p class="js-modal-display-detail is-size-7 has-text-grey-dark mb-1 is-hidden" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></p>
         <figure class="image is-4by3">
             <img alt="Saved display">
             <span class="js-modal-display-type tag is-info is-relative"></span>
@@ -225,6 +227,35 @@
     </div>
 </template>
 
+<template id="tmpl-tile-gene-not-found-help">
+    <!-- Gene-not-found message (centered, like other tile messages) with a left-aligned footer strip
+         that helps find genes the dataset does have.
+         No <p> elements: tile CSS makes every <p> in .card-image a 200px-tall loading/error message.
+         Layout uses Bulma helpers and inline styles instead of page CSS, so it looks the same on every page. -->
+    <div class="js-gene-not-found-help is-flex is-flex-direction-column p-2 m-2"
+        style="min-height: 200px;" data-testid="gene-not-found-help">
+        <div class="js-gene-not-found-message is-flex is-flex-grow-1 is-align-items-center is-justify-content-center has-text-centered has-text-weight-bold p-2"></div>
+        <div class="js-gene-not-found-footer has-text-left pt-2 px-2" style="border-top: 1px solid rgba(0, 0, 0, 0.1);">
+            <div class="js-similar-genes is-hidden mb-1" data-testid="similar-genes">
+                <div class="is-size-7 mb-1">Similar genes in this dataset (each opens a new search in a new tab):</div>
+                <div class="js-similar-genes-tags tags mb-0"></div>
+            </div>
+            <div>
+                <a class="js-gene-list-link is-size-7" target="_blank" rel="noopener" data-testid="gene-list-link">
+                    <span class="icon-text">
+                        <span class="icon">
+                            <i class="mdi mdi-format-list-bulleted" aria-hidden="true"></i>
+                        </span>
+                        <!-- Underline goes on the text: icon-text is inline-flex, which does not inherit the link's underline -->
+                        <span class="is-underlined">View all genes in this dataset</span>
+                        <span class="is-sr-only">(opens in a new tab)</span>
+                    </span>
+                </a>
+            </div>
+        </div>
+    </div>
+</template>
+
 <template id="tmpl-tile-infobox">
     <div class="modal js-infobox">
         <div class="modal-background"></div>
@@ -236,6 +267,17 @@
             <section class="modal-card-body">
                 <h5 class="js-infobox-title title is-5"></h5>
                 <div class="js-infobox-ldesc content"></div>
+                <p class="js-infobox-gene-list mb-4">
+                    <a class="js-infobox-gene-list-link" target="_blank" rel="noopener" data-testid="infobox-gene-list-link">
+                        <span class="icon-text">
+                            <span class="icon">
+                                <i class="mdi mdi-format-list-bulleted" aria-hidden="true"></i>
+                            </span>
+                            <span>View genes in this dataset</span>
+                            <span class="is-sr-only">(opens in a new tab)</span>
+                        </span>
+                    </a>
+                </p>
 
                 <div class="js-infograph-illustration"></div>
                 <figure class="image">

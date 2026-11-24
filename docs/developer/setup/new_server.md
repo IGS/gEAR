@@ -64,16 +64,34 @@ Follow instructions in [the Python setup](./python.md) document
 
 Follow instructions in [the Apache setup](./apache.md) document
 
+### Plotly image export
+
+Install Chromium for kaleido so "Download image" and display thumbnails work. Follow [Plotly image export](./plotly_image_export.md).
+
 ### Sass
 
 Used for changing theme colors between portal flavors (e.g. `www/css/gear-theme-purple.scss`).
 
-Ruby Sass (`ruby-sass`) is end-of-life and may not be packaged on current Ubuntu releases. Install Dart Sass instead, either via npm or a standalone release from <https://github.com/sass/dart-sass/releases>:
+Ruby Sass (`ruby-sass`) is end-of-life and may not be packaged on current Ubuntu releases. Install Dart Sass 1.79.0 or newer instead, either via npm or a standalone release from <https://github.com/sass/dart-sass/releases>:
 
 ```bash
-sudo npm install -g sass
+# Remove ruby sass if present, to avoid conflicts with dart-sass
+sudo apt remove ruby-sass
+
+# Change VER as needed
+VER=1.83.4
+cd /tmp
+wget https://github.com/sass/dart-sass/releases/download/$VER/dart-sass-$VER-linux-x64.tar.gz
+sudo tar -xzf dart-sass-$VER-linux-x64.tar.gz -C /opt
+sudo ln -sf /opt/dart-sass/sass /usr/local/bin/sass
+hash -r
+
 sass www/css/gear-theme-purple.scss www/css/gear-theme-purple.css
 ```
+
+Select the desired portal's brand colors in the SCSS before compiling; if multiple
+sets are uncommented, the last set takes precedence. The compiled theme also exports
+the primary color and a contrast-safe text color used for selected results.
 
 ### gEAR portal
 
@@ -111,6 +129,30 @@ sudo systemctl start spatial-panel.service
 ```
 
 To deploy code or unit file changes to the consumers later, follow [Rolling Out Updates](../services/rabbitmq_consumers.md#rolling-out-updates).
+
+### Cron Jobs
+
+`bin/generate_intro_stats.py` pre-computes the statistics, "What's new" lists and study list shown on the intro page (`intro.html`), the featured studies on the home page (`index.html`) and the Studies page (`studies.html`). It reads the database using the credentials in `gear.ini` and writes `www/stats_archive/intro_stats.json`. Until it has run, those sections stay empty or hidden, so run it once by hand and then schedule it daily.
+
+Add the job to the crontab of the account that owns the gEAR checkout, since it needs write access to `www/stats_archive/`. If gEAR uses a virtual environment, put that environment's `python3` in front of the script instead of relying on the `#!/usr/bin/env python3` line, because cron runs with a minimal `PATH`.
+
+```bash
+# Cron is installed and running by default on Ubuntu; check with:
+systemctl status cron
+
+# Run it once now and confirm it writes the file
+cd ~/git/gEAR/bin && ./generate_intro_stats.py
+
+# Add a daily 3:15 AM run to your crontab without opening an editor
+(crontab -l 2>/dev/null; echo "15 3 * * * cd $HOME/git/gEAR/bin && ./generate_intro_stats.py >> $HOME/generate_intro_stats.log 2>&1") | crontab -
+
+# Confirm the entry
+crontab -l
+```
+
+To edit or remove the entry later, use `crontab -e`. The log file collects the script's output and any warnings, such as a `www/landing/<name>/study.json` it skipped because it was invalid.
+
+Rerun the script by hand after adding or editing a study's `study.json`, rather than waiting for the nightly run.
 
 ### Data transfer
 

@@ -144,7 +144,14 @@ def load_dataset_info(filename):
 
     Returns None if there is no such file, or it can't be read as a JSON object.
     """
-    json_path = os.path.splitext(resolve_domino_path(filename))[0] + ".json"
+    return read_dataset_info(os.path.splitext(resolve_domino_path(filename))[0] + ".json")
+
+
+def read_dataset_info(json_path):
+    """
+    The dataset info in json_path, read as load_dataset_info describes.  Takes a full path, so
+    callers that list a folder themselves (e.g. the unified search) can use it.
+    """
     if not os.path.isfile(json_path):
         return None
 

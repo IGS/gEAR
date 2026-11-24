@@ -51,8 +51,8 @@ ul#pattern-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
 ul#pattern-result-list li.is-selected {
-    background-color: var(--gear-bg-primary);
-    color: white;
+    background-color: var(--gear-bg-primary, #362E5C);
+    color: var(--gear-text-on-primary, #fff);
 }
 ul#go-terms {
     max-height: 17em;
@@ -69,6 +69,14 @@ ul#go-terms li {
     /* But allow it to grow so that aspect ratio can be maintained for ultrawide screens */
     grid-auto-rows: minmax(400px, auto);
     gap: 8px;
+}
+
+/* A single dataset (share_id) or the expanded view: one full-width tile. Toggled by TileGrid in tilegrid.js.
+   The id is needed to beat the #result-panel-grid rule's 12 columns. */
+#result-panel-grid.is-single-tile,
+#zoomed-panel-grid.is-single-tile {
+    grid-template-columns: 1fr;
+    width: unset;   /* auto-size the grid to the content */
 }
 
 .js-tile {

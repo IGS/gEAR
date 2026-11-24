@@ -124,28 +124,28 @@ class TestUpdateLayoutVisibility:
         assert body["success"] == 0 and "fake database error" in body["error"]
 
 
-@pytest.mark.parametrize("script, extra", [
-    ("remove_dataset_from_layout.cgi", {"dataset_id": "DS1"}),
-    ("remove_display_from_layout.cgi", {"display_id": "7"}),
+@pytest.mark.parametrize("script, extra, removal", [
+    ("remove_dataset_from_layout.cgi", {"dataset_id": "DS1"}, "layout.remove_members_by_dataset_id"),
+    ("remove_display_from_layout.cgi", {"display_id": "7"}, "layout.remove_member_by_display_id"),
 ])
 class TestRemoveFromLayout:
-    def test_anonymous_gets_one_error(self, script, extra):
+    def test_anonymous_gets_one_error(self, script, extra, removal):
         result = run_cgi(script, db=DB, query={"layout_share_id": "L1", **extra})
         assert "logged in" in result.json()["error"]
 
-    def test_unknown_collection(self, script, extra):
+    def test_unknown_collection(self, script, extra, removal):
         result = run_cgi(script, db=DB, query={"session_id": "owner", "layout_share_id": "NOPE", **extra})
         assert result.json()["error"] == "Dataset collection not found."
 
-    def test_other_user_is_refused(self, script, extra):
+    def test_other_user_is_refused(self, script, extra, removal):
         result = run_cgi(script, db=DB, query={"session_id": "other", "layout_share_id": "L1", **extra})
         assert result.json()["success"] == 0
-        assert not result.logged("layout.remove_member_by_dataset_id")
-        assert not result.logged("layout.remove_member_by_display_id")
+        assert not result.logged(removal)
 
-    def test_owner_removes_member(self, script, extra):
+    def test_owner_removes_member(self, script, extra, removal):
         result = run_cgi(script, db=DB, query={"session_id": "owner", "layout_share_id": "L1", **extra})
         assert result.json()["success"] == 1
+        assert result.logged(removal)
 
 
 class TestRemoveLayout:

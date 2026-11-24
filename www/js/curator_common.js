@@ -1,6 +1,7 @@
 'use strict';
 
 import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js";
+import { fetchDatasetGeneSymbols } from "./helpers/dataset-genes.js";
 import { availablePalettes, plotly2MatplotlibNames } from "./helpers/plot-display-config.js";
 import { FacetWidget } from "./classes/facets.js";
 import { DatasetTree } from "./classes/tree.js";
@@ -389,8 +390,7 @@ const curatorApiCallsMixin = {
      */
     async fetchGeneSymbols(datasetId, analysisId) {
         try {
-            const data = await super.fetchGeneSymbols(datasetId, analysisId);
-            return [...new Set(data.gene_symbols)]; // Dataset may have a gene repeated in it, so resolve this.
+            return await fetchDatasetGeneSymbols(datasetId, analysisId || null);
         } catch (error) {
             logErrorInConsole(error);
             const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."

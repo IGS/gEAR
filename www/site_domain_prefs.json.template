@@ -1,0 +1,29 @@
+{
+    "domain_label": "myportal",
+    "domain_short_display_label": "MyPortal",
+    "domain_tagline": "Your portal tagline here",
+    "default_demo_gene": "Sox2",
+    "intro_example_genes": ["Sox2", "Pou4f3,Atoh1"],
+    "citations": [
+        {
+            "lines": [
+                "Citation title for your portal.",
+                "Author A, et al. Journal. Year.",
+                "doi: 10.0000/example-doi"
+            ],
+            "links": [
+                {
+                    "label": "PMID: 00000000",
+                    "url": "https://pubmed.ncbi.nlm.nih.gov/00000000/"
+                }
+            ]
+        }
+    ],
+    "domain_url": "https://portal.example.org",
+    "enabled_plugins": {},
+    "google_analytics_4_measurement_id": "G-XXXXXXXXXX",
+    "links_out": {
+        "DVD": false,
+        "HomoloGene": true
+    }
+}

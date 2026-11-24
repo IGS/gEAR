@@ -1,5 +1,8 @@
 @charset "utf-8";
 
+@use "sass:color";
+@use "sass:math";
+
 // Import a Google Font
 @import url('https://fonts.googleapis.com/css?family=Inter:400,700');
 
@@ -43,11 +46,26 @@ $gear-state-success: #E2FFBD;
 $gear-state-error: #FFCDBD;
 $gear-state-disabled: #D1D1D1;
 
+@function accessible-text-color($background) {
+    $luminance: 0;
+    @each $channel, $weight in ("red": 0.2126, "green": 0.7152, "blue": 0.0722) {
+        $value: math.div(color.channel($background, $channel, $space: rgb), 255);
+        @if $value <= 0.04045 {
+            $value: math.div($value, 12.92);
+        } @else {
+            $value: math.pow(math.div($value + 0.055, 1.055), 2.4);
+        }
+        $luminance: $luminance + $value * $weight;
+    }
+    @return if($luminance > 0.179, #000, #fff);
+}
+
 // Export these to CSS variables
 :root {
     --gear-bg-primary: #{$gear-bg-primary};
     --gear-bg-secondary: #{$gear-bg-secondary};
     --gear-bg-tertiary: #{$gear-bg-tertiary};
+    --gear-text-on-primary: #{accessible-text-color($gear-bg-primary)};
 }
 
 // Update some of Bulma's global variables
@@ -97,4 +115,3 @@ $input-radius: 5px;
 // Bulma switch extension
 // FROM "https://cdn.jsdelivr.net/npm/bulma-switch@2.0.4/src/sass/index.sass"
 @import "../css/bulma/sass/bulma-switch.sass";
-

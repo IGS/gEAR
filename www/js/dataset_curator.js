@@ -16,8 +16,17 @@ let genePostAutocomplete = null;
 let selectedGene = null;
 let allColumns = [];
 
-const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
+const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin", "scatter3d"];
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
+
+// Plotly axis series selects. A series may only be chosen on one axis at a time.
+const AXIS_SERIES_CLASSES = ["js-plotly-x-axis", "js-plotly-y-axis", "js-plotly-z-axis"];
+
+// Plotly config settings that only apply to 3D scatter plots
+const Z_AXIS_PROPS = ["z_axis", "z_title", "z_min", "z_max", "hide_z_labels"];
+
+// Plotly booleans the API treats as false when missing, so a false value does not need to be saved
+const FALSE_BY_DEFAULT_PROPS = ["hide_x_labels", "hide_y_labels", "hide_z_labels", "hide_legend", "jitter", "reverse_palette"];
 
 /**
  * Represents a PlotlyHandler, a class that handles Plotly plots.
@@ -34,19 +43,24 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
     classElt2Prop = {
         "js-plotly-x-axis": "x_axis"
         , "js-plotly-y-axis": "y_axis"
+        , "js-plotly-z-axis": "z_axis"
         , "js-plotly-label": "point_label"
         , "js-plotly-hide-x-ticks": "hide_x_labels"
         , "js-plotly-hide-y-ticks": "hide_y_labels"
+        , "js-plotly-hide-z-ticks": "hide_z_labels"
         , "js-plotly-color": "color_name"
         , "js-plotly-size": "size_by_group"
         , "js-plotly-facet-row": "facet_row"
         , "js-plotly-facet-col": "facet_col"
         , "js-plotly-x-title": "x_title"
         , "js-plotly-y-title": "y_title"
+        , "js-plotly-z-title": "z_title"
         , "js-plotly-x-min": "x_min"
         , "js-plotly-y-min": "y_min"
+        , "js-plotly-z-min": "z_min"
         , "js-plotly-x-max": "x_max"
         , "js-plotly-y-max": "y_max"
+        , "js-plotly-z-max": "z_max"
         , "js-plotly-hide-legend": "hide_legend"
         , "js-plotly-add-jitter": "jitter"
         , "js-plotly-marker-size": "marker_size"
@@ -204,6 +218,10 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
             curatorCommon.loadColorscaleSelect(true);
         }
 
+        if (this.plotType === "scatter3d") {
+            showZAxisOptions();
+            return;
+        }
         if (["scatter", "tsne_dyna"].includes(this.plotType)) {
             prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_scatter.html");
             postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_scatter.html");
@@ -269,6 +287,9 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
             // Return either objects or nothing (which will be filtered out)
             return vlinePos ? { "vl_pos": vlinePos, "vl_style": vlineStyle } : null;
         }).filter(x => x !== null);
+
+        // Keep only settings that apply to this plot type, so they are not saved with the display
+        this.plotConfig = pruneUnusedPlotlyConfig(this.plotType, this.plotConfig);
     }
 
     /**
@@ -1107,9 +1128,12 @@ const setupPlotlyOptions = async (datasetId) => {
     const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x));
     const continuousColumns = difference(allColumns, catColumns);
 
-    const xColumns = ["bar", "violin"].includes(plotType) ? catColumns : allColumns;
+    // 3D scatter plots need continuous series on all three axes
+    const is3d = plotType === "scatter3d";
+
+    const xColumns = ["bar", "violin"].includes(plotType) ? catColumns : (is3d ? continuousColumns : allColumns);
     const xUseRaw = ["bar", "violin"].includes(plotType) ? false : true;
-    const yColumns = ["bar", "violin"].includes(plotType) ? continuousColumns : allColumns;
+    const yColumns = ["bar", "violin"].includes(plotType) || is3d ? continuousColumns : allColumns;
     const colorColumns = ["bar", "line", "violin"].includes(plotType) ? catColumns : allColumns;
     const colorUseRaw = ["bar", "line", "violin"].includes(plotType) ? false : true;
 
@@ -1120,6 +1144,11 @@ const setupPlotlyOptions = async (datasetId) => {
     updateSeriesOptions("js-plotly-label", allColumns, true);
     updateSeriesOptions("js-plotly-facet-row", catColumns, false);
     updateSeriesOptions("js-plotly-facet-col", catColumns, false);
+
+    if (is3d) {
+        updateSeriesOptions("js-plotly-z-axis", continuousColumns, true);
+        updateSeriesOptions("js-plotly-size", continuousColumns, true);
+    }
 
     // If plot_type is bar or line, disable the marker size options
     if (["bar", "line", "violin"].includes(plotType)) {
@@ -1259,39 +1288,17 @@ const setupPlotlyOptions = async (datasetId) => {
         });
     }
 
-    // Ensure that the same series is not selected for both x-axis and y-axis (plot would be meaningless)
-    for (const classElt of [...document.getElementsByClassName("js-plotly-x-axis"), ...document.getElementsByClassName("js-plotly-y-axis")]) {
-        // if x-axis series changes, disable that option in y-axis series, and vice versa
-        classElt.addEventListener("change", (event) => {
-            const series = event.target.value;
-
-            // if no series selected, do nothing
-            if (!series) {
-                return;
-            }
-
-            const otherClass = event.target.classList.contains("js-plotly-x-axis") ? "js-plotly-y-axis" : "js-plotly-x-axis";
-
-            for (const otherClassElt of [...document.getElementsByClassName(otherClass)]) {
-                // enable all series
-                for (const opt of otherClassElt.options) {
-                    opt.removeAttribute("disabled");
+    // Ensure that the same series is not selected on two axes (plot would be meaningless)
+    for (const axisClass of AXIS_SERIES_CLASSES) {
+        for (const classElt of document.getElementsByClassName(axisClass)) {
+            classElt.addEventListener("change", (event) => {
+                // if no series selected, do nothing
+                if (!event.target.value) {
+                    return;
                 }
-                // disable selected series in other series
-                const opt = otherClassElt.querySelector(`option[value="${series}"]`);
-
-                // If bar/violin plot, continuous y-axis but categorical x-axis
-                if (!opt) {
-                    continue;
-                }
-
-                opt.setAttribute("disabled", "disabled");
-                // If this option was selected, unselect it
-                if (otherClassElt.value === series) {
-                    otherClassElt.value = "";
-                }
-            }
-        });
+                syncAxisSeriesOptions(axisClass, event.target.value);
+            });
+        }
     }
 
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
@@ -1568,6 +1575,100 @@ const setupSVGOptions = () => {
 };
 
 /**
+ * Shows the z-axis options and hides the subplot (facet) options, for 3D scatter plots.
+ * The z-axis select becomes required, so the plot button stays disabled until it is filled.
+ * Must run before the validation events are set up.
+ */
+const showZAxisOptions = () => {
+    document.getElementById("z-axis-container").classList.remove("is-hidden");
+    document.getElementById("z-axis-dropdown").classList.remove("is-hidden");
+    for (const elt of document.getElementsByClassName("js-plotly-z-axis")) {
+        elt.classList.add("js-plot-req");
+    }
+
+    // Plotly 3D scatter plots cannot be split into subplots
+    for (const elt of [...document.getElementsByClassName("js-plotly-facet-row"), ...document.getElementsByClassName("js-plotly-facet-col")]) {
+        elt.closest(".field")?.classList.add("is-hidden");
+    }
+    document.getElementById("subplots-dropdown").classList.add("is-hidden");
+};
+
+/**
+ * Lists the Plotly config settings that do not apply to a plot type.
+ * @param {string} plotType - The curator plot type (e.g. "scatter", "tsne_dyna", "scatter3d").
+ * @returns {string[]} Config keys to drop.
+ */
+const unusedPlotlyProps = (plotType) => {
+    const unused = [];
+    if (plotType === "scatter3d") {
+        // 3D scatter plots cannot be faceted, jittered or given vertical lines
+        unused.push("facet_row", "facet_col", "jitter", "vlines");
+    } else {
+        unused.push(...Z_AXIS_PROPS);
+    }
+    if (["bar", "line", "violin"].includes(plotType)) {
+        // Marker sizes and vertical lines are scatter-only options
+        unused.push("size_by_group", "marker_size", "vlines");
+    }
+    if (["bar", "line"].includes(plotType)) {
+        unused.push("jitter");  // Only scatter and violin plots can add jitter
+    }
+    return unused;
+};
+
+/**
+ * Removes settings from a Plotly config that do not apply to the plot type or that only repeat an API default,
+ * so the saved display keeps just the choices that matter.
+ *
+ * Dropped: settings for other plot types, empty values (undefined, null, ""), false booleans that
+ * default to false, and an empty vlines list. The API fills in its defaults for anything missing.
+ *
+ * @param {string} plotType - The curator plot type.
+ * @param {Object} config - The Plotly config collected from the curator.
+ * @returns {Object} A new, pruned config.
+ */
+const pruneUnusedPlotlyConfig = (plotType, config) => {
+    const unused = unusedPlotlyProps(plotType);
+    const isUsed = ([key, value]) => {
+        if (unused.includes(key)) return false;
+        if (value === undefined || value === null || value === "") return false;
+        if (value === false && FALSE_BY_DEFAULT_PROPS.includes(key)) return false;
+        if (key === "vlines" && Array.isArray(value) && !value.length) return false;
+        return true;
+    };
+    return Object.fromEntries(Object.entries(config).filter(isUsed));
+};
+
+/**
+ * Keeps a series from being chosen on more than one axis.
+ * The series just chosen is unselected from the other axes, then each axis disables the series chosen on the others.
+ * @param {string} changedClass - The axis class (e.g. "js-plotly-x-axis") whose series changed.
+ * @param {string} series - The newly chosen series.
+ */
+const syncAxisSeriesOptions = (changedClass, series) => {
+    for (const otherClass of AXIS_SERIES_CLASSES.filter((cls) => cls !== changedClass)) {
+        for (const otherElt of document.getElementsByClassName(otherClass)) {
+            if (otherElt.value === series) {
+                otherElt.value = "";
+            }
+        }
+    }
+
+    for (const axisClass of AXIS_SERIES_CLASSES) {
+        // Pre- and post-plot elements of a class are kept in sync, so the first one holds the value
+        const usedElsewhere = AXIS_SERIES_CLASSES
+            .filter((cls) => cls !== axisClass)
+            .map((cls) => document.getElementsByClassName(cls)[0]?.value)
+            .filter(Boolean);
+        for (const elt of document.getElementsByClassName(axisClass)) {
+            for (const opt of elt.options) {
+                opt.disabled = usedElsewhere.includes(opt.value);
+            }
+        }
+    }
+};
+
+/**
  * Shows the corresponding subsection based on the selected option in the plot configuration menu.
  * @param {Event} event - The event triggered by the user's selection.
  */
@@ -1582,6 +1683,9 @@ const showPostPlotlyParamSubsection = (event) => {
             break;
         case "Y-axis":
             document.getElementById("y-axis-section-post").classList.remove("is-hidden");
+            break;
+        case "Z-axis":
+            document.getElementById("z-axis-section-post").classList.remove("is-hidden");
             break;
         case "Color":
             document.getElementById("color-section-post").classList.remove("is-hidden");

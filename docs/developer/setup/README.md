@@ -16,6 +16,7 @@ This directory contains guides for setting up and configuring a gEAR server inst
 - **[MySQL Database](./mysql.md)** - MySQL installation and configuration
 - **[Apache Web Server](./apache.md)** - Apache setup with mod_wsgi
 - **[Python Environment](./python.md)** - Python packages and dependencies
+- **[Plotly Image Export](./plotly_image_export.md)** - Chromium for kaleido, used by "Download image" and display thumbnails
 - **[R and rpy2](./r_rpy2.md)** - R installation for ProjectR (if running locally)
 - **[RabbitMQ](./rabbitmq.md)** - Message broker for async job processing
 

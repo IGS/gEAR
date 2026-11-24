@@ -62,7 +62,7 @@ Related pages: [API reference](./api_reference.md), [upload pipeline](./upload_p
 | `metadatavalidator.py` | `MetadataValidator`: lists of required attributes and per-field validators | `metadata.py` only |
 | `mg_plotting.py` | Multi-gene Plotly builders: dot plot, heatmap (with dendrograms and cluster bars), quadrant, (stacked) violin and volcano, plus the matching `prep_*` / `validate_*` helpers | `www/api/resources/mg_plotly_data.py` |
 | `orthology.py` | Maps genes between organisms using the HDF5 ortholog files (`map_single_gene`, `map_multiple_genes`, `map_dataframe_genes`, `get_ortholog_file`) | `resources/orthologs.py`, `resources/projectr.py` |
-| `plotting.py` | Single-gene Plotly figures: `generate_plot()` (bar, box, histogram, line, scatter, strip, contour and violin) and `plotly_color_map()` | `resources/plotly_data.py`, `svg_data.py`, `tsne_data.py`, `spatial_scanpy_data.py`, `common.py`, `get_h5ad_plot.cgi` |
+| `plotting.py` | Single-gene Plotly figures: `generate_plot()` (bar, box, histogram, line, scatter, 3-D scatter, strip and violin) and `plotly_color_map()` | `resources/plotly_data.py`, `svg_data.py`, `tsne_data.py`, `spatial_scanpy_data.py`, `common.py`, `get_h5ad_plot.cgi` |
 | `primary_analysis.py` | `add_primary_analysis_to_dataset()` detects or adds clustering, tSNE and UMAP, and creates composition plots | `anndata_processor.py` |
 | `queue.py` | Low-level pika helpers: `get_connection()`, `get_async_connection()` and `RabbitMQQueue` | `lib/gearqueue.py` only (see the overlap note below) |
 | `serverconfig.py` | `ServerConfig().parse()` returns a `ConfigParser` for `<repo>/gear.ini` | used almost everywhere |

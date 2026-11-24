@@ -401,7 +401,7 @@ class SpatialPanel(Resource):
         """
         Cache the gene's spatial data and return a script tag that embeds the Panel viewer.
 
-        Main request body keys: gene_symbol, projection_id, is_zoomed, min_genes,
+        Main request body keys: gene_symbol, projection_id, is_zoomed,
         expression_min_clip, vmin, vmax, disable_save, and x/y range start/end.
 
         Returns:
@@ -418,8 +418,6 @@ class SpatialPanel(Resource):
         gene_symbol = req.get('gene_symbol', None)  # gene symbol or projection pattern
         projection_id = req.get('projection_id', None)
         is_zoomed = req.get('is_zoomed', False)
-        min_genes = req.get('min_genes', 0)
-        min_genes = int(min_genes) if min_genes is not None else 0
         expression_min_clip = req.get('expression_min_clip', None)
         vmin = req.get('vmin', None)    # User-defined expression colorbar minimum
         vmax = req.get('vmax', None)    # User-defined expression colorbar maximum

@@ -111,7 +111,7 @@
                                     <i class="mdi mdi-close-circle" aria-hidden="true"></i>
                                 </span>
                             </div>
-                            <p class="help">Matches the start of words, so "Tono" finds "Tonotopic".</p>
+                            <p class="help">Matches the start of words, so "Tono" finds "Tonotopic". Use quotes for an exact phrase, e.g. "hair cell".</p>
                         </div>
 
                         <div class="js-trigger-dataset-search field mt-1" id="filter-collection-container">
@@ -265,6 +265,12 @@
                                 </div>
                             </div>
                         </section> <!-- #view-controls -->
+
+                        <!-- Shown when the page was opened from a link to one dataset (share_id URL parameter) -->
+                        <div id="linked-item-notice" class="notification is-info is-light is-hidden py-2 px-4" role="status" data-testid="linked-item-notice">
+                            <span id="linked-item-message"></span>
+                            <button type="button" id="linked-item-show-all" class="button is-small is-text" data-testid="linked-item-show-all">Show all datasets</button>
+                        </div>
 
                         <div id="include-public-membership-c" class="js-trigger-dataset-search is-hidden field mt-1">
                             <p class="label is-size-7">For each dataset, also show membership in public dataset collections.</p>
@@ -679,7 +685,9 @@
     </template>
 
     <template id="tmpl-displays-modal-display">
-        <div class="js-modal-display column is-3 p-1">
+        <div class="js-modal-display column is-3 p-1 mb-3">
+            <p class="js-modal-display-label is-size-6 has-text-weight-semibold has-text-grey-dark mb-1" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></p>
+            <p class="js-modal-display-detail is-size-7 has-text-grey-dark mb-1 is-hidden" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></p>
             <figure class="image is-4by3">
                 <img alt="Saved display">
                 <span class="js-modal-display-type tag is-relative"></span>

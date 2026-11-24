@@ -11389,4 +11389,11 @@ label.panel-block:hover {
   margin-top: 0.375em;
 }
 
+:root {
+  --gear-bg-primary: #362E5C;
+  --gear-bg-secondary: #544A8E;
+  --gear-bg-tertiary: #EFEDF7;
+  --gear-text-on-primary: #fff;
+}
+
 /*# sourceMappingURL=gear-theme-purple.css.map */

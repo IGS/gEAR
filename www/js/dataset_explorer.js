@@ -1,6 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, downloadWithMetadata, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, SHARE_ID_MAX_LENGTH, triggerUrlDownload, validateShareId } from "./common.v2.js";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, downloadWithMetadata, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, setDisplayCardText, SHARE_ID_MAX_LENGTH, triggerUrlDownload, validateShareId } from "./common.v2.js";
+import { describeGoslingSession } from "./helpers/gosling-fxns.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 
 /* Imported variables
@@ -12,6 +13,11 @@ let searchByCollection = false;
 let includePublicMembership = false;
 const resultsPerPage = 20;
 let listView = "table";
+
+// A share_id from the URL (a link from the unified search, #1383). The first search shows only
+//  that dataset; the next search, filter change or "Show all" shows everything again.
+let linkedShareId = null;
+let showingLinkedItem = false;
 
 let flatDatasetCollectionData = {};   // flattened version of all dataset collections availabe to user
 
@@ -2467,6 +2473,12 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
             displayType.textContent = display.plot_type;
         }
 
+        // Name the display; saved Gosling views also get their panels and ranges, as they all share one preview image.
+        // Every Gosling card keeps room for the two panel lines (blank for upload defaults) so the images line up.
+        const isGosling = display.plot_type === "gosling";
+        const session = isGosling ? describeGoslingSession(display.plotly_config) : null;
+        setDisplayCardText(displayElement, display.label, session?.lines, session?.full, isGosling ? 2 : 0);
+
         // Determine number of times display is in current layout
         const displayCount = displayElement.querySelector('.js-collection-display-count');
 
@@ -2722,12 +2734,41 @@ const setupPagination = (pagination) => {
 }
 
 /**
+ * Ends the single-dataset view that a share_id link opened (#1383): removes share_id from the URL,
+ * without adding a history entry, and hides the notice.
+ */
+const leaveLinkedItemView = () => {
+    showingLinkedItem = false;
+    document.getElementById("linked-item-notice").classList.add("is-hidden");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("share_id");
+    window.history.replaceState({}, "", url);
+}
+
+/**
+ * Shows the notice above the results of a share_id link.
+ *
+ * @param {boolean} found - Whether the linked dataset was found (it may not exist, or be private).
+ */
+const showLinkedItemNotice = (found) => {
+    document.getElementById("linked-item-message").textContent = found
+        ? "Showing the dataset from your link."
+        : "The dataset from your link wasn't found, or you don't have access to it.";
+    document.getElementById("linked-item-notice").classList.remove("is-hidden");
+}
+
+/**
  * Submits a search request with the specified search terms and pagination options.
  *
  * @param {number} [page=1] - The page number to retrieve.
  * @returns {Promise<void>} - A promise that resolves when the search request is completed.
  */
 const submitSearch = async (page=1) => {
+
+    // Any new search leaves the single-dataset view of a share_id link
+    if (showingLinkedItem) {
+        leaveLinkedItemView();
+    }
 
     // destroy current ResultItem objects
     resultItems = [];
@@ -2756,6 +2797,13 @@ const submitSearch = async (page=1) => {
     searchCriteria.limit = resultsPerPage;
     searchCriteria.page = page;
 
+    if (linkedShareId) {
+        // The CGI ignores the other criteria when given a share_id
+        searchCriteria.share_id = linkedShareId;
+        linkedShareId = null;
+        showingLinkedItem = true;
+    }
+
     try {
         const data = await apiCallsMixin.fetchDatasets(searchCriteria)
         // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
@@ -2769,6 +2817,10 @@ const submitSearch = async (page=1) => {
 
         processSearchResults(data);
         setupPagination(data.pagination);
+
+        if (showingLinkedItem) {
+            showLinkedItemNotice(data.datasets.length > 0);
+        }
     } catch (error) {
         logErrorInConsole(error);
         createToast("Failed to search datasets");
@@ -3058,6 +3110,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
     }
 
+    // A link to one dataset (from the unified search, #1383) shows just that dataset, expanded
+    const linkedShareIdParam = getUrlParameter("share_id")?.trim();
+    if (linkedShareIdParam) {
+        linkedShareId = linkedShareIdParam;
+        listView = "list-expanded";
+    }
+
     await submitSearch();
 
     // Load dataset collections
@@ -3132,6 +3191,12 @@ searchTermsElt.addEventListener("keyup", async (event) => {
 
 // Changing sort by criteria should update the search results
 document.getElementById("sort-by").addEventListener("change", async () => {
+    await submitSearch();
+});
+
+// Leave the single-dataset view of a share_id link, back in the default table view
+document.getElementById("linked-item-show-all").addEventListener("click", async () => {
+    listView = "table";
     await submitSearch();
 });
 

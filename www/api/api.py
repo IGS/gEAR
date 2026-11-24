@@ -61,6 +61,7 @@ from resources.mg_plotly_data import MGPlotlyData  # noqa: E402
 from resources.orthologs import Orthologs  # noqa: E402
 
 from resources.plotly_data import PlotlyData  # noqa: E402
+from resources.search import UnifiedSearch  # noqa: E402
 from resources.projectr import (  # noqa: E402
     ProjectR,
     ProjectROutputFile,
@@ -109,6 +110,9 @@ api.add_resource(DatasetProcessingStatus, '/import/dataset/<share_uid>/status')
 # other routes
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
 api.add_resource(DatasetDisplay, '/displays/<display_id>')
+
+# search routes
+api.add_resource(UnifiedSearch, '/search')
 
 if __name__ == '__main__':
     # Problem:

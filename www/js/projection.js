@@ -46,13 +46,17 @@ const createSelectedPatternProxy = (selectedPattern) => {
                     document.getElementById("single-multi-single").checked = true;
                     isMulti = false;
                 }
-                // Enable or disable the "binary" option if all selectedWeights have "binary" property set to True
-                const binary = value.every((w) => w.binary);
-                algorithmElt.querySelector('option[value="binary"]').disabled = !binary;
+                // Binary Gene Count works with unweighted lists or weighted lists whose patterns are all 0/1 (#487, #666).
+                // The server flags those weights as "binary". An empty selection happens mid-change (switching lists,
+                // clearing weights), so leave the option alone until weights are actually selected.
+                if (value.length) {
+                    const binary = value.every((w) => w.binary);
+                    algorithmElt.querySelector('option[value="binary"]').disabled = !binary;
 
-                // if "binary" is selected, reset the algorithm "select" box to "pca"
-                if (algorithmElt.value === 'binary') {
-                    algorithmElt.value = 'pca';
+                    // Only fall back to "pca" if "binary" is selected but no longer valid
+                    if (!binary && algorithmElt.value === 'binary') {
+                        algorithmElt.value = 'pca';
+                    }
                 }
 
             } else if (key === "gctype") {
@@ -211,10 +215,12 @@ const parsePatternCartURLParams = async () => {
         console.warn(`Pattern ${pattern} not found in pattern cart data. Perhaps the user does not have access to it.`);
         return;
     }
-    setSelectedPattern({ shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: [] });
-
-    // Update proxy so that multi-gene radio button can be enabled/disabled
-    selectedPattern = createSelectedPatternProxy(getSelectedPattern());
+    // Assign through the proxy (not a new object) so the algorithm and multi-pattern rules run.
+    // Order matters: gctype must be set before selectedWeights.
+    selectedPattern.shareId = foundPattern.share_id;
+    selectedPattern.label = foundPattern.label;
+    selectedPattern.gctype = foundPattern.gctype;
+    selectedPattern.selectedWeights = [];
 
     // we cannot the click event, since the pattern list items only render when an intiial category is selected
     // so we need to manually populate the pattern weights
@@ -496,7 +502,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     registerPatternEventListeners(apiCallsMixin);
     registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
 
+    // Hand the proxy back to the selector module so its writes trigger the proxy's set trap.
+    // ES modules don't share the global, so without this the algorithm/multi-pattern rules never run.
     selectedPattern = createSelectedPatternProxy(getSelectedPattern());
+    setSelectedPattern(selectedPattern);
 
     // add event listener for when the submit-projection-search button is clicked
     document.getElementById('submit-projection-search').addEventListener('click', async (event) => {

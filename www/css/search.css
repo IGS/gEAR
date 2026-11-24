@@ -1,0 +1,514 @@
+/*
+ * search.css - The unified search page, search.html (#1383).
+ *
+ * Layout and sizes follow the Stage 1 "list and preview" design. Colors come from the site theme
+ * (--gear-bg-*, set in gear-theme-purple.scss), except the six result-type colors below.
+ */
+
+#search-page {
+    /* One color pair per result type: a light background and a dark foreground (at least 4.5:1) */
+    --type-dataset-bg: var(--gear-bg-tertiary);
+    --type-dataset-fg: var(--gear-bg-primary);
+    --type-collection-bg: #FBEDE2;
+    --type-collection-fg: #8F4410;
+    --type-genelist-bg: #DBE8E5;
+    --type-genelist-fg: #2A5A60;
+    --type-study-bg: #E3ECF7;
+    --type-study-fg: #1D4E89;
+    --type-projection-bg: #E8F0DA;
+    --type-projection-fg: #3F6212;
+    --type-ccc-bg: #F8E4EE;
+    --type-ccc-fg: #8A2453;
+
+    --search-border: #DCE1E7;
+    --search-divider: #EDF0F3;
+    --search-muted-text: #55606E;
+    --search-control-border: #A9B3BF;
+
+    /* Left-aligned next to the menu. The cap keeps very wide screens from stretching the text. */
+    max-width: 1600px;
+    container: search-page / inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ------------------------------------------------------------ search box and filters */
+
+.search-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.125rem;
+    padding: 1.75rem;
+    background: white;
+    border: 1px solid var(--search-border);
+    border-radius: 12px;
+}
+
+.search-intro,
+.search-hint {
+    color: var(--search-muted-text);
+}
+
+.search-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+}
+
+.search-input-c {
+    flex: 999 1 320px;
+}
+
+.type-filter-c {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.type-filter-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.type-filter {
+    display: flex;
+    flex-wrap: wrap;
+    border: 1px solid var(--search-control-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.type-button {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 44px;
+    padding: 0 0.75rem;
+    border: 0;
+    border-right: 1px solid var(--search-control-border);
+    white-space: nowrap;
+    background: white;
+    color: #18212B;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.type-button:last-child {
+    border-right: 0;
+}
+
+.type-button[aria-pressed="true"] {
+    background: var(--gear-bg-primary);
+    color: var(--gear-text-on-primary, white);
+    font-weight: 600;
+}
+
+/* A check mark on selected buttons, so the state doesn't depend on color alone */
+.type-button[aria-pressed="true"]::before {
+    content: "\F012C";   /* mdi-check */
+    font-family: "Material Design Icons";
+    font-size: 1rem;
+}
+
+.type-count {
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--gear-bg-tertiary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.type-button[aria-pressed="true"] .type-count {
+    background: var(--gear-bg-secondary);
+    color: white;
+}
+
+.search-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--search-divider);
+}
+
+.search-filters .field {
+    margin-bottom: 0;
+}
+
+.search-filters .help {
+    max-width: 22rem;
+}
+
+/* ------------------------------------------------------------ results */
+
+.results-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.results-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.results-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#results-loading {
+    color: var(--gear-bg-primary);
+}
+
+/* While a search runs, the previous results fade and can't be clicked */
+#results-section[aria-busy="true"] .results-layout,
+#results-section[aria-busy="true"] .results-pager,
+#results-section[aria-busy="true"] .no-results {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #results-loading .mdi-spin {
+        animation: none;
+    }
+
+    #results-section[aria-busy="true"] .results-layout,
+    #results-section[aria-busy="true"] .results-pager,
+    #results-section[aria-busy="true"] .no-results {
+        transition: none;
+    }
+}
+
+.results-summary {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.results-sort {
+    align-items: center;
+}
+
+.no-results {
+    padding: 2.5rem;
+    background: white;
+    border: 1px dashed var(--search-control-border);
+    border-radius: 12px;
+}
+
+.results-layout {
+    /* The list takes a third of the width and the preview the rest */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+/* On narrow screens the preview goes below the list */
+@container search-page (max-width: 860px) {
+    .results-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.results-layout.is-hidden {
+    display: none;
+}
+
+.results-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: white;
+    border: 1px solid var(--search-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.results-list li + li {
+    border-top: 1px solid var(--search-divider);
+}
+
+.result-row {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 0;
+    background: white;
+    font: inherit;
+    text-align: left;
+    color: #18212B;
+    cursor: pointer;
+}
+
+.result-row:hover {
+    background: #F7F6FB;
+}
+
+.result-row[aria-pressed="true"] {
+    background: var(--gear-bg-tertiary);
+    box-shadow: inset 4px 0 0 var(--gear-bg-primary);
+}
+
+.result-row:focus-visible,
+.type-button:focus-visible {
+    outline: 3px solid #9D93D1;
+    outline-offset: -3px;
+}
+
+.result-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.result-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.result-subline {
+    font-size: 0.8125rem;
+    color: var(--search-muted-text);
+}
+
+.type-icon {
+    flex: 0 0 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+/* ------------------------------------------------------------ preview */
+
+.result-preview {
+    background: white;
+    border: 1px solid var(--search-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.preview-band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+}
+
+.preview-type {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.access-badge {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: white;
+    color: #3B4552;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.preview-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.5rem;
+}
+
+.preview-title {
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.preview-desc {
+    margin-top: 0.5rem;
+    line-height: 1.6;
+    color: #3B4552;
+    white-space: pre-line;
+    max-width: 80ch;   /* keep lines readable on wide screens */
+}
+
+.preview-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.preview-actions .button {
+    min-height: 44px;
+}
+
+.preview-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.875rem 1.5rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--search-divider);
+    border-bottom: 1px solid var(--search-divider);
+}
+
+.preview-meta-row dt {
+    font-size: 0.75rem;
+    color: var(--search-muted-text);
+}
+
+.preview-meta-row dd {
+    font-size: 0.875rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.preview-extra {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.preview-extra:empty {
+    display: none;
+}
+
+.preview-section-title {
+    margin-bottom: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #3B4552;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.chip {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--gear-bg-tertiary);
+    font-size: 0.8125rem;
+}
+
+/* Gene symbols are italic, by convention */
+.gene-chip {
+    border-radius: 4px;
+    padding: 3px 8px;
+    background: var(--type-genelist-bg);
+    color: #1F4448;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-style: italic;
+}
+
+.more-label {
+    font-size: 0.8125rem;
+    color: var(--search-muted-text);
+}
+
+.preview-link-list {
+    border: 1px solid var(--search-divider);
+    border-radius: 8px;
+}
+
+.preview-link-list li {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+}
+
+.preview-link-list li + li {
+    border-top: 1px solid var(--search-divider);
+}
+
+.preview-thumbnail {
+    display: block;
+    max-width: 100%;
+    max-height: 260px;
+    border: 1px solid var(--search-divider);
+    border-radius: 8px;
+}
+
+.preview-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* ------------------------------------------------------------ type colors */
+
+[data-type="dataset"] .type-icon, #result-preview[data-type="dataset"] .preview-band {
+    background: var(--type-dataset-bg); color: var(--type-dataset-fg);
+}
+[data-type="collection"] .type-icon, #result-preview[data-type="collection"] .preview-band {
+    background: var(--type-collection-bg); color: var(--type-collection-fg);
+}
+[data-type="genelist"] .type-icon, #result-preview[data-type="genelist"] .preview-band {
+    background: var(--type-genelist-bg); color: var(--type-genelist-fg);
+}
+[data-type="study"] .type-icon, #result-preview[data-type="study"] .preview-band {
+    background: var(--type-study-bg); color: var(--type-study-fg);
+}
+[data-type="projection"] .type-icon, #result-preview[data-type="projection"] .preview-band {
+    background: var(--type-projection-bg); color: var(--type-projection-fg);
+}
+[data-type="ccc"] .type-icon, #result-preview[data-type="ccc"] .preview-band {
+    background: var(--type-ccc-bg); color: var(--type-ccc-fg);
+}
+
+/* ------------------------------------------------------------ pagination, above and below the results */
+
+.results-pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--search-muted-text);
+}
+
+.results-pager.is-hidden {
+    display: none;
+}
+
+.results-pagination {
+    margin: 0;
+}
+
+/* The small icon after links that open in a new tab */
+.new-tab-icon {
+    margin-left: 0.25rem;
+    font-size: 0.875em;
+}
