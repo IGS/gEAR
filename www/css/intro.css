@@ -418,14 +418,14 @@ main section[id] { scroll-margin-top: var(--intro-nav-h); }
 /* ------------------------------------------------------------------- stats */
 .stat-tiles {
     display: grid;
-    /* One equal-width row however many tiles show (the landing pages tile can be hidden) */
+    /* One equal-width row however many tiles show (the studies tile can be hidden) */
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
 .stat-tile[hidden] { display: none; }
-/* The landing pages tile links to landing.html */
+/* The studies tile links to studies.html */
 a.stat-tile.is-link {
     display: block;
     color: inherit;

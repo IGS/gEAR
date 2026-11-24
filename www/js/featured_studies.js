@@ -26,11 +26,11 @@ const isForPortal = (page, domainLabel) => {
 };
 
 /**
- * Narrows intro_stats.json's landing_pages (every portal's) to this portal's, using domain_label
+ * Narrows intro_stats.json's "studies" (every portal's) to this portal's, using domain_label
  * from site_domain_prefs.json. Throws if the prefs file can't be read. Also used by intro.js to
  * count them.
  */
-export const landingPagesForThisPortal = async (pages) => {
+export const studiesForThisPortal = async (pages) => {
     const domainLabel = (await (await fetch(PREFS_URL, { cache: 'no-cache' })).json()).domain_label;
     return pages.filter((page) => isForPortal(page, domainLabel));
 };
@@ -39,20 +39,20 @@ export const landingPagesForThisPortal = async (pages) => {
  * Fills the side-scroller and un-hides the section. It stays hidden if the stats file is
  * missing or no page is marked featured.
  *
- * @param {Array|null} landingPages - landing_pages from intro_stats.json if the caller already
+ * @param {Array|null} studies - "studies" from intro_stats.json if the caller already
  *     fetched it; otherwise the file is fetched here.
  */
-export const loadFeaturedStudies = async (landingPages = null) => {
+export const loadFeaturedStudies = async (studies = null) => {
     const section = document.getElementById('featured-studies');
     const track = document.getElementById('featured-track');
     if (!section || !track) return;
 
-    let pages = landingPages;
+    let pages = studies;
     if (!pages) {
         try {
             const response = await fetch(STATS_URL, { cache: 'no-cache' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            pages = (await response.json()).landing_pages ?? [];
+            pages = (await response.json()).studies ?? [];
         } catch (error) {
             logErrorInConsole(`Featured studies unavailable: ${error}`);
             return;
@@ -60,7 +60,7 @@ export const loadFeaturedStudies = async (landingPages = null) => {
     }
     // intro_stats.json lists every portal's pages; keep this portal's
     try {
-        pages = (await landingPagesForThisPortal(pages)).filter((page) => page.featured);
+        pages = (await studiesForThisPortal(pages)).filter((page) => page.featured);
     } catch (error) {
         logErrorInConsole(`Featured studies unavailable, couldn't read domain_label: ${error}`);
         return;

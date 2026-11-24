@@ -30,8 +30,8 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <!-- Lists every landing page in www/landing/ for this portal (see js/landing.js) -->
-          <section id="content-c" role="main" class="m-3 container" data-nav-link="landing_pages">
+          <!-- Lists every landing page in www/landing/ for this portal (see js/studies.js) -->
+          <section id="content-c" role="main" class="m-3 container" data-nav-link="studies">
 
             <div class="studies-intro">
               <h2 class="title is-4 mb-2">Studies</h2>
@@ -102,11 +102,11 @@
         await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
-        insertVersionedJS('js/landing.js', prefs.cache_version);
+        insertVersionedJS('js/studies.js', prefs.cache_version);
 
         // Now load page-specific CSS
         insertVersionedCSS('css/common.v2.css', prefs.cache_version);
-        insertVersionedCSS('css/landing.css', prefs.cache_version);
+        insertVersionedCSS('css/studies.css', prefs.cache_version);
       </script>
 
       <!-- WCAG accessibility widget -->

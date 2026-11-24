@@ -1,16 +1,16 @@
 'use strict';
 
 /*
- * landing.js - landing.html, the full list of study landing pages for this portal.
+ * studies.js - studies.html, the full list of study landing pages for this portal.
  *
- * Pages come from landing_pages in stats_archive/intro_stats.json (built by
- * bin/generate_intro_stats.py from each www/landing/<name>/landing.json), narrowed to this
+ * Pages come from "studies" in stats_archive/intro_stats.json (built by
+ * bin/generate_intro_stats.py from each www/landing/<name>/study.json), narrowed to this
  * portal the same way as the "Featured studies" scroller on index.html and intro.html.
  * Unlike the scroller, every page is listed, not only the featured ones.
  */
 
 import { initCommonUI, logErrorInConsole } from "./common.v2.js";
-import { landingPagesForThisPortal } from "./featured_studies.js";
+import { studiesForThisPortal } from "./featured_studies.js";
 
 const STATS_URL = '/stats_archive/intro_stats.json';
 
@@ -136,7 +136,7 @@ const loadStudies = async () => {
     try {
         const response = await fetch(STATS_URL, { cache: 'no-cache' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        pages = await landingPagesForThisPortal((await response.json()).landing_pages ?? []);
+        pages = await studiesForThisPortal((await response.json()).studies ?? []);
     } catch (error) {
         logErrorInConsole(`Study list unavailable: ${error}`);
         showUnavailable("The study list couldn't be loaded right now. Please try again later.");

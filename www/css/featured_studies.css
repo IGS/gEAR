@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
-   Featured studies: side-scrolling cards built from www/landing/<name>/landing.json
+   Featured studies: side-scrolling cards built from www/landing/<name>/study.json
    Shared by index.html and intro.html; markup + loader in js/featured_studies.js
    ------------------------------------------------------------------ */
 #featured-studies {
@@ -25,7 +25,7 @@
     display: flex;
     gap: 0.5rem;
 }
-/* "Browse all studies" link to landing.html, kept on the right next to the arrows */
+/* "Browse all studies" link to studies.html, kept on the right next to the arrows */
 #featured-studies .featured-all {
     margin-left: auto;
     font-weight: 600;

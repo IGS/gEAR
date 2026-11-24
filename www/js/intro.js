@@ -7,7 +7,7 @@
  * the rest of the page (search, tools, guides) still works.
  */
 
-import { landingPagesForThisPortal, loadFeaturedStudies } from './featured_studies.js';
+import { studiesForThisPortal, loadFeaturedStudies } from './featured_studies.js';
 
 const STATS_URL = '/stats_archive/intro_stats.json';
 
@@ -357,12 +357,12 @@ const loadStats = async () => {
     if (totals.private_datasets == null && totals.all_datasets != null && totals.public_datasets != null) {
         totals.private_datasets = totals.all_datasets - totals.public_datasets;
     }
-    // landing_pages lists every portal's; count this portal's, and keep the tile hidden if none
+    // "studies" lists every portal's; count this portal's, and keep the tile hidden if none
     try {
-        totals.landing_pages = (await landingPagesForThisPortal(data.landing_pages ?? [])).length;
-        document.getElementById('stat-tile-landing').hidden = !totals.landing_pages;
+        totals.studies = (await studiesForThisPortal(data.studies ?? [])).length;
+        document.getElementById('stat-tile-studies').hidden = !totals.studies;
     } catch (error) {
-        console.warn(`Couldn't count landing pages: ${error}`);
+        console.warn(`Couldn't count studies: ${error}`);
     }
 
     for (const el of document.querySelectorAll('.js-stat')) {
@@ -385,7 +385,7 @@ const loadStats = async () => {
     renderCards(document.getElementById('new-panel-collections'), data.recent_collections, 'collections');
 
     // Reuse the data already fetched rather than requesting the file a second time
-    loadFeaturedStudies(data.landing_pages ?? []);
+    loadFeaturedStudies(data.studies ?? []);
 };
 
 loadStats();

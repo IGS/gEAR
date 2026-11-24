@@ -68,9 +68,9 @@ def main():
         'by_year': get_by_year(cursor),
         'recent_datasets': get_recent_datasets(cursor, args.recent_count),
         'recent_collections': get_recent_collections(cursor, args.recent_count),
-        'landing_pages': get_landing_pages(),
+        'studies': get_studies(),
     }
-    # The landing page count is per portal, so intro.js works it out from landing_pages
+    # The study count is per portal, so intro.js works it out from studies
     result['totals']['private_datasets'] = result['totals']['all_datasets'] - result['totals']['public_datasets']
 
     cursor.close()
@@ -184,14 +184,14 @@ def get_recent_collections(cursor, limit):
     } for label, share_id, n, organisms in cursor.fetchall()]
 
 
-def get_landing_pages():
+def get_studies():
     """
-    Each www/landing/<name>/ folder is a study landing page, described by its landing.json:
+    Each www/landing/<name>/ folder is a study landing page, described by its study.json:
 
         {"portals": ["gear"], "featured": true, "date": "2026-01-31", "title": "...",
          "summary": "...", "pmid": "...", "thumbnail": "thumbnail.jpg", "canonical_url": "https://..."}
 
-    Every portal shares this directory. All pages with a landing.json are listed along with their
+    Every portal shares this directory. All pages with a study.json are listed along with their
     "portals"; the browser keeps only those matching the current domain_label (or "*"), so changing
     site_domain_prefs.json takes effect without regenerating this file.
 
@@ -204,7 +204,7 @@ def get_landing_pages():
         return pages
 
     for name in os.listdir(LANDING_DIR):
-        manifest_path = os.path.join(LANDING_DIR, name, 'landing.json')
+        manifest_path = os.path.join(LANDING_DIR, name, 'study.json')
         if not os.path.isfile(manifest_path):
             continue
         try:

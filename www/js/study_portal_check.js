@@ -1,16 +1,16 @@
 /*
- * landing_portal_check.js - Shared by every page under www/landing/.
+ * study_portal_check.js - Shared by every page under www/landing/.
  *
  * All portals (gEAR, NeMO Analytics, cancer gEAR, ...) deploy the same www/landing/ folder, so each
  * landing page exists on every portal even though its datasets only live on some of them. Each page's
- * landing.json lists the portals it belongs to. When the page is opened on another portal, this shows
+ * study.json lists the portals it belongs to. When the page is opened on another portal, this shows
  * a banner at the top of the content pointing to the page's canonical_url.
  */
 (async () => {
     try {
         const [prefs, manifest] = await Promise.all([
             fetch('/site_domain_prefs.json').then((r) => r.json()),
-            fetch(new URL('landing.json', window.location.href)).then((r) => r.json()),
+            fetch(new URL('study.json', window.location.href)).then((r) => r.json()),
         ]);
 
         const portals = manifest.portals ?? [];
@@ -39,7 +39,7 @@
         const content = document.getElementById('content-c') ?? document.body;
         content.prepend(banner);
     } catch (error) {
-        // Missing landing.json or prefs: leave the page as it is
-        console.warn('Landing portal check skipped:', error);
+        // Missing study.json or prefs: leave the page as it is
+        console.warn('Study portal check skipped:', error);
     }
 })();
