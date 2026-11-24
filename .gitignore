@@ -15,3 +15,6 @@ orthomap_inputs
 gear.ini
 www/site_domain_prefs.json
 feature_mapping.tar.gz
+# Schema migrations for existing databases are code, unlike database dumps
+!bin/migrations/*.sql
+www/nemoarchive_import/*.json

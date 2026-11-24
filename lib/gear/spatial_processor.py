@@ -12,10 +12,13 @@ from pathlib import Path
 
 import geardb
 from gear.anndata_processor import write_status
+from gear.metadata_fields import parse_taxon_id
+from gear.ontology import annotate_upload_obs
 from gear.spatialhandler import SPATIALTYPE2CLASS
 from gear.utils.job_coordination import UploadCancelledError
 from gear.utils.archives import ARCHIVE_READ_ERRORS, ArchiveReadError, archive_error_message
 from gear.utils.obs import (
+    find_primary_variable_candidates,
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
 )
@@ -48,7 +51,7 @@ def process_spatial_synchronously(
     with open(metadata_file, 'r') as f:
         metadata = json.load(f)
 
-    sample_taxid = metadata.get("sample_taxid", None)
+    sample_taxid = parse_taxon_id(metadata.get("sample_taxid"))
     organism_id = geardb.get_organism_id_by_taxon_id(sample_taxid)
     # store_expression_dataset.cgi saves the upload as <share_uid>.tar.gz or <share_uid>.tar
     filepath = staging_area / f"{share_uid}.tar.gz"
@@ -70,19 +73,23 @@ def process_spatial_synchronously(
 
         adata = spatial_obj.sdata.tables["table"]
 
-        # Standarize some columns before proceeding to the ambiguous ones.
-        adata.obs = standardize_and_sanitize_obs(adata.obs)
-
-        questionable = flag_ambiguous_obs_columns(adata.obs)
-
         metadata_file = staging_area / 'metadata.json'
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
+
+        # Standarize some columns before proceeding to the ambiguous ones.
+        adata.obs = standardize_and_sanitize_obs(adata.obs)
+        # Add tissue/cell type names for ontology term IDs and check the sample metadata (#422)
+        annotate_upload_obs(adata, metadata)
+
+        questionable = flag_ambiguous_obs_columns(adata.obs)
 
         metadata['questionable_obs_columns'] = questionable
         # Nothing flagged -- nothing for the user to review, so the uploader
         # can skip straight past that step.
         metadata['obs_dtype_reviewed'] = not bool(questionable)
+        # Columns the user can choose as the primary variable in the same step (#435)
+        metadata['primary_variable_candidates'] = find_primary_variable_candidates(adata.obs)
 
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)

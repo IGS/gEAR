@@ -9,6 +9,7 @@ import traceback
 import geardb
 from flask import request
 from flask_restful import Resource
+from gear.metadata_fields import holds_only_missing_values
 
 from .common import get_adata_shadow, get_spatial_adata
 
@@ -28,6 +29,8 @@ class H5ad(Resource):
 
         Query params: analysis_id (optional). Columns with more than 50 categories are
         returned under "obs_levels_truncated" instead of "obs_levels".
+        Columns holding only missing value words like "not applicable" or N/A are left out
+        (gear.metadata_fields.holds_only_missing_values).
         """
         args = request.args
         analysis_id = args.get('analysis_id')
@@ -59,7 +62,8 @@ class H5ad(Resource):
                 'message': "Encountered an issue with loading the AnnData object"
             }
 
-        columns = adata.obs.columns.tolist()
+        # Leave out columns that only say the data is missing, e.g. an age_value column of "not applicable"
+        columns = [col for col in adata.obs.columns.tolist() if not holds_only_missing_values(adata.obs[col])]
 
         # Do we have these coordinates from the analysis workbench?
         # If so, add these as potential dropdown choices.

@@ -9,6 +9,7 @@ import typing
 import geardb
 from flask import request
 from flask_restful import Resource, reqparse
+from gear.metadata_fields import holds_only_missing_values
 
 from .common import get_adata_from_analysis, get_adata_shadow, get_spatial_adata
 
@@ -53,7 +54,8 @@ class Aggregations(Resource):
         Return per-category observation counts for each categorical obs column.
 
         Request body keys: analysis_id (optional) and filters (dict of column name to
-        list of selected values).
+        list of selected values). Columns holding only missing value words like
+        "not applicable" or N/A are left out (gear.metadata_fields.holds_only_missing_values).
         """
         session_id = request.cookies.get("gear_session_id", "")
         args = parser.parse_args()
@@ -96,6 +98,9 @@ class Aggregations(Resource):
             columns.remove("replicate")
 
         columns = [col for col in columns if not col.endswith("_colors")]
+        # Same as /h5ad/<dataset_id>: a column that only says the data is missing (e.g. all
+        #  "not applicable") isn't offered as a filter
+        columns = [col for col in columns if not holds_only_missing_values(obs[col])]
 
         # Filter only categorical columns
         categorical_columns = list(

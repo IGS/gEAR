@@ -18,18 +18,118 @@ let trackContainer;
 let processingStatus = null;
 const processingStatusCheckInterval = 10; // seconds
 
-const requiredMetadataFields = ['metadata-title', 'metadata-summary', 'metadata-dataset-type',
-    'metadata-contact-name', 'metadata-annotation-source', 'metadata-annotation-version',
-    'metadata-contact-name', 'metadata-contact-email',
-    'metadata-taxon-id', 'metadata-organism'
-];
-
-const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform-id',
-    'metadata-instrument', 'metadata-library-selection', 'metadata-library-source',
-    'metadata-geo-id', 'metadata-library-strategy', 'metadata-pubmed-id'
-];
+// Metadata template field rules, built from lib/gear/metadata_fields.py by bin/build_metadata_templates.py
+let metadataFields = [];
+let maxKeywords = null;
+let maxKeywordLength = null;
+let annotationReleaseMaxLength = null;
+let geoIdMaxLength = null;
 
 /* --- Functions and Classes --- */
+
+/**
+ * Returns the form element for a metadata template field, e.g. 'contact_name' -> #metadata-contact-name
+ *
+ * @param {string} fieldName - The template field name.
+ * @returns {HTMLElement} The form element.
+ */
+const metadataElement = (fieldName) => {
+    return document.getElementsByName(`metadata-${fieldName.replaceAll('_', '-')}`)[0];
+}
+
+/**
+ * Returns the form value for a metadata template field. Yes/No fields shown as checkboxes give 'Yes' or 'No'.
+ *
+ * @param {string} fieldName - The template field name.
+ * @returns {string} The field's value.
+ */
+const getMetadataValue = (fieldName) => {
+    const element = metadataElement(fieldName);
+    if (element.type === 'checkbox') return element.checked ? 'Yes' : 'No';
+    return element.value;
+}
+
+/**
+ * Sets the form value for a metadata template field. A checkbox is checked for 'Yes' (any case).
+ *
+ * @param {string} fieldName - The template field name.
+ * @param {string} value - The value to set.
+ */
+const setMetadataValue = (fieldName, value) => {
+    const element = metadataElement(fieldName);
+    if (element.type === 'checkbox') {
+        element.checked = String(value).trim().toLowerCase() === 'yes';
+        return;
+    }
+    element.value = value;
+}
+
+/**
+ * Returns true if a metadata field is required, given the values currently in the form.
+ *
+ * @param {Object} field - A field from metadata_fields.json.
+ * @returns {boolean}
+ */
+const isMetadataFieldRequired = (field) => {
+    if (field.required) return true;
+    return Object.entries(field.required_if).some(([other, wanted]) => getMetadataValue(other) === wanted);
+}
+
+/**
+ * Loads the metadata template field rules used to validate the metadata form.
+ */
+const loadMetadataFields = async () => {
+    const {data} = await axios.get('./user_templates/metadata_fields.json');
+    metadataFields = data.fields;
+    maxKeywords = data.max_keywords;
+    maxKeywordLength = data.max_keyword_length;
+    annotationReleaseMaxLength = data.annotation_release_max_length;
+    geoIdMaxLength = data.geo_id_max_length;
+
+    // Stop typing past the database column widths (GitHub #1323). Values filled in from a
+    // spreadsheet can still be longer, and validateMetadataForm reports those.
+    for (const field of metadataFields) {
+        const element = metadataElement(field.name);
+        if (field.max_length && field.max_length < 65535 && element && 'maxLength' in element) {
+            element.maxLength = field.max_length;
+        }
+    }
+}
+
+/**
+ * The microarray hybridization protocol is only asked for with microarray datasets.
+ */
+const toggleMicroarrayFields = () => {
+    const isMicroarray = metadataElement('dataset_type').value === 'microarray';
+    document.getElementById('metadata-microarray-hybridization-protocol-c').classList.toggle('is-hidden', !isMicroarray);
+}
+
+/**
+ * Fills the principal investigator suggestions with PI names already in gEAR, so a PI is chosen
+ * instead of typed again with a different spelling. Each is shown with its institute, to tell
+ * apart PIs who share a name. The field still takes a new name.
+ */
+const loadPiNameOptions = async () => {
+    let piNames = [];
+    try {
+        const {data} = await axios.post('./cgi/get_pi_names.cgi', convertToFormData({
+            session_id: getCurrentUser()?.session_id
+        }));
+        piNames = data.pi_names || [];
+    } catch (error) {
+        // Suggestions are a convenience; the field works without them
+        console.error('Could not load PI names', error);
+        return;
+    }
+
+    const datalist = document.getElementById('metadata-pi-name-options');
+    datalist.replaceChildren(...piNames.map(({name, institute}) => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.label = institute ? `${name} (${institute})` : name;
+        return option;
+    }));
+}
 
 /**
  * Checks the current processing status of the dataset by making an asynchronous request
@@ -211,6 +311,20 @@ const finalizeUpload = async () => {
 }
 
 /**
+ * Shows the result of filling in the metadata form from a spreadsheet, with a green check or a red alert icon.
+ *
+ * @param {string} message - The message to show.
+ * @param {boolean} succeeded - Whether the form was filled in.
+ */
+const showMetadataUploadStatus = (message, succeeded) => {
+    const icon = document.getElementById('metadata-upload-status-icon');
+    icon.className = `mdi ${succeeded ? 'mdi-check-circle' : 'mdi-alert-circle'}`;
+    icon.parentElement.className = `icon ${succeeded ? 'has-text-success-dark' : 'has-text-danger-dark'}`;
+    document.getElementById('metadata-upload-status-message').textContent = message;
+    document.getElementById('metadata-upload-status').classList.remove('is-hidden');
+}
+
+/**
  * Asynchronously populates the metadata form fields with values parsed from an uploaded metadata file.
  * Utilizes the `apiCallsMixin.parseMetadataFile` method to extract metadata from the uploaded file,
  * and fills the corresponding form fields if parsing is successful. Handles both success and error states,
@@ -227,46 +341,27 @@ const populateMetadataFormFromFile = async () => {
 
     // Fill out the form with the data
     if (data.success) {
-        document.getElementsByName('metadata-title')[0].value = data.metadata.title.value;
-        document.getElementsByName('metadata-summary')[0].value = data.metadata.summary.value;
-        document.getElementsByName('metadata-annotation-source')[0].value = data.metadata.annotation_source.value;
-        document.getElementsByName('metadata-annotation-version')[0].value = data.metadata.annotation_release_number.value;
-        document.getElementsByName('metadata-geo-id')[0].value = data.metadata.geo_accession.value;
-
-        document.getElementsByName('metadata-contact-name')[0].value = data.metadata.contact_name.value;
-        document.getElementsByName('metadata-contact-email')[0].value = data.metadata.contact_email.value;
-        document.getElementsByName('metadata-contact-institute')[0].value = data.metadata.contact_institute.value;
-        document.getElementsByName('metadata-taxon-id')[0].value = data.metadata.sample_taxid.value;
-        document.getElementsByName('metadata-organism')[0].value = data.metadata.sample_organism.value;
-        document.getElementsByName('metadata-platform-id')[0].value = data.metadata.platform_id.value;
-        document.getElementsByName('metadata-instrument')[0].value = data.metadata.instrument_model.value;
-        document.getElementsByName('metadata-library-selection')[0].value = data.metadata.library_selection.value;
-        document.getElementsByName('metadata-library-source')[0].value = data.metadata.library_source.value;
-        document.getElementsByName('metadata-library-strategy')[0].value = data.metadata.library_strategy.value;
-        document.getElementsByName('metadata-pubmed-id')[0].value = data.metadata.pubmed_id.value;
-
-        // Handle the metadata-dataset-type select box
-        const datasetTypeSelect = document.getElementsByName('metadata-dataset-type')[0];
-        for (let i = 0; i < datasetTypeSelect.options.length; i++) {
-            if (datasetTypeSelect.options[i].value === data.metadata.dataset_type.value) {
-                datasetTypeSelect.selectedIndex = i;
-                break;
-            }
+        for (const field of metadataFields) {
+            const value = data.metadata[field.name]?.value;
+            // Leave fields the spreadsheet doesn't have (or has blank) as they are
+            if (value === undefined || value === null || value === '') continue;
+            setMetadataValue(field.name, value);
         }
+
+        const datasetTypeSelect = metadataElement('dataset_type');
         // Fire the change listener so spatial gets auto-checked/enabled same as a manual selection
         datasetTypeSelect.dispatchEvent(new Event('change'));
 
-        document.getElementById('metadata-upload-status-message').textContent = "Form populated with uploaded metadata";
+        showMetadataUploadStatus("Form populated with uploaded metadata", true);
         button.disabled = false;
 
     } else {
         // Display error message, and clear out the file selected
-        document.getElementById('metadata-upload-status-message').textContent = data.message;
+        showMetadataUploadStatus(data.message, false);
         document.getElementById('metadata-file-name').textContent = 'No file selected';
     }
 
     // change spinner back to submit button
-    document.getElementById('metadata-upload-status').classList.remove('is-hidden');
     button.classList.remove('is-loading');
 }
 
@@ -414,24 +509,26 @@ const populateTracks = async (hubContainer, trackContainer, isFileSource, hubUrl
  * @returns {Promise<void>} Resolves when the GEO data has been fetched and the form updated.
  */
 const getGeoData = async () => {
-    const geoId = document.getElementsByName('metadata-geo-id')[0].value;
+    // Accept 'GEO:GSEnnnn' or a bare 'GSEnnnn'
+    const geoId = metadataElement('repository_accession').value.trim().replace(/^GEO:\s*/i, '');
     const geoData = await apiCallsMixin.fetchGeoData(geoId);
 
     if (Object.keys(geoData).length === 0) {
         document.getElementById('metadata-geo-lookup-status').classList.remove('is-hidden');
     } else {
         document.getElementById('metadata-geo-lookup-status').classList.add('is-hidden');
-        document.getElementsByName('metadata-contact-name')[0].value = geoData.contact_name;
-        document.getElementsByName('metadata-contact-email')[0].value = geoData.contact_email;
-        document.getElementsByName('metadata-contact-institute')[0].value = geoData.contact_institute;
-        document.getElementsByName('metadata-taxon-id')[0].value = geoData.taxid_ch1;
-        document.getElementsByName('metadata-organism')[0].value = geoData.organism_ch1;
-        document.getElementsByName('metadata-platform-id')[0].value = geoData.platform_id;
-        document.getElementsByName('metadata-instrument')[0].value = geoData.instrument_model;
-        document.getElementsByName('metadata-library-selection')[0].value = geoData.library_selection;
-        document.getElementsByName('metadata-library-source')[0].value = geoData.library_source;
-        document.getElementsByName('metadata-library-strategy')[0].value = geoData.library_strategy;
-        document.getElementsByName('metadata-pubmed-id')[0].value = geoData.pubmed_id;
+        metadataElement('repository_accession').value = `GEO:${geoId}`;
+
+        const geoValues = {
+            contact_name: geoData.contact_name,
+            contact_email: geoData.contact_email,
+            contact_institute: geoData.contact_institute,
+            sample_taxid: geoData.taxid_ch1 ? `NCBI:txid${geoData.taxid_ch1}` : null,
+            pubmed_id: geoData.pubmed_id ? `PMID:${geoData.pubmed_id}` : null
+        };
+        for (const [fieldName, value] of Object.entries(geoValues)) {
+            if (value) metadataElement(fieldName).value = value;
+        }
     }
 
     const button = document.getElementById('metadata-geo-lookup');
@@ -697,6 +794,28 @@ const prettifyMetadataFieldName = (field) => {
 }
 
 /**
+ * Lists metadata form errors next to the submit button.
+ *
+ * @param {Object} erroredFields - Form element names mapped to error messages.
+ */
+const showMetadataFormErrors = (erroredFields) => {
+    const erroredFieldsUl = document.getElementById('errored-field-list');
+    erroredFieldsUl.innerHTML = '';
+
+    // iterate over the errored fields and display them
+    for (const field in erroredFields) {
+        const fieldLabel = prettifyMetadataFieldName(field);
+        const fieldMsg = erroredFields[field];
+
+        const li = document.createElement('li');
+        li.textContent = `${fieldLabel}: ${fieldMsg}`;
+        erroredFieldsUl.appendChild(li);
+    };
+
+    document.getElementById('errored-field-list-c').classList.remove('is-hidden');
+}
+
+/**
  * Asynchronously collects metadata from form fields, sends it to the server for storage,
  * and updates the UI based on the server response.
  *
@@ -709,40 +828,39 @@ const prettifyMetadataFieldName = (field) => {
  * @returns {Promise<void>} Resolves when the operation is complete.
  */
 const storeMetadata = async () => {
-    const {data} = await axios.post('./cgi/store_expression_metadata.cgi', convertToFormData({
+    const payload = {
         dataset_uid: datasetUid,
         share_uid: shareUid,
         session_id: getCurrentUser()?.session_id,
-        title: document.getElementsByName('metadata-title')[0].value,
-        summary: document.getElementsByName('metadata-summary')[0].value,
-        dataset_type: document.getElementsByName('metadata-dataset-type')[0].value,
-        annotation_source: document.getElementsByName('metadata-annotation-source')[0].value,
-        annotation_version: document.getElementsByName('metadata-annotation-version')[0].value,
-        geo_id: document.getElementsByName('metadata-geo-id')[0].value,
-        contact_name: document.getElementsByName('metadata-contact-name')[0].value,
-        contact_email: document.getElementsByName('metadata-contact-email')[0].value,
-        contact_institute: document.getElementsByName('metadata-contact-institute')[0].value,
-        taxon_id: document.getElementsByName('metadata-taxon-id')[0].value,
-        organism: document.getElementsByName('metadata-organism')[0].value,
-        platform_id: document.getElementsByName('metadata-platform-id')[0].value,
-        instrument: document.getElementsByName('metadata-instrument')[0].value,
-        library_selection: document.getElementsByName('metadata-library-selection')[0].value,
-        library_source: document.getElementsByName('metadata-library-source')[0].value,
-        library_strategy: document.getElementsByName('metadata-library-strategy')[0].value,
-        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value,
         user_pii_affirmed: document.getElementsByName('metadata-no-pii')[0].checked ? 1 : 0
-    }));
+    };
+    for (const field of metadataFields) {
+        payload[field.name] = getMetadataValue(field.name);
+    }
+
+    const {data} = await axios.post('./cgi/store_expression_metadata.cgi', convertToFormData(payload));
 
     if (data.success) {
+        // Things the gEAR team will follow up on, like a reference annotation that isn't loaded yet
+        for (const message of Object.values(data.warnings || {})) {
+            createToast(message, 'is-warning', true);
+        }
 
         stepTo('upload-dataset');
 
         // Scroll to the top of the page
         window.scrollTo(0, 0);
 
+    } else if (data.errors && Object.keys(data.errors).length) {
+        const erroredFields = {};
+        for (const [fieldName, message] of Object.entries(data.errors)) {
+            metadataElement(fieldName)?.classList.add('is-danger');
+            erroredFields[`metadata-${fieldName.replaceAll('_', '-')}`] = message;
+        }
+        showMetadataFormErrors(erroredFields);
     } else {
         // Show error with a toast
-        createToast('Error saving metadata', data.message, 'is-warning');
+        createToast(`Error saving metadata: ${data.error || data.message || 'unknown error'}`, 'is-warning');
     }
 }
 
@@ -795,6 +913,34 @@ const buildTrackhub = async () => {
 }
 
 /**
+ * Shows a message below the "Upload dataset" button. The progress bar is shown while the file is
+ * uploading and once it has finished, but not with error messages. The icon reflects the state
+ * (rather than reusing the "i" icon used for tooltips).
+ *
+ * @param {string} message - The message to show.
+ * @param {'uploading'|'success'|'error'} state - What the message is about.
+ */
+const showDatasetUploadStatus = (message, state) => {
+    const icons = {uploading: 'mdi-progress-upload', success: 'mdi-check-circle', error: 'mdi-alert-circle'};
+    const colors = {uploading: '', success: 'has-text-success-dark', error: 'has-text-danger-dark'};
+
+    const icon = document.getElementById('dataset-upload-status-icon');
+    icon.className = `mdi ${icons[state]}`;
+    icon.parentElement.className = `icon ${colors[state]}`.trim();
+
+    document.getElementById('dataset-upload-status-message').textContent = message;
+    document.getElementById('dataset-upload-progress-c').classList.toggle('is-hidden', state === 'error');
+    document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+}
+
+/**
+ * Hides the message and progress bar below the "Upload dataset" button.
+ */
+const hideDatasetUploadStatus = () => {
+    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+}
+
+/**
  * Handles uploading a dataset file to the server using XMLHttpRequest.
  * Collects form data including dataset identifiers, user session, format, and file input,
  * then sends it to the backend endpoint. Updates the UI to reflect upload progress,
@@ -842,13 +988,10 @@ const uploadDataset = () => {
     xhr.onload = () => {
         const response = JSON.parse(xhr.responseText);
 
-        document.getElementById('dataset-upload-status-message').textContent = '';
         document.getElementById('dataset-upload-submit').classList.remove('is-loading');
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
 
         if (response.success) {
-            document.getElementById('dataset-upload-status-message').textContent = 'Dataset uploaded successfully. Processing beginning momentarily ...';
-            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+            showDatasetUploadStatus('Dataset uploaded successfully. Processing beginning momentarily ...', 'success');
 
             processDataset();
 
@@ -860,10 +1003,18 @@ const uploadDataset = () => {
             return;
 
         }
-        document.getElementById('dataset-upload-status-message').textContent = response.message;
+        showDatasetUploadStatus(response.message, 'error');
         document.getElementById('dataset-upload-submit').disabled = false;
     };
 
+    xhr.onerror = () => {
+        document.getElementById('dataset-upload-submit').classList.remove('is-loading');
+        document.getElementById('dataset-upload-submit').disabled = false;
+        showDatasetUploadStatus('The upload was interrupted. Please check your connection and try again.', 'error');
+    };
+
+    document.getElementById('dataset-upload-progress').value = 0;
+    showDatasetUploadStatus(`Uploading ${datasetFile.name} ...`, 'uploading');
     xhr.send(formData);
 }
 
@@ -907,10 +1058,14 @@ const processDataset = async () => {
 // Catch-all for any post-processing steps that need to be done before finalizing the dataset.
 const renderPostProcessingOptions = async() => {
 
-    const doSomethingObs = await renderAmbiguousObsColumns();
+    // One request returns the results for every review substep
+    const data = await fetchPostProcessingReview();
 
-    // doSomething should be true if any "doSomething" substeps are true
-    const doSomething = [doSomethingObs].some(Boolean);
+    // doSomething should be true if any "doSomething" substeps are true.
+    // The primary variable picker goes after the ambiguous columns, since it reads their selects.
+    const doSomething = data
+        ? [renderAmbiguousObsColumns(data), renderSampleMetadataReview(data), renderPrimaryVariablePicker(data)].some(Boolean)
+        : false;
 
     if (!doSomething) {
         stepTo("finalize-dataset");
@@ -918,8 +1073,13 @@ const renderPostProcessingOptions = async() => {
     }
 }
 
-const renderAmbiguousObsColumns = async () => {
-    let doSomething;
+/**
+ * Fetches what the processor wrote to metadata.json for the post-processing review: ambiguous
+ * obs columns, sample metadata warnings and ontology terms. Returns null on failure.
+ *
+ * @returns {Promise<Object|null>} The get_ambiguous_obs_columns.cgi response.
+ */
+const fetchPostProcessingReview = async () => {
     const formData = new FormData();
     formData.append('share_uid', shareUid);
     formData.append('session_id', getCurrentUser()?.session_id);
@@ -930,102 +1090,260 @@ const renderAmbiguousObsColumns = async () => {
             body: formData,
         });
         const data = await response.json();
-
         if (!data?.success) {
             throw new Error(data?.message || 'Unknown error');
         }
-
-        // If the dataset has already been reviewed or has nothing questionable, we can skip this step
-        doSomething = !data?.reviewed;
-
-        if (!doSomething) {
-            document.getElementById("ambiguous-cols-dtypes-c").classList.add("is-hidden");
-            return doSomething;
-        }
-
-        // Render the ambiguous columns for user review
-        const ambiguousColumns = data?.questionable_columns;
-        if (!ambiguousColumns) {
-            throw new Error('No ambiguous columns found');
-        }
-
-        /* Example key
-                Keyed by column name, e.g.:
-            {
-              "replicate": {
-                  "current_dtype": "int64",
-                  "n_unique": 3,
-                  "sample_values": [1, 2, 3],
-                  "suggested_type": "categorical",
-              }
-            }
-        */
-
-        document.getElementById("ambiguous-cols-dtypes-c").classList.remove("is-hidden");
-
-        const reviewContainer = document.getElementById('ambiguous-cols-review-c');
-        reviewContainer.innerHTML = '';
-
-        for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
-            const colDiv = document.createElement('div');
-            colDiv.className = 'box mb-4 column is-4';
-            colDiv.innerHTML = `
-                <h5 class="subtitle is-5">Column: ${colName}</h5>
-                <p>Current data type: ${colInfo.current_dtype}</p>
-                <p>Number of unique values: ${colInfo.n_unique}</p>
-                <p>Sample values: ${colInfo.sample_values.join(', ')}</p>
-                <br>
-                <p class=mb-2><strong>Suggested data type:</strong> ${colInfo.suggested_type}</p>
-                <div class="field">
-                    <div class="control">
-                        <div class="select">
-                            <select name="ambiguous-col-${colName}">
-                                <option value="categorical" ${colInfo.suggested_type === 'categorical' ? 'selected' : ''}>Categorical</option>
-                                <option value="continuous" ${colInfo.suggested_type === 'continuous' ? 'selected' : ''}>Continuous</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            `;
-            reviewContainer.appendChild(colDiv);
-        }
-
-        return doSomething;
-
+        return data;
     } catch (error) {
-        // axios throws on non-2xx status codes
-        const message = error.response?.data?.message ?? 'Unknown error occurred';
-        console.error(`Error ${error.response?.status}: ${message}`);
+        console.error(error);
         createToast('Error processing dataset');
+        return null;
     }
 }
 
-const applyPostProcessingOptions = async () => {
+/**
+ * Shows the ontology terms found in the sample metadata and any warnings about it (missing
+ * recommended columns, unknown terms). Returns true if there is something to show.
+ *
+ * @param {Object} data - The get_ambiguous_obs_columns.cgi response.
+ * @returns {boolean}
+ */
+const renderSampleMetadataReview = (data) => {
+    const warnings = data.sample_metadata_warnings || [];
+    const terms = data.ontology_terms || {};
 
-    // For all post-processing steps, run in parallel, then step to "finalize-dataset"
-    const stepsToApply = []
-    if (!document.getElementById('ambiguous-cols-review-c').classList.contains('is-hidden')) {
-        stepsToApply.push(applyAmbiguousObsColumns());
+    const summaryParts = [];
+    if (terms.tissue_type?.length) summaryParts.push(`${terms.tissue_type.length} tissue term(s)`);
+    if (terms.cell_type?.length) summaryParts.push(`${terms.cell_type.length} cell type term(s)`);
+    document.getElementById('sample-metadata-terms-summary').textContent = summaryParts.length
+        ? `Found ${summaryParts.join(' and ')}. Their names were added to your observations, and the dataset will be searchable by them.`
+        : 'No tissue or cell type ontology terms were found in your observations.';
+
+    const warningsList = document.getElementById('sample-metadata-warnings');
+    warningsList.innerHTML = '';
+    for (const warning of warnings) {
+        const li = document.createElement('li');
+        // Column names are wrapped in backticks (see gear.ontology); show them in bold.
+        // Built with text nodes, so nothing in the message is treated as HTML.
+        warning.split('`').forEach((part, i) => {
+            if (!part) return;
+            if (i % 2) {
+                const strong = document.createElement('strong');
+                strong.textContent = part;
+                li.appendChild(strong);
+            } else {
+                li.appendChild(document.createTextNode(part));
+            }
+        });
+        warningsList.appendChild(li);
     }
-    await Promise.all(stepsToApply);
-    stepTo('finalize-dataset');
+    document.getElementById('sample-metadata-warnings-c').classList.toggle('is-hidden', !warnings.length);
+
+    const doSomething = warnings.length > 0;
+    document.getElementById('sample-metadata-review-c').classList.toggle('is-hidden', !doSomething);
+    return doSomething;
 }
 
-const applyAmbiguousObsColumns = async () => {
+/**
+ * Shows the obs columns that may have the wrong data type, with a choice for each.
+ * Returns true if there is something for the user to review.
+ *
+ * @param {Object} data - The get_ambiguous_obs_columns.cgi response.
+ * @returns {boolean}
+ */
+const renderAmbiguousObsColumns = (data) => {
+    // If the dataset has already been reviewed or has nothing questionable, we can skip this step
+    const doSomething = !data.reviewed;
 
-    // Get the user-selected choices for each ambiguous column
-    const choices = {};
+    if (!doSomething) {
+        document.getElementById("ambiguous-cols-dtypes-c").classList.add("is-hidden");
+        return doSomething;
+    }
+
+    // Render the ambiguous columns for user review
+    const ambiguousColumns = data.questionable_columns;
+    if (!ambiguousColumns) {
+        console.error('No ambiguous columns found');
+        createToast('Error processing dataset');
+        return false;
+    }
+
+    /* Example key
+            Keyed by column name, e.g.:
+        {
+          "replicate": {
+              "current_dtype": "int64",
+              "n_unique": 3,
+              "sample_values": [1, 2, 3],
+              "suggested_type": "categorical",
+          }
+        }
+    */
+
+    document.getElementById("ambiguous-cols-dtypes-c").classList.remove("is-hidden");
+
     const reviewContainer = document.getElementById('ambiguous-cols-review-c');
-    for (const select of reviewContainer.querySelectorAll('select')) {
-        const colName = select.name.replace('ambiguous-col-', '');
-        choices[colName] = select.value;
+    reviewContainer.innerHTML = '';
+
+    // Column names and values come from the user's file, so the boxes are built without innerHTML
+    const textElement = (tag, text, className = '') => {
+        const el = document.createElement(tag);
+        el.textContent = text;
+        if (className) el.className = className;
+        return el;
+    };
+
+    for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
+        const colDiv = document.createElement('div');
+        colDiv.className = 'box mb-4 column is-4';
+
+        const suggested = document.createElement('p');
+        suggested.className = 'mb-2';
+        suggested.append(textElement('strong', 'Suggested data type:'), ` ${colInfo.suggested_type}`);
+
+        // The column name is read back from data-column (see ambiguousColumnName)
+        const select = document.createElement('select');
+        select.dataset.column = colName;
+        select.dataset.nUnique = colInfo.n_unique;
+        for (const [value, label] of [['categorical', 'Categorical'], ['continuous', 'Continuous']]) {
+            const option = textElement('option', label);
+            option.value = value;
+            option.selected = colInfo.suggested_type === value;
+            select.appendChild(option);
+        }
+        const selectWrapper = document.createElement('div');
+        selectWrapper.className = 'select';
+        selectWrapper.appendChild(select);
+        const control = document.createElement('div');
+        control.className = 'control';
+        control.appendChild(selectWrapper);
+        const field = document.createElement('div');
+        field.className = 'field';
+        field.appendChild(control);
+
+        colDiv.append(
+            textElement('h5', `Column: ${colName}`, 'subtitle is-5'),
+            textElement('p', `Current data type: ${colInfo.current_dtype}`),
+            textElement('p', `Number of unique values: ${colInfo.n_unique}`),
+            textElement('p', `Sample values: ${colInfo.sample_values.join(', ')}`),
+            document.createElement('br'),
+            suggested,
+            field,
+        );
+        reviewContainer.appendChild(colDiv);
+    }
+
+    return doSomething;
+}
+
+/**
+ * Returns the obs column name an ambiguous-column type select is for.
+ *
+ * @param {HTMLSelectElement} select - A select in #ambiguous-cols-review-c.
+ * @returns {string}
+ */
+const ambiguousColumnName = (select) => select.dataset.column;
+
+// Primary variable candidates from the last review response (#435), keyed by column name
+let primaryVariableCandidates = {};
+let primaryVariableReviewed = false;
+// The most values a primary variable can have (gear.utils.obs.MAX_CATEGORIES)
+let primaryVariableMaxValues = Infinity;
+
+/**
+ * Shows a choice of the column the dataset is mainly about (its primary variable), used to build
+ * default displays. Offers the categorical columns the processor found, plus any ambiguous columns
+ * the user marks categorical. Returns true if there is something to choose from.
+ *
+ * @param {Object} data - The get_ambiguous_obs_columns.cgi response.
+ * @returns {boolean}
+ */
+const renderPrimaryVariablePicker = (data) => {
+    // Nothing to offer once the choice has been saved (e.g. the user came back to this upload)
+    primaryVariableReviewed = Boolean(data.primary_variable_reviewed);
+    primaryVariableCandidates = data.primary_variable_candidates || {};
+    primaryVariableMaxValues = data.primary_variable_max_values ?? Infinity;
+    document.getElementById('primary-variable-select').value = '';
+    return refreshPrimaryVariableOptions();
+}
+
+/**
+ * Rebuilds the primary variable options from the candidates and the ambiguous columns currently
+ * marked categorical, keeping the current choice if it is still offered. Hides the picker when
+ * there is nothing to offer. Returns true if the picker is shown.
+ *
+ * @returns {boolean}
+ */
+const refreshPrimaryVariableOptions = () => {
+    const container = document.getElementById('primary-variable-c');
+    const select = document.getElementById('primary-variable-select');
+    const current = select.value;
+
+    const columns = primaryVariableReviewed ? []
+        : Object.entries(primaryVariableCandidates).map(([name, info]) => [name, info.n_unique]);
+    // Ambiguous numeric columns can be chosen once the user marks them categorical, if they have
+    // few enough values (columns named like "cluster" are flagged even with more)
+    if (!primaryVariableReviewed && !document.getElementById('ambiguous-cols-dtypes-c').classList.contains('is-hidden')) {
+        for (const ambiguousSelect of document.getElementById('ambiguous-cols-review-c').querySelectorAll('select')) {
+            const colName = ambiguousColumnName(ambiguousSelect);
+            const nUnique = Number(ambiguousSelect.dataset.nUnique);
+            if (ambiguousSelect.value === 'categorical' && !(colName in primaryVariableCandidates)
+                && !(nUnique > primaryVariableMaxValues)) {
+                columns.push([colName, nUnique]);
+            }
+        }
+    }
+
+    // Column names come from the user's file, so options are built without innerHTML
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = 'None';
+    const options = [noneOption];
+    for (const [name, nUnique] of columns) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = Number.isFinite(nUnique) ? `${name} (${nUnique} values)` : name;
+        options.push(option);
+    }
+    select.replaceChildren(...options);
+    select.value = columns.some(([name]) => name === current) ? current : '';
+
+    const show = columns.length > 0;
+    container.classList.toggle('is-hidden', !show);
+    return show;
+}
+
+/**
+ * Saves the post-processing choices (column types and primary variable) in one request, so only
+ * one process writes the staged dataset file, then moves on to finalizing. Stays on the step if
+ * the choices can't be saved.
+ */
+const applyPostProcessingOptions = async () => {
+    // The step may be shown only for sample metadata warnings, with nothing to save
+    const showsColumnTypes = !document.getElementById('ambiguous-cols-dtypes-c').classList.contains('is-hidden');
+    const showsPrimaryVariable = !document.getElementById('primary-variable-c').classList.contains('is-hidden');
+    if (!showsColumnTypes && !showsPrimaryVariable) {
+        stepTo('finalize-dataset');
+        return;
     }
 
     const formData = new FormData();
     formData.append('share_uid', shareUid);
-    const choicesJson = JSON.stringify(choices);
-    formData.append('choices', choicesJson);
     formData.append('session_id', getCurrentUser()?.session_id);
+
+    if (showsColumnTypes) {
+        // Get the user-selected choices for each ambiguous column
+        const choices = {};
+        const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+        for (const select of reviewContainer.querySelectorAll('select')) {
+            const colName = ambiguousColumnName(select);
+            choices[colName] = select.value;
+        }
+        formData.append('choices', JSON.stringify(choices));
+    }
+    if (showsPrimaryVariable) {
+        formData.append('primary_variable', document.getElementById('primary-variable-select').value);
+    }
 
     try {
         const response = await fetch('./cgi/apply_obs_dtype_choices.cgi', {
@@ -1035,15 +1353,16 @@ const applyAmbiguousObsColumns = async () => {
         const data = await response.json();
 
         if (!data?.success) {
-            throw new Error(data?.message || 'Unknown error');
+            createToast(data?.message || 'Error saving the post-processing choices');
+            return;
         }
-
     } catch (error) {
-        // axios throws on non-2xx status codes
-        const message = error.response?.data?.message ?? 'Unknown error occurred';
-        console.error(`Error ${error.response?.status}: ${message}`);
-        createToast('Error processing dataset');
+        console.error(error);
+        createToast('Error saving the post-processing choices');
+        return;
     }
+
+    stepTo('finalize-dataset');
 }
 
 const stageTrackHub = async (hubContainer, trackContainer) => {
@@ -1209,16 +1528,52 @@ const updateAllTrackStatusesInProcessStep = (trackContainer, trackStatuses) => {
 const validateMetadataForm = () => {
     const erroredFields = {};
 
-    // Each element with a name in required_metadata_fields must have a value
-    for (const field of requiredMetadataFields) {
-        const element = document.getElementsByName(field)[0];
+    for (const field of metadataFields) {
+        const element = metadataElement(field.name);
+        const value = getMetadataValue(field.name).trim();
+        element.classList.remove('is-danger');
 
-        if (element.value) {
-            element.classList.remove('is-danger');
-        } else {
-            element.classList.add('is-danger');
-            erroredFields[field] = 'Requires a value';
+        if (!value) {
+            if (isMetadataFieldRequired(field)) {
+                element.classList.add('is-danger');
+                erroredFields[element.name] = 'Requires a value';
+            }
+            continue;
         }
+
+        // Column length limits in the database (create_schema.sql). Prefix/format checks are done by the server.
+        if (field.max_length && value.length > field.max_length) {
+            element.classList.add('is-danger');
+            erroredFields[element.name] = `Exceeds ${field.max_length} character limit`;
+        }
+    }
+
+    // Each keyword is saved as a tag
+    const keywords = metadataElement('keywords').value.split(',').map((k) => k.trim()).filter((k) => k);
+    if (maxKeywords && keywords.length > maxKeywords) {
+        metadataElement('keywords').classList.add('is-danger');
+        erroredFields['metadata-keywords'] = `Provide at most ${maxKeywords} keywords`;
+    } else if (maxKeywordLength && keywords.some((k) => k.length > maxKeywordLength)) {
+        metadataElement('keywords').classList.add('is-danger');
+        erroredFields['metadata-keywords'] = `Each keyword must be ${maxKeywordLength} characters or fewer`;
+    }
+
+    // Parts of these values are saved in their own, narrower database columns (GitHub #1323)
+    const partAfterPrefix = (value) => value.slice(value.indexOf(':') + 1).trim();
+
+    const referenceAnnotation = getMetadataValue('reference_annot_id').trim();
+    if (annotationReleaseMaxLength && !erroredFields['metadata-reference-annot-id'] && referenceAnnotation.includes(':')
+        && partAfterPrefix(referenceAnnotation).length > annotationReleaseMaxLength) {
+        metadataElement('reference_annot_id').classList.add('is-danger');
+        erroredFields['metadata-reference-annot-id'] = `The version after the source must be ${annotationReleaseMaxLength} characters or fewer`;
+    }
+
+    // GEO accessions may be given without the "GEO:" prefix
+    const repositoryAccession = getMetadataValue('repository_accession').trim();
+    if (geoIdMaxLength && !erroredFields['metadata-repository-accession'] && /^(GEO:|GSE)/i.test(repositoryAccession)
+        && partAfterPrefix(repositoryAccession).length > geoIdMaxLength) {
+        metadataElement('repository_accession').classList.add('is-danger');
+        erroredFields['metadata-repository-accession'] = `GEO accessions must be ${geoIdMaxLength} characters or fewer`;
     }
 
     // Check that the personal data affirmation checkbox is checked
@@ -1228,34 +1583,6 @@ const validateMetadataForm = () => {
         erroredFields['metadata-no-pii'] = 'You must affirm that the dataset contains no personally identifiable information';
     } else {
         document.getElementsByName('metadata-no-pii')[0].classList.remove('is-danger');
-    }
-
-    // Check SQL length limitations
-    const fieldCharacterLimits = {
-        'metadata-title': 255,
-        'metadata-summary': 65535,
-        'metadata-annotation-source': 20,
-        //'metadata-annotation-version': int,
-        'metadata-contact-name': 100,
-        'metadata-contact-email': 100,
-        'metadata-contact-institute': 255,
-        'metadata-platform-id': 255,
-        'metadata-instrument': 255,
-        'metadata-library-selection': 255,
-        'metadata-library-source': 255,
-        'metadata-geo-id': 50,
-        'metadata-library-strategy': 65535,
-        'metadata-pubmed-id': 20
-    };
-
-    for (const field in fieldCharacterLimits) {
-        const element = document.getElementsByName(field)[0];
-        if (element.value.length > fieldCharacterLimits[field]) {
-            element.classList.add('is-danger');
-            erroredFields[field] = `Exceeds ${fieldCharacterLimits[field]} character limit`;
-        } else {
-            element.classList.remove('is-danger');
-        }
     }
 
     return erroredFields;
@@ -1270,7 +1597,7 @@ const adjustUIForGosling = () => {
     // Gosling has special uploader
     if (datasetFormat === "gosling") {
         document.getElementById("dataset-upload-c").classList.add("is-hidden");
-        document.getElementById("dataset-upload-status").classList.add("is-hidden");
+        hideDatasetUploadStatus();
         document.getElementById("dataset-curate-div").classList.add("is-hidden");
 
         document.getElementById("step-build-trackhub").classList.remove("is-hidden");
@@ -1282,7 +1609,7 @@ const adjustUIForGosling = () => {
         return;
     }
     document.getElementById("dataset-upload-c").classList.remove("is-hidden");
-    document.getElementById("dataset-upload-status").classList.remove("is-hidden");
+    hideDatasetUploadStatus();
     document.getElementById("dataset-curate-div").classList.remove("is-hidden");
 
     document.getElementById("step-build-trackhub").classList.add("is-hidden");
@@ -1364,6 +1691,9 @@ const initPage = () => {
 
 await initCommonUI();
 await initPage();
+await loadMetadataFields();
+toggleMicroarrayFields();
+loadPiNameOptions();   // not awaited; the form doesn't need the suggestions to load
 
 /* --- Event listeners --- */
 
@@ -1386,6 +1716,9 @@ document.getElementById('dataset-processing-submit').addEventListener('click', (
     event.preventDefault();
     stepTo('post-process-dataset');
 });
+
+// Marking an ambiguous column categorical or continuous changes which columns can be the primary variable
+document.getElementById('ambiguous-cols-review-c').addEventListener('change', refreshPrimaryVariableOptions);
 
 document.getElementById('dataset-post-processing-submit').addEventListener('click', (event) => {
     event.preventDefault();
@@ -1416,20 +1749,7 @@ document.getElementById('metadata-form-submit').addEventListener('click', (event
         return;
 
     }
-    const erroredFieldsUl = document.getElementById('errored-field-list');
-    erroredFieldsUl.innerHTML = '';
-
-    // iterate over the errored fields and display them
-    for (const field in erroredFields) {
-        const fieldLabel = prettifyMetadataFieldName(field);
-        const fieldMsg = erroredFields[field];
-
-        const li = document.createElement('li');
-        li.textContent = `${fieldLabel}: ${fieldMsg}`;
-        erroredFieldsUl.appendChild(li);
-    };
-
-    document.getElementById('errored-field-list-c').classList.remove('is-hidden');
+    showMetadataFormErrors(erroredFields);
 });
 
 document.getElementById('dataset-file-input').addEventListener('change', (event) => {
@@ -1517,16 +1837,14 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     event.preventDefault();
     // make sure they chose a format (sanity check)
     if (!datasetFormat) {
-        document.getElementById('dataset-upload-status-message').textContent = 'Please choose a format above first.';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        showDatasetUploadStatus('Please choose a format above first.', 'error');
         return;
     }
 
     if (datasetFormat === "spatial") {
         const spatialFormatSelect = document.getElementById('select-spatial-platform');
         if (spatialFormatSelect.value === '') {
-            document.getElementById('dataset-upload-status-message').textContent = 'Please choose a spatial platform above first.';
-            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+            showDatasetUploadStatus('Please choose a spatial platform above first.', 'error');
             return;
         }
         spatialFormat = spatialFormatSelect.value;
@@ -1538,7 +1856,7 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     const button = event.currentTarget;
     button.disabled = true;
     button.classList.add('is-loading');
-    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+    hideDatasetUploadStatus();
 
     if (datasetFormat === "gosling") {
         throw new Error("Gosling should be handled separately and should not reach this point. Please contact a gEAR developer.");
@@ -1550,8 +1868,7 @@ document.getElementById('configure-trackhub-submit').addEventListener('click', (
     event.preventDefault();
     // make sure they chose a format (sanity check)
     if (datasetFormat !== "gosling") {
-        document.getElementById('dataset-upload-status-message').textContent = 'Please choose the Gosling format above first.';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        showDatasetUploadStatus('Please choose the Gosling format above first.', 'error');
         return;
     }
 
@@ -1561,7 +1878,7 @@ document.getElementById('configure-trackhub-submit').addEventListener('click', (
     const button = event.currentTarget;
     button.disabled = true;
     button.classList.add('is-loading');
-    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+    hideDatasetUploadStatus();
 
     buildTrackhub();
 });
@@ -1570,8 +1887,7 @@ document.getElementById("build-trackhub-submit").addEventListener("click", async
     event.preventDefault();
 
     if (!hubContainer || !trackContainer) {
-        document.getElementById('dataset-upload-status-message').textContent = 'Error: Hub and track information not found. Please try again.';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        showDatasetUploadStatus('Error: Hub and track information not found. Please try again.', 'error');
         return;
     }
 
@@ -1607,7 +1923,13 @@ document.getElementById('metadata-geo-lookup').addEventListener('click', (event)
     const getData = getGeoData();
 });
 
-document.getElementsByName('metadata-dataset-type')[0].addEventListener('change', (e) => {
+document.getElementById('metadata-pi-name-use-contact').addEventListener('click', (e) => {
+    e.preventDefault();
+    setMetadataValue('pi_name', getMetadataValue('contact_name').trim());
+});
+
+metadataElement('dataset_type').addEventListener('change', (e) => {
+    toggleMicroarrayFields();
     document.getElementById("btn-spatial-format-selector").disabled = true;
     if (e.target.value === 'spatial') {
         document.getElementById("btn-spatial-format-selector").disabled = false;

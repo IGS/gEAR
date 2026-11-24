@@ -96,3 +96,9 @@ ul#errored-field-list {
 .collapsible-header:hover {
 	background-color: #e8e8e8;
 }
+
+/* Wider metadata form tooltips (bulma-tooltip's multiline default is 15rem) */
+#step-enter-metadata-c [data-tooltip].has-tooltip-multiline::before {
+    width: 20rem;
+    max-width: 20rem;
+}

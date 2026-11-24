@@ -1,7 +1,8 @@
 #!/opt/bin/python3
 
 """
-Used by the expression uploader's "Review column types" step.
+Used by the expression uploader's "Review column types" step, which also shows any
+sample metadata warnings (missing columns, unknown ontology terms).
 
 Returns the obs columns flagged as possibly-mislabeled numeric/categorical,
 as already written into metadata.json by the anndata/spatial processor when
@@ -21,6 +22,7 @@ from pathlib import Path
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.utils.obs import MAX_CATEGORIES
 from werkzeug.utils import secure_filename
 
 user_upload_file_base = '../uploads/files'
@@ -33,7 +35,8 @@ def main():
     session_id = secure_filename(form.getfirst('session_id', ''))
     share_uid = secure_filename(form.getfirst('share_uid', ''))
 
-    result = {'success': 0, 'message': '', 'questionable_columns': {}, 'reviewed': False}
+    result = {'success': 0, 'message': '', 'questionable_columns': {}, 'reviewed': False,
+              'sample_metadata_warnings': [], 'ontology_terms': {}}
 
     if not session_id or not share_uid:
         result['message'] = 'session_id and share_uid are required.'
@@ -69,6 +72,16 @@ def main():
     result['success'] = 1
     result['questionable_columns'] = metadata.get('questionable_obs_columns', {})
     result['reviewed'] = metadata.get('obs_dtype_reviewed', False)
+    # Written alongside by gear.ontology.annotate_upload_obs during processing
+    result['sample_metadata_warnings'] = metadata.get('sample_metadata_warnings', [])
+    result['ontology_terms'] = metadata.get('ontology_terms', {})
+    # Columns the user can choose as the dataset's primary variable, and the choice so far (#435)
+    result['primary_variable_candidates'] = metadata.get('primary_variable_candidates', {})
+    result['primary_variable'] = metadata.get('primary_variable')
+    result['primary_variable_reviewed'] = metadata.get('primary_variable_reviewed', False)
+    # The most values a primary variable can have; flagged columns marked categorical are only
+    # offered within it (columns named like "cluster" are flagged even with more values)
+    result['primary_variable_max_values'] = MAX_CATEGORIES
     print(json.dumps(result))
 
 

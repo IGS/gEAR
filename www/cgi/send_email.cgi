@@ -12,15 +12,11 @@ How to test on the command line, example:
 
 import cgi, json
 import os, sys
-import configparser
-
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.mailer import send_email
 
 domain_label = geardb.domain_label
 domain_home_url = geardb.domain_url + "/index.html"
@@ -29,11 +25,6 @@ domain_short_label = geardb.domain_short_label
 
 
 def main():
-    config = configparser.ConfigParser()
-    config.read('../../gear.ini')
-    sender = config['email_sender']['address']
-    password = config['email_sender']['password']
-
     print('Content-Type: application/json\n\n')
     result = {'error': [], 'success': 0 }
 
@@ -48,11 +39,6 @@ def main():
 
     destination_page = form.getfirst('destination_page')
 
-    # https://docs.python.org/3/library/email-examples.html
-    msg = MIMEMultipart('alternative')
-    msg['From'] = sender
-    msg['To'] = email
-
     if scope == 'forgot_password':
         user_help_id = get_help_id(cursor, email) # return 'False' or help_id string
         if user_help_id:
@@ -60,7 +46,7 @@ def main():
             # url to change password
             url = destination_page + '?help_id=' + user_help_id
 
-            msg['Subject'] = 'Reset {} Password'.format(domain_short_label)
+            subject = 'Reset {} Password'.format(domain_short_label)
 
             text = "You requested to change your {} password. Please click the link to continue:  {}".format(domain_short_label, url)
             html = """\
@@ -91,7 +77,7 @@ def main():
         verification_code_long = form.getfirst('verification_code_long')
         verification_code = geardb.get_verification_code_short_form(verification_code_long)
 
-        msg['Subject'] = 'Your {} account verification code'.format(domain_short_label)
+        subject = 'Your {} account verification code'.format(domain_short_label)
 
         text = "It appears you began creating a {} account. Please use the verification code below to complete it.".format(domain_short_label)
         html = """\
@@ -116,21 +102,8 @@ def main():
 
     # If we're good so far, send the e-mail
     if result['success'] == 1:
-        part1 = MIMEText(text, 'plain')
-        part2 = MIMEText(html, 'html')
-
-        msg.attach(part1)
-        msg.attach(part2)
-
         try:
-            # http://stackoverflow.com/a/17596848/2900840
-            s = smtplib.SMTP('smtp.gmail.com:587')
-            s.ehlo()
-            s.starttls()
-            s.login(sender, password)
-
-            s.sendmail(sender, email, msg.as_string())
-            s.quit()
+            send_email([email], subject, text, html)
         except Exception as e:
             # Log to stderr; printing to stdout put this line ahead of the JSON response
             print(f"Detailed SMTP Error: {e}", file=sys.stderr)

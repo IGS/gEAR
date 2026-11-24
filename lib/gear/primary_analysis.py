@@ -17,15 +17,14 @@ from anndata.io import write_elem
 from scipy.sparse import csr_matrix, issparse
 
 from .analysis import H5adAdapter, ZarrAdapter
+from .utils.obs import (
+    VALID_PCA_PAIRS,
+    VALID_TSNE_PAIRS,
+    VALID_UMAP_PAIRS,
+    find_cluster_column,
+)
 
 gear_root_path = Path(__file__).resolve().parents[2]
-
-VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass_label', 'joint_cluster_round4_annot']
-VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined'],
-                    # These are all carlo's custom ones.  Need to resolve this a different way later
-                    ['PC1%var6.14', 'PC2%var1.79']]
-VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
-                    ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
 
 sc.settings.verbosity = 0
 sc.settings.autosave = True
@@ -122,6 +121,13 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir, dataset_f
             add_umap_analysis(adata)
             h5ad_changes_made = True
 
+    # PCA coordinates are copied to obsm so they can be plotted, but analysis_json['pca'] is left
+    # alone: the analysis workbench's PCA step also needs loadings and variance ratios.
+    if detect_pca(adata) and not has_pca(adata):
+        print("\tAdding PCA coordinates")
+        add_pca_analysis(adata)
+        h5ad_changes_made = True
+
     clustering_detected = detect_clustering(adata)
     if clustering_detected:
         if 'clustering' not in analysis_json or not analysis_json['clustering']['calculated']:
@@ -158,12 +164,20 @@ def add_clustering_analysis(adata: "AnnData") -> None:
     """
     Copy the first recognized cluster column in adata.obs into obs['louvain'] as categories.
     """
+    vname = find_cluster_column(adata.obs.columns.tolist())
+    if vname is not None:
+        user_defined_cluster_names = adata.obs[vname].astype('category')
+        adata.obs['louvain'] = user_defined_cluster_names
+
+def add_pca_analysis(adata: "AnnData") -> None:
+    """
+    Copy the first recognized PCA coordinate column pair in adata.obs into obsm['X_pca'].
+    """
     cols = adata.obs.columns.tolist()
 
-    for vname in VALID_CLUSTER_COLUMN_NAMES:
-        if vname in cols:
-            user_defined_cluster_names = adata.obs[vname].astype('category')
-            adata.obs['louvain'] = user_defined_cluster_names
+    for pair in VALID_PCA_PAIRS:
+        if pair[0] in cols and pair[1] in cols:
+            adata.obsm['X_pca'] = adata.obs[[pair[0], pair[1]]].values
             return
 
 def add_tsne_analysis(adata: "AnnData") -> None:
@@ -246,18 +260,36 @@ def create_composition_plots(adata: "AnnData", dataset_path: str, is_spatial: bo
 
 def detect_clustering(adata: "AnnData") -> bool:
     """
-    Looks first for 'cluster', then 'cell_type'
+    Looks for a column from VALID_CLUSTER_COLUMN_NAMES, a Seurat resolution column, or an existing 'louvain'
     """
-    cols = adata.obs.columns.tolist()
-
-    for vname in VALID_CLUSTER_COLUMN_NAMES:
-        if vname in cols:
-            return True
+    if find_cluster_column(adata.obs.columns.tolist()) is not None:
+        return True
 
     if has_clustering(adata):
         return True
 
     return False
+
+def detect_pca(adata: "AnnData") -> bool:
+    """
+    Looks for the combination of pairs in VALID_PCA_PAIRS or existing PCA in obsm
+    """
+    cols = adata.obs.columns.tolist()
+
+    for pair in VALID_PCA_PAIRS:
+        if pair[0] in cols and pair[1] in cols:
+            return True
+
+    if has_pca(adata):
+        return True
+
+    return False
+
+def detect_primary_analysis(adata: "AnnData") -> bool:
+    """
+    Return True if the dataset already has clusters or tSNE, UMAP or PCA coordinates gEAR can use.
+    """
+    return detect_clustering(adata) or detect_tsne(adata) or detect_umap(adata) or detect_pca(adata)
 
 def detect_tsne(adata: "AnnData") -> bool:
     """
@@ -321,6 +353,18 @@ def has_umap(adata: "AnnData") -> bool:
     """
     try:
         if "X_umap" in adata.obsm.keys():
+            return True
+    except Exception:
+        pass
+
+    return False
+
+def has_pca(adata: "AnnData") -> bool:
+    """
+    Return True if adata.obsm already contains 'X_pca' coordinates.
+    """
+    try:
+        if "X_pca" in adata.obsm.keys():
             return True
     except Exception:
         pass
