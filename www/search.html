@@ -124,7 +124,10 @@
               <!-- Results -->
               <section id="results-section" class="results-section" aria-labelledby="results-summary">
                 <div class="results-header">
-                  <h2 id="results-summary" class="results-summary" aria-live="polite">Searching…</h2>
+                  <div class="results-status">
+                    <span id="results-loading" class="icon" aria-hidden="true" data-testid="results-loading"><i class="mdi mdi-24px mdi-loading mdi-spin"></i></span>
+                    <h2 id="results-summary" class="results-summary" aria-live="polite">Searching…</h2>
+                  </div>
                   <div class="field is-horizontal results-sort">
                     <label class="label is-small mr-2 mb-0" for="search-sort">Sort by</label>
                     <div class="select is-small">

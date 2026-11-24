@@ -8,7 +8,7 @@ See also: [Setup overview](./setup/README.md), [RabbitMQ setup](./setup/rabbitmq
 
 ### `gear.ini`
 
-`gear.ini` sits at the repository root (for example `/opt/gEAR/gear.ini`). Git ignores it (see `.gitignore`). Make it by copying `gear.ini.template`, or `docker/gear.ini.docker.template` for Docker (which `docker/Dockerfile` copies in as `gear.ini.docker`), then fill in the placeholders. Never commit a filled-in `gear.ini`.
+`gear.ini` sits at the repository root (for example `/opt/gEAR/gear.ini`). Git ignores it (see `.gitignore`). Make it by copying `gear.ini.template`, or `docker/gear.ini.docker.template` for Docker, then fill in the placeholders. `docker/Dockerfile` copies the unfilled Docker template into the image as `gear.ini`, so the published image holds no secrets. docker-compose.yml mounts your checkout over it, so the running container uses the `gear.ini` in your checkout. Never commit a filled-in `gear.ini`.
 
 **Canonical loader: `lib/gear/serverconfig.py`**
 

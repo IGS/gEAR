@@ -162,6 +162,37 @@
     gap: 0.75rem;
 }
 
+.results-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#results-loading {
+    color: var(--gear-bg-primary);
+}
+
+/* While a search runs, the previous results fade and can't be clicked */
+#results-section[aria-busy="true"] .results-layout,
+#results-section[aria-busy="true"] .results-pager,
+#results-section[aria-busy="true"] .no-results {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #results-loading .mdi-spin {
+        animation: none;
+    }
+
+    #results-section[aria-busy="true"] .results-layout,
+    #results-section[aria-busy="true"] .results-pager,
+    #results-section[aria-busy="true"] .no-results {
+        transition: none;
+    }
+}
+
 .results-summary {
     font-size: 1.125rem;
     font-weight: 600;

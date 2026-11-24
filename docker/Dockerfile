@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ############################################################
 # Dockerfile to build gEAR web application
 ############################################################
@@ -9,7 +10,7 @@ ARG TARGETARCH
 # Some package building issues when attempting to use 3.14
 ARG PYTHON_MAJOR_VERSION=3.14
 ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
-ARG GEAR_URL=https://www.github.com/IGS/gEAR.git
+ARG GEAR_URL=https://github.com/IGS/gEAR.git
 ARG GEAR_BRANCH=devel
 
 LABEL author="Shaun Adkins <sadkins@som.umaryland.edu>"
@@ -113,13 +114,33 @@ RUN export PLAYWRIGHT_BROWSERS_PATH=${CHROMIUM_DIR} \
   && chmod -R a+rX ${CHROMIUM_DIR} \
   && rm -rf /tmp/playwright-venv /var/lib/apt/lists/*
 
-# Get gEAR code.  Currently cannot do a git clone by normal means due to the repo being "private"
-WORKDIR /opt
-RUN git clone -b ${GEAR_BRANCH} --single-branch ${GEAR_URL} \
-  && rm -rf /var/www \
+# Get gEAR code. ADD with a git source checks the branch's latest commit on every build and
+# rebuilds this layer when the branch has moved. A "RUN git clone" layer would be reused from
+# the build cache and keep serving old code.
+# --keep-git-dir keeps .git so git commands still work inside the container.
+ADD --keep-git-dir=true ${GEAR_URL}#${GEAR_BRANCH} /opt/gEAR
+RUN rm -rf /var/www \
   && ln -s /opt/gEAR/www/ /var/
 
-COPY ./gear.ini.docker /opt/gEAR/gear.ini
+# gear.ini comes from the Docker template in the cloned repo, so no secrets are baked into the
+# published image. Its [database] section already matches the "db" service in docker-compose.yml;
+# the other placeholders (e-mail, GitHub token, etc.) stay unfilled.
+# docker-compose.yml bind-mounts the host checkout over /opt/gEAR, which hides this copy,
+# so the host checkout needs its own gear.ini (see docs/developer/setup/docker.md).
+RUN cp /opt/gEAR/docker/gear.ini.docker.template /opt/gEAR/gear.ini
+
+# Site preferences come from the template in the cloned repo, pointed at the local Docker site.
+# domain_label "gear" matches the "portals" lists of the bundled study pages (www/landing/*/study.json).
+# docker-compose.yml bind-mounts the host checkout over /opt/gEAR, which hides this copy,
+# so the host checkout needs its own www/site_domain_prefs.json (see docs/developer/setup/docker.md).
+# www/stats_archive/intro_stats.json is not made here; it needs the database (bin/generate_intro_stats.py)
+# and the pages that read it hide those sections until it exists.
+RUN /opt/bin/python3 -c "\
+import json; \
+prefs_path = '/opt/gEAR/www/site_domain_prefs.json'; \
+prefs = json.load(open(prefs_path + '.template')); \
+prefs.update(domain_label='gear', domain_short_display_label='gEAR', domain_url='http://localhost:8080'); \
+json.dump(prefs, open(prefs_path, 'w'), indent=4)"
 
 # Apache things
 WORKDIR /opt/gEAR

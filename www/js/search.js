@@ -117,8 +117,13 @@ const runSearch = async () => {
         if (value) params[name] = value;
     }
 
+    // Show the search is running where the eye is: the results heading gets a spinner and
+    //  "Searching…", and the old results fade until the new ones arrive
     const submitButton = document.getElementById("search-submit");
+    const loadingIcon = document.getElementById("results-loading");
     submitButton.classList.add("is-loading");
+    loadingIcon.classList.remove("is-hidden");
+    document.getElementById("results-summary").textContent = "Searching…";
     document.getElementById("results-section").setAttribute("aria-busy", "true");
 
     try {
@@ -135,6 +140,7 @@ const runSearch = async () => {
     } finally {
         if (thisSearch === searchCounter) {
             submitButton.classList.remove("is-loading");
+            loadingIcon.classList.add("is-hidden");
             document.getElementById("results-section").removeAttribute("aria-busy");
         }
     }
