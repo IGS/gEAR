@@ -61,6 +61,8 @@ unzip -t my_dataset.zip       # for .zip; should finish with "No errors detected
 
 If the check reports an error (for example "Unexpected EOF in archive" on Linux, or "Truncated input file" or "truncated gzip input" on macOS), re-create the archive from the original files, for example with `tar -czf my_dataset.tar.gz expression.tab genes.tab observations.tab`, and check it again. Then delete the failed submission under "Submissions in progress" and upload the new archive. If the archive checks out but processing still fails, [contact us](https://umgear.org/contact.html) with the share ID shown in the uploader.
 
+For an RDS / Seurat upload, the most common problem is a message saying the object **has no normalized expression layer named "data"**. See [Preparing a Seurat object](#preparing-a-seurat-object) for how to check and fix the object before uploading it again.
+
 ### Direct H5AD Uploads
 
 gEAR supports uploads of H5AD datasets (those created using the Anndata structure).  If you plan to upload one of these, it is strongly recommended that the `Anndata.var` has unique identifiers as the DataFrame index, and gene symbol names in a "gene_symbol" column.  If gene symbols are in the index, we can infer Ensembl IDs based on what annotations are stored in our database. However, there is a chance Ensembl IDs may not be found for some gene symbols and they will be flagged with a generic identifier.
@@ -70,6 +72,35 @@ gEAR supports uploads of H5AD datasets (those created using the Anndata structur
 ### Direct RDS / Seurat Uploads
 
 If you have been working with your data in R, you can upload a Seurat object directly with the "RDS / Seurat" format. Save the object with `saveRDS()` (the file must end in `.rds`). gEAR converts it to H5AD on the server: the normalized "data" layer is used for expression values, dimensionality reductions (such as UMAP, t-SNE and PCA) are copied into the cell metadata so they can be plotted, and gene symbols are mapped to Ensembl IDs using the organism (taxon ID) given in your metadata. Genes whose symbols cannot be matched are given a generic identifier.
+
+#### Preparing a Seurat object
+
+Check these before saving the object with `saveRDS()`:
+
+- **A normalized "data" layer.** gEAR uses the `data` layer of the object's default assay for expression values. Run `NormalizeData()` (or `SCTransform()`) before saving. The raw `counts` layer is never used in its place, so an object without a `data` layer can't be uploaded.
+- **Joined layers (Seurat v5).** A Seurat v5 object that was split by sample (with `split()`, or for integration with `IntegrateLayers()`) keeps one layer per sample, named like `counts.1` and `data.1`, or `data.ctrl` and `data.treated`. Run `JoinLayers()` to merge them into single `counts` and `data` layers. Your integrated reductions and clusters are kept.
+- **The default assay.** Only the default assay is converted. If it is an "integrated" assay (from Seurat v4's `IntegrateData()`), it usually holds only the 2,000 or so genes used for integration. To upload every gene, set `DefaultAssay(obj) <- "RNA"` and normalize that assay.
+- **Gene symbols as feature names.** The object's feature names (`rownames(obj)`) should be gene symbols. They are mapped to Ensembl IDs using the organism in your metadata.
+- **Reductions.** Each reduction stored on the object (for example `pca` and `umap`) is kept, and its first two components are added to the cell metadata as `<name>_1` and `<name>_2` (for example `umap_1` and `umap_2`) so they can be plotted.
+- **Cell metadata.** The object's `meta.data` becomes the dataset's cell metadata. See [Preparing cell metadata](#preparing-cell-metadata) for the column names gEAR treats specially, such as `cluster` and `cell_type`.
+
+To check an object in R, and fix it if needed:
+
+```r
+library(Seurat)
+obj <- readRDS("my_object.rds")
+
+DefaultAssay(obj)       # the assay gEAR converts
+Layers(obj)             # needs a layer named "data"
+Reductions(obj)         # for example "pca" "umap"
+head(rownames(obj))     # should be gene symbols
+
+# Only if needed:
+obj <- JoinLayers(obj)      # layers are split by sample ("data.1", "data.2", ...)
+obj <- NormalizeData(obj)   # there is no "data" layer
+
+saveRDS(obj, "my_object.rds")
+```
 
 ## Bulk RNAseq data
 
