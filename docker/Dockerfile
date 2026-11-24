@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ############################################################
 # Dockerfile to build gEAR web application
 ############################################################
@@ -9,7 +10,7 @@ ARG TARGETARCH
 # Some package building issues when attempting to use 3.14
 ARG PYTHON_MAJOR_VERSION=3.14
 ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
-ARG GEAR_URL=https://www.github.com/IGS/gEAR.git
+ARG GEAR_URL=https://github.com/IGS/gEAR.git
 ARG GEAR_BRANCH=devel
 
 LABEL author="Shaun Adkins <sadkins@som.umaryland.edu>"
@@ -113,10 +114,12 @@ RUN export PLAYWRIGHT_BROWSERS_PATH=${CHROMIUM_DIR} \
   && chmod -R a+rX ${CHROMIUM_DIR} \
   && rm -rf /tmp/playwright-venv /var/lib/apt/lists/*
 
-# Get gEAR code.  Currently cannot do a git clone by normal means due to the repo being "private"
-WORKDIR /opt
-RUN git clone -b ${GEAR_BRANCH} --single-branch ${GEAR_URL} \
-  && rm -rf /var/www \
+# Get gEAR code. ADD with a git source checks the branch's latest commit on every build and
+# rebuilds this layer when the branch has moved. A "RUN git clone" layer would be reused from
+# the build cache and keep serving old code.
+# --keep-git-dir keeps .git so git commands still work inside the container.
+ADD --keep-git-dir=true ${GEAR_URL}#${GEAR_BRANCH} /opt/gEAR
+RUN rm -rf /var/www \
   && ln -s /opt/gEAR/www/ /var/
 
 # gear.ini comes from the Docker template in the cloned repo, so no secrets are baked into the
