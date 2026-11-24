@@ -200,7 +200,7 @@ Checked by grepping tracked code under `lib/`, `www/`, `listeners/`, `services/`
 
 ## `www/site_domain_prefs.json`
 
-This file holds branding and feature switches for each deployment (for example umgear.org or a NeMO portal). It is tracked in git, and each deployment edits it in place. A `site_domain_prefs.json.bak` file sits next to it. There are no `site_domain_prefs.<domain>.json` variants in the repository.
+This file holds branding and feature switches for each deployment (for example umgear.org or a NeMO portal). Git ignores it, like `gear.ini`. Make it by copying `www/site_domain_prefs.json.template`, then replace the placeholder values. Never commit a filled-in `site_domain_prefs.json`.
 
 | Key | Meaning | Read by |
 |---|---|---|

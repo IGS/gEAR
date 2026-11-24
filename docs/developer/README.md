@@ -86,11 +86,13 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
    - See [setup/README.md](./setup/README.md) for detailed instructions
    - Recommended: 16+ cores, 100GB+ RAM for production-like environment
 
-3. **Configure gear.ini**
+3. **Configure gear.ini and site preferences**
 
    ```bash
    cp gear.ini.template gear.ini
    # Edit gear.ini with your configuration
+   cp www/site_domain_prefs.json.template www/site_domain_prefs.json
+   # Edit www/site_domain_prefs.json with your portal's branding and settings
    ```
 
 4. **Install Git Hooks (Pre-commit)**

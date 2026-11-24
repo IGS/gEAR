@@ -13,4 +13,5 @@ orthomap_inputs
 **/*.bak
 **/*.sql
 gear.ini
+www/site_domain_prefs.json
 feature_mapping.tar.gz
