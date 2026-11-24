@@ -10,11 +10,14 @@ import gzip
 import io
 import json
 import shutil
+import sys
 import tarfile
 import zipfile
 from pathlib import Path
 
 import anndata
+import numpy as np
+import pandas as pd
 import pytest
 
 import gear.anndata_processor as ap
@@ -312,3 +315,95 @@ def test_status_updates_never_recreate_deleted_staging_dir(staging):
     assert not staging.exists()
 
     assert processor._cancelled_result()["cancelled"] is True
+
+
+# ---------------------------------------------------------------------------
+# RDS / Seurat uploads
+# ---------------------------------------------------------------------------
+# rpy2 and R aren't installed for the tests, so gear.seuratuploader is imported with rpy2
+# stubbed out. Only the R step (seurat_to_anndata) and the network gene mapping are replaced;
+# the processor and layer_to_X run as in production.
+
+@pytest.fixture
+def seurat_uploader(monkeypatch):
+    """gear.seuratuploader imported with its rpy2 imports stubbed."""
+    from unittest import mock
+
+    for name in (
+        "rpy2",
+        "rpy2.rinterface_lib",
+        "rpy2.rinterface_lib.callbacks",
+        "rpy2.robjects",
+        "rpy2.robjects.packages",
+    ):
+        monkeypatch.setitem(sys.modules, name, mock.MagicMock())
+    monkeypatch.delitem(sys.modules, "gear.seuratuploader", raising=False)
+    import gear.seuratuploader as seurat_uploader
+
+    monkeypatch.setattr(seurat_uploader, "genes_to_ensembl", lambda adata, taxid=None: adata)
+    return seurat_uploader
+
+
+def converted_seurat(layers: dict[str, np.ndarray]) -> anndata.AnnData:
+    """What anndataR writes for a Seurat object: no X, and each assay layer under its own name."""
+    obs = pd.DataFrame({"cluster": ["a", "b", "a"]}, index=["c1", "c2", "c3"])
+    var = pd.DataFrame(index=["Xkr4", "Sox17"])
+    return anndata.AnnData(obs=obs, var=var, layers=layers)
+
+
+def run_seurat(staging: Path, seurat_uploader, monkeypatch, layers: dict[str, np.ndarray]) -> dict:
+    (staging / f"{SHARE_UID}.rds").write_bytes(b"not read: the R step is replaced")
+
+    def fake_seurat_to_anndata(file_path, share_name, output_dir=".", progress_callback=None):
+        output_path = Path(output_dir) / f"tmp_{share_name}.h5ad"
+        converted_seurat(layers).write_h5ad(output_path)
+        return str(output_path)
+
+    monkeypatch.setattr(seurat_uploader, "seurat_to_anndata", fake_seurat_to_anndata)
+    return make_processor(staging).process("rds")
+
+
+COUNTS = np.array([[1, 0], [3, 2], [0, 5]], dtype=np.float32)
+LOG_NORMALIZED = np.log1p(COUNTS)
+
+
+def test_seurat_data_layer_becomes_x(staging, seurat_uploader, monkeypatch):
+    """The normalized "data" layer is used for expression values, never the raw counts."""
+    result = run_seurat(
+        staging, seurat_uploader, monkeypatch, {"counts": COUNTS, "data": LOG_NORMALIZED}
+    )
+
+    assert result["success"] == 1, result
+    adata = read_h5ad(staging)
+    np.testing.assert_allclose(np.asarray(adata.X), LOG_NORMALIZED)
+
+
+@pytest.mark.parametrize(
+    "layers, advice",
+    [
+        # NormalizeData() was never run on the object
+        ({"counts": COUNTS}, "NormalizeData"),
+        # Seurat v5 objects split by sample (split() or integration) without JoinLayers()
+        ({"counts.1": COUNTS, "data.1": LOG_NORMALIZED, "data.2": LOG_NORMALIZED}, "JoinLayers"),
+    ],
+    ids=["not-normalized", "split-layers"],
+)
+def test_seurat_without_data_layer_is_explained(staging, seurat_uploader, monkeypatch, layers, advice):
+    """
+    A Seurat object with no layer named "data" fails with a message that names the layers found
+    and says how to fix the object, instead of "An unexpected internal error ... 'data'".
+    """
+    result = run_seurat(staging, seurat_uploader, monkeypatch, layers)
+
+    assert result["success"] == 0, result
+    message = result["message"]
+    assert "unexpected internal error" not in message
+    assert advice in message
+    for layer_name in layers:
+        assert layer_name in message
+
+    status = json.loads((staging / "status.json").read_text())
+    assert status["status"] == "error"
+    assert status["message"] == message
+    # The raw counts are never used as expression values in place of the missing "data" layer
+    assert not (staging / f"{SHARE_UID}.h5ad").exists()

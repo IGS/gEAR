@@ -552,7 +552,10 @@ class AnndataProcessor:
 
         self._update_progress(50, "Writing initial H5AD file...")
         if adata.X is None:
-            # TODO: This is currently not an option in the UI, but was suggested to be one by @jorvis
+            # anndataR leaves X empty and copies each assay layer under its own name.
+            # TODO: Letting the user pick the layer is not an option in the UI yet, but was suggested by @jorvis
+            if 'data' not in adata.layers:
+                raise ProcessingError(self._missing_seurat_data_layer_message(list(adata.layers)))
             adata = SeuratUploader.layer_to_X(adata, layer_name='data')
         h5ad_path = self.staging_area / f"{self.share_uid}.new.h5ad"
         try:
@@ -570,6 +573,32 @@ class AnndataProcessor:
 
         self._update_progress(65, "Seurat processing complete.")
         return h5ad_path
+
+    @staticmethod
+    def _missing_seurat_data_layer_message(layer_names: list[str]) -> str:
+        """
+        Explain how to fix a Seurat object with no normalized "data" layer, the layer gEAR uses for
+        expression values. The raw counts are not used instead, because the dataset's metadata
+        describes normalized values.
+        """
+        found = ", ".join(f'"{name}"' for name in layer_names) or "none"
+        message = (
+            'Your Seurat object has no normalized expression layer named "data", which gEAR uses '
+            f"for expression values (layers found: {found}). "
+        )
+        # Seurat v5 objects split by sample (split() or integration) have one layer per sample,
+        #  e.g. "data.1" or "data.ctrl"
+        if any(name.startswith("data.") for name in layer_names):
+            message += (
+                "The data is split into one layer per sample. In R, run JoinLayers() on the object, "
+                "then save it again with saveRDS() and re-upload it."
+            )
+        else:
+            message += (
+                "In R, run NormalizeData() (or your usual normalization) on the object, then save it "
+                "again with saveRDS() and re-upload it."
+            )
+        return message + ' See "Preparing a Seurat object" in the gEAR upload documentation.'
 
     def _process_excel(self) -> Path:
         """Process Excel file with expression, observations, and genes sheets."""
