@@ -9,7 +9,7 @@ from datetime import datetime
 import pytest
 from gear.search import Criteria
 from gear.search.gene_lists import GENE_PREVIEW_COUNT, GeneListSearcher
-from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
+from gear.search.fulltext import to_boolean_mode_query, to_like_patterns
 from helpers.scripted_cursor import ScriptedCursor
 
 OWNER = types.SimpleNamespace(id=7)

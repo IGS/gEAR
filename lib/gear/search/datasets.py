@@ -15,8 +15,8 @@ from urllib.parse import quote, urlencode
 
 from gear.search import Hit
 from gear.search.access import DATASET_LIVE_CLAUSE, dataset_visibility
+from gear.search.fulltext import to_boolean_mode_query, to_like_patterns
 from gear.search.lookups import visible_datasets
-from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
 
 IMAGE_ROOT = Path(__file__).resolve().parents[3] / "www" / "img" / "dataset_previews"
 WEB_IMAGE_ROOT = "./img/dataset_previews"

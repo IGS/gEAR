@@ -12,7 +12,7 @@ import pytest
 from gear.search import Criteria, datasets
 from gear.search.access import DATASET_LIVE_CLAUSE
 from gear.search.datasets import DatasetSearcher
-from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
+from gear.search.fulltext import to_boolean_mode_query, to_like_patterns
 from helpers.scripted_cursor import ScriptedCursor
 
 OWNER = types.SimpleNamespace(id=7)

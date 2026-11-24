@@ -3195,7 +3195,7 @@ paths:
                   description: Search scope
                 search_terms:
                   type: string
-                  description: Full-text terms, converted by gear.utils.fulltext.to_boolean_mode_query (a term joined by
+                  description: Full-text terms, converted by gear.search.fulltext.to_boolean_mode_query (a term joined by
                     punctuation or in double quotes matches as a phrase; text with no words lists as if no terms were given). Tags are
                     matched by the whitespace-separated terms as typed.
                 only_types:
@@ -5982,7 +5982,7 @@ paths:
                 search_terms:
                   type: string
                   description: Space-separated terms (MySQL boolean full-text on title, ldesc, geo_id, pubmed_id), matching
-                    any term. Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
+                    any term. Punctuation is not treated as full-text operators (gear.search.fulltext.to_boolean_mode_query); a term joined
                     by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), and terms with no words
                     are ignored. Words of 3 or more characters match as prefixes (Tono matches Tonotopic) and anywhere in the
                     title, including inside underscore names (potential matches Groves_potential_targets). Text in double
@@ -6080,7 +6080,7 @@ paths:
                 search_terms:
                   type: string
                   description: Space-separated terms (MySQL boolean full-text on label, ldesc), matching any term.
-                    Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
+                    Punctuation is not treated as full-text operators (gear.search.fulltext.to_boolean_mode_query); a term joined
                     by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), and terms with no words
                     are ignored. Words of 3 or more characters match as prefixes (Tono matches Tonotopic) and anywhere in the
                     label, including inside underscore names (potential matches Groves_potential_targets). Text in double

@@ -9,7 +9,7 @@ import pytest
 from gear.search import Criteria
 from gear.search.access import DATASET_LIVE_CLAUSE
 from gear.search.layouts import DATASET_PREVIEW_COUNT, CollectionSearcher
-from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
+from gear.search.fulltext import to_boolean_mode_query, to_like_patterns
 from helpers.scripted_cursor import ScriptedCursor
 
 OWNER = types.SimpleNamespace(id=7)

@@ -22,8 +22,9 @@ from math import ceil
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.search.access import DATASET_LIVE_CLAUSE, dataset_visibility
+from gear.search.fulltext import to_boolean_mode_query, to_like_patterns
 from gear.userhistory import UserHistory
-from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
 
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 20
@@ -99,65 +100,16 @@ def main():
         return
 
     datasets_collection = geardb.DatasetCollection()
-    shared_dataset_id_str = None
 
-    qry_params = []
     selects = ["d.id"]
     froms = ["dataset d"]
-    wheres = ["d.marked_for_removal = 0", "d.load_status = 'completed'"]
     orders_by = []
 
-    if user:
-        shared_dataset_id_str = get_shared_dataset_id_string(user, cursor)
-        ownership_bits = []
-
-        # if any ownership filters are defined, collect those
-        if ownership:
-            # options are 'yours', 'shared', 'public'
-            owners = ownership.split(',')
-
-            if 'yours' in owners:
-                ownership_bits.append("d.owner_id = %s")
-                qry_params.append(user.id)
-
-            if 'public' in owners:
-                ownership_bits.append("d.is_public = 1")
-
-            if 'shared' in owners and shared_dataset_id_str:
-                ownership_bits.append(f"d.id IN ({shared_dataset_id_str})")
-            elif 'shared' in owners:
-                # Query gets thrown off if there are no shares for this user so just put
-                #  something in which won't match any.  This allows other params to still
-                #  match.
-                ownership_bits.append("d.id IN ('XYZ')")
-
-            if 'group' in owners:
-                ownership_bits.append("d.owner_id IN \
-                                        (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
-                                        (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
-                                        ")
-                qry_params.append(user.id)
-
-            # Nothing to match (e.g. an ownership value that isn't recognized): an empty "()"
-            #  would make the query fail, so match no datasets instead
-            if not ownership_bits:
-                ownership_bits.append("0 = 1")
-
-        else:
-            # When no ownership filter is specified, show only public datasets and user's own datasets
-            # Shared and group datasets should only appear when explicitly requested via ownership filter
-            ownership_bits.append("d.is_public = 1")
-            ownership_bits.append("d.owner_id = %s")
-
-            if shared_dataset_id_str:
-                ownership_bits.append(f"d.id IN ({shared_dataset_id_str})")
-
-            qry_params.append(user.id)
-
-        wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
-
-    else:
-        wheres.append("d.is_public = 1")
+    # Deleted or unfinished datasets are never listed. Who sees what follows the same rules as the
+    #  unified search (gear.search.access): logged out, public only; logged in with no ownership
+    #  filter, public, owned or shared with the user; group datasets only when asked for.
+    visibility, qry_params = dataset_visibility(user, ownership.split(',') if ownership else [])
+    wheres = [DATASET_LIVE_CLAUSE, visibility]
 
     if share_id:
         wheres.append("d.share_id = %s")
@@ -366,20 +318,6 @@ def main():
             label="Datasets matching '{0}'".format(' '.join(search_terms)),
             search_terms=search_terms,
         )
-
-def get_shared_dataset_id_string(user, cursor):
-    """
-    Return dataset IDs shared with the user as a quoted, comma-separated SQL list string.
-    """
-    qry = "SELECT dataset_id FROM dataset_shares WHERE is_allowed = 1 AND user_id = %s"
-    cursor.execute(qry, [user.id,])
-
-    dataset_ids = list()
-    for row in cursor:
-        dataset_ids.append(row[0])
-
-    return (', '.join('"' + id + '"' for id in dataset_ids))
-
 
 if __name__ == '__main__':
     main()

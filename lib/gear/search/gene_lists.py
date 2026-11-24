@@ -16,8 +16,8 @@ from urllib.parse import urlencode
 
 from gear.search import Hit
 from gear.search.access import gene_cart_visibility
+from gear.search.fulltext import to_boolean_mode_query, to_like_patterns
 from gear.search.lookups import access_label
-from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
 
 CARTS_DIR = Path(__file__).resolve().parents[3] / "www" / "carts"
 

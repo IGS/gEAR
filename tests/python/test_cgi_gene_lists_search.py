@@ -1,9 +1,10 @@
 """Gene list and search CGIs: error handling, ownership checks and exactly one JSON response."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
-
+from gear.search import access
 from helpers.cgi_harness import run_cgi
 
 FAKES = Path(__file__).resolve().parent / "fakes"
@@ -222,6 +223,27 @@ class TestSearchByShareId:
         assert "organism_id in" not in query.lower() and "INTERVAL" not in query
         assert f"{alias}.is_public = 1" in query
         assert "hair" not in str(entry["params"])
+
+
+@pytest.mark.parametrize("script, table, visibility", [
+    ("search_datasets.cgi", "dataset d", access.dataset_visibility),
+    ("search_gene_carts.cgi", "gene_cart gc", access.gene_cart_visibility),
+])
+@pytest.mark.parametrize("session_id, ownership", [
+    (None, ""), (None, "yours"), ("owner", ""), ("owner", "yours,group"), ("owner", "shared"),
+    ("owner", "public"), ("owner", "nonsense"),
+])
+def test_search_uses_the_shared_visibility_rules(script, table, visibility, session_id, ownership):
+    """#1383: these pages and the unified search take who-sees-what from one place, gear.search.access."""
+    query = {"ownership": ownership, **({"session_id": session_id} if session_id else {})}
+    result = run_cgi(script, db={"sessions": SESSIONS}, fake_modules=USERHISTORY, query=query)
+    assert result.json()["success"] == 1
+    (entry,) = [e for e in result.logged("sql") if f"FROM {table}" in e["query"] and "COUNT(" not in e["query"]]
+
+    user = SimpleNamespace(id=SESSIONS[session_id]) if session_id else None
+    clause, params = visibility(user, ownership.split(",") if ownership else [])
+    assert clause in entry["query"]
+    assert entry["params"] == params
 
 
 def test_dataset_search_by_share_id_counts_only_that_dataset():
