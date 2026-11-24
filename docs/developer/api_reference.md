@@ -99,7 +99,7 @@ All helpers normalize the `analysis` argument with `gear.analysis.normalize_anal
 
 ### PlotlyData: `POST /plot/<dataset_id>` and `/plot/<dataset_id>/plotly`
 
-Builds a single-gene Plotly figure with `gear.plotting`. Supported `plot_type` values include `bar`, `violin`, `box`, `strip`, `scatter`, `scattergl`, `line` and `contour`. `tsne_dynamic` and `tsne/umap_dynamic` are aliases for `scatter`.
+Builds a single-gene Plotly figure with `gear.plotting`. Supported `plot_type` values include `bar`, `violin`, `box`, `strip`, `scatter`, `scattergl`, `scatter3d` and `line`. `tsne_dynamic` and `tsne/umap_dynamic` are aliases for `scatter`.
 
 JSON body keys:
 
@@ -108,21 +108,22 @@ JSON body keys:
 | `gene_symbol` | Required. |
 | `plot_type` | See above. |
 | `analysis` | Analysis dict or ID. Omit to use the primary dataset. |
-| `x_axis`, `y_axis` (default `raw_value`), `z_axis` | Obs columns. `x_axis` and `y_axis` may also be an analysis embedding axis (`X_tsne_1/2`, `X_umap_1/2`, `X_pca_1/2`), read from the matching `adata.obsm` array; each axis is resolved on its own. For `contour`, `z_axis` defaults to `raw_value`. |
+| `x_axis`, `y_axis` (default `raw_value`), `z_axis` | Obs columns. `x_axis` and `y_axis` may also be an analysis embedding axis (`X_tsne_1/2`, `X_umap_1/2`, `X_pca_1/2`), read from the matching `adata.obsm` array; each axis is resolved on its own. `z_axis` is required for `scatter3d` and may be an obs column, `raw_value` or an embedding axis. Other plot types ignore it. |
 | `point_label`, `color_name`, `colors`, `color_palette`, `reverse_palette`, `colorblind_mode` | Color settings. |
-| `facet_row`, `facet_col`, `order`, `size_by_group`, `marker_size` (default 3), `jitter` | Layout settings. |
+| `facet_row`, `facet_col` (ignored for `scatter3d`), `order`, `size_by_group`, `marker_size` (default 3), `jitter` | Layout settings. |
 | `x_min`, `x_max`, `y_min`, `y_max`, `x_title`, `y_title`, `vlines` | Axis settings. |
-| `hide_x_labels`, `hide_y_labels`, `hide_legend` | Booleans. |
+| `z_min`, `z_max`, `z_title` | Z-axis settings for `scatter3d`. On 3-D axes a range applies only when both min and max are set. `z_title` defaults like `y_title`. |
+| `hide_x_labels`, `hide_y_labels`, `hide_z_labels`, `hide_legend` | Booleans. `hide_z_labels` applies to `scatter3d` only. |
 | `obs_filters` | Dict of obs column to list of allowed values. |
 | `projection_id` | Plot a projectR pattern instead of a gene (see [ProjectR](#projectr-resources)). |
 | `expression_min_clip` | Lower clip for expression values. |
-| `vmin`, `vmax` | Colorscale bounds for a numeric color series (or the contour `z`). They bound the colorbar only; the data is not clipped. Numbers or numeric strings; `null` or `""` uses the data minimum or maximum. `vmax` must be greater than `vmin`, otherwise `success: -1`. Ignored for categorical colors. |
+| `vmin`, `vmax` | Colorscale bounds for a numeric color series. They bound the colorbar only; the data is not clipped. Numbers or numeric strings; `null` or `""` uses the data minimum or maximum. `vmax` must be greater than `vmin`, otherwise `success: -1`. Ignored for categorical colors. |
 | `return_image` | If true, return a base64 PDF instead of JSON. |
 | `custom_props` | Extra kwargs passed to the plotting function. |
 
 Response: `success`, `message`, `gene_symbol`, `plot_json` (the Plotly figure), the plot settings echoed back (`x_axis`, `y_axis`, `z_axis`, axis limits and titles, `vlines`, `point_label`, `size_by_group`, `marker_size`, `jitter`, `hide_*`, `color_name`, `facet_row`, `facet_col`), plus `plot_colors`, `plot_palette`, `reverse_palette`, `obs_filters` and `plot_order`. With `return_image` the response is `{success, message, image, image_format: "pdf"}`.
 
-Errors (HTTP 200, `success: -1`): no JSON body, missing gene symbol, dataset not found, h5ad file not found, `PlotError` from plotting, or any other exception (as `"Encountered error: ..."`).
+Errors (HTTP 200, `success: -1`): no JSON body, missing gene symbol, `scatter3d` without a valid `z_axis`, dataset not found, h5ad file not found, `PlotError` from plotting, or any other exception (as `"Encountered error: ..."`).
 
 ### MGPlotlyData: `POST /plot/<dataset_id>/mg_plotly`
 
@@ -176,7 +177,7 @@ Response: `{success, spec, position, message, hic_found}`. `position` is `chr:st
 
 Prepares cached inputs for the HoloViz Panel spatial viewer and returns the script that embeds it. See [services/spatial.md](./services/spatial.md).
 
-JSON body keys: `gene_symbol` (a gene, or a pattern name when projecting), `projection_id`, `is_zoomed`, `min_genes`, `expression_min_clip`, `vmin` and `vmax` (expression colorbar bounds; default 0 and the 98th percentile of nonzero expression; `vmax` must be greater than `vmin`, or than 0 when `vmin` is not set), `disable_save` (default true), `colorblind_mode` (default false), and the optional initial view range `x_range_start`, `x_range_end`, `y_range_start`, `y_range_end`. The range is used only when all four are given. Colorblind mode is passed to the Panel app, which then uses reversed cividis for expression and colorcet glasbey_cool for clusters; the cached CSV keeps the normal cluster colors.
+JSON body keys: `gene_symbol` (a gene, or a pattern name when projecting), `projection_id`, `is_zoomed`, `expression_min_clip`, `vmin` and `vmax` (expression colorbar bounds; default 0 and the 98th percentile of nonzero expression; `vmax` must be greater than `vmin`, or than 0 when `vmin` is not set), `disable_save` (default true), `colorblind_mode` (default false), and the optional initial view range `x_range_start`, `x_range_end`, `y_range_start`, `y_range_end`. The range is used only when all four are given. Colorblind mode is passed to the Panel app, which then uses reversed cividis for expression and colorcet glasbey_cool for clusters; the cached CSV keeps the normal cluster colors.
 
 Side effects: writes `<gene_symbol>.csv` (or `<projection_id>_<gene_symbol>.csv`), `spatial_img_<channel>.npy`, `spatial_props.json` and, on image failure, `image_extraction_error.log` under `www/cache/spatial_panel/<dataset_id>/`.
 

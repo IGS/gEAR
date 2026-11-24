@@ -100,3 +100,49 @@ class TestGetSourceArchivePath:
         assert path.endswith("/www/datasets/XYZ.tar.gz")
         spatial = geardb.Dataset(id="XYZ", dtype="spatial").get_tarball_path()
         assert spatial.endswith("/www/datasets/spatial/XYZ.tar.gz")
+
+
+class TestAddGoslingDisplayCuration:
+    @pytest.fixture
+    def cnx(self, monkeypatch):
+        import geardb
+        from unittest import mock
+
+        cnx = mock.MagicMock(name="cnx")
+        cnx.cursor.return_value.lastrowid = 42
+        cnx.is_connected.return_value = True
+        monkeypatch.setattr(geardb.gear.db.MySQLDB, "connect", lambda self: cnx)
+        return cnx
+
+    def test_preference_is_an_upsert_for_the_new_display(self, cnx):
+        import types
+        import geardb
+
+        user = types.SimpleNamespace(id=7)
+        display_id = geardb.add_gosling_display_curation("DS1", user, {"hubUrl": "h", "assembly": "mm10"})
+
+        assert display_id == 42
+        calls = cnx.cursor.return_value.execute.call_args_list
+        assert len(calls) == 2
+        pref_sql, pref_params = calls[1].args
+        assert "INSERT INTO dataset_preference" in pref_sql
+        assert "ON DUPLICATE KEY UPDATE display_id" in pref_sql
+        assert pref_params == (7, "DS1", 42)
+
+    def test_both_inserts_commit_together(self, cnx):
+        import types
+        import geardb
+
+        geardb.add_gosling_display_curation("DS1", types.SimpleNamespace(id=7), {})
+        assert cnx.commit.call_count == 1
+        assert cnx.close.called
+
+    def test_nothing_committed_when_preference_insert_fails(self, cnx):
+        import types
+        import geardb
+
+        cnx.cursor.return_value.execute.side_effect = [None, RuntimeError("duplicate")]
+        with pytest.raises(RuntimeError):
+            geardb.add_gosling_display_curation("DS1", types.SimpleNamespace(id=7), {})
+        cnx.commit.assert_not_called()
+        assert cnx.close.called

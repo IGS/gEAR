@@ -4,12 +4,6 @@ NOTES
 TODO
 www/.env
 www/cgi/remove_dataset_from_profile.cgi
-www/include/manual/create_account.html~
-www/include/manual/search_gear.html~
-www/include/manual/search_results.html~
-www/include/manual/upload_dataset.html~
-www/tests/test_dataset_curator_plotly.py
-www/datasets_epigenetic/uploads/files/*
 www/tracks/*
 www/.DS_Store
 www/.cache
@@ -18,6 +12,6 @@ orthomap_inputs
 **/__pycache__
 **/*.bak
 **/*.sql
-www/nemoarchive_import/*.json
 gear.ini
+www/site_domain_prefs.json
 feature_mapping.tar.gz

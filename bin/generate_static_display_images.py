@@ -173,7 +173,7 @@ def main():
             url = "{}localhost/api/plot/{}".format(uri_identifier, dataset_id)
             try:
                 # Plotly
-                if props["plot_type"].lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+                if props["plot_type"].lower() in ['bar', 'scatter', 'violin', 'line', 'tsne_dynamic', 'tsne/umap_dynamic', 'scatter3d']:
                     # Some early plots did not store gene symbols in the config
                     if "gene_symbol" not in config:
                         config["gene_symbol"] = "Pou4f3"

@@ -180,6 +180,8 @@ Scanpy (or dependencies like numba) assumes it can write in several directories 
     find ./ -name __pycache__ -exec chmod 777 {} \;
 ```
 
+kaleido (Plotly image export) also needs a Chromium that the Apache user can run. Installing the package is not enough; see [Plotly image export](./plotly_image_export.md).
+
 ## Note about Flask
 
 The Flask server is set to run with debug mode as False by default, but by setting the DEBUG environment variable to "True" you can change this (since the value is read from os.environ)

@@ -8,6 +8,20 @@
             </div>
             <hr class="my-2 has-background-grey-lighter" />
           </div>
+          <!-- Search box for the unified search (#1383); hidden when the menu is collapsed -->
+          <form id="nav-search-c" class="px-3 mt-4" action="/search.html" method="get" role="search" data-testid="nav-search">
+            <label for="nav-search-q" class="is-sr-only">Search gEAR</label>
+            <div class="field has-addons">
+              <div class="control is-expanded">
+                <input id="nav-search-q" class="input is-small" type="search" name="q" placeholder="Search gEAR" autocomplete="off" />
+              </div>
+              <div class="control">
+                <button type="submit" class="button is-small is-primary" aria-label="Search gEAR">
+                  <span class="icon is-small"><i class="mdi mdi-magnify" aria-hidden="true"></i></span>
+                </button>
+              </div>
+            </div>
+          </form>
           <aside class="menu mt-5 pl-3">
             <!--
               To manage the active state of the menu items, each below has a "tool" attribute.
@@ -37,6 +51,14 @@
                 </span>
                 </a>
               </li>
+              <li>
+                <span class="icon-text is-align-items-center is-flex">
+                  <a class="icon-link-part" tool="search_gear" href="/search.html">
+                    <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-magnify"></i></span>
+                    <span class="icon-text-part">Search gEAR</span>
+                  </a>
+                </span>
+              </li>
             </ul>
             <p class="menu-label mb-0 is-capitalized has-text-primary-light">
               <span class="menu-label-text">Explore</span>
@@ -63,6 +85,14 @@
                   <a class="icon-link-part" tool="search_datasets" href="/dataset_explorer.html">
                     <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-table-search"></i></span>
                     <span class="icon-text-part">Datasets</span>
+                  </a>
+                </span>
+              </li>
+              <li>
+                <span class="icon-text is-align-items-center is-flex">
+                  <a class="icon-link-part" tool="studies" href="/studies.html">
+                    <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-book-open-page-variant-outline"></i></span>
+                    <span class="icon-text-part">Studies</span>
                   </a>
                 </span>
               </li>

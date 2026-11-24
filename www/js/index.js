@@ -2,6 +2,7 @@
 
 import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
+import { loadFeaturedStudies } from "./featured_studies.js";
 import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js";
 
 // if URL params are present, the user probably pasted a v1 URL into the browser
@@ -394,8 +395,22 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 }
 registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
+
 // Pre-initialize some stuff
 await initCommonUI();
 
+// The intro page's "Log in" link arrives with #login: open the login dropdown and focus the e-mail field
+if (window.location.hash === '#login') {
+    const loginMenu = document.querySelector('#navbar-login-controls .not-logged-in.has-dropdown');
+    if (loginMenu && !document.cookie.match(/(^|;\s*)gear_session_id=/)) {
+        loginMenu.classList.add('is-active');
+        document.getElementById('user-email')?.focus();
+        document.addEventListener('click', (event) => {
+            if (!loginMenu.contains(event.target)) loginMenu.classList.remove('is-active');
+        });
+    }
+}
+
 loadOrganismList();
 populateDatasetSpinner();
+loadFeaturedStudies();

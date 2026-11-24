@@ -925,7 +925,7 @@ def get_default_display(user_id, dataset_id, is_multigene=0):
 
 # Embedding plots (tSNE/UMAP/PCA) need room to be readable, so auto-arranged layouts give them the full row
 EMBEDDING_PLOT_TYPES = (
-    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic",
+    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic", "scatter3d",
     "mg_tsne_static", "mg_umap_static", "mg_pca_static",
 )
 AUTO_LAYOUT_EMBEDDING_WIDTH = 12
@@ -1171,42 +1171,44 @@ def add_spatial_panel_curation(dataset_id: str, user: "User", config: dict) -> N
     cursor.close()
     cnx.close()
 
-def add_gosling_display_curation(dataset_id: str, user: "User", config: dict) -> None:
+def add_gosling_display_curation(dataset_id: str, user: "User", config: dict) -> int:
     """
-    Adds a gosling display curation for the specified dataset and user.
+    Adds a gosling display curation for the specified dataset and user, and makes it
+    that user's single-gene default display for the dataset.
+
+    Returns:
+        int: The ID of the new dataset_display row.
     """
 
     if not user or not user.id:
         raise ValueError("Valid user with an ID must be provided to add a gosling display curation.")
 
-    # add file to both dataset and dataset_epiviz
     cnx = Connection()
     cursor = cnx.get_cursor()
 
-    #  insert into dataset_display
-    dataset_display_sql = """
-        INSERT INTO dataset_display (dataset_id, user_id, label, plot_type, plotly_config)
-        VALUES (%s, %s, %s, %s, %s)
-    """
+    try:
+        dataset_display_sql = """
+            INSERT INTO dataset_display (dataset_id, user_id, label, plot_type, plotly_config)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        cursor.execute(dataset_display_sql, (dataset_id, user.id, "Gosling curation", "gosling", json.dumps(config),))
+        display_id = cursor.lastrowid
 
-    # Insert dataset_gosling info to database
-    cursor.execute(dataset_display_sql, (dataset_id, user.id, "Gosling curation", "gosling", json.dumps(config),))
+        # The user may already have a single-gene default for this dataset (e.g. finalize was re-run)
+        dataset_preference_sql = """
+            INSERT INTO dataset_preference (user_id, dataset_id, display_id, is_multigene)
+            VALUES (%s, %s, %s, 0)
+            ON DUPLICATE KEY UPDATE display_id = VALUES(display_id)
+        """
+        cursor.execute(dataset_preference_sql, (user.id, dataset_id, display_id,))
 
-    cnx.commit()
+        # One commit, so a display is never left without its preference row
+        cnx.commit()
+    finally:
+        cursor.close()
+        cnx.close()
 
-    #  set preference
-    dataset_preference_sql = """
-        INSERT INTO dataset_preference (user_id, dataset_id, display_id)
-        VALUES (%s, %s, %s)
-    """
-
-    # Insert dataset_epiviz info to database
-    cursor.execute(dataset_preference_sql, (user.id, dataset_id, cursor.lastrowid,))
-    cnx.commit()
-
-    # close connection
-    cursor.close()
-    cnx.close()
+    return display_id
 
 class Connection:
     """
@@ -1620,14 +1622,16 @@ class Layout:
         """
         cursor.execute(qry, (display_id, self.id))
 
-        self.members = self.get_members()
-
         # ? Would be nice to delete empty rows, but then we have to figure out
         #  if this was a single or multigene display, then adjust the start_row for that type
 
         cursor.close()
         conn.commit()
         conn.close()
+
+        # Reload after commit; get_members() uses its own connection and would otherwise still see the deleted row.
+        # It fills self.members itself (and returns None when there are members).
+        self.get_members()
 
     def remove_members_by_dataset_id(self, dataset_id):
         """Deletes all members where the display ID belongs to a given dataset ID from the database."""
@@ -1646,12 +1650,15 @@ class Layout:
 
         cursor.execute(qry, (dataset_id, self.id))
 
-        self.members = self.get_members()
-
         # ? Would be nice to dynamically adjust the start_row afterwards to remove gaps
 
         cursor.close()
         conn.commit()
+        conn.close()
+
+        # Reload after commit; get_members() uses its own connection and would otherwise still see the deleted rows.
+        # It fills self.members itself (and returns None when there are members).
+        self.get_members()
 
     def save(self):
         """

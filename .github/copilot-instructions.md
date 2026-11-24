@@ -42,7 +42,9 @@
 
 ## Developer Workflows
 - **Setup**: See `docs/setup.new_server.notes.md` for server install steps. Large RAM/CPU recommended.
-- **Testing**: Automated UI tests in `tests/` using Mocha, Chai, Playwright. Run with `npm test` in `tests/`. The testing suite is incomplete; API tests are planned, and front-end tests mock API responses for speed and CI compatibility.
+- **Testing**:
+    - Server-side: the pytest suite in `tests/python` covers CGI scripts (against a fake database), Flask API resources, upload processors and docs. It is maintained and runs in CI (`.github/workflows/python_tests.yml`). Run `python -m pytest` in `tests/python` (Python 3.14; see `tests/README.md` and `docs/developer/testing.md`).
+    - UI: the Mocha, Chai and Playwright suites in `tests/legacy` run against a live site and are not maintained right now. We plan to revive UI and e2e testing; front-end tests should mock API responses for speed and CI compatibility.
 - **Service Management**: Use systemd templates for scalable worker services. Start with `sudo systemctl start <service>`, reload with `sudo systemctl daemon-reload`, enable for reboot persistence.
 - **Containerization**: Build Docker images for services (see `services/projectr/README.md`). For M1 Macs, use `--platform linux/amd64`.
 
@@ -90,7 +92,7 @@
 - **External Data**: H5AD files for dataset storage; MySQL for metadata.
 
 ## Examples
-- To run UI tests: `cd tests && npm test`
+- To run server-side tests: `cd tests/python && python -m pytest` (add `-m "not slow"` for a quick local run)
 - To build ProjectR service on M1 Mac: `docker build --platform linux/amd64 --no-cache -t projectr_service .`
 - To restart all RabbitMQ consumer workers after a code update: `sudo systemctl restart gear-consumers.target` (see `docs/developer/services/rabbitmq_consumers.md` "Rolling Out Updates")
 
@@ -100,7 +102,7 @@
 - `www/cgi/`: Legacy CGI endpoints (still used for single-purpose scripts)
 - `services/`: Microservices (ProjectR, etc.)
 - `systemd/`: Service templates
-- `tests/`: Automated UI tests (incomplete)
+- `tests/`: pytest suite in `tests/python` (maintained, CI); legacy UI suites in `tests/legacy`
 - `www/js/`: Front-end JS (classic modules, ES modules in `.v2` files)
 - `www/css/bulma/`: Bulma CSS framework
 - `listeners/`: RabbitMQ consumer scripts

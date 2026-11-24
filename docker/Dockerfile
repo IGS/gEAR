@@ -91,6 +91,28 @@ RUN /opt/bin/python3 -m pip install rpy2==3.6.7
 #RUN /opt/Python-${PYTHON_FULL_VERSION}/bin/python3 -m compileall -q /opt/Python-${PYTHON_FULL_VERSION}/lib/python${PYTHON_MAJOR_VERSION}/site-packages/
 RUN find /opt/Python-${PYTHON_FULL_VERSION}/lib/python${PYTHON_MAJOR_VERSION}/site-packages/ -name __pycache__ -exec chmod 777 {} \;
 
+# Chromium for Plotly static image export (fig.to_image / write_image, e.g. the "Download image" menu item).
+# kaleido 1.x does not include a browser. Its own installer (plotly_get_chrome / kaleido_get_chrome) is not used because:
+#  - it installs into the installing user's home, which the Apache user (www-data) cannot see
+#  - Google publishes no Linux arm64 build of the Chrome it downloads
+# Playwright publishes Chromium for both amd64 and arm64, and --with-deps installs the system libraries it needs.
+# The browser goes in a shared directory, linked to /usr/bin/chromium, one of the paths kaleido checks.
+# Playwright itself is only needed to download the browser, so it goes in a throwaway venv.
+# PLAYWRIGHT_BROWSERS_PATH is exported inside the RUN so the step also works when pasted into a shell
+# (otherwise Playwright downloads to the current user's ~/.cache/ms-playwright).
+ARG PLAYWRIGHT_VERSION=1.55.0
+ARG CHROMIUM_DIR=/opt/ms-playwright
+RUN export PLAYWRIGHT_BROWSERS_PATH=${CHROMIUM_DIR} \
+  && /opt/bin/python3 -m venv /tmp/playwright-venv \
+  && /tmp/playwright-venv/bin/pip install -q playwright==${PLAYWRIGHT_VERSION} \
+  && apt -qq update \
+  && /tmp/playwright-venv/bin/playwright install --with-deps --no-shell chromium \
+  && CHROME_BIN=$(find ${CHROMIUM_DIR} -type f -name chrome -path '*/chromium-*' 2>/dev/null | head -n 1) \
+  && { [ -n "${CHROME_BIN}" ] || { echo "ERROR: Chromium executable not found under ${CHROMIUM_DIR}" >&2; exit 1; }; } \
+  && ln -sf "${CHROME_BIN}" /usr/bin/chromium \
+  && chmod -R a+rX ${CHROMIUM_DIR} \
+  && rm -rf /tmp/playwright-venv /var/lib/apt/lists/*
+
 # Get gEAR code.  Currently cannot do a git clone by normal means due to the repo being "private"
 WORKDIR /opt
 RUN git clone -b ${GEAR_BRANCH} --single-branch ${GEAR_URL} \

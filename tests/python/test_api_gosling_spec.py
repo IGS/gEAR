@@ -135,6 +135,47 @@ def test_zoom_view_to_domain_pads_gene(hic_found, padding):
     assert view.xDomain.interval == [100000 - padding, 200000 + padding]
 
 
+# ---------------------------------------------------------------- saved panel ranges
+
+ASSEMBLY_ARRAY = [["chr1", 1000000], ["chr7", 145441459], ["chrUn_JH584304", 114452]]
+
+
+@pytest.mark.parametrize("region, expected", [
+    ("chr7:100-200", ("chr7", 100, 200)),
+    (" chr7:100-200 ", ("chr7", 100, 200)),
+    ("chrUn_JH584304:1-500", ("chrUn_JH584304", 1, 500)),
+    ("chr1:0-500", ("chr1", 1, 500)),                    # start clamped to 1
+    ("chr1:900000-5000000", ("chr1", 900000, 1000000)),  # end clamped to the chromosome size
+])
+def test_parse_region_str(region, expected):
+    assert gosling_spec.parse_region_str(region, ASSEMBLY_ARRAY) == expected
+
+
+@pytest.mark.parametrize("region", [
+    None, "", "chr7", "chr7:100", "chr7:a-b", "mm10.chr7:100-200", "chr7:1,000-2,000",
+    "chr7:200-100", "chr7:100-100",   # empty or reversed
+    "chr99:100-200",                  # not in the assembly
+    "chr7:100-200;drop",
+])
+def test_parse_region_str_invalid(region):
+    assert gosling_spec.parse_region_str(region, ASSEMBLY_ARRAY) is None
+
+
+def test_parse_region_str_without_assembly_skips_chromosome_check():
+    assert gosling_spec.parse_region_str("chr99:100-200") == ("chr99", 100, 200)
+
+
+def test_set_view_region_is_exact():
+    view = gosling_spec.set_view_region(_View(), ("chr7", 100, 200))
+    assert view.xDomain.chromosome == "chr7"
+    assert view.xDomain.interval == [100, 200]
+
+
+def test_region_to_str():
+    assert gosling_spec.region_to_str(("chr7", 100, 200)) == "chr7:100-200"
+    assert gosling_spec.region_to_str(None) is None
+
+
 # ---------------------------------------------------------------- assembly arrays
 
 class _Response:
@@ -211,3 +252,70 @@ def test_validate_url_extension_accepts(url):
 def test_validate_url_extension_rejects(url):
     with pytest.raises(ValueError, match=r"\.bw, \.bam\.bai"):
         gosling_spec.TrackSpec._validate_url_extension(url, [".bw", ".bam.bai"])
+
+
+# ---------------------------------------------------------------- GET /plot/<dataset_id>/gosling
+
+def _find_view(node, view_id):
+    """Returns the spec node with the given id (depth-first), or None."""
+    if isinstance(node, dict):
+        if node.get("id") == view_id:
+            return node
+        node = list(node.values())
+    if isinstance(node, list):
+        for child in node:
+            found = _find_view(child, view_id)
+            if found is not None:
+                return found
+    return None
+
+
+@pytest.fixture
+def spec_client(monkeypatch):
+    from flask import Flask
+    from flask_restful import Api
+
+    monkeypatch.setattr(gosling_spec.geardb, "get_dataset_by_id", lambda **kwargs: object())
+    monkeypatch.setattr(gosling_spec, "_fetch_tracks_from_hub", lambda hub_url, assembly: [])
+    monkeypatch.setattr(gosling_spec, "get_gene_info", lambda gene, assembly: ("mm10.chr7:100000-200000", "Pou4f3"))
+    monkeypatch.setattr(gosling_spec, "build_assembly_array", lambda assembly: ASSEMBLY_ARRAY)
+
+    app = Flask(__name__)
+    Api(app).add_resource(gosling_spec.GoslingSpec, "/plot/<dataset_id>/gosling")
+
+    def get(**params):
+        query = {"gene": "Pou4f3", "assembly": "mm10", "hub_url": "https://gear.example.org/hub.txt", **params}
+        resp = app.test_client().get("/plot/DS1/gosling", query_string=query)
+        body = resp.get_json()
+        import json
+        return resp.status_code, body, json.loads(body["spec"]) if body.get("spec") else None
+    return get
+
+
+def test_spec_without_saved_ranges_centers_on_gene(spec_client):
+    status, body, spec = spec_client(zoom="true")
+    assert status == 200
+    assert body["regions"] == {"left": None, "right": None}
+    assert "xDomain" not in _find_view(spec, "left-view")
+    assert "xDomain" not in _find_view(spec, "right-view")
+
+
+def test_spec_opens_panels_at_saved_ranges(spec_client):
+    status, body, spec = spec_client(zoom="true", panel_a="chr7:150000-160000", panel_b="chr1:5000-9000")
+    assert status == 200
+    assert body["regions"] == {"left": "chr7:150000-160000", "right": "chr1:5000-9000"}
+    assert _find_view(spec, "left-view")["xDomain"] == {"chromosome": "chr7", "interval": [150000, 160000]}
+    assert _find_view(spec, "right-view")["xDomain"] == {"chromosome": "chr1", "interval": [5000, 9000]}
+
+
+def test_spec_ignores_panel_b_without_zoom(spec_client):
+    _, body, spec = spec_client(panel_a="chr7:150000-160000", panel_b="chr1:5000-9000")
+    assert body["regions"] == {"left": "chr7:150000-160000", "right": None}
+    assert _find_view(spec, "right-view") is None
+
+
+def test_spec_ignores_invalid_saved_range(spec_client):
+    status, body, spec = spec_client(zoom="true", panel_a="chr99:1-2", panel_b="nonsense")
+    assert status == 200
+    assert body["regions"] == {"left": None, "right": None}
+    assert "xDomain" not in _find_view(spec, "left-view")

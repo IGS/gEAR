@@ -63,7 +63,7 @@
                                     <i class="mdi mdi-close-circle" aria-hidden="true"></i>
                                 </span>
                             </div>
-                            <p class="help">Matches the start of words, so "Tono" finds "Tonotopic".</p>
+                            <p class="help">Matches the start of words, so "Tono" finds "Tonotopic". Use quotes for an exact phrase, e.g. "hair cell".</p>
                         </div>
 
                         <!-- filter options -->
@@ -300,9 +300,9 @@
                                         <div class="control">
                                             <div class="select is-small">
                                                 <select name="sort-by" id="sort-by" aria-label="Sort gene lists by">
-                                                    <option value="relevance">Relevance</option>
+                                                    <option value="relevance" selected>Relevance</option>
                                                     <option value="title">Gene cart title</option>
-                                                    <option value="date_added" selected>Date created</option>
+                                                    <option value="date_added">Date created</option>
                                                     <option value="owner">Owner</option>
                                                 </select>
                                             </div>
@@ -325,6 +325,12 @@
                             </div>
 
                         </section> <!-- #view-controls -->
+
+                        <!-- Shown when the page was opened from a link to one gene list (share_id URL parameter) -->
+                        <div id="linked-item-notice" class="notification is-info is-light is-hidden py-2 px-4" role="status" data-testid="linked-item-notice">
+                            <span id="linked-item-message"></span>
+                            <button type="button" id="linked-item-show-all" class="button is-small is-text" data-testid="linked-item-show-all">Show all gene lists</button>
+                        </div>
 
                         <!-- results view -->
                         <section id="results-container">

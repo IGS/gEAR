@@ -1306,10 +1306,6 @@ paths:
                   type: boolean
                   default: false
                   description: Use the expanded Panel app (panel_app_expanded).
-                min_genes:
-                  type: integer
-                  default: 0
-                  description: Parsed as int but otherwise unused by the handler.
                 expression_min_clip:
                   type: number
                   nullable: true
@@ -3200,7 +3196,7 @@ paths:
                 search_terms:
                   type: string
                   description: Full-text terms, converted by gear.utils.fulltext.to_boolean_mode_query (a term joined by
-                    punctuation matches as a phrase; text with no words lists as if no terms were given). Tags are
+                    punctuation or in double quotes matches as a phrase; text with no words lists as if no terms were given). Tags are
                     matched by the whitespace-separated terms as typed.
                 only_types:
                   type: string
@@ -5989,7 +5985,9 @@ paths:
                     any term. Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
                     by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), and terms with no words
                     are ignored. Words of 3 or more characters match as prefixes (Tono matches Tonotopic) and anywhere in the
-                    title, including inside underscore names (potential matches Groves_potential_targets).
+                    title, including inside underscore names (potential matches Groves_potential_targets). Text in double
+                    quotes matches only as that exact phrase ("hair cell"), or as that whole word when it is one word. Rows
+                    containing all of the unquoted terms as a phrase get a higher relevance score.
                 organism_ids:
                   type: string
                   description: Comma-separated organism IDs.
@@ -6085,7 +6083,9 @@ paths:
                     Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
                     by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), and terms with no words
                     are ignored. Words of 3 or more characters match as prefixes (Tono matches Tonotopic) and anywhere in the
-                    label, including inside underscore names (potential matches Groves_potential_targets).
+                    label, including inside underscore names (potential matches Groves_potential_targets). Text in double
+                    quotes matches only as that exact phrase ("hair cell"), or as that whole word when it is one word. Rows
+                    containing all of the unquoted terms as a phrase get a higher relevance score.
                 organism_ids:
                   type: string
                   description: Comma-separated organism IDs.

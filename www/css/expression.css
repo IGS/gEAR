@@ -126,6 +126,14 @@ ul#go-terms li {
     gap: 8px;
 }
 
+/* A single dataset (share_id) or the expanded view: one full-width tile. Toggled by TileGrid in tilegrid.js.
+   The id is needed to beat the #result-panel-grid rule's 12 columns. */
+#result-panel-grid.is-single-tile,
+#zoomed-panel-grid.is-single-tile {
+    grid-template-columns: 1fr;
+    width: unset;   /* auto-size the grid to the content */
+}
+
 .js-tile {
     display: flex;
     flex-direction: column;

@@ -45,8 +45,7 @@ def main():
 
     # make sure the user owns the layout
     if user.id == layout.user_id:
-        layout.get_members()
-        layout.remove_member_by_dataset_id(dataset_id)
+        layout.remove_members_by_dataset_id(dataset_id)
         result['success'] = 1
     else:
         error = "Not able to remove from the profile. User doesn't own it)"
