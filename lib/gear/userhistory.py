@@ -69,6 +69,7 @@ class UserHistory:
             'layout_added' -> layout_share_id
             'multigene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
             'projection_run' -> patterns, algo, gene_cart, multi, layout_share_id
+            'unified_search' -> search_terms (an array of terms)
 
         """
         if not self.user_history_enabled:
@@ -145,6 +146,13 @@ class UserHistory:
                     url += "&c={0}".format(kwargs['gene_cart'])
                 else:
                     raise Exception("ERROR: If recording a projection_run category, 'gene_cart' must be passsed")
+
+            case 'unified_search':
+                # The "Search gEAR" page (#1383)
+                if 'search_terms' in kwargs:
+                    url = "/search.html?q={}".format(urllib.parse.quote(" ".join(kwargs['search_terms'])))
+                else:
+                    raise Exception("ERROR: If recording a unified_search category, 'search_terms' must be passed")
 
             case _ :
                 raise Exception("ERROR: Invalid entry_category when calling UserHistory.add_record()")

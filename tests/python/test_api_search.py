@@ -3,7 +3,8 @@ The unified search API resource, /search (#1383).
 
 The resource is called through Flask's test client. The searchers are replaced with stubs, and
 the user and database lookups are monkeypatched, so these tests cover only the request handling:
-reading the user and the criteria, running the search, and the response.
+reading the user and the criteria, running the search, adding it to the user's history, and the
+response.
 """
 
 import types
@@ -13,6 +14,7 @@ import pytest
 from flask import Flask
 from flask_restful import Api
 from gear.search import TYPES, Hit
+from gear.userhistory import UserHistory
 from resources import search
 
 API_PY = Path(__file__).resolve().parents[2] / "www" / "api" / "api.py"
@@ -52,12 +54,35 @@ class FakeConnection:
         self.closed = True
 
 
+class FakeHistory:
+    """
+    Stands in for gear.userhistory.UserHistory. Records go to state.history, and the latest
+    entry is the last one recorded.
+    """
+
+    def __init__(self, state, connection=False, user_id=None):
+        self.state = state
+        self.connection = connection
+        self.user_history_enabled = state.history_enabled
+
+    def get_latest_entries(self, entry_count=5):
+        return [types.SimpleNamespace(**record) for record in self.state.history[-entry_count:]][::-1]
+
+    def add_record(self, **record):
+        if self.state.history_error:
+            raise self.state.history_error
+        self.state.history.append({**record, "connection": self.connection})
+
+
 @pytest.fixture
 def api(monkeypatch):
-    """A test client for the resource, with .calls (searcher calls) and .connections (database connections)."""
+    """
+    A test client for the resource, with .calls (searcher calls), .connections (database
+    connections) and .state.history (user history records).
+    """
     calls = []
     connections = []
-    state = types.SimpleNamespace(error=None)
+    state = types.SimpleNamespace(error=None, history=[], history_enabled=True, history_error=None)
 
     def build_searchers():
         return {kind: StubSearcher(kind, calls, state.error) for kind in TYPES}
@@ -70,6 +95,7 @@ def api(monkeypatch):
     monkeypatch.setattr(search, "build_searchers", build_searchers)
     monkeypatch.setattr(search.geardb, "Connection", connect)
     monkeypatch.setattr(search.geardb, "get_user_from_session_id", lambda session_id: users.get(session_id))
+    monkeypatch.setattr(search, "UserHistory", lambda **kwargs: FakeHistory(state, **kwargs))
 
     app = Flask(__name__)
     Api(app).add_resource(search.UnifiedSearch, "/search")
@@ -151,6 +177,70 @@ class TestUnifiedSearch:
         api.get("/search")
         [connection] = api.connections
         assert connection.closed and connection.cursor.closed
+
+
+class TestSearchHistory:
+    """A logged-in user's new keyword searches go into their history, like the older search pages."""
+
+    def search(self, api, query):
+        api.set_cookie("gear_session_id", "owner")
+        assert api.get(f"/search?{query}").status_code == 200
+
+    def test_new_search_is_added(self, api):
+        self.search(api, "q=hair+cell")
+        [record] = api.state.history
+        assert record == {"user_id": 5, "entry_category": "unified_search",
+                          "label": "Results matching 'hair cell'", "search_terms": ["hair", "cell"],
+                          "connection": api.connections[0]}
+
+    @pytest.mark.parametrize("cookie, query", [
+        (None, "q=hair"),             # logged out
+        ("owner", ""),                # no keywords
+        ("owner", "q=hair&page=2"),   # paging through results already logged
+    ])
+    def test_not_added(self, api, cookie, query):
+        if cookie:
+            api.set_cookie("gear_session_id", cookie)
+        api.get(f"/search?{query}")
+        assert api.state.history == []
+
+    def test_changing_filters_does_not_add_it_again(self, api):
+        self.search(api, "q=hair")
+        self.search(api, "q=hair&types=dataset")
+        self.search(api, "q=hair&types=dataset&sort=date")
+        assert [record["label"] for record in api.state.history] == ["Results matching 'hair'"]
+
+    def test_each_new_search_is_added(self, api):
+        for q in ("hair", "cochlea", "hair"):
+            self.search(api, f"q={q}")
+        assert [record["label"] for record in api.state.history] == [
+            "Results matching 'hair'", "Results matching 'cochlea'", "Results matching 'hair'"]
+
+    def test_history_turned_off_records_nothing(self, api):
+        api.state.history_enabled = False
+        self.search(api, "q=hair")
+        assert api.state.history == []
+
+    def test_history_failure_does_not_fail_the_search(self, api):
+        api.state.history_error = RuntimeError("Data too long for column 'url'")
+        api.set_cookie("gear_session_id", "owner")
+        resp = api.get("/search?q=hair")
+        assert resp.status_code == 200 and resp.get_json()["success"] == 1
+
+
+def test_history_entry_links_back_to_the_search():
+    """The history entry reopens the "Search gEAR" page with the same keywords."""
+    executed = []
+    cursor = types.SimpleNamespace(execute=lambda qry, params: executed.append(params))
+    connection = types.SimpleNamespace(get_cursor=lambda: cursor, commit=lambda: None)
+    history = UserHistory(connection=connection)
+    history.user_history_enabled = True
+
+    history.add_record(user_id=5, entry_category="unified_search", label="Results matching '\"hair cell\" Myo7a'",
+                       search_terms=['"hair', 'cell"', "Myo7a"])
+    [(user_id, category, label, url)] = executed
+    assert (user_id, category) == (5, "unified_search")
+    assert url == "/search.html?q=%22hair%20cell%22%20Myo7a"
 
 
 class TestBuildSearchers:
