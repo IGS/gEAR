@@ -55,7 +55,7 @@ tags:
 - name: Uploads
   description: 'CGI: dataset uploader'
 - name: Search
-  description: 'CGI: search'
+  description: 'REST and CGI: search'
 - name: Misc
   description: 'CGI: everything else'
 paths:
@@ -1633,6 +1633,132 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiMessageError'
+  /api/search:
+    get:
+      operationId: unifiedSearch
+      tags:
+      - Search
+      summary: Search datasets, collections, gene lists, study pages, projections and cell-cell analyses.
+      description: The "Search gEAR" page (www/search.html, issue 1383). The searching is in lib/gear/search. Reads
+        the gear_session_id cookie; anonymous callers see public items only. Datasets, gene lists and collections
+        follow gear.search.access, the same rules as search_datasets.cgi and search_gene_carts.cgi. A logged-in
+        user's new keyword search (page 1, keywords different from their latest history entry) is added to their
+        history as unified_search. Called by apiCallsMixin.fetchUnifiedSearch in www/js/common.v2.js.
+      parameters:
+      - name: q
+        in: query
+        description: Keywords. Any term matches; words of 3 or more characters also match as prefixes; quoted text
+          matches only as a phrase (gear.search.fulltext). Empty lists everything the other filters allow.
+        schema:
+          type: string
+      - name: types
+        in: query
+        description: Comma-separated result types (dataset, collection, genelist, study, projection, ccc). Empty, or
+          all six, means every type.
+        schema:
+          type: string
+          example: dataset,genelist
+      - name: organism_ids
+        in: query
+        description: Comma-separated organism IDs. Results with no known organism are left out when set.
+        schema:
+          type: string
+      - name: ownership
+        in: query
+        description: Comma-separated ownership filters (yours, shared, group, public). Ignored for anonymous callers.
+          Unrecognized values match nothing. Study pages and unlinked cell-cell analyses count as public.
+        schema:
+          type: string
+      - name: date_added
+        in: query
+        description: Only results added in this period. Collections and cell-cell analyses have no date and are
+          left out when set.
+        schema:
+          type: string
+          enum:
+          - week
+          - month
+          - year
+      - name: sort
+        in: query
+        description: relevance scales each score by the best score of its own type, and ties take turns between
+          types, newest first. Without keywords, relevance is newest first.
+        schema:
+          type: string
+          enum:
+          - relevance
+          - title
+          - date
+          default: relevance
+      - name: page
+        in: query
+        description: Page number, from 1.
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: limit
+        in: query
+        description: Results per page. Values over 100 are lowered to 100.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Search results.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: integer
+                    enum:
+                    - 1
+                  problem:
+                    type: string
+                    description: Always empty on success.
+                  counts:
+                    type: object
+                    description: Matches per type, plus all. The keywords and the other filters apply, but not
+                      types, so every type button can show a count.
+                    properties:
+                      all:
+                        type: integer
+                      dataset:
+                        type: integer
+                      collection:
+                        type: integer
+                      genelist:
+                        type: integer
+                      study:
+                        type: integer
+                      projection:
+                        type: integer
+                      ccc:
+                        type: integer
+                  results:
+                    type: array
+                    description: The requested page of results.
+                    items:
+                      $ref: '#/components/schemas/ApiSearchResult'
+                  pagination:
+                    $ref: '#/components/schemas/Cgi3Pagination'
+        '400':
+          description: 'A bad argument, rejected before any database work (for example "Unknown result type:
+            nonsense" or "Page must be a whole number greater than 0").'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSearchProblem'
+        '500':
+          description: A searcher failed. The body has a general message; the details go to the server log.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSearchProblem'
   /cgi/add_display_to_layout.cgi:
     post:
       operationId: cgiAddDisplayToLayout
@@ -3195,7 +3321,7 @@ paths:
                   description: Search scope
                 search_terms:
                   type: string
-                  description: Full-text terms, converted by gear.utils.fulltext.to_boolean_mode_query (a term joined by
+                  description: Full-text terms, converted by gear.search.fulltext.to_boolean_mode_query (a term joined by
                     punctuation or in double quotes matches as a phrase; text with no words lists as if no terms were given). Tags are
                     matched by the whitespace-separated terms as typed.
                 only_types:
@@ -5982,7 +6108,7 @@ paths:
                 search_terms:
                   type: string
                   description: Space-separated terms (MySQL boolean full-text on title, ldesc, geo_id, pubmed_id), matching
-                    any term. Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
+                    any term. Punctuation is not treated as full-text operators (gear.search.fulltext.to_boolean_mode_query); a term joined
                     by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), and terms with no words
                     are ignored. Words of 3 or more characters match as prefixes (Tono matches Tonotopic) and anywhere in the
                     title, including inside underscore names (potential matches Groves_potential_targets). Text in double
@@ -6080,7 +6206,7 @@ paths:
                 search_terms:
                   type: string
                   description: Space-separated terms (MySQL boolean full-text on label, ldesc), matching any term.
-                    Punctuation is not treated as full-text operators (gear.utils.fulltext.to_boolean_mode_query); a term joined
+                    Punctuation is not treated as full-text operators (gear.search.fulltext.to_boolean_mode_query); a term joined
                     by punctuation matches as a phrase (Garcia-Añoveros matches "Garcia Añoveros"), and terms with no words
                     are ignored. Words of 3 or more characters match as prefixes (Tono matches Tonotopic) and anywhere in the
                     label, including inside underscore names (potential matches Groves_potential_targets). Text in double
@@ -6888,6 +7014,102 @@ components:
         error:
           type: string
           description: MemoryError text.
+    ApiSearchProblem:
+      type: object
+      description: Error body of /api/search (with HTTP 400 or 500).
+      properties:
+        success:
+          type: integer
+          enum:
+          - 0
+        problem:
+          type: string
+          description: What was wrong with the request (400), or a general message (500).
+    ApiSearchLink:
+      type: object
+      properties:
+        label:
+          type: string
+        url:
+          type: string
+          description: A page-relative URL ("./p?s=...") or an external link.
+    ApiSearchResult:
+      type: object
+      description: One /api/search result. Built by the type's searcher in lib/gear/search.
+      properties:
+        type:
+          type: string
+          enum:
+          - dataset
+          - collection
+          - genelist
+          - study
+          - projection
+          - ccc
+        id:
+          type: string
+          description: The result's key within its type (a share ID, a study page slug, a cell-cell file name, or a
+            dataset and pattern pair for projections).
+        share_id:
+          type: string
+          nullable: true
+          description: Null for study pages and cell-cell analyses.
+        title:
+          type: string
+        desc:
+          type: string
+          nullable: true
+        access:
+          type: string
+          enum:
+          - Yours
+          - Public
+          - Shared with you
+          - Group-affiliated
+        organism:
+          type: string
+          nullable: true
+          description: Organism label; comma-separated when a collection or study page covers several.
+        date:
+          type: string
+          nullable: true
+          description: ISO date (YYYY-MM-DD), or null for types with no date.
+        subline:
+          type: string
+          description: One-line summary shown under the title.
+        meta:
+          type: array
+          description: Preview details as [label, value] pairs.
+          items:
+            type: array
+            items:
+              type: string
+        chips:
+          type: array
+          items:
+            type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiSearchLink'
+        actions:
+          type: object
+          properties:
+            primary:
+              $ref: '#/components/schemas/ApiSearchLink'
+            secondary:
+              allOf:
+              - $ref: '#/components/schemas/ApiSearchLink'
+              nullable: true
+              description: Absent for projections.
+            share_url:
+              type: string
+        extra:
+          type: object
+          additionalProperties: true
+          description: 'Depends on the type: preview_image_url (dataset); datasets and dataset_count (collection);
+            genes and gene_count (genelist); thumbnail_url and collections (study); runs (projection); dataset
+            (ccc).'
     ApiAnalysisRef:
       description: 'Analysis selector normalized by gear.analysis.normalize_analysis_input: an object with id/type,
         a bare analysis ID string, or null for the primary dataset.'

@@ -3,7 +3,7 @@ Keyword matching in Python, for searchers whose text isn't in MySQL (study pages
 communication analyses).
 
 The rules match the MySQL full-text search used for datasets and gene lists
-(gear.utils.fulltext), so a search behaves the same for every type:
+(gear.search.fulltext), so a search behaves the same for every type:
 - any one term is enough to match,
 - unquoted words of 3 or more characters also match as prefixes ("cochle" finds "cochlear"),
 - quoted text matches only as that phrase, or as that whole word.
@@ -13,7 +13,7 @@ import re
 
 # The quote splitting and word rules are shared with the SQL search, so both read
 #  search text the same way
-from gear.utils.fulltext import MIN_PARTIAL_MATCH_LENGTH, _split_on_quotes, _words
+from gear.search.fulltext import MIN_PARTIAL_MATCH_LENGTH, _split_on_quotes, _words
 
 
 def compile_terms(text):

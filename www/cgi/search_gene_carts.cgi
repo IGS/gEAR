@@ -17,8 +17,9 @@ from math import ceil
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.search.access import gene_cart_visibility
+from gear.search.fulltext import to_boolean_mode_query, to_like_patterns
 from gear.userhistory import UserHistory
-from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
 
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 20
@@ -82,63 +83,19 @@ def main():
 
 
     gene_carts = list()
-    qry_params = []
 
     selects = ["gc.id", "g.user_name", "gc.gctype", "gc.label", "gc.ldesc", "gc.share_id",
                "gc.is_public", "gc.date_added", "o.genus", "o.species", "gc.organism_id",
                "gc.user_id"]
     froms = ["gene_cart gc", "guser g", "organism o"]
-    wheres = [
-        "gc.user_id = g.id",
-        "gc.organism_id = o.id"
-    ]
     orders_by = []
 
-    if not user:
-        # user not logged in, they can only see public datasets
-        wheres.append("gc.is_public = 1")
-    else:
-        # if any ownership filters are defined, collect those
-        if ownership:
-            # options are 'yours', 'shared', 'public'
-            owners = ownership.split(',')
-            ownership_bits = []
-
-            if 'yours' in owners:
-                ownership_bits.append("gc.user_id = %s")
-                qry_params.append(user.id)
-
-            if 'public' in owners:
-                ownership_bits.append("gc.is_public = 1")
-
-            if 'shared' in owners:
-                # NOT IMPLEMENTED YET
-                pass
-
-            if 'group' in owners:
-                ownership_bits.append("gc.user_id IN \
-                        (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
-                        (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
-                        ")
-                qry_params.append(user.id)
-
-            # Nothing to match (e.g. only "shared", which isn't implemented yet): an empty "()"
-            #  would make the query fail, so match no gene lists instead
-            if not ownership_bits:
-                ownership_bits.append("0 = 1")
-
-            wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
-
-        # otherwise, give the usual self and public.
-        else:
-            wheres.append("(gc.is_public = 1 \
-                                OR gc.user_id = %s \
-                                OR (gc.user_id IN \
-                                    (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
-                                        (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
-                                    ) \
-                                )")
-            qry_params.extend([user.id, user.id])
+    # Who sees what follows the same rules as the unified search (gear.search.access): logged
+    #  out, public only; logged in with no ownership filter, public, owned or owned by someone in
+    #  one of the user's groups. Sharing gene lists with a user isn't implemented, so "shared"
+    #  alone matches nothing.
+    visibility, qry_params = gene_cart_visibility(user, ownership.split(',') if ownership else [])
+    wheres = ["gc.user_id = g.id", "gc.organism_id = o.id", visibility]
 
     if share_id:
         wheres.append("gc.share_id = %s")

@@ -35,7 +35,7 @@ There is no token auth layer. Handlers identify the user by the gEAR session ID 
 
 | Source | Used by |
 |---|---|
-| Cookie `gear_session_id` (`request.cookies.get("gear_session_id")`) | Most resources: `PlotlyData`, `MGPlotlyData`, `TSNEData`, `MGTSNEData`, `SpatialScanpyData`, `H5ad`, `GeneSymbols`, `Aggregations`, `Analyses`, `Orthologs`, `ProjectR`, `TrackHubCopy`, `DatasetProcessingStatus` |
+| Cookie `gear_session_id` (`request.cookies.get("gear_session_id")`) | Most resources: `PlotlyData`, `MGPlotlyData`, `TSNEData`, `MGTSNEData`, `SpatialScanpyData`, `H5ad`, `GeneSymbols`, `Aggregations`, `Analyses`, `Orthologs`, `ProjectR`, `TrackHubCopy`, `DatasetProcessingStatus`, `UnifiedSearch` |
 | JSON body key `session_id` | `AvailableDisplayTypes`, `MGAvailableDisplayTypes` |
 | Form field `session_id` | `TopPCAGenes` |
 
@@ -44,7 +44,7 @@ Most read endpoints do not reject anonymous callers. They pass the session ID (p
 ### Response conventions
 
 - Most handlers return HTTP 200 with a `success` key: `1` means success, `2` means success with a warning in `message` (seen in `PlotlyData`, `MGPlotlyData`, `SvgData`), and `-1` or `0` means failure. Callers must check `success`, not only the HTTP status.
-- Some newer handlers set real HTTP status codes (`Orthologs`, `GoslingSpec`, `TrackHubCopy`, `DatasetProcessingStatus`, `DatasetDisplay`, `ProjectRStatus`).
+- Some newer handlers set real HTTP status codes (`Orthologs`, `GoslingSpec`, `TrackHubCopy`, `DatasetProcessingStatus`, `DatasetDisplay`, `ProjectRStatus`, `UnifiedSearch`).
 - `flask_restful.abort(...)` is used for 400, 403 and 404 in `resources/projectr.py`.
 
 ### Shared helpers (`www/api/resources/common.py`)
@@ -65,7 +65,7 @@ All helpers normalize the `analysis` argument with `gear.analysis.normalize_anal
 
 ## Route summary
 
-`www/api/api.py` makes 24 `api.add_resource` calls (25 URL patterns, because `PlotlyData` has two). Paths are relative to the `/api` prefix. The Methods column lists the HTTP methods the Resource class defines.
+`www/api/api.py` makes 25 `api.add_resource` calls (26 URL patterns, because `PlotlyData` has two). Paths are relative to the `/api` prefix. The Methods column lists the HTTP methods the Resource class defines.
 
 | Route | Methods | Handler class | Module |
 |---|---|---|---|
@@ -94,6 +94,7 @@ All helpers normalize the `analysis` argument with `gear.analysis.normalize_anal
 | `/import/dataset/<share_uid>/status` | POST | `DatasetProcessingStatus` | `resources/dataset_processing.py` |
 | `/analysis/plotTopGenesPCA` | POST | `TopPCAGenes` | `resources/top_pca_genes.py` |
 | `/displays/<display_id>` | GET | `DatasetDisplay` | `resources/dataset_display.py` |
+| `/search` | GET | `UnifiedSearch` | `resources/search.py` |
 
 ## Plot resources
 
@@ -288,6 +289,34 @@ Used by the single-cell workbench. The request is **form-encoded**: `dataset_id`
 ### DatasetDisplay: `GET /displays/<display_id>`
 
 Returns the display record from `geardb.get_display_by_id` with HTTP 200, or `{"message": "Display not found"}` with 404.
+
+### UnifiedSearch: `GET /search`
+
+The "Search gEAR" page (`www/search.html`, #1383). One call searches datasets, collections, gene lists, study pages, projections and cell-cell communication analyses. The searching is in `lib/gear/search/`: each type has a searcher with `find()` (every match the user can see) and `hydrate()` (full results, run for the returned page only), and `run_search()` combines them. Called by `apiCallsMixin.fetchUnifiedSearch` in `www/js/common.v2.js`.
+
+The user comes from the `gear_session_id` cookie. Anonymous callers are allowed and see only public items. Datasets, gene lists and collections use the visibility rules in `gear.search.access`, which `search_datasets.cgi` and `search_gene_carts.cgi` also use. Projections need the user to see both the dataset and the pattern gene list. A cell-cell analysis linked to a dataset follows that dataset's access, and an unlinked one is public. Study pages are public and limited to the site's portal (`domain_label`).
+
+Query args (all optional):
+
+| Arg | Notes |
+|---|---|
+| `q` | Keywords. Matched like the Dataset Explorer: any term matches, words of 3 or more characters also match as prefixes, and quoted text matches only as a phrase (`gear.search.fulltext`). Empty lists everything the filters allow. |
+| `types` | Comma-separated: `dataset`, `collection`, `genelist`, `study`, `projection`, `ccc`. Empty, or all six, means every type. |
+| `organism_ids` | Comma-separated organism IDs. Results with no known organism are left out when set. |
+| `ownership` | Comma-separated: `yours`, `shared`, `group`, `public`. Ignored for anonymous callers. Unrecognized values match nothing. Study pages and unlinked cell-cell analyses count as `public`; projections are filtered by their dataset. |
+| `date_added` | `week`, `month` or `year`. Collections and cell-cell analyses have no date, so they are left out when set. |
+| `sort` | `relevance` (default), `title` or `date`. Relevance scales each score by the best score of its own type, and ties take turns between types, newest first. Without keywords, relevance is newest first. |
+| `page`, `limit` | Page number (from 1) and page size (default 20, at most 100). |
+
+Response (HTTP 200): `{success: 1, problem: "", counts, results, pagination}`.
+
+- `counts` has `all` plus one count per type. Counts apply the keywords and the other filters but not `types`, so each type button can show a number.
+- `pagination` has the same keys as the search CGIs: `total_results`, `current_page`, `limit`, `total_pages`, `next_page`, `prev_page`.
+- Each result has `type`, `id`, `share_id` (null for study pages and cell-cell analyses), `title`, `desc`, `access` (`Yours`, `Public`, `Shared with you` or `Group-affiliated`), `organism`, `date` (ISO date or null), `subline`, `meta` (list of `[label, value]`), `chips`, `links` (`{label, url}`), `actions` (`primary` and optional `secondary` as `{label, url}`, plus `share_url`) and `extra`. `extra` depends on the type: `preview_image_url` for datasets, `datasets` and `dataset_count` for collections, `genes` and `gene_count` for gene lists, `thumbnail_url` and `collections` for study pages, `runs` (`{label, url}`) for projections, and `dataset` for cell-cell analyses.
+
+Errors: HTTP 400 `{success: 0, problem}` for a bad argument (for example `"Unknown result type: ..."` or `"Page must be a whole number greater than 0"`), before any database work. HTTP 500 `{success: 0, problem: "The search could not be run. Please try different search terms."}` when a searcher fails; the details go to the server log only.
+
+Side effect: a logged-in user's new keyword search is added to their history as `unified_search` ("Results matching '<q>'", linking to `/search.html?q=<q>`). Pages after the first, and reruns with the same keywords as the user's latest history entry (filter or sort changes), are not added. A failure to write the history entry does not fail the search.
 
 ## CGI endpoints
 

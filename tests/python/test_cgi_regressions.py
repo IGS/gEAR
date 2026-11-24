@@ -393,9 +393,10 @@ class TestH5adDatasetListTypes:
 
 # ---------------------------------------------------------------- search_datasets.cgi / search_gene_carts.cgi
 
+# Owners who share a group with the user (gear.search.access)
 GROUP_SUBQUERY = re.compile(
-    r"IN \(SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN "
-    r"\(SELECT group_id FROM user_group_membership WHERE user_id = %s\)\)")
+    r"IN \(SELECT DISTINCT \w+\.user_id FROM user_group_membership \w+ WHERE \w+\.group_id IN "
+    r"\(SELECT \w+\.group_id FROM user_group_membership \w+ WHERE \w+\.user_id = %s\)\)")
 EMPTY_PARENS = re.compile(r"\(\s*\)")
 
 

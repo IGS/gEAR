@@ -1,8 +1,8 @@
-"""gear.utils.fulltext: converting search text into a MySQL boolean-mode query."""
+"""gear.search.fulltext: converting search text into a MySQL boolean-mode query."""
 
 import pytest
 
-from gear.utils.fulltext import to_boolean_mode_query, to_like_patterns
+from gear.search.fulltext import to_boolean_mode_query, to_like_patterns
 
 
 @pytest.mark.parametrize("text, expected", [

@@ -1,12 +1,12 @@
 """
-SQL visibility clauses for the unified search (#1383).
+SQL visibility clauses for searching datasets, gene lists and collections (#1383).
 
 Each builder returns (clause, params): a parenthesised SQL condition with %s placeholders and
-the values for them. The rules match the existing search pages:
+the values for them. The unified search and the older search pages share these rules:
 
-- Datasets follow www/cgi/search_datasets.cgi.
-- Gene lists follow www/cgi/search_gene_carts.cgi.
-- Collections (layouts) follow www/cgi/get_user_layouts.cgi.
+- Datasets: the unified search and www/cgi/search_datasets.cgi (Dataset Explorer).
+- Gene lists: the unified search and www/cgi/search_gene_carts.cgi (Gene List Manager).
+- Collections (layouts): the unified search. The rules match www/cgi/get_user_layouts.cgi.
 
 The ownership filter is a list of "yours", "shared", "group" and "public". Several values
 combine with OR. A filter with no recognized value matches nothing.

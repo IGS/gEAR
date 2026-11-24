@@ -16,16 +16,20 @@ import re
 from urllib.parse import urlencode
 
 from gear.search import Hit
-from gear.search.access import DATASET_LIVE_CLAUSE, dataset_visibility, layout_visibility
-from gear.search.lookups import access_label
-from gear.search.text import compile_terms, score
-from gear.utils.fulltext import (
+from gear.search.access import (
+    DATASET_LIVE_CLAUSE,
+    dataset_visibility,
+    layout_visibility,
+)
+from gear.search.fulltext import (
     MIN_PARTIAL_MATCH_LENGTH,
     _split_on_quotes,
     _words,
     to_boolean_mode_query,
     to_like_patterns,
 )
+from gear.search.lookups import access_label
+from gear.search.text import compile_terms, score
 
 # How many of a collection's datasets a result lists
 DATASET_PREVIEW_COUNT = 10

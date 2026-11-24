@@ -37,7 +37,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 
 import geardb
-from gear.utils.fulltext import to_boolean_mode_query
+from gear.search.fulltext import to_boolean_mode_query
 
 def main():
     cnx = geardb.Connection()
