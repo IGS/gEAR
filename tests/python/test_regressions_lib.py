@@ -1,7 +1,9 @@
-"""Regression tests for closed GitHub issues in gear.analysis and gear.anndata_processor."""
+"""Regression tests for closed GitHub issues in gear.analysis, gear.anndata_processor, gear.userhistory
+and gear.search."""
 
 import json
 import types
+from pathlib import Path
 
 import gear.anndata_processor as ap
 import pandas as pd
@@ -143,3 +145,36 @@ def test_history_is_off_without_a_history_section(monkeypatch):
     assert history.history_count == 10
     assert history.add_record(user_id=7, entry_category="gene_search", label="Sox2", gene_symbol="Sox2") is False
     assert cursor.calls == []
+
+
+class TestStudySearchReadsRealStudyPages:
+    """The unified search's study pages, read from the real www/landing folders (not a test tree)."""
+
+    LANDING_DIR = Path(__file__).resolve().parents[2] / "www" / "landing"
+
+    def study_folders(self):
+        folders = sorted(path.parent for path in self.LANDING_DIR.glob("*/study.json"))
+        assert folders, f"no study pages found under {self.LANDING_DIR}"
+        return folders
+
+    def test_every_study_page_is_searchable_on_its_portals(self):
+        """Regression for #1383: the search read landing.json, but study pages describe themselves in
+        study.json, so no study page was ever found."""
+        from gear.search import Criteria
+        from gear.search.study_pages import StudyPageSearcher
+
+        for folder in self.study_folders():
+            portals = json.loads((folder / "study.json").read_text(encoding="utf-8"))["portals"]
+            for portal in portals:
+                domain_label = "gear" if portal == "*" else portal
+                found = [hit.key for hit in StudyPageSearcher(domain_label).find(Criteria(), None, None)]
+                assert folder.name in found, f"{folder.name} is not searchable on the {domain_label} portal"
+
+    @pytest.mark.parametrize("words", ["hiedra", "atlas"])
+    def test_hiedra_is_found_on_umgear(self, words):
+        """Regression for #1383: searching umgear.org for "hiedra" or "atlas" found no studies."""
+        from gear.search import Criteria
+        from gear.search.study_pages import StudyPageSearcher
+
+        hits = StudyPageSearcher("gear").find(Criteria(q=words), None, None)
+        assert "hiedra" in [hit.key for hit in hits]

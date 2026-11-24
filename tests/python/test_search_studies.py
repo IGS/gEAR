@@ -1,7 +1,7 @@
 """
 Study pages (the pages under /landing/) in the unified search (#1383).
 
-Each test writes a small www/landing/ tree (landing.json + index.html per page) to a temporary
+Each test writes a small www/landing/ tree (study.json + index.html per page) to a temporary
 directory. A fake database cursor answers the collection and organism lookups.
 """
 
@@ -11,7 +11,7 @@ from datetime import date, timedelta
 
 import pytest
 from gear.search import Criteria
-from gear.search.study_pages import StudyPageSearcher
+from gear.search.study_pages import MANIFEST_NAME, StudyPageSearcher
 
 OWNER = types.SimpleNamespace(id=7)
 
@@ -54,7 +54,7 @@ class FakeCursor:
 
 @pytest.fixture
 def landing(tmp_path):
-    """add(slug, body=..., **landing_json) writes one study page; .searcher() searches them."""
+    """add(slug, body=..., **study_json) writes one study page; .searcher() searches them."""
     class Landing:
         def add(self, slug, body="", **fields):
             folder = tmp_path / slug
@@ -62,7 +62,7 @@ def landing(tmp_path):
             manifest = {"portals": ["gear"], "featured": True, "date": "2026-01-01", "title": slug,
                         "summary": "", "pmid": "", "thumbnail": "", "canonical_url": ""}
             manifest.update(fields)
-            (folder / "landing.json").write_text(json.dumps(manifest))
+            (folder / MANIFEST_NAME).write_text(json.dumps(manifest))
             (folder / "index.html").write_text(f"<html><body><section id='content-c'>{body}</section></body></html>")
 
         def searcher(self, domain="gear"):
@@ -84,16 +84,16 @@ class TestFind:
         landing.add("everywhere", portals=["*"])
         assert set(found(landing.searcher())) == {"ours", "everywhere"}
 
-    def test_folder_without_landing_json_is_ignored(self, landing, tmp_path):
+    def test_folder_without_study_json_is_ignored(self, landing, tmp_path):
         landing.add("listed")
         (tmp_path / "draft").mkdir()
         (tmp_path / "draft" / "index.html").write_text("<p>draft</p>")
         assert set(found(landing.searcher())) == {"listed"}
 
-    def test_malformed_landing_json_is_skipped(self, landing, tmp_path):
+    def test_malformed_study_json_is_skipped(self, landing, tmp_path):
         landing.add("good")
         landing.add("broken")
-        (tmp_path / "broken" / "landing.json").write_text("{not json")
+        (tmp_path / "broken" / MANIFEST_NAME).write_text("{not json")
         assert set(found(landing.searcher())) == {"good"}
 
     def test_words_match_title_summary_and_page_text(self, landing):
