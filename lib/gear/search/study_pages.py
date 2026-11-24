@@ -2,8 +2,8 @@
 Searcher for study pages (#1383): the pages under www/landing/<slug>/.
 
 The folder keeps the name "landing" because it is part of the pages' URLs; everything else
-calls them studies. Each folder describes itself in a small JSON file (added on the
-alternative-intro-page branch, also read by bin/generate_intro_stats.py):
+calls them studies. Each folder describes itself in a study.json file (also read by
+bin/generate_intro_stats.py):
 
     {"portals": ["gear"], "featured": true, "date": "2026-01-31", "title": "...",
      "summary": "...", "pmid": "...", "thumbnail": "thumbnail.jpg", "canonical_url": "https://..."}
@@ -33,8 +33,8 @@ from gear.search.text import compile_terms, score
 
 LANDING_DIR = Path(__file__).resolve().parents[3] / "www" / "landing"
 
-# The per-page description file. Kept in one place in case it is renamed (e.g. to study.json).
-MANIFEST_NAME = "landing.json"
+# The per-page description file, the same one bin/generate_intro_stats.py reads
+MANIFEST_NAME = "study.json"
 
 # How much a search term counts for, by where it was found
 TITLE_WEIGHT = 5
