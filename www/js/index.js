@@ -399,6 +399,18 @@ registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 // Pre-initialize some stuff
 await initCommonUI();
 
+// The intro page's "Log in" link arrives with #login: open the login dropdown and focus the e-mail field
+if (window.location.hash === '#login') {
+    const loginMenu = document.querySelector('#navbar-login-controls .not-logged-in.has-dropdown');
+    if (loginMenu && !document.cookie.match(/(^|;\s*)gear_session_id=/)) {
+        loginMenu.classList.add('is-active');
+        document.getElementById('user-email')?.focus();
+        document.addEventListener('click', (event) => {
+            if (!loginMenu.contains(event.target)) loginMenu.classList.remove('is-active');
+        });
+    }
+}
+
 loadOrganismList();
 populateDatasetSpinner();
 loadFeaturedStudies();

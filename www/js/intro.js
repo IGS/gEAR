@@ -12,10 +12,8 @@ import { landingPagesForThisPortal, loadFeaturedStudies } from './featured_studi
 const STATS_URL = '/stats_archive/intro_stats.json';
 
 // ---------------------------------------------------------------------------
-// Visitor state (mirrors intro.html so index.html's first-visit redirect works)
+// Visitor state. index.html sends logged-out visitors here, so its links back add #portal or #login.
 // ---------------------------------------------------------------------------
-document.cookie = 'gear_returning_visitor=1; path=/; max-age=31536000; SameSite=Lax';
-
 if (/(^|;\s*)gear_session_id=/.test(document.cookie)) {
     for (const id of ['header-create-account', 'cta-create-account']) {
         document.getElementById(id)?.classList.add('is-hidden');
@@ -24,6 +22,7 @@ if (/(^|;\s*)gear_session_id=/.test(document.cookie)) {
     // Logged-in visitors get a button to their workspace in place of the Log in link
     const workspaceLink = document.getElementById('header-login');
     workspaceLink.textContent = 'Go to my workspace';
+    workspaceLink.href = '/index.html';
     workspaceLink.classList.add('button', 'is-small', 'is-rounded', 'intro-nav-cta');
 }
 

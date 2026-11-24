@@ -18,9 +18,12 @@
           -->
         <base href="/" />
 
-        <!-- First-time visitors (no returning-visitor or session cookie) are sent to the intro page, which sets the cookie. -->
+        <!-- Logged-out visitors land on the intro page; logged-in users stay here. Links from the intro
+             that mean "take me to the portal" add #portal (or #login, which also opens the login form).
+             A fragment, not a query string: js/index.js forwards any query string to expression.html. -->
         <script>
-          if (!/(^|;\s*)(gear_returning_visitor|gear_session_id)=/.test(document.cookie)) {
+          if (!/(^|;\s*)gear_session_id=/.test(document.cookie)
+              && !['#portal', '#login'].includes(window.location.hash)) {
             window.location.replace('/intro.html');
           }
         </script>
