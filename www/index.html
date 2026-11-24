@@ -18,9 +18,12 @@
           -->
         <base href="/" />
 
-        <!-- First-time visitors (no returning-visitor or session cookie) are sent to the intro page, which sets the cookie. -->
+        <!-- Logged-out visitors land on the intro page; logged-in users stay here. Links from the intro
+             that mean "take me to the portal" add #portal (or #login, which also opens the login form).
+             A fragment, not a query string: js/index.js forwards any query string to expression.html. -->
         <script>
-          if (!/(^|;\s*)(gear_returning_visitor|gear_session_id)=/.test(document.cookie)) {
+          if (!/(^|;\s*)gear_session_id=/.test(document.cookie)
+              && !['#portal', '#login'].includes(window.location.hash)) {
             window.location.replace('/intro.html');
           }
         </script>
@@ -52,10 +55,10 @@
               </div>
               <div class="column mt-0 mb-0 pt-0 pb-0 is-narrow has-text-right">
                 <div id="onboarding-c">
-                  <button id="onboarding-btn" class="button is-primary is-dark">
+                  <button id="onboarding-btn" class="button is-rounded onboarding-pill">
                     New to&nbsp;<span id="onboarding-domain-short-label">gEAR</span>? Click for tour.
                   </button>
-                  <a id="intro-screen-link" href="/intro.html" class="button is-primary is-outlined ml-2">
+                  <a id="intro-screen-link" href="/intro.html" class="button is-rounded onboarding-pill is-outline ml-2">
                     See intro screen again
                   </a>
                 </div>
@@ -386,145 +389,28 @@
               </template>
             </table>
 
-            <h3 class="mt-6 mb-4">
-              <span class="icon">
-                <i class="mdi mdi-book-outline mdi-24px"></i>
-              </span>
-              <span class="is-size-4">Guides</span>
-            </h3>
-            <div id="guides_c" class="columns is-multiline">
-
-              <div class="column is-one-third">
-                <div class="card">
-                  <div class="card-image">
-                    <figure class="image is-5by3">
-                      <a href="https://youtu.be/guI161nTv2U" target="_blank" aria-label="Video of the new look of gEAR">
-                        <img
-                          src="./img/gear_guide_preview_new_look_with_play_button.png"
-                          alt="Preview of the new look of gEAR"
-                        />
-                      </a>
-                    </figure>
-                  </div>
-                  <div class="card-content">
-                    <div class="media">
-                      <div class="media-content has-text-centered">
-                        <p class="title is-size-6">We have a new look!</p>
-                        <p class="subtitle is-size-6">Take a tour of our refreshed dashboard</p>
-                      </div>
-                    </div>
-                    <div class="content has-text-centered">
-                        <a href="https://youtu.be/guI161nTv2U" target="_blank" aria-label="Video of the new look of gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
-                    </div>
-                  </div>
+            <section id="featured-studies" class="mt-6" aria-labelledby="featured-studies-title" hidden>
+              <div class="featured-header mb-4">
+                <h3 id="featured-studies-title">
+                  <span class="icon">
+                    <i class="mdi mdi-star-four-points-outline mdi-24px"></i>
+                  </span>
+                  <span class="is-size-4">Featured studies</span>
+                </h3>
+                <a class="featured-all" href="/studies.html">Browse all studies <i class="mdi mdi-arrow-right" aria-hidden="true"></i></a>
+                <div class="featured-nav">
+                  <button type="button" class="button is-small is-rounded featured-prev" aria-label="Scroll to previous studies" aria-controls="featured-track" disabled>
+                    <span class="icon"><i class="mdi mdi-chevron-left mdi-24px"></i></span>
+                  </button>
+                  <button type="button" class="button is-small is-rounded featured-next" aria-label="Scroll to more studies" aria-controls="featured-track" disabled>
+                    <span class="icon"><i class="mdi mdi-chevron-right mdi-24px"></i></span>
+                  </button>
                 </div>
               </div>
-
-              <div class="column is-one-third">
-                <div class="card">
-                  <div class="card-image">
-                    <figure class="image is-5by3">
-                      <a href="https://youtu.be/bKTzGKAvn7w" target="_blank" aria-label="Video of the gene list manager in gEAR">
-                        <img
-                          src="./img/gear_guide_preview_gene_list_manager_with_play_button.png"
-                          alt="Preview of the gene list manager"
-                        />
-                      </a>
-                    </figure>
-                  </div>
-                  <div class="card-content">
-                    <div class="media">
-                      <div class="media-content has-text-centered">
-                        <p class="title is-size-6">Search Faster</p>
-                        <p class="subtitle is-size-6">With gene lists and dataset collections</p>
-                      </div>
-                    </div>
-                    <div class="content has-text-centered">
-                        <a href="https://youtu.be/bKTzGKAvn7w" target="_blank" aria-label="Video of the gene list manager in gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
-                    </div>
-                  </div>
-                </div>
+              <div class="featured-viewport">
+                <ul id="featured-track" class="featured-track" tabindex="0" aria-label="Featured study landing pages"></ul>
               </div>
-
-              <div class="column is-one-third">
-                <div class="card">
-                  <div class="card-image">
-                    <figure class="image is-5by3">
-                      <a href="https://youtu.be/7vsldnrjETw" target="_blank" aria-label="Video of the comparison tool in gEAR">
-                        <img
-                          src="./img/gear_guide_preview_comparison_tool_with_play_button.png"
-                          alt="Preview of the dataset explorer"
-                        />
-                      </a>
-                    </figure>
-                  </div>
-                  <div class="card-content">
-                    <div class="media">
-                      <div class="media-content has-text-centered">
-                        <p class="title is-size-6">Compare conditions</p>
-                        <p class="subtitle is-size-6">Compare two conditions within a dataset</p>
-                      </div>
-                    </div>
-                    <div class="content has-text-centered">
-                        <a href="https://youtu.be/7vsldnrjETw" target="_blank" aria-label="Video of the comparison tool in gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="column is-one-third is-offset-2">
-                <div class="card">
-                  <div class="card-image">
-                    <figure class="image is-5by3">
-                      <a href="https://youtu.be/DItayfJsldI" target="_blank" aria-label="Video of the curation tools in gEAR">
-                        <img
-                          src="./img/gear_guide_preview_dataset_explorer_with_play_button.png"
-                          alt="Preview of the dataset explorer"
-                        />
-                      </a>
-                    </figure>
-                  </div>
-                  <div class="card-content">
-                    <div class="media">
-                      <div class="media-content has-text-centered">
-                        <p class="title is-size-6">Create & Curate</p>
-                        <p class="subtitle is-size-6">Build and organize datasets your way</p>
-                      </div>
-                    </div>
-                    <div class="content has-text-centered">
-                        <a href="https://youtu.be/DItayfJsldI" target="_blank" aria-label="Video of the curation tools in gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="column is-one-third">
-                <div class="card">
-                  <div class="card-image">
-                    <figure class="image is-5by3">
-                      <a href="https://youtu.be/7_oiT4Q5yag" target="_blank" aria-label="Video of the projection tool in gEAR">
-                        <img
-                          src="./img/gear_guide_preview_projection_with_play_button.png"
-                          alt="Preview of the projection tool"
-                        />
-                      </a>
-                    </figure>
-                  </div>
-                  <div class="card-content">
-                    <div class="media">
-                      <div class="media-content has-text-centered">
-                        <p class="title is-size-6">Transfer Learning</p>
-                        <p class="subtitle is-size-6">How to project gene signatures onto new domains</p>
-                      </div>
-                    </div>
-                    <div class="content has-text-centered">
-                        <a href="https://youtu.be/7_oiT4Q5yag" target="_blank" aria-label="Video of the projection tool in gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
+            </section>
 
           </section><!-- end #content-c -->
         </section> <!-- end #main-c -->
@@ -564,6 +450,7 @@
         // Now load page-specific CSS
         insertVersionedCSS('css/common.v2.css', prefs.cache_version);
         insertVersionedCSS('css/index.css', prefs.cache_version);
+        insertVersionedCSS('css/featured_studies.css', prefs.cache_version);
       </script>
 
       <!-- WCAG accessibility widget -->

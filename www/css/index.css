@@ -6,14 +6,6 @@ div#dataset-explorer-card div.card-content{
 div#dropdown-dc div.dropdown-menu {
     min-width: 40rem !important;
 }
-div.guide-element {
-    border-right: 1px solid rgb(200, 200, 200);
-}
-div#guides_c div.card-content{
-    background-color: white;
-    color: black;
-    border-top: 1px solid rgb(200, 200, 200);
-}
 div#highlighted-datasets div.card {
     height: 100%;
     display: flex;
@@ -117,4 +109,32 @@ span.expression-search-step-number {
     font-size: 130%;
     font-weight: bold;
     color: #544a8e;
+}
+
+/* "New to gEAR?" and "See intro screen again": the same pill buttons as the intro page's top bar
+   (16px semibold, rounded). That bar is dark with white pills; on this white page the colors flip:
+   a filled pill in the theme color and an outlined one beside it. */
+.onboarding-pill {
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0 1.1em;
+    background: var(--gear-bg-primary, #362E5C);
+    border: 1px solid var(--gear-bg-primary, #362E5C);
+    color: var(--gear-text-on-primary, #fff);
+}
+.onboarding-pill:hover,
+.onboarding-pill:focus-visible {
+    background: var(--gear-bg-secondary, #544A8E);
+    border-color: var(--gear-bg-secondary, #544A8E);
+    color: var(--gear-text-on-primary, #fff);
+}
+.onboarding-pill.is-outline {
+    background: transparent;
+    color: var(--gear-bg-primary, #362E5C);
+}
+.onboarding-pill.is-outline:hover,
+.onboarding-pill.is-outline:focus-visible {
+    background: var(--gear-bg-tertiary, #EFEDF7);
+    border-color: var(--gear-bg-primary, #362E5C);
+    color: var(--gear-bg-primary, #362E5C);
 }

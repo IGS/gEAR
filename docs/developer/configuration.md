@@ -204,9 +204,11 @@ This file holds branding and feature switches for each deployment (for example u
 
 | Key | Meaning | Read by |
 |---|---|---|
-| `domain_label` | Internal domain ID (`gear`, `nemo`, ...). Used for per-domain images under `img/by_domain/<label>/` and for domain-specific UI | `lib/geardb.py` (`geardb.domain_label`), `www/cgi/send_email.cgi`, `www/js/common.js`, `www/js/common.v2.js` |
-| `domain_short_display_label` | Short brand name shown in the UI and in e-mails (for example `gEAR`) | `lib/geardb.py` (`geardb.domain_short_label`), `www/js/common*.js`, `www/index.html`, `www/include/navigation_bar.html` |
-| `domain_tagline` | Tagline under the brand name | `www/js/common.v2.js` |
+| `domain_label` | Internal domain ID (`gear`, `nemo`, ...). Used for per-domain images under `img/by_domain/<label>/` and for domain-specific UI | `lib/geardb.py` (`geardb.domain_label`), `www/cgi/send_email.cgi`, `www/js/common.js`, `www/js/common.v2.js`, `www/js/intro.js` |
+| `domain_short_display_label` | Short brand name shown in the UI and in e-mails (for example `gEAR`) | `lib/geardb.py` (`geardb.domain_short_label`), `www/js/common*.js`, `www/js/intro.js`, `www/index.html`, `www/include/navigation_bar.html` |
+| `domain_tagline` | Tagline under the brand name | `www/js/common.v2.js`, `www/js/intro.js` |
+| `default_demo_gene` | Gene used as an example search. The intro page's fallback when `intro_example_genes` is unset | `www/js/intro.js` |
+| `intro_example_genes` | Optional. Example searches shown as "Try:" links under the intro page search box. Each entry is one gene or a comma-separated set, searched together (for example `["Sox2", "Myo7a,Pou4f3,Gfi1"]`) | `www/js/intro.js` |
 | `citations` | List of `{lines: [...], links: [{label, url}]}` shown in the "cite us" UI | `www/js/common.v2.js` |
 | `domain_url` | Public base URL of the site | `lib/geardb.py` (`geardb.domain_url`), `www/cgi/send_email.cgi`, `www/cgi/finalize_uploaded_expression_dataset.cgi`, `www/api/resources/{gosling_spec,spatialpanel,track_hub}.py`, `bin/migrate_epiviz_to_gosling.py` |
 | `enabled_plugins` | Map of plugin name to the list of pages it loads on. See [Plugins](./services/plugins.md) | `www/js/common.js`, `www/js/common.v2.js` |
