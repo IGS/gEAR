@@ -10,6 +10,20 @@
   * Alternatively ask @adkinsrs for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets
   * @adkinsrs's file is hard-coded to his paths so be sure to change those.
 * `mkdir mysql` - Necessary to mount the MySQL data directory for preserving
+* Create `gear.ini` in your checkout's root, unless you got a filled-in one from @adkinsrs (see below). Git ignores it, and the container reads the one in your checkout. From the `docker` directory:
+
+  ```bash
+  cp gear.ini.docker.template ../gear.ini
+  ```
+
+  The `[database]` section already matches the `db` service. Fill in the other bracketed placeholders for the features you need, such as e-mail or projectR.
+* Create `www/site_domain_prefs.json` in your checkout. Git ignores it, and docker-compose.yml mounts your checkout over the copy built into the image, so the container uses yours. From the `docker` directory:
+
+  ```bash
+  cp ../www/site_domain_prefs.json.template ../www/site_domain_prefs.json
+  ```
+
+  Then set `domain_label` to `gear` (so the bundled study pages show up), `domain_short_display_label` to `gEAR` and `domain_url` to `http://localhost:8080`.
 
 ## Files from @adkinsrs
 
@@ -60,6 +74,14 @@ Running `docker compose up -d` will also perform a check to see if the image (ty
 
 After all containers are up, if you have not done so set up MySQL [MySQL Setup Notes](./docker_mysql.md)
 
+Once the database is loaded, build the statistics, "What's new" lists and study list shown on the intro, home and Studies pages. Until this file exists those sections stay hidden. Run it again whenever you want fresh numbers:
+
+```bash
+docker compose exec web bash -c "cd /opt/gEAR/bin && /opt/bin/python3 generate_intro_stats.py"
+```
+
+This writes `www/stats_archive/intro_stats.json`, which Git ignores.
+
 ## Starting the stack
 
 To start:
@@ -86,7 +108,7 @@ If you want to view Apache logs, from server-side (Python) code, you can run `do
 
 ### ProjectR
 
-Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
+Currently `docker/gear.ini.docker.template` is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
 
 ### RabbitMQ and consumer services
 

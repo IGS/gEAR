@@ -119,7 +119,25 @@ RUN git clone -b ${GEAR_BRANCH} --single-branch ${GEAR_URL} \
   && rm -rf /var/www \
   && ln -s /opt/gEAR/www/ /var/
 
-COPY ./gear.ini.docker /opt/gEAR/gear.ini
+# gear.ini comes from the Docker template in the cloned repo, so no secrets are baked into the
+# published image. Its [database] section already matches the "db" service in docker-compose.yml;
+# the other placeholders (e-mail, GitHub token, etc.) stay unfilled.
+# docker-compose.yml bind-mounts the host checkout over /opt/gEAR, which hides this copy,
+# so the host checkout needs its own gear.ini (see docs/developer/setup/docker.md).
+RUN cp /opt/gEAR/docker/gear.ini.docker.template /opt/gEAR/gear.ini
+
+# Site preferences come from the template in the cloned repo, pointed at the local Docker site.
+# domain_label "gear" matches the "portals" lists of the bundled study pages (www/landing/*/study.json).
+# docker-compose.yml bind-mounts the host checkout over /opt/gEAR, which hides this copy,
+# so the host checkout needs its own www/site_domain_prefs.json (see docs/developer/setup/docker.md).
+# www/stats_archive/intro_stats.json is not made here; it needs the database (bin/generate_intro_stats.py)
+# and the pages that read it hide those sections until it exists.
+RUN /opt/bin/python3 -c "\
+import json; \
+prefs_path = '/opt/gEAR/www/site_domain_prefs.json'; \
+prefs = json.load(open(prefs_path + '.template')); \
+prefs.update(domain_label='gear', domain_short_display_label='gEAR', domain_url='http://localhost:8080'); \
+json.dump(prefs, open(prefs_path, 'w'), indent=4)"
 
 # Apache things
 WORKDIR /opt/gEAR
