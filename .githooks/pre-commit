@@ -18,8 +18,9 @@ STAGED_FILES=$(git diff --cached --name-only | grep -v "^$CACHE_FILE$")
 # If there are other staged files besides cache_version.json, proceed with version bump
 if [ -n "$STAGED_FILES" ]; then
     if [ -f "$CACHE_FILE" ]; then
-        # Get current version
-        CURRENT_VERSION=$(grep -Po '"cache_version":\s*"\K[^"]*' "$CACHE_FILE")
+        # Get current version (sed with POSIX classes works with both GNU and BSD/macOS tools;
+        # macOS grep has no -P, which made this hook silently skip the bump there)
+        CURRENT_VERSION=$(sed -n 's/.*"cache_version":[[:space:]]*"\([^"]*\)".*/\1/p' "$CACHE_FILE")
 
         if [ -z "$CURRENT_VERSION" ]; then
             echo "Warning: cache_version not found in cache_version.json"

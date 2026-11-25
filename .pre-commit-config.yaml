@@ -5,7 +5,7 @@ repos:
         name: Bump cache_version
         entry: .githooks/pre-commit
         language: script
-        stages: [commit]
+        stages: [pre-commit]
 #  - repo: https://github.com/pre-commit/pre-commit-hooks
 #    rev: v4.6.0
 #    hooks:
