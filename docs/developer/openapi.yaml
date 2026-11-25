@@ -7637,7 +7637,7 @@ components:
           - mg_tsne_static
           - mg_umap_static
           - mg_pca_static
-          description: Keys of PLOT_TYPE_TO_BASIS ("tsne" is legacy).
+          description: Plot types with a "basis" in www/plot_types.json ("tsne" is a legacy alias of tsne_static).
         analysis:
           type: object
           nullable: true

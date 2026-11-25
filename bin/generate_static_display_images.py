@@ -18,6 +18,7 @@ import cairosvg
 lib_path = os.path.abspath(os.path.join('..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear import plot_types
 
 def get_all_displays(cursor, desired_dataset_id=None):
     """Get all dataset displays out of the database."""
@@ -169,47 +170,31 @@ def main():
                 continue
                 #print("Overwriting file {}".format(filename))
 
+            plot_type = props["plot_type"]
+            family = plot_types.family(plot_type)
+            if family is None:
+                print("Plot type {} for display id {} is not recognizable".format(plot_type, display_id))
+                continue
+            if family in ("gosling", "spatial"):
+                # These displays have no preview image (TODO for gosling)
+                continue
+
+            # Some early plots did not store gene symbols in the config
+            if plot_types.is_multigene(plot_type):
+                config.setdefault("gene_symbols", ["Pou4f3", "Atoh1", "Sox2"])
+            else:
+                config.setdefault("gene_symbol", "Pou4f3")
+
+            # The plot-type registry (www/plot_types.json) decides which API endpoint draws the preview
             success = False
             url = "{}localhost/api/plot/{}".format(uri_identifier, dataset_id)
             try:
-                # Plotly
-                if props["plot_type"].lower() in ['bar', 'scatter', 'violin', 'line', 'tsne_dynamic', 'tsne/umap_dynamic', 'scatter3d']:
-                    # Some early plots did not store gene symbols in the config
-                    if "gene_symbol" not in config:
-                        config["gene_symbol"] = "Pou4f3"
-                    success = make_static_plotly_graph(filename, config, url)
-                elif props["plot_type"].lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
-                    url += "/mg_plotly"
-                    if "gene_symbols" not in config:
-                        config["gene_symbols"] = ["Pou4f3", "Atoh1", "Sox2"]
-                    success = make_static_plotly_graph(filename, config, url)
-                # tSNE (todo later)
-                elif props["plot_type"].lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
-                    url += "/tsne"
-                    if "gene_symbol" not in config:
-                        config["gene_symbol"] = "Pou4f3"
-                    success = make_static_tsne_graph(filename, config, url)
-                elif props["plot_type"].lower() in ["mg_tsne_static", "mg_umap_static", "mg_pca_static"]:
-                    url += "/mg_tsne"
-                    if "gene_symbols" not in config:
-                        config["gene_symbols"] = ["Pou4f3", "Atoh1", "Sox2"]
-                    success = make_static_tsne_graph(filename, config, url)
-                # SVG (todo later)
-                elif props["plot_type"].lower() in ["svg"]:
-                    if "gene_symbol" not in config:
-                        config["gene_symbol"] = "Pou4f3"
-                    url += "/svg"
+                if family == "svg":
                     success = make_static_svg(filename, dataset_id)
-                # Gosling (todo later)
-                elif props["plot_type"].lower() in ["gosling"]:
-                    if "gene_symbol" not in config:
-                        config["gene_symbol"] = "Pou4f3"
-                    url += "/gosling"
-                    # TODO:
-                    continue
+                elif family in ("scanpy", "mg_scanpy"):
+                    success = make_static_tsne_graph(filename, config, url + plot_types.preview_endpoint(plot_type))
                 else:
-                    print("Plot type {} for display id {} is not recognizable".format(props["plot_type"], display_id))
-                    continue
+                    success = make_static_plotly_graph(filename, config, url + plot_types.preview_endpoint(plot_type))
             except Exception as e:
                 print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
                 print(str(e), file=sys.stderr)

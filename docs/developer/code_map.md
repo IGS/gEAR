@@ -63,6 +63,7 @@ Related pages: [API reference](./api_reference.md), [upload pipeline](./upload_p
 | `mg_plotting.py` | Multi-gene Plotly builders: dot plot, heatmap (with dendrograms and cluster bars), quadrant, (stacked) violin and volcano, plus the matching `prep_*` / `validate_*` helpers | `www/api/resources/mg_plotly_data.py` |
 | `orthology.py` | Maps genes between organisms using the HDF5 ortholog files (`map_single_gene`, `map_multiple_genes`, `map_dataframe_genes`, `get_ortholog_file`) | `resources/orthologs.py`, `resources/projectr.py` |
 | `plotting.py` | Single-gene Plotly figures: `generate_plot()` (bar, box, histogram, line, scatter, 3-D scatter, strip and violin) and `plotly_color_map()` | `resources/plotly_data.py`, `svg_data.py`, `tsne_data.py`, `spatial_scanpy_data.py`, `common.py`, `get_h5ad_plot.cgi` |
+| `plot_types.py` | Lookups into the shared plot-type registry `www/plot_types.json`: `normalize()` (canonical name from a name or legacy alias), `family()`, `is_multigene()`, `is_full_width()`, `embedding_basis()`, `preview_endpoint()` and `names()`. Reads the file on first use | `geardb.py`, `save_dataset_display.cgi`, `resources/plotly_data.py`, `resources/tsne_data.py`, `bin/generate_static_display_images.py` |
 | `primary_analysis.py` | `add_primary_analysis_to_dataset()` detects or adds clustering, tSNE and UMAP, and creates composition plots | `anndata_processor.py` |
 | `queue.py` | Low-level pika helpers: `get_connection()`, `get_async_connection()` and `RabbitMQQueue` | `lib/gearqueue.py` only (see the overlap note below) |
 | `serverconfig.py` | `ServerConfig().parse()` returns a `ConfigParser` for `<repo>/gear.ini` | used almost everywhere |
@@ -73,6 +74,28 @@ Related pages: [API reference](./api_reference.md), [upload pipeline](./upload_p
 | `userhistory.py` | `UserHistory` records and reads a user's activity history | `add_to_user_history.cgi`, `get_user_history_entries.cgi`, the search and save CGIs |
 
 **Two RabbitMQ modules: `lib/gearqueue.py` and `lib/gear/queue.py`.** Only `lib/gearqueue.py` imports `gear.queue`, and it wraps `gear.queue.RabbitMQQueue().connect(...)` inside `gearqueue.Connection`. All application code (CGI, API, listeners) imports `gearqueue`. Treat `gear.queue` as an internal detail of `gearqueue` and do not import it directly.
+
+### Plot types (`www/plot_types.json`)
+
+`www/plot_types.json` is the single list of display plot types. Each entry is keyed by the canonical `plot_type` stored in `dataset_display`. It has:
+
+- `label`: a human-readable name.
+- `family`: which backend draws it. The families are `plotly`, `scanpy`, `mg_plotly`, `mg_scanpy`, `svg`, `gosling` and `spatial`; the `mg_*` families are multigene.
+- Optional `aliases`: legacy or curator-only names, such as `tsne` and `tsne_dyna`.
+- Optional `full_width`: a full-width tile in auto-arranged layouts.
+- Optional `basis`: the embedding a scanpy-family plot draws.
+
+Python reads it through `gear.plot_types`. The browser can load it as `/plot_types.json`, but the frontend still has its own lists until the second part of #1380.
+
+To add a plot type:
+
+1. Add an entry to `www/plot_types.json`.
+2. Draw it: `lib/gear/plotting.py` / `www/api/resources/plotly_data.py` for single-gene Plotly, `mg_plotly_data.py` for multigene, or `tsne_data.py` for scanpy embeddings.
+3. Offer it when the data allows: `www/api/resources/available_display_types.py`.
+4. Add an `<option>` to the plot-type menu in `www/dataset_curator.html` or `www/multigene_curator.html`, and the curator and tile handling in `www/js/` (see the frontend lists in `dataset_curator.js`, `multigene_curator.js` and `classes/tilegrid.js`).
+5. Run `tests/python/test_plot_types.py`. It checks the registry against the available-display-types APIs and both curator menus.
+
+Preview images and auto-layout widths follow the registry with no further changes.
 
 ### `lib/gear/utils/`
 

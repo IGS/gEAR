@@ -30,9 +30,9 @@ SINGLE_GENE_TYPES = {
 MULTIGENE_TYPES = {
     "dotplot", "heatmap", "mg_violin", "quadrant", "volcano", "mg_tsne_static", "mg_umap_static", "mg_pca_static",
 }
-# Was geardb.EMBEDDING_PLOT_TYPES
+# Was geardb.EMBEDDING_PLOT_TYPES, minus scatter3d: its boxy 3D plots read fine in a narrower tile
 FULL_WIDTH_TYPES = {
-    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic", "scatter3d",
+    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic",
     "mg_tsne_static", "mg_umap_static", "mg_pca_static",
 }
 LEGACY_ALIASES = {"tsne": "tsne_static", "tsne_dynamic": "tsne/umap_dynamic", "tsne_dyna": "tsne/umap_dynamic"}
