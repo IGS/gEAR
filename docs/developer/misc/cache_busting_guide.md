@@ -80,6 +80,19 @@ git commit -m "Test cache version bump"
 # ✓ Bumped cache_version: 2026.02.10.141530 → 2026.02.10.141812
 ```
 
+## Imported modules and `Cache-Control`
+
+The version string only reaches the files a page loads through `insertVersionedJS()` / `insertVersionedCSS()`. ES modules those entry scripts `import` (for example `common.v2.js`, `curator_common.js`, `classes/tilegrid.js` and `helpers/*.js`) are requested without it. On their own, browsers could keep using a stale cached copy of such a module after a deploy, next to a freshly loaded entry script.
+
+To cover them, Apache sends `Cache-Control: no-cache` for every `.js`, `.css` and `.json` file under `www/` (#1395). `no-cache` does not turn caching off: the browser keeps its copy but asks the server first, and an unchanged file costs only a `304 Not Modified` reply (Apache sends `ETag` and `Last-Modified` by default). The two mechanisms work together:
+
+- `?v=<cache_version>` makes entry scripts and page CSS load fresh right after a deploy.
+- `Cache-Control: no-cache` makes every other static file get revalidated, so imported modules are never stale.
+
+The header is set in `docker/umgear.conf` for the Docker image. Other servers need the same block in their https site, `umgear-ssl.conf` (see [Apache setup](../setup/apache.md#cache-control-for-static-js-css-and-json)). Check it with `curl -sI <site>/js/classes/tilegrid.js | grep -i cache-control`.
+
+Code that fetches static JSON at runtime can ask for the same behavior per request with `fetch(url, { cache: "no-cache" })`, as `www/js/helpers/plot-types.js` does for `/plot_types.json`.
+
 ## Auditing
 
 `bin/audit_cache_busting.py` scans `www/**/*.html` for local CSS/JS references without `?v=`. It reads the current version from `www/cache_version.json` and counts a page as compliant if it calls `insertVersionedJS()` or `insertVersionedCSS()`. Partials under `www/include/` are loaded into pages rather than served directly, so they show up in the "needs attention" list even though they don't need their own versioning.

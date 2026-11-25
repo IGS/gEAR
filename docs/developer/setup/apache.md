@@ -73,6 +73,39 @@ domain, of course:
 
     Redirect permanent / https://umgear.org/
 
+## Cache-Control for static JS, CSS and JSON
+
+Pages add `?v=<cache_version>` only to their entry script and CSS (see the
+[cache busting guide](../misc/cache_busting_guide.md)). The ES modules those scripts import are not
+versioned, so after a deploy a returning visitor could otherwise get a new page script together with a
+stale cached copy of a shared module. To prevent that, tell browsers to check with the server before
+reusing a cached JS, CSS or JSON file. An unchanged file then costs only a small `304 Not Modified`
+reply, because Apache sends `ETag` and `Last-Modified` by default.
+
+Enable mod_headers:
+
+    $ sudo a2enmod headers
+
+Add this block to the https site, `/etc/apache2/sites-available/umgear-ssl.conf` (see
+[below](#etcapache2sites-availableumgear-sslconf)). It is not needed in the http site, because that
+only redirects to https.
+
+    # Make browsers check for a newer copy of static JS, CSS and JSON before reusing a cached one (#1395)
+    <Directory /var/www>
+        <FilesMatch "\.(js|css|json)$">
+            Header set Cache-Control "no-cache"
+        </FilesMatch>
+    </Directory>
+
+Then reload Apache:
+
+    $ sudo systemctl reload apache2
+
+The Docker image sets the same header in `docker/umgear.conf`. To check it, request any static file:
+
+    $ curl -sI https://umgear.org/js/classes/tilegrid.js | grep -i cache-control
+    Cache-Control: no-cache
+
 ## Override defaule apache systemd file
 
 The default apache service settings have some undesirable configurations. Editing the
@@ -164,6 +197,13 @@ There's a lot in here, but the CGI-related addition is:
         Require all granted
         IndexOptions SuppressHTMLPreamble
         IndexIgnore ..  # hide parent directory
+    </Directory>
+
+    # Static JS, CSS and JSON (see "Cache-Control for static JS, CSS and JSON" above)
+    <Directory /var/www>
+        <FilesMatch "\.(js|css|json)$">
+            Header set Cache-Control "no-cache"
+        </FilesMatch>
     </Directory>
 
   // Panel proxy
