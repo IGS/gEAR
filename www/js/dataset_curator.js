@@ -452,7 +452,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // If skip gene plot is checked, disable the expression palette, reverse palette, and two-way palette
         if (config["skip_gene_plot"]) {
-            for (const classElt of document.getElementsByClassName("js-tsne-expression-palette")) {
+            for (const classElt of document.getElementsByClassName("js-tsne-color-palette")) {
                 classElt.disabled = true;
             }
             for (const classElt of document.getElementsByClassName("js-tsne-reverse-palette")) {
@@ -463,9 +463,10 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 classElt.disabled = true;
                 classElt.checked = false;
             }
+            // Disabled but left as saved, as when "skip gene plot" is ticked in the curator,
+            // so re-saving the display does not change make_zero_gray
             for (const classElt of document.getElementsByClassName("js-tsne-make-zero-gray")) {
                 classElt.disabled = true;
-                classElt.checked = false;
             }
             for(const classElt of document.getElementsByClassName("js-tsne-vmax")) {
                 classElt.disabled = true;
@@ -589,9 +590,10 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             this.plotConfig["marker_size"] = null;
         }
 
-        // If skip gene plot is checked, ensure expression palette, reverse palette, and two-way palette do not get passed to the scanpy code
+        // If skip gene plot is checked, ensure expression palette, reverse palette, and two-way palette do not get passed to the scanpy code.
+        // The palette is left out rather than sent as null, so the API uses its default (a null palette crashed the colorize panel, #1397)
         if (document.getElementById("skip-gene-plot-post").checked) {
-            this.plotConfig["expression_palette"] = null;
+            delete this.plotConfig["expression_palette"];
             this.plotConfig["reverse_palette"] = false;
             this.plotConfig["two_way_palette"] = false;
         }

@@ -7,8 +7,10 @@ in-memory AnnData objects standing in for the dataset loaders.
 
 import base64
 import importlib
+import re
 import sys
 import types
+from pathlib import Path
 
 import anndata
 import h5py
@@ -747,3 +749,90 @@ class TestScatter3d:
         """#446: scatter3d needs three continuous axes: expression plus two numeric obs columns or an embedding."""
         types_ = display_types(monkeypatch, tmp_path, embedding_adata(obs_columns, obsm_key))
         assert types_["scatter3d"] is expected
+
+
+# ---------------------------------------------------------------- curator options ignored or mismatched (#1397)
+
+WWW_DIR = Path(__file__).resolve().parents[2] / "www"
+
+
+class TestCuratorOptionMismatches:
+    """Curator options that were silently ignored, or whose curator and API defaults disagreed."""
+
+    @staticmethod
+    def curator_option_classes():
+        """(curator JS file, element class, config key) for every classElt2Prop entry in the curators."""
+        for js in ("dataset_curator.js", "multigene_curator.js"):
+            src = (WWW_DIR / "js" / js).read_text()
+            for block in re.finditer(r"classElt2Prop\s*=\s*\{(.*?)\};", src, re.DOTALL):
+                for cls, prop in re.findall(r'"(js-[\w-]+)"\s*:\s*"(\w+)"', block.group(1)):
+                    yield js, cls, prop
+
+    def test_every_curator_option_class_exists_in_the_html(self):
+        """Regression for #1397: quadrant cutoffs used class names no input had, so they were never sent."""
+        pages = list(WWW_DIR.glob("*.html")) + list((WWW_DIR / "include").rglob("*.html"))
+        html_classes = set()
+        for page in pages:
+            for value in re.findall(r'class="([^"]*)"', page.read_text()):
+                html_classes.update(value.split())
+        missing = [(js, cls, prop) for js, cls, prop in self.curator_option_classes() if cls not in html_classes]
+        assert missing == []
+
+    def test_volcano_log2fc_inputs_default_to_the_api_defaults(self):
+        """Regression for #1397: the curator showed -1/1 (and capped the upper bound at 0) while the API defaulted to -2/2."""
+        html = (WWW_DIR / "include" / "plot_config" / "post_plot" / "advanced_volcano.html").read_text()
+        api = (WWW_DIR / "api" / "resources" / "mg_plotly_data.py").read_text()
+        for bound in ("lower", "upper"):
+            (tag,) = [t for t in re.findall(r"<input[^>]*>", html) if f"js-dash-{bound}-logfc-threshold" in t]
+            (api_default,) = re.findall(rf'_number_param\(req, "{bound}_logfc_threshold", (-?[\d.]+)\)', api)
+            assert float(re.search(r'value="(-?[\d.]+)"', tag).group(1)) == float(api_default), bound
+        assert float(api_default) == 1   # #1397: both bounds default to +/-1
+        (upper,) = [t for t in re.findall(r"<input[^>]*>", html) if "js-dash-upper-logfc-threshold" in t]
+        assert 'max="0"' not in upper
+
+    # SVG colors are applied in the browser (dataset-svg-fxns.js), not sent to the API
+    BROWSER_ONLY_KEYS = {"low_color", "mid_color", "high_color"}
+
+    def test_every_curator_config_key_is_read_by_the_api(self):
+        """Regression for #1397: the volcano "annotate non-significant" checkbox was saved as a key the API never read."""
+        api_source = "\n".join(p.read_text() for p in (WWW_DIR / "api" / "resources").glob("*.py"))
+        unread = [
+            (js, prop) for js, _cls, prop in self.curator_option_classes()
+            if prop not in self.BROWSER_ONLY_KEYS and f'"{prop}"' not in api_source and f"'{prop}'" not in api_source
+        ]
+        assert unread == []
+
+    @pytest.mark.parametrize("body, expected", [({}, True), ({"annotate_nonsignificant": False}, False)])
+    def test_volcano_annotate_nonsignificant(self, mg_plotly_data, mg_client, monkeypatch, body, expected):
+        """Regression for #1397: the API annotates non-significant genes unless annotate_nonsignificant is false."""
+        import plotly.graph_objects as go
+        mg = mg_plotly_data.mg
+        monkeypatch.setattr(mg, "validate_volcano_conditions", lambda *a, **k: ("condition", "x", "y"))
+        monkeypatch.setattr(mg, "prep_volcano_dataframe", lambda *a, **k: pd.DataFrame({"gene_symbol": ["G1", "G2"]}))
+        monkeypatch.setattr(mg, "create_volcano_plot", lambda *a, **k: go.Figure())
+        seen = []
+        monkeypatch.setattr(mg, "add_gene_annotations_to_volcano_plot", lambda fig, genes, annotate: seen.append(annotate))
+
+        result = mg_plot(mg_client, plot_type="volcano", query_condition="condition;-;x", ref_condition="condition;-;y", **body)
+        assert result["success"] == 1, result.get("message")
+        assert seen == [expected]
+
+    def test_skip_gene_plot_with_null_expression_palette(self, monkeypatch):
+        """Regression for #1397: with "skip gene plot" the curator sent expression_palette null, which crashed a continuous colorize panel."""
+        from matplotlib.figure import Figure
+        adata = anndata.AnnData(
+            X=np.linspace(0, 1, 12, dtype=np.float32).reshape(6, 2),
+            obs=pd.DataFrame(
+                {"tSNE_1": np.arange(6.0), "tSNE_2": np.arange(6.0)[::-1], "score": np.linspace(100, 200, 6)},
+                index=[f"c{i}" for i in range(6)],
+            ),
+            var=pd.DataFrame({"gene_symbol": ["G1", "G2"]}, index=["E1", "E2"]),
+        )
+        ana = types.SimpleNamespace(dataset_id="DS1", id="DS1", dataset_path="/nonexistent/DS1.h5ad")
+        monkeypatch.setattr(tsne_data.plt, "savefig", lambda *a, **k: None, raising=False)
+        monkeypatch.setattr(Figure, "savefig", lambda self, buf, *a, **k: buf.write(b"png"))
+        result = tsne_data.generate_tsne_figure(
+            adata, ana, ["G1"], "tsne_static", "tSNE_1", "tSNE_2",
+            colorize_by="score", expression_palette=None, skip_gene_plot=True,
+        )
+        assert result["success"] == 1, result
