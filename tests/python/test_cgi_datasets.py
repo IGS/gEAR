@@ -208,6 +208,47 @@ class TestSaveDatasetDisplay:
         assert not result.logged("requests.post")
 
 
+class TestSaveDatasetDisplayPreviewEndpoint:
+    """#1380: each plot type's preview image is requested from the right API endpoint.
+
+    These pin the current behavior before the plot-type lists move into the shared registry.
+    The fake requests.post always fails, so every request is retried once on the plain-http URL.
+    """
+
+    FAKE_REQUESTS = {"requests": FAKES_DIR / "display_requests.py"}
+
+    def preview_urls(self, plot_type):
+        query = {"session_id": "owner", "dataset_id": "DS1", "plot_type": plot_type,
+                 "plotly_config": '{"gene_symbol": "Sox2"}'}
+        result = run_cgi("save_dataset_display.cgi", query=query, db={**DB, "lastrowid": 42},
+                         fake_modules=self.FAKE_REQUESTS)
+        assert result.returncode == 0, result.stderr[-2000:]
+        assert result.json() == {"display_id": 42, "success": True}
+        return [e["url"] for e in result.logged("requests.post")]
+
+    @pytest.mark.parametrize("plot_type, endpoint", [
+        ("bar", ""),
+        ("scatter3d", ""),
+        ("tsne/umap_dynamic", ""),
+        ("tsne_dynamic", ""),       # legacy name
+        ("mg_violin", "/mg_plotly"),
+        ("dotplot", "/mg_plotly"),
+        ("tsne_static", "/tsne"),
+        ("tsne", "/tsne"),          # legacy name
+        ("mg_umap_static", "/mg_tsne"),
+    ])
+    def test_preview_endpoint_by_plot_type(self, plot_type, endpoint):
+        assert self.preview_urls(plot_type) == [
+            f"https://localhost/api/plot/DS1{endpoint}",
+            f"http://localhost/api/plot/DS1{endpoint}",
+        ]
+
+    @pytest.mark.parametrize("plot_type", ["svg", "gosling", "spatial_panel", "not_a_plot"])
+    def test_no_api_preview(self, plot_type):
+        """SVG previews are drawn locally; gosling, spatial and unknown types get no preview image."""
+        assert self.preview_urls(plot_type) == []
+
+
 class TestSaveDefaultDisplay:
     def run(self, **query):
         query = {"session_id": "owner", "dataset_id": "DS1", "is_multigene": "0", **query}
