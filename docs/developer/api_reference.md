@@ -148,7 +148,7 @@ Response: `{success, message, plot_json}`, or `{success, message, image, image_f
 
 These render static matplotlib/scanpy embedding plots and return them as base64 images. Parameters come from `reqparse` parsers defined at the top of `resources/tsne_data.py`.
 
-- Shared keys: `plot_type` (default `tsne_static`; valid values are the keys of `PLOT_TYPE_TO_BASIS`: `tsne_static`, `tsne`, `umap_static`, `pca_static`, `mg_tsne_static`, `mg_umap_static`, `mg_pca_static`), `analysis`, `x_axis` (default `tSNE_1`), `y_axis` (default `tSNE_2`), `colorize_legend_by`, `max_columns`, `expression_palette` (default `YlOrRd`), `reverse_palette`, `colors`, `order`, `flip_x`, `flip_y`, `horizontal_legend`, `marker_size`, `center_around_median`, `vmin`, `vmax`, `make_zero_gray`, `enforce_equal_aspect`, `obs_filters`, `projection_id`, `expression_min_clip`, `colorblind_mode`, `high_dpi`.
+- Shared keys: `plot_type` (default `tsne_static`; valid values are the registry types with a `basis` in `www/plot_types.json`: `tsne_static` (legacy alias `tsne`), `umap_static`, `pca_static`, `mg_tsne_static`, `mg_umap_static`, `mg_pca_static`), `analysis`, `x_axis` (default `tSNE_1`), `y_axis` (default `tSNE_2`), `colorize_legend_by`, `max_columns`, `expression_palette` (default `YlOrRd`), `reverse_palette`, `colors`, `order`, `flip_x`, `flip_y`, `horizontal_legend`, `marker_size`, `center_around_median`, `vmin`, `vmax`, `make_zero_gray`, `enforce_equal_aspect`, `obs_filters`, `projection_id`, `expression_min_clip`, `colorblind_mode`, `high_dpi`.
 - `TSNEData` only: `gene_symbol`, `plot_by_group`, `hide_group_nonmembers`, `skip_gene_plot`, `two_way_palette`.
 - `MGTSNEData` only: `gene_symbols` (list).
 

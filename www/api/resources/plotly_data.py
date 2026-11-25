@@ -18,6 +18,7 @@ import plotly.express.colors as pxc
 import scipy.sparse
 from flask import request
 from flask_restful import Resource
+from gear import plot_types
 from gear.colorblind import CONTINUOUS_CMAP, categorical_colors
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
@@ -118,8 +119,8 @@ class PlotlyData(Resource):
         gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type')
 
-        # tsne/umap_dynamic is just a symlink to scatter (support legacy tsne_dynamic)
-        if plot_type in [ 'tsne_dynamic', 'tsne/umap_dynamic']:
+        # tsne/umap_dynamic (and its legacy aliases) is drawn as a scatter plot
+        if plot_types.normalize(plot_type) == "tsne/umap_dynamic":
             plot_type = 'scatter'
 
         x_axis = req.get('x_axis')

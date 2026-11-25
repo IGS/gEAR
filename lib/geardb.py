@@ -26,6 +26,7 @@ import gear.db  # noqa: E402
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
 
+from gear import plot_types  # noqa: E402
 from gear.serverconfig import ServerConfig  # noqa: E402
 
 setattr(this, "servercfg", ServerConfig().parse())
@@ -923,11 +924,8 @@ def get_default_display(user_id, dataset_id, is_multigene=0):
     return default_display_id
 
 
-# Embedding plots (tSNE/UMAP/PCA) need room to be readable, so auto-arranged layouts give them the full row
-EMBEDDING_PLOT_TYPES = (
-    "tsne_static", "umap_static", "pca_static", "tsne/umap_dynamic", "scatter3d",
-    "mg_tsne_static", "mg_umap_static", "mg_pca_static",
-)
+# Embedding plots (tSNE/UMAP/PCA) need room to be readable, so auto-arranged
+# layouts give them the full row. They are marked "full_width" in the plot-type registry (www/plot_types.json).
 AUTO_LAYOUT_EMBEDDING_WIDTH = 12
 
 # Minimum share of a display's uses a width needs to be preferred over the most common one
@@ -939,7 +937,7 @@ def get_auto_layout_width(display_id):
     Choose the grid width (out of 12) for a display placed in an automatically arranged layout.
 
     Rules, in order:
-      1. Embedding plots (see EMBEDDING_PLOT_TYPES) get the full width of 12.
+      1. Full-width plot types (the embedding plots; "full_width" in www/plot_types.json) get 12.
       2. Otherwise, look at every width this display has been given in saved dataset collections
          and use the widest one accounting for at least AUTO_LAYOUT_WIDTH_THRESHOLD of those uses.
          This lets a width people deliberately chose for a wide plot win over many narrow
@@ -968,8 +966,8 @@ def get_auto_layout_width(display_id):
     cursor.close()
     conn.close()
 
-    if plot_type in EMBEDDING_PLOT_TYPES:
-        return dict(width=AUTO_LAYOUT_EMBEDDING_WIDTH, rule=f"embedding plot type '{plot_type}'", width_counts=width_counts)
+    if plot_types.is_full_width(plot_type):
+        return dict(width=AUTO_LAYOUT_EMBEDDING_WIDTH, rule=f"full-width plot type '{plot_type}'", width_counts=width_counts)
 
     if not width_counts:
         return dict(width=None, rule="display is in no saved collection", width_counts=width_counts)
@@ -4575,18 +4573,6 @@ class LayoutDisplay:
 
         Set to None if the display is not found.
         """
-        # single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "gosling"]
-        multi_plot_types = [
-            "dotplot",
-            "heatmap",
-            "mg_violin",
-            "quadrant",
-            "volcano",
-            "mg_tsne_static",
-            "mg_umap_static",
-            "mg_pca_static",
-        ]
-
         qry = """
             SELECT plot_type from dataset_display WHERE id = %s
             """
@@ -4597,10 +4583,7 @@ class LayoutDisplay:
         if result is not None:
             (plot_type,) = result
 
-            # is_single = plot_type in single_plot_types
-            is_multi = plot_type in multi_plot_types
-
-            self.is_multigene = is_multi
+            self.is_multigene = plot_types.is_multigene(plot_type)
         else:
             self.is_multigene = None
 

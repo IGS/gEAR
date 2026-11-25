@@ -19,6 +19,7 @@ import requests
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear import plot_types
 
 DATASET_PREVIEWS_DIR = os.path.abspath(os.path.join('..', 'img', 'dataset_previews'))
 
@@ -96,6 +97,25 @@ def make_static_svg(filename, dataset_id):
     except Exception as e:
         print("Could not chmod {} for reason: {}".format(filename, str(e)), file=sys.stderr)
     return True
+
+def has_preview_image(plot_type):
+    """Return True if this plot type gets a preview image (gosling and spatial displays do not)."""
+    return plot_types.family(plot_type) == "svg" or plot_types.preview_endpoint(plot_type) is not None
+
+def make_preview_image(filename, plot_type, config, dataset_id, base_url):
+    """Draw a display's preview PNG. Returns True if the image was written.
+
+    The plot-type registry (www/plot_types.json) decides which API endpoint under base_url draws it.
+    SVG previews are drawn from the dataset's uploaded SVG instead.
+    """
+    family = plot_types.family(plot_type)
+    if family == "svg":
+        return make_static_svg(filename, dataset_id)
+
+    url = base_url + plot_types.preview_endpoint(plot_type)
+    if family in ("scanpy", "mg_scanpy"):
+        return make_static_tsne_graph(filename, config, url)
+    return make_static_plotly_graph(filename, config, url)
 
 def main():
     original_stdout = sys.stdout
@@ -207,57 +227,27 @@ def main():
 
     alt_url = "http://localhost/api/plot/{}".format(dataset_id)
 
-    image_success = False
     url = "https://localhost/api/plot/{}".format(dataset_id)
 
     if is_local:
         url = alt_url
 
-    try:
-        if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'tsne_dynamic', 'tsne/umap_dynamic', 'scatter3d']:
-            image_success = make_static_plotly_graph(filename, config, url)
-        elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
-            url += "/mg_plotly"
-            image_success = make_static_plotly_graph(filename, config, url)
-        elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
-            url += "/tsne"
-            image_success = make_static_tsne_graph(filename, config, url)
-        elif plot_type.lower() in ["mg_tsne_static", "mg_umap_static", "mg_pca_static"]:
-            url += "/mg_tsne"
-            image_success = make_static_tsne_graph(filename, config, url)
-        elif plot_type.lower() in ["svg"]:
-            url += "/svg"
-            image_success = make_static_svg(filename, dataset_id)
-        elif plot_type.lower() in ["gosling"]:
-            url += "/gosling"
-            pass
-        else:
-            print("Plot type {} for display id {} is not recognizable".format(plot_type, display_id))
-    except Exception as e:
-        print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
-        print(str(e), file=sys.stderr)
+    if plot_types.normalize(plot_type) is None:
+        print("Plot type {} for display id {} is not recognizable".format(plot_type, display_id), file=sys.stderr)
 
-    if not image_success:
-        try:
-            print("Attempting to use alt_url: {}".format(alt_url), file=sys.stderr)
-            url = alt_url
-            if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'tsne_dynamic', 'tsne/umap_dynamic', 'scatter3d']:
-                image_success = make_static_plotly_graph(filename, config, url)
-            elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
-                url += "/mg_plotly"
-                image_success = make_static_plotly_graph(filename, config, url)
-            elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
-                url += "/tsne"
-                image_success = make_static_tsne_graph(filename, config, url)
-            elif plot_type.lower() in ["mg_tsne_static", "mg_umap_static", "mg_pca_static"]:
-                url += "/mg_tsne"
-                image_success = make_static_tsne_graph(filename, config, url)
-            elif plot_type.lower() in ["svg"]:
-                url += "/svg"
-                image_success = make_static_svg(filename, dataset_id)
-        except Exception as e:
-            print("Error with plotting dataset {} using alt_url".format(dataset_id), file=sys.stderr)
-            print(str(e), file=sys.stderr)
+    # Draw the preview, retrying once on the plain-http URL if the first attempt fails
+    image_success = False
+    if has_preview_image(plot_type):
+        for attempt_url in dict.fromkeys([url, alt_url]):   # a single attempt when both URLs are the same
+            if attempt_url == alt_url and attempt_url != url:
+                print("Attempting to use alt_url: {}".format(alt_url), file=sys.stderr)
+            try:
+                image_success = make_preview_image(filename, plot_type, config, dataset_id, attempt_url)
+            except Exception as e:
+                print("Error with plotting dataset {} using {}".format(dataset_id, attempt_url), file=sys.stderr)
+                print(str(e), file=sys.stderr)
+            if image_success:
+                break
 
     if not image_success:
         print("Could not create static image file for display id {}".format(display_id), file=sys.stderr)

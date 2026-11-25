@@ -29,6 +29,7 @@ import scanpy as sc
 import seaborn as sns
 from flask import request
 from flask_restful import Resource, inputs, reqparse
+from gear import plot_types
 from gear.analysis import SpatialAnalysis, get_analysis
 from gear.colorblind import CONTINUOUS_CMAP, categorical_colors
 from gear.plotting import PlotError
@@ -52,15 +53,6 @@ sc.settings.verbosity = 0
 sns.set_theme()
 sns.set_style("white")
 
-PLOT_TYPE_TO_BASIS = {
-    "tsne_static": "tsne",
-    "tsne": "tsne",  # legacy
-    "umap_static": "umap",
-    "pca_static": "pca",
-    "mg_tsne_static": "tsne",
-    "mg_umap_static": "umap",
-    "mg_pca_static": "pca",
-}
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 # Colormap for a continuous colorize_by panel, so it does not look like gene expression (issue #1091).
@@ -1009,9 +1001,9 @@ def generate_tsne_figure(
     message = dedup["message"]
     dedup_copy = dedup["dedup_copy"]
 
-    try:
-        basis = PLOT_TYPE_TO_BASIS[plot_type]
-    except KeyError:
+    # The plot-type registry (www/plot_types.json) gives each embedding plot type its basis
+    basis = plot_types.embedding_basis(plot_type)
+    if basis is None:
         return {"success": -1, "message": f"{plot_type} was not a valid plot type"}
 
     if marker_size:

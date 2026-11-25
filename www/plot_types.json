@@ -1,0 +1,29 @@
+{
+  "description": "Every display plot type gEAR knows about, shared by the Python backend (lib/gear/plot_types.py) and the browser. Keys are the canonical plot_type values stored in dataset_display. family: plotly | scanpy | mg_plotly | mg_scanpy | svg | gosling | spatial (mg_* families are multigene). aliases: legacy or curator-only names that mean the same plot type. full_width: give the display a full-width tile in auto-arranged layouts. basis: embedding used by scanpy-family plots (tsne | umap | pca).",
+  "plot_types": {
+    "bar": {"label": "Bar", "family": "plotly"},
+    "line": {"label": "Line", "family": "plotly"},
+    "scatter": {"label": "Scatter", "family": "plotly"},
+    "scatter3d": {"label": "3D scatter", "family": "plotly", "full_width": false},
+    "violin": {"label": "Violin", "family": "plotly"},
+    "tsne/umap_dynamic": {"label": "tSNE/UMAP dynamic", "family": "plotly", "aliases": ["tsne_dynamic", "tsne_dyna"], "full_width": true},
+
+    "tsne_static": {"label": "tSNE static", "family": "scanpy", "aliases": ["tsne"], "basis": "tsne", "full_width": true},
+    "umap_static": {"label": "UMAP static", "family": "scanpy", "basis": "umap", "full_width": true},
+    "pca_static": {"label": "PCA static", "family": "scanpy", "basis": "pca", "full_width": true},
+
+    "svg": {"label": "SVG image", "family": "svg"},
+    "gosling": {"label": "Gosling", "family": "gosling"},
+    "spatial_panel": {"label": "Spatial panel", "family": "spatial"},
+
+    "dotplot": {"label": "Dotplot", "family": "mg_plotly"},
+    "heatmap": {"label": "Heatmap", "family": "mg_plotly"},
+    "mg_violin": {"label": "Multigene violin", "family": "mg_plotly"},
+    "quadrant": {"label": "Quadrant", "family": "mg_plotly"},
+    "volcano": {"label": "Volcano", "family": "mg_plotly"},
+
+    "mg_tsne_static": {"label": "Multigene tSNE", "family": "mg_scanpy", "basis": "tsne", "full_width": true},
+    "mg_umap_static": {"label": "Multigene UMAP", "family": "mg_scanpy", "basis": "umap", "full_width": true},
+    "mg_pca_static": {"label": "Multigene PCA", "family": "mg_scanpy", "basis": "pca", "full_width": true}
+  }
+}

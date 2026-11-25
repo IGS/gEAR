@@ -470,10 +470,6 @@ class GeneCartCollection:
         return self._select("get_by_share_ids", lambda s: s.get("share_id") in (share_ids or []))
 
 
-_MULTIGENE_PLOT_TYPES = ("dotplot", "heatmap", "mg_violin", "quadrant", "volcano", "mg_tsne_static",
-                         "mg_umap_static", "mg_pca_static")
-
-
 class _AcctLayoutMember(types.SimpleNamespace):
     """A layout member (geardb.LayoutDisplay); save() logs the grid position it would store."""
 
@@ -495,8 +491,11 @@ class LayoutDisplay(_AcctLayoutMember):
                          start_row=start_row, grid_height=grid_height)
 
     def get_is_multigene(self):
+        # Same rule as the real LayoutDisplay. Imported here because this fake can load before the CGI puts lib/ on sys.path.
+        from gear import plot_types
+
         display = get_display_by_id(self.display_id)
-        self.is_multigene = display.get("plot_type") in _MULTIGENE_PLOT_TYPES if display else None
+        self.is_multigene = plot_types.is_multigene(display.get("plot_type")) if display else None
 
 
 def _layout_all_members(layout):
