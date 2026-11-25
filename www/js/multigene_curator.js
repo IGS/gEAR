@@ -482,10 +482,10 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
 
     classElt2Prop = {
         "js-dash-de-test": "de_test_algo"
-        , "js-dash-fold-change-cutoff": "fold_change_cutoff"
-        , "js-dash-fdu-cutoff": "fdr_cutoff"
+        , "js-dash-fc-cutoff": "fold_change_cutoff"
+        , "js-dash-fdr-cutoff": "fdr_cutoff"
         , "js-dash-include-zero-fc": "include_zero_fc"
-        , "js-dash-annot-nonsig": "annot_nonsignificant"
+        , "js-dash-annot-nonsig": "annotate_nonsignificant"
         , "js-dash-pvalue-threshold": "pvalue_threshold"
         , "js-dash-use-adj-pvalues": "adj_pvals"
         , "js-dash-lower-logfc-threshold": "lower_logfc_threshold"

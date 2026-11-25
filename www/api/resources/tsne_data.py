@@ -55,6 +55,9 @@ sns.set_style("white")
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
+# Colormap for the gene expression panels when the request does not choose one
+DEFAULT_EXPRESSION_PALETTE = "YlOrRd"
+
 # Colormap for a continuous colorize_by panel, so it does not look like gene expression (issue #1091).
 # Viridis is colorblind-safe and distinct from the colorblind expression scale (cividis_r).
 ANNOTATION_CMAP = "viridis"
@@ -83,7 +86,7 @@ parser.add_argument("colorize_legend_by", type=str, default=None)
 parser.add_argument(
     "max_columns", type=int, default=None
 )  # Max number of columns before plotting to a new row
-parser.add_argument("expression_palette", type=str, default="YlOrRd")
+parser.add_argument("expression_palette", type=str, default=DEFAULT_EXPRESSION_PALETTE)
 parser.add_argument("reverse_palette", type=inputs.boolean, default=False, location="json")
 parser.add_argument("colors", type=dict, default={}, location="json")
 parser.add_argument("order", type=dict, default={}, location="json")
@@ -1009,6 +1012,10 @@ def generate_tsne_figure(
     if marker_size:
         marker_size = int(marker_size)
 
+    # A missing or null palette (the curator used to send null when the gene plot is skipped) means the default
+    if not expression_palette:
+        expression_palette = DEFAULT_EXPRESSION_PALETTE
+
     if reverse_palette:
         expression_palette += "_r"
 
@@ -1391,7 +1398,7 @@ class MGTSNEData(Resource):
             args.get("center_around_median", False),
             args.get("vmax", None),
             args.get("vmin", None),
-            args.get("expression_palette", "YlOrRd"),
+            args.get("expression_palette", DEFAULT_EXPRESSION_PALETTE),
             args.get("reverse_palette", False),
             args.get("high_dpi", False),
             args.get("max_columns", None),
@@ -1443,7 +1450,7 @@ class TSNEData(Resource):
             args.get("center_around_median", False),
             args.get("vmax", None),
             args.get("vmin", None),
-            args.get("expression_palette", "YlOrRd"),
+            args.get("expression_palette", DEFAULT_EXPRESSION_PALETTE),
             args.get("reverse_palette", False),
             args.get("high_dpi", False),
             args.get("max_columns", None),

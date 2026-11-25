@@ -155,8 +155,8 @@ class MGPlotlyData(Resource):
             fdr_cutoff = _number_param(req, "fdr_cutoff", 0.05)
             # Volcano plot options
             pval_threshold = _number_param(req, "pvalue_threshold", 0.05)
-            lower_logfc_threshold = _number_param(req, "lower_logfc_threshold", -2)
-            upper_logfc_threshold = _number_param(req, "upper_logfc_threshold", 2)
+            lower_logfc_threshold = _number_param(req, "lower_logfc_threshold", -1)
+            upper_logfc_threshold = _number_param(req, "upper_logfc_threshold", 1)
         except PlotError as pe:
             return {
                 'success': -1,

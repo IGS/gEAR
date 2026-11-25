@@ -7554,12 +7554,12 @@ components:
         lower_logfc_threshold:
           type: number
           nullable: true
-          default: -2
+          default: -1
           description: Volcano lower log fold-change threshold ("" or null uses the default).
         upper_logfc_threshold:
           type: number
           nullable: true
-          default: 2
+          default: 1
           description: Volcano upper log fold-change threshold ("" or null uses the default).
         adj_pvals:
           type: boolean
