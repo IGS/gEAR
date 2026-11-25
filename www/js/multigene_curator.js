@@ -5,6 +5,7 @@ import { curatorCommon } from "./curator_common.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
 import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./helpers/plot-display-config.js";
+import { getPlotTypeFamily } from "./helpers/plot-types.js";
 import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js";
 
 curatorCommon.setIsMultigene(1);
@@ -19,7 +20,6 @@ let plotSelectedGenes = []; // genes selected from plot "select" utility
 
 const genesAsAxisPlots = ["dotplot", "heatmap", "mg_violin"];
 const genesAsDataPlots = ["quadrant", "volcano"];
-const scanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
 class GenesAsAxisHandler extends curatorCommon.PlotHandler {
     constructor(plotType) {
@@ -1237,7 +1237,7 @@ const curatorSpecificPlotStyle = (plotType) => {
         return new GenesAsAxisHandler(plotType);
     } else if (genesAsDataPlots.includes(plotType)) {
         return new GenesAsDataHandler(plotType);
-    } else if (scanpyPlots.includes(plotType)) {
+    } else if (getPlotTypeFamily(plotType) === "mg_scanpy") {
         return new ScanpyHandler(plotType);
     } else {
         return null;

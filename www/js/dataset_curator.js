@@ -7,6 +7,7 @@ import { apiCallsMixin, createToast, initCommonUI, logErrorInConsole, trigger } 
 import { curatorCommon } from "./curator_common.js";
 import { postPlotlyConfig } from "./helpers/plot-display-config.js";
 import { colorSVG } from "./helpers/dataset-svg-fxns.js";
+import { getPlotTypeFamily, normalizePlotType } from "./helpers/plot-types.js";
 
 
 curatorCommon.setIsMultigene(0);
@@ -16,8 +17,6 @@ let genePostAutocomplete = null;
 let selectedGene = null;
 let allColumns = [];
 
-const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin", "scatter3d"];
-const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
 
 // Plotly axis series selects. A series may only be chosen on one axis at a time.
 const AXIS_SERIES_CLASSES = ["js-plotly-x-axis", "js-plotly-y-axis", "js-plotly-z-axis"];
@@ -918,13 +917,11 @@ const curatorSpecifcCreatePlot = async (plotType, datasetId, analysisObj) => {
     plotStyle.plotConfig["gene_symbol"] = selectedGene;
 
     // Call API route by plot type
-    if (plotlyPlots.includes(plotType)) {
+    const family = getPlotTypeFamily(plotType);
+    if (["plotly", "scanpy"].includes(family)) {
         await plotStyle.createPlot(datasetId, analysisObj);
 
-    } else if (scanpyPlots.includes(plotType)) {
-        await plotStyle.createPlot(datasetId, analysisObj);
-
-    } else if (plotType === "svg") {
+    } else if (family === "svg") {
         await plotStyle.createPlot(datasetId);
     } else {
         console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`);
@@ -958,12 +955,13 @@ curatorCommon.registerCuratorSpecificNavbarUpdates(curatorSpecificNavbarUpdates)
  * @returns {PlotlyHandler|ScanpyHandler|SvgHandler|null} - The plot style handler.
  */
 const curatorSpecificPlotStyle = (plotType) => {
-    // include plotting backend options
-    if (plotlyPlots.includes(plotType)) {
+    // The plot-type registry (/plot_types.json) says which backend draws each plot type
+    const family = getPlotTypeFamily(plotType);
+    if (family === "plotly") {
         return new PlotlyHandler(plotType);
-    } else if (scanpyPlots.includes(plotType)) {
+    } else if (family === "scanpy") {
         return new ScanpyHandler(plotType);
-    } else if (plotType === "svg") {
+    } else if (family === "svg") {
         return new SvgHandler();
     } else {
         return null;
@@ -977,14 +975,10 @@ curatorCommon.registerCuratorSpecificPlotStyle(curatorSpecificPlotStyle);
  * @returns {string} - The adjusted plot type.
  */
 const curatorSpecificPlotTypeAdjustments = (plotType) => {
-    // ? Move this to class constructor to handle
-    if (plotType.toLowerCase() === "tsne") {
-        // Handle legacy plots
-        plotType = "tsne_static";
-    } else if (["tsne/umap_dynamic", "tsne_dynamic"].includes(plotType.toLowerCase())) {
-        plotType = "tsne_dyna";
-    }
-    return plotType;
+    // Use the current name for legacy plot types (e.g. "tsne" -> "tsne_static")
+    const name = normalizePlotType(plotType) ?? plotType;
+    // The curator's plot-type menu uses "tsne_dyna" for tSNE/UMAP dynamic plots
+    return name === "tsne/umap_dynamic" ? "tsne_dyna" : name;
 };
 curatorCommon.registerCuratorSpecificPlotTypeAdjustments(curatorSpecificPlotTypeAdjustments);
 

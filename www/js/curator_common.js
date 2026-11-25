@@ -3,6 +3,7 @@
 import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js";
 import { fetchDatasetGeneSymbols } from "./helpers/dataset-genes.js";
 import { availablePalettes, plotly2MatplotlibNames } from "./helpers/plot-display-config.js";
+import { getPlotTypeLabel, normalizePlotType } from "./helpers/plot-types.js";
 import { FacetWidget } from "./classes/facets.js";
 import { DatasetTree } from "./classes/tree.js";
 
@@ -774,7 +775,7 @@ const choosePlotType = async () => {
 
     // Display current selected plot type
     document.getElementById("current-plot-type-c").classList.remove("is-hidden");
-    document.getElementById("current-plot-type").textContent = plotType;
+    document.getElementById("current-plot-type").textContent = getPlotTypeLabel(plotType);
 
     // Create facet widget, which will refresh filters
 
@@ -1535,7 +1536,7 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
     }
     const geneSymbol = display.plotly_config.gene_symbol;
 
-    const label = display.label || `Unnamed ${display.plot_type} display`;
+    const label = display.label || `Unnamed ${getPlotTypeLabel(display.plot_type)} display`;
 
     const template = document.getElementById("owner-display-card");
     const displayCard = template.content.cloneNode(true);
@@ -1654,12 +1655,14 @@ const setPlotEltValueFromConfig = (classSelector, confVal) => {
  * @param {boolean} isAllowed - Whether the plot type is allowed or not.
  */
 const setPlotTypeDisabledState = (plotType, isAllowed) => {
-    if (plotType === "tsne/umap_dynamic") {
-        document.getElementById("tsne-dyna-opt").disabled = !isAllowed;
-    } else {
-        // replace _ with - for id
-        const fixedPlotType = plotType.replaceAll("_", "-");
-        document.getElementById(`${fixedPlotType}-opt`).disabled = !isAllowed;
+    // Match menu options by plot type rather than by element ID, so an option whose value is an alias
+    // (the single-gene menu uses "tsne_dyna" for "tsne/umap_dynamic") is still found
+    const name = normalizePlotType(plotType);
+    if (!name) return;
+    for (const option of document.getElementById("plot-type-select").options) {
+        if (normalizePlotType(option.value) === name) {
+            option.disabled = !isAllowed;
+        }
     }
 }
 

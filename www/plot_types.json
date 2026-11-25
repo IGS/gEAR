@@ -4,7 +4,7 @@
     "bar": {"label": "Bar", "family": "plotly"},
     "line": {"label": "Line", "family": "plotly"},
     "scatter": {"label": "Scatter", "family": "plotly"},
-    "scatter3d": {"label": "3D scatter", "family": "plotly", "full_width": false},
+    "scatter3d": {"label": "3D Scatter", "family": "plotly", "full_width": false},
     "violin": {"label": "Violin", "family": "plotly"},
     "tsne/umap_dynamic": {"label": "tSNE/UMAP dynamic", "family": "plotly", "aliases": ["tsne_dynamic", "tsne_dyna"], "full_width": true},
 
@@ -18,12 +18,12 @@
 
     "dotplot": {"label": "Dotplot", "family": "mg_plotly"},
     "heatmap": {"label": "Heatmap", "family": "mg_plotly"},
-    "mg_violin": {"label": "Multigene violin", "family": "mg_plotly"},
+    "mg_violin": {"label": "Violin", "family": "mg_plotly"},
     "quadrant": {"label": "Quadrant", "family": "mg_plotly"},
     "volcano": {"label": "Volcano", "family": "mg_plotly"},
 
-    "mg_tsne_static": {"label": "Multigene tSNE", "family": "mg_scanpy", "basis": "tsne", "full_width": true},
-    "mg_umap_static": {"label": "Multigene UMAP", "family": "mg_scanpy", "basis": "umap", "full_width": true},
-    "mg_pca_static": {"label": "Multigene PCA", "family": "mg_scanpy", "basis": "pca", "full_width": true}
+    "mg_tsne_static": {"label": "tSNE", "family": "mg_scanpy", "basis": "tsne", "full_width": true},
+    "mg_umap_static": {"label": "UMAP", "family": "mg_scanpy", "basis": "umap", "full_width": true},
+    "mg_pca_static": {"label": "PCA", "family": "mg_scanpy", "basis": "pca", "full_width": true}
   }
 }
