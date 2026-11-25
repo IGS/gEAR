@@ -2,6 +2,7 @@
 
 import { apiCallsMixin, closeModal, copyToClipboard, createToast, downloadWithMetadata, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates, setDisplayCardText, SHARE_ID_MAX_LENGTH, triggerUrlDownload, validateShareId } from "./common.v2.js";
 import { describeGoslingSession } from "./helpers/gosling-fxns.js";
+import { getPlotTypeLabel, isMultigenePlotType } from "./helpers/plot-types.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 
 /* Imported variables
@@ -2456,21 +2457,20 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 
         const displayImage = displayElement.querySelector('figure > img');
         displayImage.src = displayUrl;
-        displayImage.alt = `Preview of ${display.label || display.plot_type} display`;
+        displayImage.alt = `Preview of ${display.label || getPlotTypeLabel(display.plot_type)} display`;
 
         // Add tag indicating plot type
         const displayType = displayElement.querySelector('.js-modal-display-type');
 
-        const multiGeneDisplay = ["heatmap", "dotplot", "mg_violin", "volcano", "quadrant", "mg_tsne_static", "mg_umap_static", "mg_pca_static"];
-
         // Add color tags to displayType depending on plot type
-        if (multiGeneDisplay.includes(display.plot_type)) {
+        const plotTypeLabel = getPlotTypeLabel(display.plot_type);
+        if (isMultigenePlotType(display.plot_type)) {
             displayType.classList.add("is-danger");
-            displayType.textContent = `${display.plot_type} [multigene]`;
+            displayType.textContent = `${plotTypeLabel} [multigene]`;
 
         } else {
             displayType.classList.add("is-info");
-            displayType.textContent = display.plot_type;
+            displayType.textContent = plotTypeLabel;
         }
 
         // Name the display; saved Gosling views also get their panels and ranges, as they all share one preview image.

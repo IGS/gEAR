@@ -172,10 +172,12 @@ def test_available_display_types_are_registry_types(monkeypatch, tmp_path, resou
 
 
 def curator_plot_type_options(page):
-    """The option values of a curator page's plot-type menu, minus the "Select plot type" placeholder."""
+    """The plot-type menu of a curator page, as {option value: option text}, minus the "Select plot type" placeholder."""
     html = (WWW / page).read_text()
     menu = re.search(r'<select id="plot-type-select".*?</select>', html, re.DOTALL).group(0)
-    return set(re.findall(r'<option value="([^"]+)"', menu)) - {"nope"}
+    options = dict(re.findall(r'<option value="([^"]+)"[^>]*>([^<]+)</option>', menu))
+    options.pop("nope", None)
+    return options
 
 
 @pytest.mark.parametrize("page, families", [
@@ -187,3 +189,10 @@ def test_curator_menu_matches_registry(page, families):
     offered = {plot_types.normalize(value) for value in curator_plot_type_options(page)}
     expected = {name for family in families for name in plot_types.names(family)}
     assert offered == expected
+
+
+@pytest.mark.parametrize("page", ["dataset_curator.html", "multigene_curator.html"])
+def test_curator_menu_text_matches_registry_labels(page, registry):
+    """Labels shown elsewhere (explorer tags, display cards) match what curators pick from the menu."""
+    for value, text in curator_plot_type_options(page).items():
+        assert registry[plot_types.normalize(value)]["label"] == text.strip(), value

@@ -3,6 +3,7 @@
 // This doesn't work unless we refactor everything to use ES modules
 import { apiCallsMixin, closeModal, createToast, downloadWithMetadata, getCurrentUser, logErrorInConsole, openModal, setDisplayCardText, triggerUrlDownload } from "../common.v2.js";
 import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
+import { getPlotTypeFamily, getPlotTypeLabel, normalizePlotType } from "../helpers/plot-types.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 import { fetchDatasetGeneSymbols, findSimilarGenes, getDatasetGeneListUrl, getGeneSearchUrl, hasGeneList } from "../helpers/dataset-genes.js";
 import { buildGoslingSessionConfig, clearGoslingTile, describeGoslingSession, loadGoslingEmbed, renderGoslingPlot, resolveGoslingSession, saveGoslingSession } from "../helpers/gosling-fxns.js";
@@ -16,9 +17,6 @@ This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
 For the given layout, a single-gene grid and a multi-gene grid are generated.
 */
 
-const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin", "scatter3d"];  // "tsne_dynamic" is a legacy option
-const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
-const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
 // Most similar genes suggested in a gene-not-found message (one row of tags in a narrow tile)
 const MAX_SIMILAR_GENES = 5;
@@ -1514,7 +1512,7 @@ class DatasetTile {
 
             // Add tag indicating plot type
             const displayType = displayElement.querySelector('.js-modal-display-type');
-            displayType.textContent = display.plot_type;
+            displayType.textContent = getPlotTypeLabel(display.plot_type);
 
             // Name the display; saved Gosling views also get their panels and ranges, as they all share one preview image.
             // Every Gosling card keeps room for the two panel lines (blank for upload defaults) so the images line up.
@@ -1659,13 +1657,8 @@ class DatasetTile {
 
         this.currentDisplayId = display.id;
 
-        // handle legacy plot types (+ sanity catch against tsne_dyna)
-        if (["tsne_dynamic", "tsne_dyna"].includes(display.plot_type)) {
-            display.plot_type = "tsne/umap_dynamic";
-        }
-        if (display.plot_type === "tsne") {
-            display.plot_type = "tsne_static";
-        }
+        // Use the current name for legacy plot types (e.g. "tsne" -> "tsne_static"); unknown types are kept as-is
+        display.plot_type = normalizePlotType(display.plot_type) ?? display.plot_type;
         this.currentPlotType = display.plot_type;
 
         // Add gene or genes to plot config
@@ -1725,33 +1718,34 @@ class DatasetTile {
      *     render takes the request options (e.g. an abort signal). Null if the plot type is not supported.
      */
     getDisplayHandlers(display) {
-        const plotType = display.plot_type;
+        // The plot-type registry (/plot_types.json) says which backend draws each plot type
+        const family = getPlotTypeFamily(display.plot_type);
 
-        if (plotlyPlots.includes(plotType)) {
+        if (family === "plotly") {
             return {
                 render: (otherOpts) => this.renderPlotlyDisplay(display, otherOpts),
                 download: () => this.downloadPlotlyImage(display),
             };
         }
-        if (scanpyPlots.includes(plotType)) {
+        if (family === "scanpy") {
             return {
                 render: (otherOpts) => this.renderScanpyDisplay(display, false, otherOpts),
                 download: () => this.downloadScanpyImage(display, false),
             };
         }
-        if (plotType === "svg") {
+        if (family === "svg") {
             return {
                 render: (otherOpts) => this.renderSVG(display, this.svgScoringMethod, otherOpts),
                 download: () => this.downloadSVG(display),
             };
         }
-        if (plotType === "spatial_panel") {
+        if (family === "spatial") {
             return {
                 render: (otherOpts) => this.renderSpatialPanelDisplay(display, otherOpts),
                 download: () => downloadSpatialHTML(this.dataset.share_id, display.plotly_config.gene_symbol),
             };
         }
-        if (plotType === "gosling") {
+        if (family === "gosling") {
             return {
                 render: async (otherOpts) => {
                     // Single-dataset views show the whole Gosling embedding, so lift this tile's max-height.
@@ -1766,7 +1760,7 @@ class DatasetTile {
             };
         }
         if (this.type === "multi") {
-            if (mgScanpyPlots.includes(plotType)) {
+            if (family === "mg_scanpy") {
                 return {
                     render: (otherOpts) => this.renderScanpyDisplay(display, true, otherOpts),
                     download: () => this.downloadScanpyImage(display, true),

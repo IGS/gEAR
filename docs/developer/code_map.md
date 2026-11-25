@@ -79,21 +79,21 @@ Related pages: [API reference](./api_reference.md), [upload pipeline](./upload_p
 
 `www/plot_types.json` is the single list of display plot types. Each entry is keyed by the canonical `plot_type` stored in `dataset_display`. It has:
 
-- `label`: a human-readable name.
+- `label`: a human-readable name. It must match the option text in the curator's plot-type menu.
 - `family`: which backend draws it. The families are `plotly`, `scanpy`, `mg_plotly`, `mg_scanpy`, `svg`, `gosling` and `spatial`; the `mg_*` families are multigene.
 - Optional `aliases`: legacy or curator-only names, such as `tsne` and `tsne_dyna`.
 - Optional `full_width`: a full-width tile in auto-arranged layouts.
 - Optional `basis`: the embedding a scanpy-family plot draws.
 
-Python reads it through `gear.plot_types`. The browser can load it as `/plot_types.json`, but the frontend still has its own lists until the second part of #1380.
+Python reads it through `gear.plot_types`. The browser reads it as `/plot_types.json` through `www/js/helpers/plot-types.js`, which mirrors the Python lookups. Tiles and curators use it to pick a renderer or curator handler from the family, normalize legacy names, and show labels.
 
 To add a plot type:
 
 1. Add an entry to `www/plot_types.json`.
 2. Draw it: `lib/gear/plotting.py` / `www/api/resources/plotly_data.py` for single-gene Plotly, `mg_plotly_data.py` for multigene, or `tsne_data.py` for scanpy embeddings.
 3. Offer it when the data allows: `www/api/resources/available_display_types.py`.
-4. Add an `<option>` to the plot-type menu in `www/dataset_curator.html` or `www/multigene_curator.html`, and the curator and tile handling in `www/js/` (see the frontend lists in `dataset_curator.js`, `multigene_curator.js` and `classes/tilegrid.js`).
-5. Run `tests/python/test_plot_types.py`. It checks the registry against the available-display-types APIs and both curator menus.
+4. Add an `<option>` (text = the registry label) to the plot-type menu in `www/dataset_curator.html` or `www/multigene_curator.html`. A plot type in an existing family needs no other frontend change. A new family also needs a handler in the curator JS and a renderer in `classes/tilegrid.js` (`getDisplayHandlers`).
+5. Run `tests/python/test_plot_types.py`. It checks the registry against the available-display-types APIs and both curator menus (values and labels).
 
 Preview images and auto-layout widths follow the registry with no further changes.
 
@@ -301,6 +301,7 @@ Other HTML lives under `www/landing/<name>/index.html` (per-project landing page
 |------|----------|
 | `dataset-svg-fxns.js` | Colours SVG anatomical displays by expression (`colorSVG`, `drawSVGLegend`). Imports d3 v7 from jsDelivr |
 | `plot-display-config.js` | Per-plot-type display config, plus `setHeatmapHeightBasedOnGenes`, `adjustStackedViolinHeight` and `attachAxisLabelTooltips` |
+| `plot-types.js` | Lookups into the shared plot-type registry (`/plot_types.json`): `normalizePlotType`, `getPlotTypeFamily`, `isMultigenePlotType` and `getPlotTypeLabel`. Loads the registry once, with top-level await |
 | `stepper-fxns.js` | Step/wizard state helpers (`openNextStepWithHrefs`, `passStepWithHref`, `failStepWithHref`, `resetStepperWithHrefs`) |
 
 ### `www/include/` partials
